@@ -83,7 +83,7 @@ async def submit_node(registry_entry: NodeRegistry):
                 return
 
             docker_start = "udocker run "
-            docker_start += "-e GIT_TOKEN=XXX"
+            docker_start += "-e GIT_TOKEN=XXXXXX"
             docker_start += f"-e NODE_ID={registry_entry.id} "
             docker_start += f"-e RESOURCE={str(context.config.resource)} "
             docker_start += f"-v {external_work_dir}:/home/appuser/simstack "
