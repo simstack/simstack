@@ -39,6 +39,7 @@ async def run_node(registry_entry: NodeRegistry):
     username = os.environ.get('USER', os.environ.get('USERNAME', 'unknown'))
     hostname = socket.gethostname()
 
+
     runner_event = RunnerEvent(runner_type=RunnerType.NODE_RUNNER, event=RunnerEventEnum.NODE_STARTED,
                                pid=pid, hostname=hostname, user=username,
                                resource=resource, node_id=registry_entry.id)
@@ -83,7 +84,7 @@ def make_git_list() -> List[str]:
     return git_list
 
 def run_squeue_for_job(job_id: str) -> str:
-    if context.config.doccker:
+    if context.config.docker:
         result = subprocess.run(
             f"squeue -j {job_id}",
             shell=True,
@@ -151,7 +152,7 @@ def get_job_info(job_id: str, task_id: ObjectId, resource: str) -> SlurmInfo | N
 async def clean_slurm_info(user: str, resource: Resource):
     """Clean up old slurm info entries"""
     try:
-        if context.config.doccker:
+        if context.config.docker:
             watchdog_id = f"slurm_{uuid.uuid4()}"
             queue_dir = context.config.workdir / "queue"
             result = submit_to_watchdog(f"squeue -u {user}", watchdog_id, queue_dir=queue_dir)

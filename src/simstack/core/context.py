@@ -127,7 +127,8 @@ class GlobalState:
             )
             self.log_handler = logging.getLogger()
         else:
-            self.log_handler = setup_logging(self.config.connection_string, self.config.database_name)
+            self.log_handler = setup_logging(self.config.connection_string, self.config.database_name,
+                                             kwargs.get("log_level", "INFO"))
 
         # initialize the rest of the variables in the config, but now we can get the errors in the database
         self.config.secondary_init(kwargs.get("workdir", None))

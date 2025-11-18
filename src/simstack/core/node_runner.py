@@ -5,7 +5,6 @@ import uuid
 from pathlib import Path
 from typing import Set
 
-from simstack.core.context import context
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.definitions import TaskStatus
 from simstack.models.files import FileStack

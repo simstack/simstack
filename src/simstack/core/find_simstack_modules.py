@@ -1,8 +1,13 @@
 import importlib
 import pkgutil
 from logging import getLogger
+from importlib.metadata import entry_points
 
 logger = getLogger("find_simstack_modules")
+
+def discover_simstack_modules():
+    """Discover all packages and modules within the simstack package."""
+
 
 def find_simstack_modules():
     """Find all packages and modules within the simstack package."""
@@ -15,8 +20,8 @@ def find_simstack_modules():
             package = importlib.import_module(package_name)
             package_path = package.__path__
 
-            print(f"Package: {package_name}")
-            print(f"Path: {package_path}")
+            logger.info(f"Package: {package_name}")
+            # print(f"Path: {package_path}")
 
             for importer, modname, ispkg in pkgutil.walk_packages(
                     package_path,
@@ -27,13 +32,12 @@ def find_simstack_modules():
                 else:
                     logger.debug(f"  Module: {modname}")
                     # Split module name by periods
-                    splitext = modname.split('.')
-                    if len(splitext) > 1 and (splitext[1] == "models" or splitext[1] == "methods"):
-                      all_modules.append(modname)
-
+                    all_modules.append(modname)
 
         except Exception as e:
             logger.error(f"Error walking {package_name}: {e}")
 
-    walk_packages('simstack')
+    entry_point_list = entry_points(group="simstack.modules")
+    for entry_point in entry_point_list:
+        walk_packages(entry_point.value)
     return all_modules
