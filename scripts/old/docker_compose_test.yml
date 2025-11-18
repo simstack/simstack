@@ -1,0 +1,54 @@
+services:
+  simstack-pip:
+    build: 
+      context: ../..
+      dockerfile: ../../Dockerfile3
+    image: xerius65/test:latest  # Add this line to control the image name
+    container_name: test
+    
+    depends_on:
+      - mongodb
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/simstack
+      - PYTHONUNBUFFERED=1
+      - HOME=/home/ws/bj7610
+      # Allow customization of simstack directory location
+      - SIMSTACK_HOME=${SIMSTACK_HOME:-/home/ws/bj7610/simstack}
+#    volumes:
+#      # Mount local filesystem for data access
+#      - ./data:/app/data
+#      - ./logs:/app/logs
+#      - ./output:/app/output
+#
+#      # Mount simstack directory (customizable via SIMSTACK_HOME env var)
+#      - ${SIMSTACK_HOME:-/home/ws/bj7610/simstack}:/home/appuser/simstack:rw
+#
+#      # Optional: mount source for development
+#      - ./src:/app/src:ro
+#      # Mount config files
+#      - ./.simstack.toml:/app/simstack.toml:ro
+    networks:
+      - simstack-network
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7.0
+    container_name: simstack-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=simstack
+    volumes:
+      - mongodb_data:/data/db
+      - ./docker-mongo/init-scripts:/docker-entrypoint-initdb.d:ro
+    networks:
+      - simstack-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  simstack-network:
+    driver: bridge

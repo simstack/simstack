@@ -1,0 +1,137 @@
+FROM mambaorg/micromamba:1.5.8
+
+WORKDIR /app
+USER root
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    libstdc++6 \
+    libc6-dev \
+    git \
+    dos2unix \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create appuser and set permissions
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Copy project files
+COPY --chown=appuser:appuser ../../pyproject.toml README.md LICENSE requirements.txt ./
+COPY --chown=appuser:appuser ../../src ./src/
+
+# Install Python 3.12 first
+RUN micromamba install -y -n base -c conda-forge python=3.12 && \
+    micromamba clean --all --yes
+
+# Install compatible versions - QUOTE ALL VERSION SPECS
+RUN micromamba install -y -n base -c conda-forge \
+        "numpy>=1.26.0" \
+        "scipy>=1.11.0" && \
+    micromamba clean --all --yes
+
+# Install pandas and other core scientific packages
+RUN micromamba install -y -n base -c conda-forge \
+        "pandas>=2.2.0" \
+        "matplotlib>=3.9.0" \
+        "joblib>=1.4.0" \
+        "networkx>=3.4.0" \
+        "beautifulsoup4>=4.13.0" \
+        "mpmath>=1.3.0" && \
+    micromamba clean --all --yes
+
+# Install chemistry-specific packages
+RUN micromamba install -y -n base -c conda-forge \
+        "rdkit>=2024.3.0" \
+        "pymatgen>=2024.5.0" \
+        "ase>=3.23.0" && \
+    micromamba clean --all --yes
+
+# Install pip dependencies with quoted version specs
+RUN micromamba run -n base pip install --no-cache-dir \
+    pip==25.2 \
+    "odmantic>=1.0.2,<2" \
+    "pydantic>=2.10,<3" \
+    "python-jose>=3.4.0,<4" \
+    "python-multipart>=0.0.19,<1" \
+    "hypercorn>=0.17.3,<1" \
+    "openbabel-wheel>=3.1.1,<4" \
+    "contextvars>=2.4,<3" \
+    "mongomock-motor>=0.0.32,<1" \
+    "cloudpickle>=3.1.1,<4" \
+    "fastapi>=0.115.0,<0.116" \
+    "coolname>=2.2.0,<3" \
+    "nest-asyncio>=1.6.0,<2" \
+    "motor>=3.7.0,<4" \
+    "passlib>=1.7.4,<2" \
+    "python-dotenv>=1.1.0,<2" \
+    "pymongo>=4.11.3,<5" \
+    "requests>=2.32.3,<3" \
+    "starlette>=0.46.0,<1"
+
+# Install dev dependencies
+RUN micromamba run -n base pip install --no-cache-dir \
+    "pytest>=8" \
+    pytest-cov \
+    "pytest-asyncio>=0.26.0,<1" \
+    "mongomock>=4.1.0,<5" \
+    "pytest-mock>=3.0.0" \
+    mypy \
+    ruff \
+    "pre-commit>=3.7.1,<4" \
+    "pre-commit-hooks>=4.6.0,<5" \
+    "typos>=1.23.1,<2" \
+    python-build \
+    cruft
+
+# Install the project in editable mode
+RUN micromamba run -n base pip install -e .
+
+# Copy remaining files
+COPY --chown=appuser:appuser ../../examples ./examples
+COPY --chown=appuser:appuser ../../applications ./applications
+COPY --chown=appuser:appuser ../../tests ./tests
+
+# Create shell script using cat with here document (ensures proper line endings)
+RUN cat > /app/shell.sh << 'EOF'
+#!/bin/bash
+export PYTHONPATH="/app/src:$PYTHONPATH"
+cd /app
+echo "=== SimStack Conda Environment ==="
+echo "Python version: $(micromamba run -n base python --version)"
+echo "Working directory: $(pwd)"
+echo "Activating micromamba environment..."
+eval "$(micromamba shell hook --shell=bash)"
+micromamba activate base
+exec bash
+EOF
+
+# Create entrypoint script using cat with here document
+RUN cat > /app/entrypoint.sh << 'EOF'
+#!/bin/bash
+set -e
+export PYTHONPATH="/app/src:$PYTHONPATH"
+cd /app
+
+if [ $# -eq 0 ]; then
+    echo "Starting SimStack Node with ID: ${NODE_ID:-default}"
+    exec micromamba run -n base python -m simstack.core.run_node --node-id "${NODE_ID:-default}"
+else
+    exec micromamba run -n base "$@"
+fi
+EOF
+
+# Make scripts executable and fix line endings
+RUN chmod +x /app/shell.sh /app/entrypoint.sh && \
+    dos2unix /app/shell.sh /app/entrypoint.sh
+
+# Verify scripts
+RUN ls -la /app/*.sh && \
+    file /app/shell.sh /app/entrypoint.sh
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH="/app/src"
+EXPOSE 8000
+
+ENTRYPOINT ["/app/entrypoint.sh"]

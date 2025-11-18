@@ -1,0 +1,32 @@
+{
+    "json_schema": {
+        "properties": {
+            "field_name": {
+                "default": "float",
+                "title": "Field Name",
+                "type": "string"
+            },
+            "value": {
+                "title": "Value",
+                "type": "number"
+            },
+            "id": {
+                "example": "5f85f36d6dfecacc68428a46",
+                "examples": [
+                    "5f85f36d6dfecacc68428a46",
+                    "ffffffffffffffffffffffff"
+                ],
+                "title": "Id",
+                "type": "string"
+            }
+        },
+        "required": [
+            "value"
+        ],
+        "title": "FloatData",
+        "type": "object"
+    },
+    "ui_schema": {
+        "ui:field": "FloatDataField"
+    }
+}

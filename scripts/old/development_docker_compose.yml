@@ -1,0 +1,11 @@
+services:
+  simstack-runner:
+    volumes:
+      # Mount source code for live development
+      - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./pixi.lock:/app/pixi.lock
+    # Run in development mode with shell access
+    command: ["pixi", "shell"]
+    stdin_open: true
+    tty: true

@@ -1,0 +1,48 @@
+{
+    "json_schema": {
+        "description": "A simple table model to display tabular data using ag-grid",
+        "properties": {
+            "name": {
+                "default": "SimpleTable",
+                "title": "Name",
+                "type": "string"
+            },
+            "heading": {
+                "items": {
+                    "type": "string"
+                },
+                "title": "Heading",
+                "type": "array"
+            },
+            "row": {
+                "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                },
+                "title": "Row",
+                "type": "array"
+            },
+            "type": {
+                "items": {
+                    "type": "string"
+                },
+                "title": "Type",
+                "type": "array"
+            },
+            "id": {
+                "example": "5f85f36d6dfecacc68428a46",
+                "examples": [
+                    "5f85f36d6dfecacc68428a46",
+                    "ffffffffffffffffffffffff"
+                ],
+                "title": "Id",
+                "type": "string"
+            }
+        },
+        "title": "SimpleTable",
+        "type": "object"
+    },
+    "ui_schema": {
+        "ui:field": "SimpleTableField"
+    }
+}

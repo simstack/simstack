@@ -1,0 +1,19 @@
+# .udockerrc - Configuration for udocker
+# Place this in your home directory or project root
+
+# Use fakechroot execution mode for better compatibility
+DEFAULT_EXECUTION_MODE=F1
+
+# Enable networking
+UDOCKER_NETMODE=bridge
+
+# Set container directories
+UDOCKER_CONTAINERS=$HOME/.udocker/containers
+UDOCKER_LAYERS=$HOME/.udocker/layers
+UDOCKER_REPOS=$HOME/.udocker/repos
+
+# Logging level
+UDOCKER_LOGLEVEL=3
+
+# Enable X11 forwarding if needed
+# UDOCKER_X11=1

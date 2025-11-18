@@ -1,0 +1,19 @@
+[parameters]
+[parameters.common]
+# the package simstack.toml sets no db_name or connection string, the environment decides what is needed
+resources = ["self"]
+
+[paths]
+[paths.tests]
+path = "tests"
+drops = ""
+use_pickle = false
+# here we need to specify models and methods
+[paths.models]
+path = "src/simstack/models"
+drops = "src"
+use_pickle = false
+[paths.methods]
+path = "src/simstack/methods"
+drops = "src"
+use_pickle = false

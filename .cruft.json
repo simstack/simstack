@@ -1,0 +1,19 @@
+{
+  "template": "https://github.com/NanomatchGmbH/python-pixi-cruft.git",
+  "commit": "0f30d06b4aa86bf4c444ac4062b096304fa40262",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "author_name": "Wolfgang Wenzel",
+      "email": "wolfgang.wenzel@kit.edu",
+      "github_username": "wolfgang.wenzel",
+      "project_name": "simstack-model",
+      "project_slug": "simstack_model",
+      "project_short_description": "A short description of the project",
+      "github_url": "https://gitlab.kit.edu/kit/ag_wenzel/simstack-model/",
+      "conda_publish_url": "https://prefix.dev/api/v1/upload/your_channel",
+      "_template": "https://github.com/NanomatchGmbH/python-pixi-cruft.git"
+    }
+  },
+  "directory": null
+}

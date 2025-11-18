@@ -1,0 +1,59 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.pytest_cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.mypy_cache
+
+# Pixi (keep lock file)
+.pixi/
+!pixi.lock
+
+# Conda/Mamba
+.conda/
+.mamba/
+
+# Documentation
+doc/
+docs/
+*.md
+!README.md
+
+# Development
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+.env*
+debug.txt
+*.lock
+!pixi.lock
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# udocker specific
+.udocker/

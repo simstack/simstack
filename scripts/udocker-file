@@ -1,0 +1,92 @@
+# Use Ubuntu as base image for better udocker compatibility
+FROM ubuntu:22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app/src
+
+# Set locale to avoid issues
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    curl \
+    wget \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    libssl-dev \
+    libffi-dev \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install MongoDB tools
+RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | gpg --dearmor | tee /usr/share/keyrings/mongodb.gpg > /dev/null \
+    && echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb.gpg ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list \
+    && apt-get update \
+    && apt-get install -y mongodb-database-tools mongodb-mongosh \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user for better udocker compatibility
+RUN useradd -m -u 1000 simstack && \
+    mkdir -p /home/simstack/.local/bin && \
+    chown -R simstack:simstack /home/simstack
+
+# Switch to the simstack user
+USER simstack
+WORKDIR /home/simstack
+
+# Install pixi as the simstack user
+RUN curl -fsSL https://pixi.sh/install.sh | bash
+ENV PATH="/home/simstack/.pixi/bin:$PATH"
+
+# Create app directory
+RUN mkdir -p /home/simstack/app
+WORKDIR /home/simstack/app
+
+# Copy project files with correct ownership
+COPY --chown=simstack:simstack pyproject.toml ./
+COPY --chown=simstack:simstack pixi.lock ./
+COPY --chown=simstack:simstack src/ ./src/
+COPY --chown=simstack:simstack README.md ./
+COPY --chown=simstack:simstack LICENSE ./
+
+# Install dependencies using pixi
+RUN pixi install
+
+# Create necessary directories
+RUN mkdir -p logs data workdir
+
+# Set environment variables for MongoDB connection
+ENV MONGODB_URL=mongodb://wolfgang:PUTPASSHERE@covalent.int.kit.edu:27017/
+ENV MONGODB_DATABASE=simstack
+ENV DATABASE_URL=mongodb://wolfgang:PUTPASSHERE@covalent.int.kit.edu:27017/
+
+# Expose port for FastAPI
+EXPOSE 8000
+
+# Create startup script for better udocker compatibility
+RUN echo '#!/bin/bash\n\
+# Start MongoDB if not running (for standalone use)\n\
+if ! pgrep mongod > /dev/null; then\n\
+    echo "Starting MongoDB..."\n\
+    mkdir -p /home/simstack/mongodb/data\n\
+    mongod --dbpath /home/simstack/mongodb/data --bind_ip_all --port 27017 --fork --logpath /home/simstack/mongodb/mongod.log\n\
+    sleep 5\n\
+fi\n\
+\n\
+# Run the application\n\
+cd /home/simstack/app\n\
+exec pixi run python -m hypercorn --bind 0.0.0.0:8000 simstack.main:app\n\
+' > /home/simstack/start.sh && chmod +x /home/simstack/start.sh
+
+# Default command
+CMD [ls -al]
+CMD [pixi list]
+CMD ["/home/simstack/start.sh"]

@@ -1,0 +1,27 @@
+package:
+  name: simstack
+  version: "1.0.0"
+about:
+  home: https://gitlab.kit.edu/kit/ag_wenzel/simstack-model/
+  license: MIT
+  summary:
+source:
+  git_url: ../
+build:
+  script: "{{ PYTHON }} -m pip install --no-deps --ignore-installed -vv ."
+  noarch: python
+requirements:
+  build:
+    - python >=3.8
+    - build
+    - setuptools
+    - setuptools-scm
+  run:
+    - python >=3.8
+test:
+  source_files:
+    - tests
+  requires:
+    - pytest
+  commands:
+    - pytest

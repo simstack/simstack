@@ -1,0 +1,28 @@
+{
+    "json_schema": {
+        "properties": {
+            "content_": {
+                "default": "",
+                "format": "binary",
+                "title": "Content",
+                "type": "string"
+            },
+            "id": {
+                "example": "5f85f36d6dfecacc68428a46",
+                "examples": [
+                    "5f85f36d6dfecacc68428a46",
+                    "ffffffffffffffffffffffff"
+                ],
+                "title": "Id",
+                "type": "string"
+            }
+        },
+        "title": "PandasModel",
+        "type": "object"
+    },
+    "ui_schema": {
+        "id": {
+            "ui:widget": "hidden"
+        }
+    }
+}

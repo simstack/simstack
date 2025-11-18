@@ -1,0 +1,61 @@
+name: "Build pypi Package"
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+defaults:
+  run:
+    shell: bash
+jobs:
+  build_pypi_package:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: true
+    # Only run for semantic version tags or manual dispatch
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history to check tag ancestry
+
+      - name: Verify tag is from main branch
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          # Check if the current tag is reachable from main branch
+          if ! git merge-base --is-ancestor ${{ github.sha }} origin/main; then
+            echo "Error: Tag ${{ github.ref_name }} is not from main branch"
+            exit 1
+          fi
+          echo "Tag ${{ github.ref_name }} is from main branch - proceeding with build"
+      - name: Setup Pixi
+        uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          environments: pythonbuild
+      - name: Build
+        id: build
+        run: |
+          pixi run pythonbuild
+      - name: Archive package on github
+        uses: actions/upload-artifact@v4
+        with:
+          name: pypipackage
+          path: dist/*
+
+      - name: Upload to PyPI
+        id: upload
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" ]]; then
+            # Upload to main PyPI for release tags
+            echo "Uploading to main PyPI for release tag ${{ github.ref_name }}"
+            # Still disabled for testing:
+            #pixi run -e pythonbuild twine upload dist/*
+          else
+            # Upload to TestPyPI for manual dispatch
+            echo "Uploading to TestPyPI for manual workflow dispatch"
+            pixi run -e pythonbuild twine upload --repository testpypi dist/*
+          fi

@@ -1,0 +1,168 @@
+FROM mambaorg/micromamba:latest
+
+WORKDIR /app
+USER root
+
+# Install git and supporting tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git ca-certificates openssh-client \
+  && rm -rf /var/lib/apt/lists/*
+
+
+ARG GIT_REPO="https://gitlab.kit.edu/kit/ag_wenzel/simstack-model.git"
+ARG GIT_REF="parameters"
+ARG GIT_USER="oauth2"
+
+RUN  git config --global --add safe.directory /app/simstack-model
+
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    libstdc++6 \
+    libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+RUN curl -fsSL https://pixi.sh/install.sh | bash
+ENV PATH="/home/appuser/.pixi/bin:$PATH"
+
+# Make them runtime-visible defaults (ENV can be overridden at docker run)
+ENV GIT_REPO="${GIT_REPO}"
+ENV GIT_REF="${GIT_REF}"
+ENV GIT_USER="${GIT_USER}"
+# Tip: avoid baking tokens, prefer setting at runtime:
+ENV GIT_TOKEN="${GIT_TOKEN}"
+ENV APP_DIR="/app/simstack-model"
+
+RUN cat > /app/git-sync.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+# Configuration via env vars
+: "${GIT_REPO:?Set GIT_REPO, e.g. https://gitlab.example.com/ns/project.git}"
+: "${GIT_REF:=main}"                       # branch, tag, or commit
+: "${APP_DIR:=/app}"                      # target checkout directory (bind-mount this for persistence)
+: "${SUBMODULES:=false}"                   # true to init/update submodules
+# If using HTTPS tokens:
+: "${GIT_USER:=oauth2}"
+: "${GIT_TOKEN:=}"                         # CI_JOB_TOKEN, PAT, or empty
+# If using SSH with BuildKit/agent, set GIT_SSH=true and ensure credentials are available
+: "${GIT_SSH:=false}"
+
+mkdir -p "$APP_DIR"
+git config --global --add safe.directory /app/simstack-model
+
+# Build remote URL depending on auth method
+if [ "$GIT_SSH" = "true" ]; then
+  REMOTE="$GIT_REPO"  # e.g. git@gitlab.example.com:ns/project.git
+else
+  # HTTPS; inject token if provided
+  if [ -n "$GIT_TOKEN" ]; then
+    REMOTE="https://${GIT_USER}:${GIT_TOKEN}@${GIT_REPO#https://}"
+  else
+    REMOTE="$GIT_REPO"
+  fi
+fi
+
+# Clone or update
+if [ -d "$APP_DIR/.git" ]; then
+  echo "[git-sync] Updating existing repo at $APP_DIR"
+  git -C "$APP_DIR" remote set-url origin "$REMOTE"
+  git -C "$APP_DIR" fetch --all --prune --tags
+  git -C "$APP_DIR" checkout -q "$GIT_REF" || git -C "$APP_DIR" checkout -q -B "$GIT_REF" "origin/$GIT_REF" || true
+  git -C "$APP_DIR" reset --hard "origin/$GIT_REF" 2>/dev/null || true
+else
+  echo "[git-sync] Cloning $REMOTE -> $APP_DIR"
+  rm -rf "$APP_DIR"/*
+  git clone --depth 1 --branch "$GIT_REF" "$REMOTE" "$APP_DIR"
+fi
+
+# Optional submodules
+if [ "$SUBMODULES" = "true" ]; then
+  git -C "$APP_DIR" submodule update --init --recursive --depth 1
+fi
+
+echo "[git-sync] Repo ready at $APP_DIR (ref: $GIT_REF)"
+cd $APP_DIR
+ls -al
+echo "[git-sync] Installing pixi environments..."
+pixi install --frozen
+echo "[git-sync] pixi install --frozen complete"
+EOF
+
+RUN chmod +x /app/git-sync.sh
+
+
+# Create a wrapper script that ensures we're in the right directory and environment
+RUN cat > /app/entrypoint.sh <<'EOF'
+#!/bin/bash
+set -e
+/app/git-sync.sh
+
+cd $APP_DIR
+
+export PYTHONPATH="$APP_DIR:$APP_DIR/src:$PYTHONPATH"
+
+if [ $# -eq 0 ]; then
+    # No arguments - start the default application
+    echo "Starting SimStack Node with ID: ${NODE_ID:-default}"
+    exec pixi run --environment default python -m simstack.core.run_node --node-id "${NODE_ID:-default} --resource ${RESOURCE:-local}"
+else
+    # Arguments provided - execute them in pixi environment
+    exec pixi run --environment default "$@"
+fi
+EOF
+RUN chmod +x /app/entrypoint.sh
+
+RUN cat > /app/runner.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+/app/git-sync.sh
+
+# Ensure we run from the project root cloned into the image
+cd $APP_DIR
+
+echo "PWD $(pwd)"
+echo "Listing contents:"
+ls -la
+
+# Make sure your package is discoverable
+export PYTHONPATH="/app/src:/app:${PYTHONPATH:-}"
+
+# Run the runner module inside the pixi "default" environment
+exec pixi run --environment default python -m simstack.core.runner --resource "${RESOURCE:-local}"
+EOF
+
+RUN chmod +x /app/runner.sh
+
+# Create a shell wrapper for interactive use
+RUN cat > /app/shell.sh <<'EOF'
+#!/bin/bash
+/app/git-sync.sh
+
+cd /app/simstack-model
+export PYTHONPATH="/app/src:$PYTHONPATH"
+echo "=== SimStack Docker Environment ==="
+echo "Available pixi environments:"
+if [ -d "/app/.pixi/envs" ]; then
+    ls -la /$APP_DIR/.pixi/envs/
+elif [ -d "/home/appuser/.pixi/envs" ]; then
+    ls -la /home/appuser/.pixi/envs/
+else
+    echo "No pixi environments directory found"
+    echo "Checking pixi info:"
+    pixi info | grep -A 20 "Environments" || pixi info
+fi
+echo ""
+echo "Starting pixi shell in default environment..."
+exec pixi shell --environment default
+EOF
+RUN chmod +x /app/shell.sh
+
+ENV PYTHONUNBUFFERED=1
+EXPOSE 8000
+
+# Use the entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]

@@ -1,0 +1,91 @@
+FROM mambaorg/micromamba:latest
+
+WORKDIR /app
+USER root
+
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    libstdc++6 \
+    libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://pixi.sh/install.sh | bash
+ENV PATH="/root/.pixi/bin:$PATH"
+
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+RUN curl -fsSL https://pixi.sh/install.sh | bash
+ENV PATH="/home/appuser/.pixi/bin:$PATH"
+
+# Copy ALL files needed for the build BEFORE installing
+#COPY --chown=appuser:appuser pixi.lock pyproject.toml README.md LICENSE ./
+
+
+
+
+# Install environments - pixi creates them in the project directory, not user home
+RUN pixi install --frozen
+RUN pixi install --environment default --frozen
+# Test the default environment
+RUN pixi run --environment default python --version
+
+# Debug: Find where environments are actually created
+RUN echo "=== Project .pixi directory ===" && \
+    ls -la /app/.pixi/ 2>/dev/null || echo "No /app/.pixi/ directory" && \
+    echo "=== User .pixi directory ===" && \
+    ls -la /home/appuser/.pixi/ 2>/dev/null || echo "No /home/appuser/.pixi/ directory" && \
+    echo "=== Looking for pixi environments ===" && \
+    find /app -name "envs" -type d 2>/dev/null || echo "No envs directories found in /app" && \
+    find /home/appuser -name "envs" -type d 2>/dev/null || echo "No envs directories found in /home/appuser" && \
+    echo "=== Pixi Info ===" && \
+    pixi info
+
+# Copy remaining files after installation
+COPY --chown=appuser:appuser ../../src ./src/
+COPY --chown=appuser:appuser ../../examples ./examples
+COPY --chown=appuser:appuser ../../applications ./applications
+COPY --chown=appuser:appuser ../../tests ./tests
+
+# Create a wrapper script that ensures we're in the right directory and environment
+RUN echo '#!/bin/bash\n\
+set -e\n\
+cd /app\n\
+export PYTHONPATH="/app/src:$PYTHONPATH"\n\
+\n\
+if [ $# -eq 0 ]; then\n\
+    # No arguments - start the default application\n\
+    echo "Starting SimStack Node with ID: ${NODE_ID:-default}"\n\
+    exec pixi run --environment default python -m simstack.core.run_node --node-id "${NODE_ID:-default}"\n\
+else\n\
+    # Arguments provided - execute them in pixi environment\n\
+    exec pixi run --environment default "$@"\n\
+fi\n\
+' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+
+# Create a shell wrapper for interactive use
+RUN echo '#!/bin/bash\n\
+cd /app\n\
+export PYTHONPATH="/app/src:$PYTHONPATH"\n\
+echo "=== SimStack Docker Environment ==="\n\
+echo "Available pixi environments:"\n\
+if [ -d "/app/.pixi/envs" ]; then\n\
+    ls -la /app/.pixi/envs/\n\
+elif [ -d "/home/appuser/.pixi/envs" ]; then\n\
+    ls -la /home/appuser/.pixi/envs/\n\
+else\n\
+    echo "No pixi environments directory found"\n\
+    echo "Checking pixi info:"\n\
+    pixi info | grep -A 20 "Environments" || pixi info\n\
+fi\n\
+echo ""\n\
+echo "Starting pixi shell in default environment..."\n\
+exec pixi shell --environment default\n\
+' > /app/shell.sh && chmod +x /app/shell.sh
+
+ENV PYTHONUNBUFFERED=1
+EXPOSE 8000
+
+# Use the entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
