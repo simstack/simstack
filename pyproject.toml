@@ -1,6 +1,8 @@
 [project]
 name = "simstack"
-authors = [{name = "Wolfgang Wenzel", email = "wolfgang.wenzel@kit.edu"}]
+authors = [
+    {name = "Wolfgang Wenzel", email = "wolfgang.wenzel@kit.edu"},
+    {name = "Timo Strunk", email = "timo.strunk@nanomatch.de"}]
 requires-python = ">= 3.11"
 dependencies = [
     "odmantic >=1.0.2,<2",
@@ -22,7 +24,7 @@ Homepage = "https://gitlab.kit.edu/kit/ag_wenzel/simstack-model/"
 [project.scripts]
 create_node_table = "simstack.core.node_table:create_node_table_main"
 create_model_table = "simstack.core.model_table:create_model_table_main"
-run_runner = "simstack.core.runner:runner_main"
+simstack_runner = "simstack.core.runner:runner_main"
 run_node = "simstack.core.run_node:run_node_main"
 simstack_write_sample_config = "simstack.util.sample_config:sample_config_writer_entrypoint"
 
@@ -44,7 +46,7 @@ fallback_version = "0.1.0-dev"
 version_scheme = "release-branch-semver"
 local_scheme = "no-local-version"
 
-[tool.pixi.project]
+[tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64", "win-64"]
 

@@ -28,7 +28,7 @@ def parse_docstring(docstring: Optional[str]) -> Dict[str, Any]:
     # Clean up docstring
     docstring = inspect.cleandoc(docstring)
 
-    # Extract main description (before any parameters)
+    # Extract the main description (before any parameters)
     description_match = re.search(r'^(.*?)(?:Args:|Parameters:|Returns:|$)', docstring, re.DOTALL)
     description = description_match.group(1).strip() if description_match else ""
 
