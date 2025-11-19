@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import stat
@@ -8,7 +9,6 @@ from simstack.core.definitions import TaskStatus
 from simstack.models import NodeRegistry
 from simstack.util.project_root_finder import find_project_root
 from simstack.util.submit_to_watchdog import submit_to_watchdog
-import logging
 
 logger = logging.getLogger("submit_node")
 

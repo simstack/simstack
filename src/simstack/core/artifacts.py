@@ -1,22 +1,18 @@
 import importlib
-import re
-from collections.abc import Iterable
-from typing import Optional, List, Union, TypeVar, Any, Dict
-
-from odmantic import ObjectId, AIOEngine
-from simstack.core.context import context
 import inspect
+import logging
+import re
+from typing import Optional, List
 
+from odmantic import ObjectId
+
+from simstack.core.context import context
 from simstack.core.engine import current_engine_context
-from simstack.models import NodeModel
 from simstack.models.artifact_models import ArtifactMapping, ArtifactModel
 from simstack.models.charts_artifact import ChartArtifactModel
 from simstack.models.node_registry import find_child_nodes, NodeRegistry
 from simstack.models.table_artifact import TableArtifactModel
-from simstack.util.importer import import_function, function_from_model
-
-import logging
-
+from simstack.util.importer import function_from_model
 from simstack.util.module_path_checker import is_module_subpath_of_path
 
 logger = logging.getLogger("artifacts")

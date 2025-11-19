@@ -1,5 +1,5 @@
-from typing import TypeVar, Type, Any, get_type_hints, overload
 from functools import wraps
+from typing import TypeVar, Type, Any, get_type_hints, overload
 
 from simstack.util.cleaned_json_schema import cleaned_json_schema
 from simstack.util.custom_model_dump import custom_model_dump

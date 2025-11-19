@@ -1,15 +1,14 @@
+import logging
+
 from simstack.core.artifacts import ArtifactArguments, create_artifacts
 from simstack.core.definitions import TaskStatus
 from simstack.core.engine import current_engine_context
 from simstack.core.node import node_from_database
 from simstack.models import NodeRegistry, ArtifactModel
-
-import logging
-
 from simstack.models.charts_artifact import ChartArtifactModel
 from simstack.models.table_artifact import TableArtifactModel
-from simstack.util.importer import import_function
 from simstack.util.importer import import_class
+from simstack.util.importer import import_function
 
 logger = logging.getLogger("recompute_artifacts")
 

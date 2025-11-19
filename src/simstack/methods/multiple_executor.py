@@ -1,6 +1,7 @@
 import asyncio
-from pprint import pprint
+import logging
 from typing import List, Callable, TypeVar, Generic, Dict, Any, AsyncGenerator, Union
+
 from odmantic import Model, Field, ObjectId, Reference
 
 from simstack.core.asnyc_helper import async_helper
@@ -8,11 +9,8 @@ from simstack.core.context import context
 from simstack.core.node import node
 from simstack.models import simstack_model, ModelMapping, BinaryOperationInput, FloatData
 from simstack.util.async_zip_utils import async_zip
-from simstack.util.make_table import make_table_entries
-
-import logging
-
 from simstack.util.importer import import_function, import_class
+from simstack.util.make_table import make_table_entries
 
 # Define your prefix
 PREFIX = "[ParallelExecutor]"

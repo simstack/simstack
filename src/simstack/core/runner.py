@@ -1,29 +1,26 @@
-import asyncio
 import argparse
+import asyncio
+import logging
+import os
+import re
 import socket
 import subprocess
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
 from odmantic import ObjectId
 
-from simstack.core.definitions import TaskStatus
 from simstack.core.context import context
+from simstack.core.definitions import TaskStatus
 from simstack.core.node import node_from_database
 from simstack.core.submit_node import submit_node
 from simstack.models import NodeRegistry
-
 from simstack.models.parameters import Resource
 from simstack.models.runner_model import RunnerEvent, RunnerType, RunnerEventEnum
 from simstack.models.slurm_info import SlurmInfo
 from simstack.util.git_repository_status import get_git_status
-import re
-
-import os
-import logging
-from datetime import datetime
-
 from simstack.util.submit_to_watchdog import submit_to_watchdog
 
 logger = logging.getLogger("NodeRunner")

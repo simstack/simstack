@@ -1,5 +1,5 @@
-import os
 import fnmatch
+import os
 from pathlib import Path
 from typing import Iterator, List, Union, Optional
 

@@ -1,5 +1,6 @@
 import hashlib
 import inspect
+
 from odmantic import ObjectId
 
 max_iterable_hash_count = 10000

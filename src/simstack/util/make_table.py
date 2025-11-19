@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Union, List, Dict, Any
+from typing import Union, Dict, Any
 
 
 def make_table_entries_helper(model_instance, table_name=None, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):

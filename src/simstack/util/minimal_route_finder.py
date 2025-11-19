@@ -1,5 +1,5 @@
-from typing import List, Dict, Optional
 from collections import deque
+from typing import List, Dict
 
 
 def find_minimal_route(routes: List[Dict[str, str]], source: str, target: str) -> List[Dict[str, str]]:

@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
+
 from simstack.util.project_root_finder import find_project_root
+
 
 def is_module_subpath_of_path(module_path: str, path_info_path: str) -> bool:
     """

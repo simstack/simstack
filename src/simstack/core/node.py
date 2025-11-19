@@ -1,34 +1,32 @@
 import asyncio
 import functools
+import inspect
+import logging
 import os
+from datetime import datetime
 from pathlib import Path
+from typing import Callable, Optional, Union, TypeVar, cast, List
 
 import coolname
 import nest_asyncio
-
-from datetime import datetime
 from odmantic import Model, ObjectId
-from typing import Callable, Optional, Union, TypeVar, cast, List
 
+from simstack.core.artifacts import create_artifacts, ArtifactArguments
+from simstack.core.context import context
+from simstack.core.definitions import TaskStatus
 from simstack.core.engine import current_engine_context
+from simstack.core.hash import complex_hash_function
 from simstack.core.node_runner import NodeRunner
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.task_id import set_task_id, clear_task_id
 from simstack.models import ModelMapping, Parameters
 from simstack.models import NodeModel
-from simstack.core.context import context
-from simstack.core.definitions import TaskStatus
-from simstack.core.hash import complex_hash_function
 from simstack.models import NodeRegistry
-from simstack.core.artifacts import create_artifacts, ArtifactArguments
 from simstack.models.file_list import FileListModel
 from simstack.models.files import FileStack
 from simstack.models.parameters import Resource
 from simstack.models.simstack_model import is_simstack_model
-from simstack.util.importer import import_function, import_function_by_name, import_class
-
-import logging
-import inspect
+from simstack.util.importer import import_function, import_class
 
 logger = logging.getLogger("Node")
 

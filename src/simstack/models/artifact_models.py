@@ -1,9 +1,9 @@
-from typing import List, Union, Literal, Optional, Dict, Any, TYPE_CHECKING
-from odmantic import Model, Field, ObjectId
+from typing import Literal, Optional, Dict, Any
 
-from simstack.models.simstack_model import simstack_model
+from odmantic import Model, Field
 
 from simstack.models.pickle_models import FunctionPickle
+from simstack.models.simstack_model import simstack_model
 
 
 # class ArtifactList(List):

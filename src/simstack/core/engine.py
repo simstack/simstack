@@ -1,7 +1,8 @@
 from contextvars import ContextVar
 from typing import Optional, Any, Iterable
-import inspect
+
 from odmantic import AIOEngine
+
 
 class AIOEngineProxy(AIOEngine):
     """

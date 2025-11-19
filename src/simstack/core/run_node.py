@@ -1,5 +1,5 @@
-import asyncio
 import argparse
+import asyncio
 import logging
 
 from simstack.core.context import context

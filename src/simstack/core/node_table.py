@@ -2,9 +2,10 @@ import argparse
 import asyncio
 import inspect
 import logging
+import re
 from pathlib import Path
 from typing import Callable, List, Optional, get_type_hints, Dict, Any
-import re
+
 from simstack.core.context import context
 from simstack.core.find_simstack_modules import find_simstack_modules
 from simstack.models import Parameters

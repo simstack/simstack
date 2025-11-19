@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import tomllib
@@ -5,7 +6,6 @@ from typing import List
 
 from simstack.core.config_file import get_config_file
 from simstack.util.project_root_finder import find_project_root
-import logging
 
 logger = logging.getLogger("resources")
 

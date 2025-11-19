@@ -1,14 +1,12 @@
-from enum import Enum
-from typing import Dict, Any, List, Optional, Union, Callable
-from odmantic import Model, Field, EmbeddedModel
 import json
-
-from typing import Dict, Any, List, Optional, Union, Callable
-from odmantic import Model, Field
-import json
+import marshal
 import re
 import types
-import marshal
+from enum import Enum
+from typing import Dict, Any, List, Optional, Callable
+
+from odmantic import Model, Field
+
 
 class TransformationAction(str,Enum):
     DROP = "drop"

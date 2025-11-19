@@ -1,8 +1,8 @@
 import importlib
+import logging
 import os
 import sys
 from pathlib import Path
-import logging
 
 from simstack.util.project_root_finder import find_project_root
 

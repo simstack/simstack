@@ -1,6 +1,8 @@
 import re
 from typing import Union, List, Any, Optional
+
 from odmantic import EmbeddedModel, Field, Model
+
 from simstack.models import simstack_model
 from simstack.models.files import FileStack
 

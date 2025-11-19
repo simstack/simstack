@@ -1,7 +1,8 @@
-from odmantic import Model, Field
 from datetime import datetime
-from typing import Optional, Dict, Any
 from enum import Enum
+from typing import Optional
+
+from odmantic import Model, Field
 
 from simstack.models import Parameters
 

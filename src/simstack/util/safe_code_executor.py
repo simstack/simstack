@@ -1,7 +1,8 @@
-from typing import Dict
-from simstack.core.artifacts import ArtifactArguments
 import threading
-import time
+from typing import Dict
+
+from simstack.core.artifacts import ArtifactArguments
+
 
 def safe_code_executor(code_string: str, artifact_arguments: ArtifactArguments, timeout: int = 30) -> Dict:
     """

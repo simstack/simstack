@@ -1,5 +1,6 @@
-from typing import Dict, Callable
 import json
+from typing import Dict, Callable
+
 from simstack.models.model_transformer import FieldTransform
 
 

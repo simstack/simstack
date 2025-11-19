@@ -2,15 +2,15 @@ import logging
 import os
 import tempfile
 import zlib
+from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
+
 from odmantic import Model, Field, ObjectId
 
-from pathlib import Path
-
+from simstack.core.hash import complex_hash_function
 from simstack.models import simstack_model
 from simstack.models.file_instance import FileInstance
 from simstack.util.file_hashing import hash_file
-from simstack.core.hash import complex_hash_function
 
 logger = logging.getLogger(__name__)
 

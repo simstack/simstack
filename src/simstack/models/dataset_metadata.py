@@ -2,12 +2,10 @@ from datetime import datetime
 from typing import Dict, Any, Union, List
 
 from odmantic import Model, EmbeddedModel, Field
-from pydantic import model_validator
 
 from simstack.core.asnyc_helper import async_helper
 from simstack.core.context import context
 from simstack.core.engine import current_engine_context
-
 from simstack.models import simstack_model
 
 

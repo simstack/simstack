@@ -1,15 +1,14 @@
 import glob
+import logging
 import os
 import subprocess
 import uuid
 from pathlib import Path
 from typing import Set
 
-from simstack.core.simstack_result import SimstackResult
 from simstack.core.definitions import TaskStatus
+from simstack.core.simstack_result import SimstackResult
 from simstack.models.files import FileStack
-
-import logging
 
 local_logger = logging.getLogger("NodeRunner")
 

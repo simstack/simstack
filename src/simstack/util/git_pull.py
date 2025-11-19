@@ -1,8 +1,8 @@
 import logging
 import os
 import subprocess
-from datetime import datetime
 import time
+from datetime import datetime
 
 logger = logging.getLogger("git_pull")
 

@@ -1,19 +1,15 @@
-import asyncio
-import logging
+import logging  # Import logging before using it
 import os
 import sys
+from urllib.parse import urlparse, urlunparse
 
-from simstack.core.asnyc_helper import async_helper
 from simstack.core.definitions import DBType
+from simstack.util.config_reader import ConfigReader
+from simstack.util.path_manager import PathManager
 # from simstack.core.model_table import make_models_for_path
 # from simstack.core.node_table import make_nodes_for_path
 from simstack.util.project_root_finder import find_project_root
-from simstack.util.config_reader import ConfigReader
-from simstack.util.path_manager import PathManager
-from urllib.parse import urlparse, urlunparse
 from simstack.util.setup_logging import setup_logging
-
-import logging  # Import logging before using it
 
 
 def remove_password_from_connection_string(connection_string):

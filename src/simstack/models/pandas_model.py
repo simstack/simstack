@@ -1,12 +1,12 @@
 import asyncio
+import io
+import json
 from pprint import pprint
 from typing import Dict, Any
 
+import numpy as np
 import pandas as pd
 from odmantic import Model
-import io
-import json
-import numpy as np
 
 from simstack.core.context import context
 from simstack.models import simstack_model

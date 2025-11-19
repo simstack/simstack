@@ -1,16 +1,16 @@
 import argparse
-import inspect
-import json
-import os
 import asyncio
 import importlib
+import inspect
+import json
+import logging
+import os
 from pathlib import Path
+
+from simstack.core.find_simstack_modules import find_simstack_modules
 from simstack.models.models import ModelMapping
 from simstack.models.simstack_model import is_simstack_model
 from simstack.util.import_module import import_module_from_file
-from simstack.core.find_simstack_modules import find_simstack_modules
-import logging
-
 from simstack.util.project_root_finder import find_project_root
 
 logger = logging.getLogger("ModelTable")

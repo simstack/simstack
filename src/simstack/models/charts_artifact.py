@@ -1,5 +1,7 @@
 from typing import List, Union, Literal, Optional, Dict, Any
+
 from odmantic import Model, Field, EmbeddedModel, ObjectId
+
 
 # Chart Series Definitions
 class AGChartSeriesBase(EmbeddedModel):

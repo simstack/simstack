@@ -1,7 +1,7 @@
 import importlib
 import pkgutil
-from logging import getLogger
 from importlib.metadata import entry_points
+from logging import getLogger
 
 logger = getLogger("find_simstack_modules")
 

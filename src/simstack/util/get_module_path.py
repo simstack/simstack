@@ -1,4 +1,3 @@
-import sys
 import os
 
 from simstack.util.project_root_finder import find_project_root

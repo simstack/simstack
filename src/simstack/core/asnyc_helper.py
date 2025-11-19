@@ -1,7 +1,8 @@
 import asyncio
 import functools
-import threading
+
 import nest_asyncio
+
 nest_asyncio.apply()
 
 def async_helper(func):

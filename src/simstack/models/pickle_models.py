@@ -1,10 +1,11 @@
-import logging
 import base64
-from typing import Optional, Type, Any, Callable
-import cloudpickle
-from odmantic import Model
+import logging
 import sys
 import types
+from typing import Optional, Type, Any, Callable
+
+import cloudpickle
+from odmantic import Model
 
 logger = logging.getLogger("PickleModels")
 

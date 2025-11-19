@@ -1,11 +1,12 @@
+import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Union
 
 from odmantic import EmbeddedModel, Field, ObjectId
+
 from simstack.models import simstack_model
-import logging
 
 logger = logging.getLogger("file_instance")
 

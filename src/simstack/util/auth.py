@@ -1,16 +1,16 @@
 # auth.py
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-
-from simstack.server.get_user_by_username import get_user_by_username
-from simstack.util.user_models import TokenData
-import logging
-import os
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from simstack.server.engines import config
+from simstack.server.get_user_by_username import get_user_by_username
+
+from simstack.util.user_models import TokenData
 
 logger = logging.getLogger(__name__)
 

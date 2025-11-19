@@ -1,6 +1,7 @@
-from typing import Type, TypeVar, Dict, List, Optional
-from odmantic import Model, ObjectId
 import asyncio
+from typing import Type, TypeVar, Dict, List, Optional
+
+from odmantic import Model, ObjectId
 
 T = TypeVar("T", bound=Model)
 

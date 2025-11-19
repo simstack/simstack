@@ -1,12 +1,13 @@
 import logging
 from typing import List, Type, TypeVar, Dict, Any, Union, Optional
-from bson import ObjectId
-from odmantic import AIOEngine, Model
-from motor.motor_asyncio import AsyncIOMotorClient
 
-from simstack.core.engine import current_engine_context, AIOEngineProxy
-from simstack.models import ModelMapping, NodeModel
+from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorClient
+from odmantic import Model
+
 from simstack.core.definitions import DBType, TaskStatus
+from simstack.core.engine import current_engine_context, AIOEngineProxy
+from simstack.models import NodeModel
 from simstack.models.node_registry import NodeRegistry
 from simstack.util.importer import import_class
 
@@ -173,7 +174,6 @@ class Database:
             ValueError: If model name is not found in the global namespace
         """
         # Import common models that might be used
-        import sys
 
         # Find the model class based on its name
         # model_class = import_class(model_mapping)

@@ -2,6 +2,7 @@ import logging
 import re
 from datetime import datetime
 from typing import Optional, Dict, Any
+
 from pymongo import MongoClient
 
 # Regular expression patterns

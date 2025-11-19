@@ -1,6 +1,7 @@
 from contextvars import ContextVar
-from bson.objectid import ObjectId
 from typing import Optional
+
+from bson.objectid import ObjectId
 
 # this variable is meant to give access to the task id to user functions that do not have access to it (e.g. for logging)
 _task_id: ContextVar[Optional[ObjectId]] = ContextVar('task_id', default=None)

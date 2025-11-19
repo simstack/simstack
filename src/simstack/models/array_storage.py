@@ -3,7 +3,7 @@ from typing import Optional
 
 from odmantic import Model
 
-from simstack.models import simstack_model
+from simstack.models.simstack_model import simstack_model
 from simstack.util.ui_tools import ui_hide_fields
 
 

@@ -1,7 +1,8 @@
 from typing import Dict, Any, List
+
 from odmantic import Model, Field
+
 from simstack.models import simstack_model
-from simstack.util.ui_tools import ui_hide_fields
 
 
 @simstack_model

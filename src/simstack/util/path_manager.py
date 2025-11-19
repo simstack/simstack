@@ -1,10 +1,9 @@
 import os
 from pathlib import Path
-from typing import List, Dict, Union, Optional, Iterator, Any
+from typing import List, Dict, Optional, Iterator, Any
 
 from simstack.util.directory_iterator import DirectoryPath
 from simstack.util.project_root_finder import find_project_root
-from simstack.util.default_from_dict import default_from_dict
 
 
 class PathManager:

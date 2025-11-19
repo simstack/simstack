@@ -1,7 +1,9 @@
-from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from typing import Optional
+
 from odmantic import Model, Field
+from pydantic import BaseModel, EmailStr
+
 
 # Main ODM models for database
 class User(Model):
