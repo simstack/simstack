@@ -1,12 +1,10 @@
-import os
-import sys
 import pytest
 import pytest_asyncio
 
 from simstack.core.node import node
 
 # Add the src directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
+#sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
 
 from simstack.core.context import context
 from simstack.models.models import NodeModel, Parameters
