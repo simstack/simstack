@@ -76,7 +76,7 @@ python = "3.12.*"
 
 [tool.pixi.feature.dev.dependencies]
 # Cruft dependencies here:
-pixi-pycharm = "*"
+#pixi-pycharm = "*"
 # End of cruft dependencies
 
 # Your dependencies come here:
@@ -123,7 +123,7 @@ cloudpickle = ">=3.1.1,<4"
 fastapi = ">=0.115.0,<0.116"
 coolname = ">=2.2.0,<3"
 nest-asyncio = ">=1.6.0,<2"
-pixi-pycharm = ">=0.0.9,<0.0.10"
+#pixi-pycharm = ">=0.0.9,<0.0.10"
 pandas = ">=2.3.3"
 
 [tool.pixi.feature.test.tasks]
