@@ -55,9 +55,9 @@ class GlobalState:
             self.log_handler = None
             self.path_manager = None
             self.config = None
-            # If initialization parameters are provided, call initialize
-            if kwargs:
-                self.initialize(**kwargs)
+           
+
+            self.initialize(**kwargs)
 
     def __getattribute__(self, name):
         # These special attributes should always be accessible

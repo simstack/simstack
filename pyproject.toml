@@ -121,3 +121,7 @@ no_implicit_optional = true
 warn_return_any = true
 warn_unused_ignores = true
 exclude = ["tests", "doc", "docs"]
+
+[project.entry-points."simstack.modules"]
+example_modules = "src.models"
+applicatio_modules = "src.methods"
