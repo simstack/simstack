@@ -72,6 +72,8 @@ mongomock-motor = ">=0.0.32,<1"
 [tool.pixi.dependencies]
 # These the main conda dependencies, they will override the pypi ones
 python = "3.12.*"
+pixi-pycharm = ">=0.0.10,<0.0.11"
+#pixi-pycharm = ">=0.0.10,<0.0.11"
 #pixi-pycharm = "*"
 
 [tool.pixi.feature.dev.dependencies]
