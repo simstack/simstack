@@ -123,5 +123,5 @@ warn_unused_ignores = true
 exclude = ["tests", "doc", "docs"]
 
 [project.entry-points."simstack.modules"]
-example_modules = "src.simstack.models"
-applicatio_modules = "src.simstack.methods"
+example_modules = "simstack.models"
+applicatio_modules = "simstack.methods"
