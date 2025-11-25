@@ -1,4 +1,3 @@
-
 from pymongo import MongoClient
 from simstack.util.config_reader import ConfigReader
 
@@ -21,8 +20,7 @@ if "node_registry" in db.list_collection_names():
 
 # Update all documents in the NodeRegistry collection
 result = db.node_registry.update_many(
-    {},
-    {"$set": {"parameters_id": "67ed96b6cac2bb8d6b528176"}}
+    {}, {"$set": {"parameters_id": "67ed96b6cac2bb8d6b528176"}}
 )
 
 print(f"Modified {result.modified_count} documents")

@@ -5,7 +5,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Optional, Union, TypeVar, cast, List
+from typing import Callable, Optional, TypeVar, cast, List, ParamSpec, Union, overload
 
 import coolname
 import nest_asyncio
@@ -48,6 +48,7 @@ def hashable_inputs(arg):
     """
     return {key: value for key, value in arg.__dict__.items() if key not in ["id"]}
 
+
 class Node:
     """
     represents a computational task or node in the workflow, managing its lifecycle,
@@ -73,10 +74,10 @@ class Node:
     """
 
     def __init__(
-            self,
-            *args: List[Model],
-            **kwargs,
-        ):
+        self,
+        *args: List[Model],
+        **kwargs,
+    ):
         super().__init__()
 
         self._args = list(args)  # Convert to list to allow appending
@@ -84,10 +85,9 @@ class Node:
         # Extract specific known parameters
         self._func = kwargs.pop("func")
         self.name = self._func.__name__
-        self.is_async = kwargs.pop('is_async')
+        self.is_async = kwargs.pop("is_async")
         self.parent_id = kwargs.pop("parent_id", None)
         self.call_path = kwargs.pop("call_path", "")
-
 
         # Get function signature to identify argument names
         sig = inspect.signature(self._func)
@@ -98,15 +98,19 @@ class Node:
             if param_name in kwargs:
                 self._args.append(kwargs.pop(param_name))
 
-        if 'custom_name' in kwargs:
-            self.custom_name = kwargs['custom_name']  # pass to children
+        if "custom_name" in kwargs:
+            self.custom_name = kwargs["custom_name"]  # pass to children
         else:
             self.custom_name = default_name_generator()
 
-        self.parameters = kwargs.pop('parameters')
-        self.recompute_artifacts = kwargs.pop('recompute_artifacts', False) or (self.parameters.recompute_artifacts or False)
+        self.parameters = kwargs.pop("parameters")
+        self.recompute_artifacts = kwargs.pop("recompute_artifacts", False) or (
+            self.parameters.recompute_artifacts or False
+        )
 
-        self._function_kwargs = kwargs  # what is left over here must be kwargs of the function
+        self._function_kwargs = (
+            kwargs  # what is left over here must be kwargs of the function
+        )
         self.registry_entry = None
 
     @property
@@ -118,7 +122,7 @@ class Node:
 
     @property
     def status(self):
-        return getattr(self.registry_entry,"status", TaskStatus.FAILED)
+        return getattr(self.registry_entry, "status", TaskStatus.FAILED)
 
     async def make_registry_entry(self, function_hash, arg_hash) -> NodeRegistry:
         """
@@ -131,7 +135,9 @@ class Node:
         :rtype: NodeRegistry
         """
 
-        function_mapping = await context.db.find_one(NodeModel, NodeModel.name == self.name)
+        function_mapping = await context.db.find_one(
+            NodeModel, NodeModel.name == self.name
+        )
         if function_mapping is None:
             logger.error(f"Could not find function mapping for name: {self.name}")
             raise ValueError(f"Could not find function mapping for name: {self.name}")
@@ -140,21 +146,28 @@ class Node:
         input_tables = []
         for arg in self._args:
             # if there is no table for an arg raise an error
-            input_table_name = await context.db.find_one(ModelMapping, ModelMapping.name == arg.__class__.__name__)
+            input_table_name = await context.db.find_one(
+                ModelMapping, ModelMapping.name == arg.__class__.__name__
+            )
             if input_table_name is None:
                 logger.error(f"Could not find table name for {arg.__class__.__name__}")
-                raise ValueError(f"Could not find table name for {arg.__class__.__name__}")
+                raise ValueError(
+                    f"Could not find table name for {arg.__class__.__name__}"
+                )
             if not isinstance(arg, Model):
                 logger.error(f"{arg.__class__.__name__} is not an odmantic Model")
                 raise ValueError(f"{arg.__class__.__name__} is not an odmantic Model")
-
 
             argument_entry = await context.db.upsert(arg)
 
             # Check if the upsert operation was successful and returned a valid ID
             if argument_entry is None or argument_entry.id is None:
-                logger.error(f"Failed to upsert argument {arg} - returned None or invalid ID")
-                raise ValueError(f"Failed to upsert argument of type {arg.__class__.__name__}")
+                logger.error(
+                    f"Failed to upsert argument {arg} - returned None or invalid ID"
+                )
+                raise ValueError(
+                    f"Failed to upsert argument of type {arg.__class__.__name__}"
+                )
 
             input_ids.append(argument_entry.id)
             input_tables.append(input_table_name.mapping)
@@ -170,14 +183,15 @@ class Node:
             custom_name=self.custom_name,
             function_hash=function_hash,
             arg_hash=arg_hash,
-            parent_ids= [] if self.parent_id is None else [self.parent_id],
+            parent_ids=[] if self.parent_id is None else [self.parent_id],
             parameters=new_parameters,
             func_mapping=function_mapping.function_mapping,
-            call_path=self.call_path
+            call_path=self.call_path,
         )
         await context.db.upsert(self.registry_entry)
         logger.info(
-            f"Task task_id: {self.id} with name {self.name} created for resource: {new_parameters.resource} queue: {new_parameters.queue}")
+            f"Task task_id: {self.id} with name {self.name} created for resource: {new_parameters.resource} queue: {new_parameters.queue}"
+        )
         return self.registry_entry
 
     async def get_node_registry(self) -> TaskStatus:
@@ -199,39 +213,56 @@ class Node:
 
         arg_hashes = []
         for arg in self._args:
-            if not isinstance(arg,Model):
+            if not isinstance(arg, Model):
                 raise TypeError(f"Argument {arg} is not an instance of {Model}")
-            arg_hash = arg.complex_hash()  if hasattr(arg, "complex_hash") else complex_hash_function(hashable_inputs(arg))
-            #logger.info(f"Argument hash: {arg_hash}")
+            arg_hash = (
+                arg.complex_hash()
+                if hasattr(arg, "complex_hash")
+                else complex_hash_function(hashable_inputs(arg))
+            )
+            # logger.info(f"Argument hash: {arg_hash}")
             arg_hashes.append(arg_hash)
 
         arg_hash = complex_hash_function(arg_hashes)
         function_hash = complex_hash_function(self._func)
 
-        self.registry_entry = await context.db.load_task(self.name, arg_hash, function_hash) if not self.parameters.force_rerun else None
+        self.registry_entry = (
+            await context.db.load_task(self.name, arg_hash, function_hash)
+            if not self.parameters.force_rerun
+            else None
+        )
 
         if self.registry_entry is None:
-                await self.make_registry_entry(function_hash, arg_hash)
+            await self.make_registry_entry(function_hash, arg_hash)
         else:
             if self.parent_id:
-                logger.info(f"Task task_id: {self.id} adding parent_id {self.parent_id} to task: {self.name}")
+                logger.info(
+                    f"Task task_id: {self.id} adding parent_id {self.parent_id} to task: {self.name}"
+                )
                 if isinstance(self.parent_id, str):
-                    logger.error(f"Task task_id: {self.id} parent_id is a string: {self.parent_id}")
+                    logger.error(
+                        f"Task task_id: {self.id} parent_id is a string: {self.parent_id}"
+                    )
                     self.parent_id = ObjectId(self.parent_id)
                 self.registry_entry.parent_ids.append(self.parent_id)
                 await context.db.save(self.registry_entry)
             # whenever a task is found in the database we may have to redo all child artifacts because the children
             # will not be loaded
             if self.recompute_artifacts:
-                logger.info(f"Task task_id: {self.id} recomputing artifacts for task: {self.name}")
+                logger.info(
+                    f"Task task_id: {self.id} recomputing artifacts for task: {self.name}"
+                )
                 from simstack.core.recompute_artifacts import recompute_artifacts
+
                 await recompute_artifacts(self.registry_entry)
             else:
-                logger.warning(f"Task task_id: {self.id} was found in the database with status: {self.registry_entry.status}. Terminating execution.")
+                logger.warning(
+                    f"Task task_id: {self.id} was found in the database with status: {self.registry_entry.status}. Terminating execution."
+                )
 
         return self.registry_entry.status
 
-    async def load_results(self) -> Union[Model,SimstackResult, None]:
+    async def load_results(self) -> Union[Model, SimstackResult, None]:
         """
         Loads the results associated with a specific task from the database. This
         method verifies whether the task has valid result identifiers. If valid
@@ -252,28 +283,35 @@ class Node:
         try:
             if self.registry_entry.status != TaskStatus.COMPLETED:
                 return None
-            if  len(self.registry_entry.result_tables) == 0:
+            if len(self.registry_entry.result_tables) == 0:
                 logger.warning(f"Task task_id: {self.id} completed but has no outputs")
-            if  len(self.registry_entry.result_tables) != len(self.registry_entry.result_ids):
+            if len(self.registry_entry.result_tables) != len(
+                self.registry_entry.result_ids
+            ):
                 raise ValueError(f"Task task_id: {self.id} has inconsistent results")
             simstack_result = SimstackResult(status=self.registry_entry.status)
             result = None
-            for result_name, table_name, table_id in zip(self.registry_entry.result_names,
-                                                         self.registry_entry.result_tables,
-                                                         self.registry_entry.result_ids):
-
+            for result_name, table_name, table_id in zip(
+                self.registry_entry.result_names,
+                self.registry_entry.result_tables,
+                self.registry_entry.result_ids,
+            ):
                 model = await import_class(table_name)
                 result = await engine.find_one(model, model.id == table_id)
                 if result is None:
                     await self.set_status(TaskStatus.FAILED)
-                    logger.error(f"Task task_id: {self.id} could not find result with id {table_id} in table {table_name}")
-                    raise ValueError(f"Task task_id: {self.id} could not find result with id {table_id} in table {table_name}")
+                    logger.error(
+                        f"Task task_id: {self.id} could not find result with id {table_id} in table {table_name}"
+                    )
+                    raise ValueError(
+                        f"Task task_id: {self.id} could not find result with id {table_id} in table {table_name}"
+                    )
                 simstack_result.__setattr__(result_name, result)
 
             logger.info(f"Task task_id: {self.id} loaded outputs")
 
             if len(self.registry_entry.result_tables) == 1:
-                return result # there is only one result, return it directly
+                return result  # there is only one result, return it directly
             else:
                 return simstack_result  # return the SimstackResult with all results
 
@@ -282,7 +320,7 @@ class Node:
             logger.exception(f"Task task_id: {self.id} failed to load outputs: {e}")
             raise ValueError(f"Task task_id: {self.id} failed to load outputs: {e}")
 
-    async def run_somewhere(self) -> Union[Model,SimstackResult, None]:
+    async def run_somewhere(self) -> Union[Model, SimstackResult, None]:
         """
         Executes the task either locally or on a remote resource. This function ensures that
         if the task is meant to execute on a remote resource, it waits for the task to complete
@@ -300,8 +338,13 @@ class Node:
         """
         resource_self = Resource(value="self")
 
-        logger.info(f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource}")
-        if self.parameters.resource == resource_self or context.config.resource == self.parameters.resource:
+        logger.info(
+            f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource}"
+        )
+        if (
+            self.parameters.resource == resource_self
+            or context.config.resource == self.parameters.resource
+        ):
             result = await self.execute_node_locally()
             return result
         else:
@@ -312,10 +355,10 @@ class Node:
                 # TODO add timeout mechanism here
                 new_status = new_registry_entry.status
                 if (
-                        new_status != TaskStatus.RUNNING
-                        and new_status != TaskStatus.SUBMITTED
-                        and new_status != TaskStatus.SLURM_QUEUED
-                        and new_status != TaskStatus.SLURM_RUNNING
+                    new_status != TaskStatus.RUNNING
+                    and new_status != TaskStatus.SUBMITTED
+                    and new_status != TaskStatus.SLURM_QUEUED
+                    and new_status != TaskStatus.SLURM_RUNNING
                 ):
                     break
 
@@ -366,28 +409,30 @@ class Node:
         try:
             node_runner = NodeRunner(self._func.__name__, None, task_id=self.id)
             node_kwargs = {
-                'node_runner': node_runner,
-                'parent_id': self.id,
-                'task_id': self.id,
-                'call_path': self.call_path,
-                'parent_parameters': self.parameters,   # this must have a name different from parameters, because
-                                                        # otherwise this setting will override all the parameters of
-                                                        # the child nodes
-                'recompute_artifacts': self.recompute_artifacts,
-                'custom_name' : self.custom_name
+                "node_runner": node_runner,
+                "parent_id": self.id,
+                "task_id": self.id,
+                "call_path": self.call_path,
+                "parent_parameters": self.parameters,  # this must have a name different from parameters, because
+                # otherwise this setting will override all the parameters of
+                # the child nodes
+                "recompute_artifacts": self.recompute_artifacts,
+                "custom_name": self.custom_name,
             }
 
             if self.parameters.force_rerun:
-                node_kwargs['force_rerun'] = True
+                node_kwargs["force_rerun"] = True
 
             path = Path(context.config.workdir) / self.name / str(self.id)
             # Create the directory if it doesn't exist
             path.mkdir(parents=True, exist_ok=True)
             os.chdir(path)
-            logger.info(f"Task task_id: {self.id} successfully changed to directory: {path.absolute()}")
+            logger.info(
+                f"Task task_id: {self.id} successfully changed to directory: {path.absolute()}"
+            )
 
-            #real_func_wrapper = await import_function_by_name(self._func.__name__,self.id)
-            #real_func = getattr(real_func_wrapper, '_inner', real_func_wrapper)
+            # real_func_wrapper = await import_function_by_name(self._func.__name__,self.id)
+            # real_func = getattr(real_func_wrapper, '_inner', real_func_wrapper)
             real_func = self._func
             result = None
             set_task_id(self.registry_entry.id)
@@ -397,7 +442,9 @@ class Node:
                 else:
                     result = real_func(*self._args, **node_kwargs)
             except Exception as e:
-                logger.exception(f"Task task_id: {self.id} node function error for node: {self.name} msg: {str(e)}")
+                logger.exception(
+                    f"Task task_id: {self.id} node function error for node: {self.name} msg: {str(e)}"
+                )
                 # save what we can, in particular the info_files
                 await self.process_results(node_runner)
                 await self.set_status(TaskStatus.FAILED)
@@ -411,19 +458,29 @@ class Node:
 
             if new_task_status == TaskStatus.COMPLETED:
                 artifact_arguments = ArtifactArguments(result, self.id)
-                artifact_arguments.add_attributes(self._func, *self._args, **node_kwargs)
-                self.registry_entry.artifact_ids = await create_artifacts(artifact_arguments, self.registry_entry)
-            await self.set_status(new_task_status)  # this will also commit the registry entry
+                artifact_arguments.add_attributes(
+                    self._func, *self._args, **node_kwargs
+                )
+                self.registry_entry.artifact_ids = await create_artifacts(
+                    artifact_arguments, self.registry_entry
+                )
+            await self.set_status(
+                new_task_status
+            )  # this will also commit the registry entry
 
-            logger.info(f"Task task_id: {self.id} is finished on resource: {self.parameters.resource} with task status: {new_task_status}")
+            logger.info(
+                f"Task task_id: {self.id} is finished on resource: {self.parameters.resource} with task status: {new_task_status}"
+            )
             # code in 'finally' will be executed anyway
             return result
-        except Exception as e:
+        except Exception:
             await self.set_status(TaskStatus.FAILED)
             raise
         finally:
             os.chdir(original_dir)
-            logger.debug(f"Task task_id: {self.id} successfully back to directory: {original_dir.absolute()}")
+            logger.debug(
+                f"Task task_id: {self.id} successfully back to directory: {original_dir.absolute()}"
+            )
 
     async def process_results(self, result):
         # each of the following if sets the result either to a valid value or None
@@ -437,10 +494,16 @@ class Node:
                 result = None
         elif is_simstack_model(result):  # backward compatibility
             result_model = await context.db.upsert(result)
-            result_table_name = await context.db.find_one(ModelMapping, ModelMapping.name == result.__class__.__name__)
+            result_table_name = await context.db.find_one(
+                ModelMapping, ModelMapping.name == result.__class__.__name__
+            )
             if result_table_name is None:
-                logger.error(f"Task task_id: {self.id} could not find table name for {result.__class__.__name__}")
-                raise ValueError(f"Could not find table name for {result.__class__.__name__}")
+                logger.error(
+                    f"Task task_id: {self.id} could not find table name for {result.__class__.__name__}"
+                )
+                raise ValueError(
+                    f"Could not find table name for {result.__class__.__name__}"
+                )
             self.registry_entry.result_ids = [result_model.id]
             self.registry_entry.result_tables = [result_table_name.mapping]
             self.registry_entry.result_names = [result.__class__.__name__]
@@ -459,27 +522,38 @@ class Node:
 
             # check if there are files in the result
             if len(result.files) > 0:
-                file_list_model = FileListModel()  # this goes into the results must be a model
+                file_list_model = (
+                    FileListModel()
+                )  # this goes into the results must be a model
                 for file_stack in result.files:
                     if file_stack:
                         if isinstance(file_stack, FileStack):
-                            logger.info(f"Task task_id: {self.id} saving file: {file_stack.name} {file_stack.id}")
+                            logger.info(
+                                f"Task task_id: {self.id} saving file: {file_stack.name} {file_stack.id}"
+                            )
                             saved = await context.db.save(file_stack)
                             file_list_model.append(saved)
                         else:
                             logger.error(
-                                f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}")
+                                f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
+                            )
                             raise ValueError(
-                                f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}")
+                                f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
+                            )
                     else:
                         logger.error(f"Task task_id: {self.id} saving file is NONE")
                         raise ValueError("saving file is NONE")
 
-                result_table_name = await context.db.find_one(ModelMapping,
-                                                              ModelMapping.name == FileListModel.__name__)
+                result_table_name = await context.db.find_one(
+                    ModelMapping, ModelMapping.name == FileListModel.__name__
+                )
                 if result_table_name is None:
-                    logger.error(f"Task task_id: {self.id} could not find table name for {FileListModel.__name__}")
-                    raise ValueError(f"Could not find table name for {FileListModel.__name__}")
+                    logger.error(
+                        f"Task task_id: {self.id} could not find table name for {FileListModel.__name__}"
+                    )
+                    raise ValueError(
+                        f"Could not find table name for {FileListModel.__name__}"
+                    )
                 result_tables.append(result_table_name.mapping)
                 result_names.append("files")
                 saved = await context.db.save(file_list_model)
@@ -490,47 +564,60 @@ class Node:
                 if file_stack:
                     if isinstance(file_stack, FileStack):
                         saved = await context.db.save(file_stack)
-                        logger.info(f"Task task_id: {self.id} saving info file: {file_stack.name} {file_stack.id}")
+                        logger.info(
+                            f"Task task_id: {self.id} saving info file: {file_stack.name} {file_stack.id}"
+                        )
                         self.registry_entry.info_files.append(saved)
                     else:
                         logger.error(
-                            f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}")
+                            f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
+                        )
                 else:
                     logger.error(f"Task task_id: {self.id} saving info-file is NONE")
                     raise ValueError("saving info file is NONE")
 
-            for key, value in getattr(result, '__pydantic_extra__', {}).items():
+            for key, value in getattr(result, "__pydantic_extra__", {}).items():
                 if not callable(value) and is_simstack_model(value):
                     if isinstance(value, Model):
                         result_model = await context.db.upsert(value)
                         result_models.append(result_model)
                         result_ids.append(result_model.id)
                         result_names.append(key)
-                        result_table_name = await context.db.find_one(ModelMapping,
-                                                                      ModelMapping.name == value.__class__.__name__)
+                        result_table_name = await context.db.find_one(
+                            ModelMapping, ModelMapping.name == value.__class__.__name__
+                        )
                         if result_table_name is None:
                             logger.error(
-                                f"Task task_id: {self.id} could not find table name for {value.__class__.__name__}")
-                            raise ValueError(f"Could not find table name for {value.__class__.__name__}")
+                                f"Task task_id: {self.id} could not find table name for {value.__class__.__name__}"
+                            )
+                            raise ValueError(
+                                f"Could not find table name for {value.__class__.__name__}"
+                            )
                         result_tables.append(result_table_name.mapping)
                     else:
-                        raise ValueError(f"task_id: {self.id} cannot save model: {key} is not a model")
+                        raise ValueError(
+                            f"task_id: {self.id} cannot save model: {key} is not a model"
+                        )
 
             self.registry_entry.result_ids = result_ids
             self.registry_entry.result_tables = result_tables
             self.registry_entry.result_names = result_names
 
             if result.error_message is not None and result.error_message != "":
-                logger.error(f"Task task_id: {self.id} returned with error: {result.error_message}")
+                logger.error(
+                    f"Task task_id: {self.id} returned with error: {result.error_message}"
+                )
             if result.message is not None and result.message != "":
                 logger.info(f"Task task_id: {self.id} message: {result.message}")
             if len(result_ids) == 1:
-                result = result_models[0]  # this is a SimstackResult with just one returned model
+                result = result_models[
+                    0
+                ]  # this is a SimstackResult with just one returned model
         return new_task_status, result
 
     async def set_status(self, status: TaskStatus):
         if self.registry_entry is None:
-            raise ValueError(f"Task has no registry entry")
+            raise ValueError("Task has no registry entry")
         if isinstance(status, TaskStatus):
             self.registry_entry.status = status
         else:
@@ -569,49 +656,66 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             arg = await engine.find_one(model, model.id == table_id)
             args.append(arg)
         except Exception as e:
-            logger.exception(f"Task task_id: {registry_entry.id} failed to load input {table} with id {table_id}: {str(e)}")
+            logger.exception(
+                f"Task task_id: {registry_entry.id} failed to load input {table} with id {table_id}: {str(e)}"
+            )
             return None
 
     logger.debug(f"Task task_id: {registry_entry.id} loaded {len(args)} inputs")
     try:
-        wrapped_func = await import_function(registry_entry.func_mapping, registry_entry.id)
+        wrapped_func = await import_function(
+            registry_entry.func_mapping, registry_entry.id
+        )
         if wrapped_func is None:
-            logger.error(f"Task task_id: {registry_entry.id} could not import function {registry_entry.func_mapping}")
+            logger.error(
+                f"Task task_id: {registry_entry.id} could not import function {registry_entry.func_mapping}"
+            )
             return None
         # for nodes the mapping points to the wrapped func to we use that
-        func = wrapped_func if not hasattr(wrapped_func, "_inner") else wrapped_func._inner
-        logger.info(f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}")
+        func = (
+            wrapped_func if not hasattr(wrapped_func, "_inner") else wrapped_func._inner
+        )
+        logger.info(
+            f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
+        )
     except Exception as e:
         logger.exception(
-            f"Task task_id: {registry_entry.id} failed to import function {registry_entry.func_mapping} {str(e)}")
+            f"Task task_id: {registry_entry.id} failed to import function {registry_entry.func_mapping} {str(e)}"
+        )
         return None
     try:
         if registry_entry.function_hash == "none":  # this entry was submitted
             registry_entry.function_hash = complex_hash_function(func)
             logger.debug(f"Task task_id: {registry_entry.id} computed function hash")
-    except Exception as e :
-        logger.exception(f"Task task_id: {registry_entry.id} function hashing failed {registry_entry.func_mapping} {str(e)}")
+    except Exception as e:
+        logger.exception(
+            f"Task task_id: {registry_entry.id} function hashing failed {registry_entry.func_mapping} {str(e)}"
+        )
         return None
     kwargs = {
-        'func': func,
-        'is_async': False,
-        'call_path' : registry_entry.call_path,
-        'parameters': registry_entry.parameters,
-        'custom_name': registry_entry.custom_name,
+        "func": func,
+        "is_async": False,
+        "call_path": registry_entry.call_path,
+        "parameters": registry_entry.parameters,
+        "custom_name": registry_entry.custom_name,
     }
     if hasattr(registry_entry, "is_async"):
-        kwargs['is_async'] = registry_entry.is_async
+        kwargs["is_async"] = registry_entry.is_async
 
-    kwargs['parent_id'] = registry_entry.parent_ids[0] if registry_entry.parent_ids else None
-    logger.info(f"Task task_id: {registry_entry.id} is_async: {kwargs['is_async']} parent_id: {kwargs['parent_id']}")
+    kwargs["parent_id"] = (
+        registry_entry.parent_ids[0] if registry_entry.parent_ids else None
+    )
+    logger.info(
+        f"Task task_id: {registry_entry.id} is_async: {kwargs['is_async']} parent_id: {kwargs['parent_id']}"
+    )
 
-    new_node = Node( *args, **kwargs)
+    new_node = Node(*args, **kwargs)
     new_node.registry_entry = registry_entry
     return new_node
 
 
 # Add a return type annotation for async functions
-#T_co = TypeVar("T_co", covariant=True)
+# T_co = TypeVar("T_co", covariant=True)
 #
 # # Create overloaded function type annotations
 # @overload
@@ -634,14 +738,14 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
 #     **kwargs_node,
 # ) -> Callable[[Callable[..., Any]], Callable[..., Any]]: ...
 
-from typing import ParamSpec, Union, overload
 
-P = ParamSpec('P')
+P = ParamSpec("P")
+
 
 @overload
-def node(
-    _func: Callable[P, T]
-) -> Callable[..., T]: ...
+def node(_func: Callable[P, T]) -> Callable[..., T]:
+    ...
+
 
 @overload
 def node(
@@ -651,13 +755,15 @@ def node(
     version: Optional[str] = None,
     cache: bool = True,
     **kwargs_node,
-) -> Callable[[Callable[P, T]], Callable[..., T]]: ...
+) -> Callable[[Callable[P, T]], Callable[..., T]]:
+    ...
+
 
 def node(
-        _func: Optional[Callable[P, T]] = None,
-        *,
-        version: Optional[str] = None,
-        **kwargs_node,
+    _func: Optional[Callable[P, T]] = None,
+    *,
+    version: Optional[str] = None,
+    **kwargs_node,
 ) -> Union[Callable[..., T], Callable[[Callable[P, T]], Callable[..., T]]]:
     """
     Decorator to mark a function as a node in the computation graph.
@@ -679,10 +785,14 @@ def node(
         func._node_parameters = kwargs_node.get("parameters", Parameters())
 
         def update_kwargs(kwargs):
-            kwargs['func'] = func
-            kwargs['is_async'] = is_async
-            kwargs['parameters'] = kwargs.pop("parameters", kwargs_node.get("parameters", Parameters()))
-            kwargs['custom_name'] = kwargs_node.get("custom_name", default_name_generator())
+            kwargs["func"] = func
+            kwargs["is_async"] = is_async
+            kwargs["parameters"] = kwargs.pop(
+                "parameters", kwargs_node.get("parameters", Parameters())
+            )
+            kwargs["custom_name"] = kwargs_node.get(
+                "custom_name", default_name_generator()
+            )
             call_path = kwargs.pop("call_path", "")
             if not call_path:
                 call_path = ""
@@ -692,8 +802,7 @@ def node(
                 call_path = "." + func.__name__
             else:
                 call_path = call_path + "." + func.__name__
-            kwargs['call_path'] = call_path
-
+            kwargs["call_path"] = call_path
 
         @functools.wraps(func)
         async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
@@ -708,13 +817,15 @@ def node(
             elif status == TaskStatus.SUBMITTED:
                 result = await execution_node.run_somewhere()
             if result is None or execution_node.status != TaskStatus.COMPLETED:
-                raise RuntimeError(f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}")
+                raise RuntimeError(
+                    f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"
+                )
             return result
-
 
         @functools.wraps(func)
         def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             import asyncio
+
             update_kwargs(kwargs)
             # Create Node with the remaining kwargs
             execution_node = Node(*args, **kwargs)
@@ -728,7 +839,9 @@ def node(
             elif status == TaskStatus.SUBMITTED:
                 return loop.run_until_complete(execution_node.run_somewhere())
             if result is None or execution_node.status != TaskStatus.COMPLETED:
-                raise RuntimeError(f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}")
+                raise RuntimeError(
+                    f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"
+                )
             return result
 
         async_wrapper.is_node = True

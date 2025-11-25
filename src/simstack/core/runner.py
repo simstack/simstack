@@ -33,25 +33,36 @@ async def run_node(registry_entry: NodeRegistry):
     else:
         resource = context.config.resource
     pid = os.getpid()
-    username = os.environ.get('USER', os.environ.get('USERNAME', 'unknown'))
+    username = os.environ.get("USER", os.environ.get("USERNAME", "unknown"))
     hostname = socket.gethostname()
 
-
-    runner_event = RunnerEvent(runner_type=RunnerType.NODE_RUNNER, event=RunnerEventEnum.NODE_STARTED,
-                               pid=pid, hostname=hostname, user=username,
-                               resource=resource, node_id=registry_entry.id)
+    runner_event = RunnerEvent(
+        runner_type=RunnerType.NODE_RUNNER,
+        event=RunnerEventEnum.NODE_STARTED,
+        pid=pid,
+        hostname=hostname,
+        user=username,
+        resource=resource,
+        node_id=registry_entry.id,
+    )
     await context.db.save(runner_event)
 
     try:
-        logger.info(f"Running node task_id: {registry_entry.id} on resource {context.config.resource}")
-        if hasattr(registry_entry.parameters, "queue") and registry_entry.parameters.queue == "slurm-queue":
+        logger.info(
+            f"Running node task_id: {registry_entry.id} on resource {context.config.resource}"
+        )
+        if (
+            hasattr(registry_entry.parameters, "queue")
+            and registry_entry.parameters.queue == "slurm-queue"
+        ):
             await submit_node(registry_entry)
         else:
             # Create the node from the registry entry
             node = await node_from_database(registry_entry)
             if not node:
                 logger.error(
-                    f"Failed to create node from registry entry task_id: {registry_entry.id} on resource {context.config.resource}")
+                    f"Failed to create node from registry entry task_id: {registry_entry.id} on resource {context.config.resource}"
+                )
                 registry_entry.status = TaskStatus.FAILED
                 await context.db.save(registry_entry)
                 return False
@@ -59,26 +70,29 @@ async def run_node(registry_entry: NodeRegistry):
         return True
     except Exception as e:
         logger.exception(
-            f"Error running node task_id: {registry_entry.id} on resource {context.config.resource} : {str(e)}")
+            f"Error running node task_id: {registry_entry.id} on resource {context.config.resource} : {str(e)}"
+        )
         if registry_entry:
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
         return False
 
+
 def make_git_list() -> List[str]:
     git_list = []
     for path in context.config.git:
         result = get_git_status(path)
-        if result['branch']:
-            value = result['branch'] + "[" + result['short_hash'] + "]"
-            if result['up_to_date']:
+        if result["branch"]:
+            value = result["branch"] + "[" + result["short_hash"] + "]"
+            if result["up_to_date"]:
                 value += " (up-to-date)"
             else:
-                value += " (behind " + str(result['behind']) + " commits)"
+                value += " (behind " + str(result["behind"]) + " commits)"
             git_list.append(value)
         else:
             git_list.append("No branch found")
     return git_list
+
 
 def run_squeue_for_job(job_id: str) -> str:
     if context.config.docker:
@@ -87,13 +101,16 @@ def run_squeue_for_job(job_id: str) -> str:
             shell=True,
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
         )
     else:
         watchdog_id = f"slurm_{uuid.uuid4()}"
         queue_dir = context.config.workdir / "queue"
-        result = submit_to_watchdog(f"squeue -j {job_id}", watchdog_id, queue_dir=queue_dir)
+        result = submit_to_watchdog(
+            f"squeue -j {job_id}", watchdog_id, queue_dir=queue_dir
+        )
     return result.stdout
+
 
 def get_job_info(job_id: str, task_id: ObjectId, resource: str) -> SlurmInfo | None:
     """Get job information from SLURM queue using squeue"""
@@ -125,7 +142,7 @@ def get_job_info(job_id: str, task_id: ObjectId, resource: str) -> SlurmInfo | N
             nodes = [n for n in re.split(r"[,\s]+", nodelist_raw) if n]
 
             slurm_info = SlurmInfo(
-                node_registry= task_id,
+                node_registry=task_id,
                 resource=resource,
                 job_id=job_id,
                 updated=datetime.now(),
@@ -133,9 +150,8 @@ def get_job_info(job_id: str, task_id: ObjectId, resource: str) -> SlurmInfo | N
                 user=user,
                 code=code,
                 time=time_str,
-                nodes=nodes
+                nodes=nodes,
             )
-
 
             return slurm_info
         else:
@@ -146,25 +162,28 @@ def get_job_info(job_id: str, task_id: ObjectId, resource: str) -> SlurmInfo | N
         logger.exception(f"Error getting job info for {job_id}: {str(e)}")
         return None
 
+
 async def clean_slurm_info(user: str, resource: Resource):
     """Clean up old slurm info entries"""
     try:
         if context.config.docker:
             watchdog_id = f"slurm_{uuid.uuid4()}"
             queue_dir = context.config.workdir / "queue"
-            result = submit_to_watchdog(f"squeue -u {user}", watchdog_id, queue_dir=queue_dir)
+            result = submit_to_watchdog(
+                f"squeue -u {user}", watchdog_id, queue_dir=queue_dir
+            )
         else:
             result = subprocess.run(
                 f"squeue -u {user}",
                 shell=True,
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
             )
 
         if result.returncode == 0:
             job_ids = [line.split()[0] for line in result.stdout.splitlines()]
-            #logger.info(f"Cleaning up slurm info for {resource}: {result.stdout}")
+            # logger.info(f"Cleaning up slurm info for {resource}: {result.stdout}")
 
             # Get list of running job IDs, skip the header line
             active_jobs = job_ids[1:] if len(job_ids) > 1 else []
@@ -173,9 +192,11 @@ async def clean_slurm_info(user: str, resource: Resource):
                 job_id = line.split()[0]
                 active_job_ids.add(job_id)
             # Find all SLURM info entries for this resource
-            running_jobs = await context.db.engine.find(SlurmInfo, SlurmInfo.resource == resource)
-            #logger.info(f"Found {running_jobs} slurm info entries for {resource}")
-            #logger.info(f"Active job IDs: {active_job_ids}")
+            running_jobs = await context.db.engine.find(
+                SlurmInfo, SlurmInfo.resource == resource
+            )
+            # logger.info(f"Found {running_jobs} slurm info entries for {resource}")
+            # logger.info(f"Active job IDs: {active_job_ids}")
             # Delete entries for jobs that are no longer running
             for job in running_jobs:
                 if job.job_id not in active_job_ids:
@@ -185,19 +206,27 @@ async def clean_slurm_info(user: str, resource: Resource):
     except Exception as e:
         logger.exception(f"Error cleaning slurm info for {resource}: {str(e)}")
 
-async def run_nodes_for_resource(resource_name, polling_interval=5, restart_minutes=None, max_concurrent=10) -> str:
+
+async def run_nodes_for_resource(
+    resource_name, polling_interval=5, restart_minutes=None, max_concurrent=10
+) -> str:
     """Continuously poll for and run nodes assigned to a specific resource"""
     pid = os.getpid()
-    username = os.environ.get('USER', os.environ.get('USERNAME', 'unknown'))
+    username = os.environ.get("USER", os.environ.get("USERNAME", "unknown"))
     hostname = socket.gethostname()
     resource = Resource(value=resource_name)
-    logger.info(f"Starting node runner for resource: {resource_name} by user: {username}")
-    runner_event = RunnerEvent(runner_type=RunnerType.RESOURCE_RUNNER, event=RunnerEventEnum.RUNNER_STARTED,
-                               resource=resource,
-                               user=username,
-                               hostname=hostname,
-                               pid=pid,
-                               git_status=make_git_list())
+    logger.info(
+        f"Starting node runner for resource: {resource_name} by user: {username}"
+    )
+    runner_event = RunnerEvent(
+        runner_type=RunnerType.RESOURCE_RUNNER,
+        event=RunnerEventEnum.RUNNER_STARTED,
+        resource=resource,
+        user=username,
+        hostname=hostname,
+        pid=pid,
+        git_status=make_git_list(),
+    )
     await context.db.save(runner_event)
 
     # Setup restart timer if needed
@@ -220,7 +249,7 @@ async def run_nodes_for_resource(resource_name, polling_interval=5, restart_minu
                 completed_tasks = {task for task in running_tasks if task.done()}
                 for task in completed_tasks:
                     try:
-                        result = await task
+                        await task
                     except Exception as e:
                         logger.exception(f"Task completed with error: {e}")
                     running_tasks.remove(task)
@@ -229,32 +258,45 @@ async def run_nodes_for_resource(resource_name, polling_interval=5, restart_minu
                 for path in context.config.python_path:
                     stop_file = Path(path) / "STOP"
                     if stop_file.exists():
-                        runner_event = RunnerEvent(runner_type=RunnerType.RESOURCE_RUNNER,
-                                                   event=RunnerEventEnum.SHUTDOWN,
-                                                   hostname=hostname,
-                                                   user=username,
-                                                   pid=pid,
-                                                   resource=resource, message=f"STOP FILE FOUND")
+                        runner_event = RunnerEvent(
+                            runner_type=RunnerType.RESOURCE_RUNNER,
+                            event=RunnerEventEnum.SHUTDOWN,
+                            hostname=hostname,
+                            user=username,
+                            pid=pid,
+                            resource=resource,
+                            message="STOP FILE FOUND",
+                        )
                         await context.db.save(runner_event)
                         logger.info(f"STOP file found at {stop_file}, exiting...")
                         return "stop"
 
                 # Load tasks that are waiting for this resource
-                registry_entry_list = await context.db.load_waiting_tasks_for_resource(resource_name)
+                registry_entry_list = await context.db.load_waiting_tasks_for_resource(
+                    resource_name
+                )
                 if registry_entry_list:
-                    logger.info(f"Retrieved {len(registry_entry_list)} tasks for resource {resource_name}")
+                    logger.info(
+                        f"Retrieved {len(registry_entry_list)} tasks for resource {resource_name}"
+                    )
 
                     for registry_entry in registry_entry_list:
-                        logger.info(f"Task task_id: {registry_entry.id} will be run on {resource_name}")
+                        logger.info(
+                            f"Task task_id: {registry_entry.id} will be run on {resource_name}"
+                        )
                         # Create the task with semaphore - don't await
-                        task = asyncio.create_task(run_node_with_semaphore(registry_entry))
+                        task = asyncio.create_task(
+                            run_node_with_semaphore(registry_entry)
+                        )
                         running_tasks.add(task)
 
-                runner_event = await context.db.find_one(RunnerEvent,
-                                                         RunnerEvent.runner_type == RunnerType.RESOURCE_RUNNER and
-                                                         RunnerEvent.resource == resource and
-                                                         RunnerEvent.event == RunnerEventEnum.ALIVE and
-                                                         RunnerEvent.pid == pid)
+                runner_event = await context.db.find_one(
+                    RunnerEvent,
+                    RunnerEvent.runner_type == RunnerType.RESOURCE_RUNNER
+                    and RunnerEvent.resource == resource
+                    and RunnerEvent.event == RunnerEventEnum.ALIVE
+                    and RunnerEvent.pid == pid,
+                )
                 message = f"{count*polling_interval:6d}s"
                 if runner_event:
                     runner_event.message = message
@@ -263,23 +305,34 @@ async def run_nodes_for_resource(resource_name, polling_interval=5, restart_minu
                     runner_event.git_status = make_git_list()
 
                 else:
-                    runner_event = RunnerEvent(runner_type=RunnerType.RESOURCE_RUNNER,
-                                               event=RunnerEventEnum.ALIVE,
-                                               resource=resource,
-                                               user=username,
-                                               hostname=hostname,
-                                               pid=pid,
-                                               message=message,
-                                               git_status=make_git_list())
+                    runner_event = RunnerEvent(
+                        runner_type=RunnerType.RESOURCE_RUNNER,
+                        event=RunnerEventEnum.ALIVE,
+                        resource=resource,
+                        user=username,
+                        hostname=hostname,
+                        pid=pid,
+                        message=message,
+                        git_status=make_git_list(),
+                    )
                 await context.db.save(runner_event)
 
-                running_jobs = await context.db.engine.find(NodeRegistry,
-                                                            (NodeRegistry.status == TaskStatus.RUNNING) & (NodeRegistry.parameters.resource == resource))
+                running_jobs = await context.db.engine.find(
+                    NodeRegistry,
+                    (NodeRegistry.status == TaskStatus.RUNNING)
+                    & (NodeRegistry.parameters.resource == resource),
+                )
                 for job in running_jobs:
                     if job.job_id is not None:
-                        slurm_info = get_job_info(job.job_id, job.id, Resource(value=resource_name))
-                        slurm_entry = await context.db.find_one(SlurmInfo, SlurmInfo.job_id == job.job_id)
-                        logger.info(f"Found running job {job} with slurm info: {slurm_info} {slurm_entry is not None}")
+                        slurm_info = get_job_info(
+                            job.job_id, job.id, Resource(value=resource_name)
+                        )
+                        slurm_entry = await context.db.find_one(
+                            SlurmInfo, SlurmInfo.job_id == job.job_id
+                        )
+                        logger.info(
+                            f"Found running job {job} with slurm info: {slurm_info} {slurm_entry is not None}"
+                        )
 
                         if slurm_info:
                             if slurm_entry:
@@ -292,8 +345,12 @@ async def run_nodes_for_resource(resource_name, polling_interval=5, restart_minu
                         else:
                             # if the job had started but is no longer running, delete the entry from the database
                             await asyncio.sleep(polling_interval)
-                            check_job = await context.db.engine.find_one(NodeRegistry, NodeRegistry.id == job.id)
-                            logger.warning(f"Job task_id: {job.id} {job.id} is no longer running {check_job.status}")
+                            check_job = await context.db.engine.find_one(
+                                NodeRegistry, NodeRegistry.id == job.id
+                            )
+                            logger.warning(
+                                f"Job task_id: {job.id} {job.id} is no longer running {check_job.status}"
+                            )
                             if slurm_entry:
                                 await context.db.delete(slurm_entry)
                             if slurm_entry and check_job.status == TaskStatus.RUNNING:
@@ -306,14 +363,16 @@ async def run_nodes_for_resource(resource_name, polling_interval=5, restart_minu
                 await asyncio.sleep(polling_interval)
                 count = count + 1
                 if restart_minutes and count > restart_minutes:
-                    runner_event = RunnerEvent(runner_type=RunnerType.RESOURCE_RUNNER,
-                                               event=RunnerEventEnum.RESTART,
-                                               user=username,
-                                               hostname=hostname,
-                                               pid=pid,
-                                               resource=Resource(value=resource_name),
-                                               message=f"restart by count",
-                                               git_status=make_git_list())
+                    runner_event = RunnerEvent(
+                        runner_type=RunnerType.RESOURCE_RUNNER,
+                        event=RunnerEventEnum.RESTART,
+                        user=username,
+                        hostname=hostname,
+                        pid=pid,
+                        resource=Resource(value=resource_name),
+                        message="restart by count",
+                        git_status=make_git_list(),
+                    )
                     await context.db.save(runner_event)
                     return "restart"
             except Exception as e:
@@ -328,12 +387,12 @@ async def run_nodes_for_resource(resource_name, polling_interval=5, restart_minu
 
 async def async_main(args):
     """Async entry point"""
-    context.initialize(resource=args.resource,db_name=args.db_name)
+    context.initialize(resource=args.resource, db_name=args.db_name)
 
     if args.resource:
         context.config.resource = Resource(value=args.resource)
         logger.info(f"Setting resource for runner to {args.resource}")
-        status = await run_nodes_for_resource(args.resource, args.polling_interval, None)
+        await run_nodes_for_resource(args.resource, args.polling_interval, None)
 
 
 def runner_main():

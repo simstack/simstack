@@ -5,9 +5,11 @@ from odmantic import Model
 
 logger = logging.getLogger(__name__)
 
+
 def default_from_model(cls_method, model: Model, **kwargs) -> Model:
     model_dict = model.model_dump(exclude={"id"})
     return cls_method.from_dict(model_dict, **kwargs)
+
 
 def default_from_dict(cls_method, data: dict, **kwargs) -> Any:
     """
@@ -26,7 +28,7 @@ def default_from_dict(cls_method, data: dict, **kwargs) -> Any:
         field_value = data[field_name]
 
         # Handle enum values
-        if hasattr(field_type, '__members__'):
+        if hasattr(field_type, "__members__"):
             logger.debug("Handling enum field: %s", field_name)
             if isinstance(field_value, field_type):
                 # If it's already an enum instance, use it directly
@@ -36,12 +38,18 @@ def default_from_dict(cls_method, data: dict, **kwargs) -> Any:
                 # Try to create enum from the value
                 try:
                     processed_data[field_name] = field_type(field_value)
-                    logger.debug("Converted field value to enum: %s", processed_data[field_name])
+                    logger.debug(
+                        "Converted field value to enum: %s", processed_data[field_name]
+                    )
                 except ValueError:
-                    logger.debug("Invalid enum value for field %s: %s", field_name, field_value)
-                    raise ValueError(f"Invalid enum value '{field_value}' for field {field_name}")
+                    logger.debug(
+                        "Invalid enum value for field %s: %s", field_name, field_value
+                    )
+                    raise ValueError(
+                        f"Invalid enum value '{field_value}' for field {field_name}"
+                    )
         # Handle nested models
-        elif hasattr(field_type, 'from_dict') and isinstance(field_value, dict):
+        elif hasattr(field_type, "from_dict") and isinstance(field_value, dict):
             processed_data[field_name] = field_type.from_dict(field_value)
         else:
             processed_data[field_name] = field_value

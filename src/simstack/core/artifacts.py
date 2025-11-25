@@ -17,6 +17,7 @@ from simstack.util.module_path_checker import is_module_subpath_of_path
 
 logger = logging.getLogger("artifacts")
 
+
 class ArtifactArguments:
     def __init__(self, result, task_id: ObjectId = None):
         self.task_id = task_id
@@ -37,19 +38,26 @@ class ArtifactArguments:
             setattr(self, param_name, arg_value)
 
 
-async def find_artifact_mappings(node_registry_path: str, task_id: Optional[str] = None) -> List[ArtifactMapping]:
-    logger.debug(f"task_id: {task_id} Loading artifacts with regex pattern: {node_registry_path} ")
+async def find_artifact_mappings(
+    node_registry_path: str, task_id: Optional[str] = None
+) -> List[ArtifactMapping]:
+    logger.debug(
+        f"task_id: {task_id} Loading artifacts with regex pattern: {node_registry_path} "
+    )
     engine = current_engine_context.get()
     all_mappings = await engine.find(ArtifactMapping)
 
     # Filter them manually to find those whose patterns match your path
     matching_mappings = [
-        mapping for mapping in all_mappings
+        mapping
+        for mapping in all_mappings
         if re.match(mapping.regex_pattern, node_registry_path)
     ]
 
     for mapping in matching_mappings:
-        logger.debug(f"task_id: {task_id} Artifact found: {mapping.name} with path: {mapping.regex_pattern}")
+        logger.debug(
+            f"task_id: {task_id} Artifact found: {mapping.name} with path: {mapping.regex_pattern}"
+        )
     return matching_mappings
 
 
@@ -60,15 +68,21 @@ async def register_artifact_mapping(artifact_mapping: ArtifactMapping):
     )
     if existing:
         logger.warning(
-            f"Replacing existing artifact mapping '{artifact_mapping.name}' already exists with path: {existing.regex_pattern}")
+            f"Replacing existing artifact mapping '{artifact_mapping.name}' already exists with path: {existing.regex_pattern}"
+        )
         existing.set_values(artifact_mapping)
         artifact_mapping = await context.db.save(existing)
 
     # Check if the function_mapping is specified and not CODE
-    if artifact_mapping.function_mapping and artifact_mapping.function_mapping != "CODE":
+    if (
+        artifact_mapping.function_mapping
+        and artifact_mapping.function_mapping != "CODE"
+    ):
         try:
             # Import the function to verify it exists
-            module_path, function_name = artifact_mapping.function_mapping.rsplit('.', 1)
+            module_path, function_name = artifact_mapping.function_mapping.rsplit(
+                ".", 1
+            )
             module = importlib.import_module(module_path)
             if module is None:
                 logger.error(f"Module {module_path} could not be imported.")
@@ -81,7 +95,9 @@ async def register_artifact_mapping(artifact_mapping: ArtifactMapping):
                 # Check if the module path is in a non-excluded subdirectory of any path in the path registry
                 for path_name, path_info in context.path_manager.paths.items():
                     # Check if the path has use_pickle=True
-                    current_module_is_child = is_module_subpath_of_path(module_path, path_info["path"])
+                    current_module_is_child = is_module_subpath_of_path(
+                        module_path, path_info["path"]
+                    )
                     if path_info.get("use_pickle", True) and current_module_is_child:
                         # create a FunctionPickle for the function
                         try:
@@ -89,8 +105,7 @@ async def register_artifact_mapping(artifact_mapping: ArtifactMapping):
 
                             # Create a FunctionPickle for the function
                             function_pickle = FunctionPickle(
-                                name=func.__name__,
-                                module_path=func.__module__
+                                name=func.__name__, module_path=func.__module__
                             )
                             function_pickle.store_function(func)
 
@@ -100,14 +115,22 @@ async def register_artifact_mapping(artifact_mapping: ArtifactMapping):
                             # Associate the FunctionPickle with the ArtifactMapping
                             artifact_mapping.pickle_function = function_pickle
 
-                            logger.info(f"Created FunctionPickle for {artifact_mapping.function_mapping}")
+                            logger.info(
+                                f"Created FunctionPickle for {artifact_mapping.function_mapping}"
+                            )
                             break  # We only need to create one FunctionPickle
                         except Exception as e:
-                            logger.error(f"Error creating FunctionPickle for {artifact_mapping.function_mapping}: {e}")
+                            logger.error(
+                                f"Error creating FunctionPickle for {artifact_mapping.function_mapping}: {e}"
+                            )
             else:
-                logger.warning(f"Could not import function {artifact_mapping.function_mapping}")
+                logger.warning(
+                    f"Could not import function {artifact_mapping.function_mapping}"
+                )
         except Exception as e:
-            logger.error(f"Error processing function {artifact_mapping.function_mapping}: {e}")
+            logger.error(
+                f"Error processing function {artifact_mapping.function_mapping}: {e}"
+            )
     return await context.db.save(artifact_mapping)
 
 
@@ -115,21 +138,28 @@ async def find_all_artifacts(node_registry: NodeRegistry) -> List[ArtifactModel]
     # if not engine:
     #     engine = context.db.engine
     engine = current_engine_context.get()
-    return [await engine.find_one(ArtifactModel, ArtifactModel.id == artifact_id) for artifact_id in
-            node_registry.artifact_ids]
+    return [
+        await engine.find_one(ArtifactModel, ArtifactModel.id == artifact_id)
+        for artifact_id in node_registry.artifact_ids
+    ]
 
 
-async def create_artifacts(artifact_arguments: ArtifactArguments, node_registry: NodeRegistry) -> List[ArtifactModel]:
+async def create_artifacts(
+    artifact_arguments: ArtifactArguments, node_registry: NodeRegistry
+) -> List[ArtifactModel]:
     try:
         call_path = node_registry.call_path
         task_id = node_registry.id
         log_string = f"create artifacts for task_id: {task_id} for {call_path}"
 
-        artifact_mappings_list = await find_artifact_mappings(call_path, task_id=task_id)
+        artifact_mappings_list = await find_artifact_mappings(
+            call_path, task_id=task_id
+        )
 
         child_nodes = await find_child_nodes(task_id)
         logger.info(
-            f"{log_string} Found {len(artifact_mappings_list)} artifact mappings for path: {call_path} and {len(child_nodes)} child nodes.")
+            f"{log_string} Found {len(artifact_mappings_list)} artifact mappings for path: {call_path} and {len(child_nodes)} child nodes."
+        )
         # Concatenate artifacts from all child nodes
         child_artifacts = []
         for child_node in child_nodes:
@@ -141,7 +171,9 @@ async def create_artifacts(artifact_arguments: ArtifactArguments, node_registry:
                 consolidated_artifact = ArtifactModel(
                     name=child_node.name,
                     path=call_path,
-                    data={node_registry.name: loaded_artifacts}  # Store all artifacts in a single field
+                    data={
+                        node_registry.name: loaded_artifacts
+                    },  # Store all artifacts in a single field
                 )
                 await context.db.save(consolidated_artifact)
                 child_artifacts.append(consolidated_artifact)
@@ -156,26 +188,41 @@ async def create_artifacts(artifact_arguments: ArtifactArguments, node_registry:
         if len(artifact_mappings_list) > 0:
             for artifact_mapping in artifact_mappings_list:
                 # Count existing artifacts with the same mapping
-                existing_count = len([a for a in artifact_list if a.path.endswith(artifact_mapping.name)])
-                log_string_mapping = f"{log_string} Artifact: {artifact_mapping.name}"
+                existing_count = len(
+                    [a for a in artifact_list if a.path.endswith(artifact_mapping.name)]
+                )
+                log_string_mapping = (
+                    f"{log_string} Artifact: {artifact_mapping.name} #:{existing_count}"
+                )
                 logging.info(log_string_mapping)
                 if artifact_mapping.function_mapping != "CODE":
-                    func = await function_from_model(artifact_mapping, artifact_arguments.task_id)
+                    func = await function_from_model(
+                        artifact_mapping, artifact_arguments.task_id
+                    )
                     if not func:
                         logger.error(
-                            f"{log_string_mapping} Function {artifact_mapping.function_mapping} not found for artifact mapping.")
+                            f"{log_string_mapping} Function {artifact_mapping.function_mapping} not found for artifact mapping."
+                        )
                         continue
                     logger.info(
-                        f"{log_string_mapping} Executing function {artifact_mapping.function_mapping} for artifact mapping.")
+                        f"{log_string_mapping} Executing function {artifact_mapping.function_mapping} for artifact mapping."
+                    )
                     artifact_result = func(artifact_arguments)
                 else:
                     from simstack.util.safe_code_executor import safe_code_executor
-                    result = safe_code_executor(artifact_mapping.function_code, artifact_arguments)
-                    logger.info(f"{log_string_mapping} Executing code for artifact mapping.")
-                    if result['success']:
-                        artifact_result = result['result']
+
+                    result = safe_code_executor(
+                        artifact_mapping.function_code, artifact_arguments
+                    )
+                    logger.info(
+                        f"{log_string_mapping} Executing code for artifact mapping."
+                    )
+                    if result["success"]:
+                        artifact_result = result["result"]
                     else:
-                        logger.error(f"{log_string_mapping} Code execution failed with error: {result['error']}")
+                        logger.error(
+                            f"{log_string_mapping} Code execution failed with error: {result['error']}"
+                        )
                         continue
 
                 # An artifact result can be either an Artifact or a list of elements which can be Artifacts or ArtifactModels (from children)
@@ -184,23 +231,31 @@ async def create_artifacts(artifact_arguments: ArtifactArguments, node_registry:
 
                 for artifact in artifact_result:
                     if artifact is None:
-                        logger.warning(f"{log_string_mapping} Artifact is None, skipping.")
+                        logger.warning(
+                            f"{log_string_mapping} Artifact is None, skipping."
+                        )
                         continue
                     if isinstance(artifact, TableArtifactModel):
                         artifact.parent_id = node_registry.id
                         saved_artifact = await engine.save(artifact)
-                        logger.debug(f"{log_string_mapping} new table: {saved_artifact}")
+                        logger.debug(
+                            f"{log_string_mapping} new table: {saved_artifact}"
+                        )
                     elif isinstance(artifact, ChartArtifactModel):
                         artifact.parent_id = node_registry.id
                         saved_artifact = await engine.save(artifact)
-                        logger.debug(f"{log_string_mapping} new table: {saved_artifact}")
+                        logger.debug(
+                            f"{log_string_mapping} new table: {saved_artifact}"
+                        )
                     elif isinstance(artifact, ArtifactModel):
                         artifact.path = call_path
                         saved_artifact = await engine.save(artifact)
                         logger.debug(f"{log_string_mapping} new: {saved_artifact}")
                         artifact_list.append(saved_artifact)
                     else:
-                        raise ValueError(f"{log_string_mapping} not an ArtifactModel object. Got {artifact} instead.")
+                        raise ValueError(
+                            f"{log_string_mapping} not an ArtifactModel object. Got {artifact} instead."
+                        )
         else:
             artifact_list = child_artifacts
             logger.debug(f"{log_string} passing child artifacts")
@@ -258,7 +313,9 @@ async def save_artifact_model(artifact: ArtifactModel) -> ArtifactModel:
     return artifact
 
 
-async def find_artifacts(model_class: type[ArtifactModel], **kwargs) -> List[ArtifactModel]:
+async def find_artifacts(
+    model_class: type[ArtifactModel], **kwargs
+) -> List[ArtifactModel]:
     """
     Custom find function for polymorphic models
     """
@@ -293,7 +350,9 @@ async def find_artifacts(model_class: type[ArtifactModel], **kwargs) -> List[Art
             # Load all referenced items
             loaded_items = []
             for item_id in item_ids:
-                nested_item = await context.db.find_one(ArtifactModel, ArtifactModel.id == item_id)
+                nested_item = await context.db.find_one(
+                    ArtifactModel, ArtifactModel.id == item_id
+                )
                 if nested_item:
                     loaded_items.append(nested_item)
 
@@ -306,6 +365,7 @@ async def find_artifacts(model_class: type[ArtifactModel], **kwargs) -> List[Art
     items.append(item)
 
     return items
+
 
 # async def find_one_artifact(artifact_id: ObjectId) -> Optional[ArtifactModel]:
 #     """

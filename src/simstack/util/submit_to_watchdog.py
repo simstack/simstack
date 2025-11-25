@@ -20,11 +20,11 @@ class WatchdogResult(BaseModel):
 
 
 def submit_to_watchdog(
-        command: str,
-        job_id: str,
-        queue_dir: Path = Path.cwd() / "queue",
-        env: dict | None = None,
-        cwd: str | None = None,
+    command: str,
+    job_id: str,
+    queue_dir: Path = Path.cwd() / "queue",
+    env: dict | None = None,
+    cwd: str | None = None,
 ) -> WatchdogResult:
     """
     Submit a command to be executed by the file-queue watcher.

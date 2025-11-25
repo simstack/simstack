@@ -2,7 +2,9 @@ from collections import deque
 from typing import List, Dict
 
 
-def find_minimal_route(routes: List[Dict[str, str]], source: str, target: str) -> List[Dict[str, str]]:
+def find_minimal_route(
+    routes: List[Dict[str, str]], source: str, target: str
+) -> List[Dict[str, str]]:
     """
     Find the minimal (shortest) route from source to target.
 
@@ -24,8 +26,8 @@ def find_minimal_route(routes: List[Dict[str, str]], source: str, target: str) -
     nodes = set()
 
     for route in routes:
-        src = route['source']
-        dst = route['target']
+        src = route["source"]
+        dst = route["target"]
         nodes.add(src)
         nodes.add(dst)
 

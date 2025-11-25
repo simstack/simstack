@@ -6,10 +6,10 @@ def find_python_files(directory: str) -> List[str]:
     """
     Returns full paths of all .py files in the given directory and its subdirectories,
     excluding __init__.py files.
-    
+
     Args:
         directory: The root directory to search from
-    
+
     Returns:
         List of absolute file paths to all .py files that aren't __init__.py
     """

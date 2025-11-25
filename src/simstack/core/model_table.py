@@ -67,7 +67,9 @@ class CreateModelTable:
             # subclass does not work even if applied to the imported classes
             # this is a bug in importlib
             bases = [base.__name__ for base in new_class.__bases__]
-            is_ui_model = any("UIModel" in s for s in bases) or is_simstack_model(new_class)
+            is_ui_model = any("UIModel" in s for s in bases) or is_simstack_model(
+                new_class
+            )
             is_model = any(s == "Model" for s in bases)
 
             if not (is_model or is_ui_model):
@@ -81,16 +83,22 @@ class CreateModelTable:
             # Use drops from the path_info dictionary
             if drops != "":
                 drop_modules = drops.split(".")
-                while new_modules and drop_modules and new_modules[0] == drop_modules[0]:
+                while (
+                    new_modules and drop_modules and new_modules[0] == drop_modules[0]
+                ):
                     new_modules.pop(0)
                     drop_modules.pop(0)
                 if len(drop_modules) > 0:
-                    raise ValueError("drop modules not empty: ", drop_modules, new_class.__module__)
+                    raise ValueError(
+                        "drop modules not empty: ", drop_modules, new_class.__module__
+                    )
             full_mapping = ".".join(new_modules) + "." + class_name
             logger.debug(f"    Class: {class_name} Model Mapping: {full_mapping}")
 
             # Remove any existing ModelMapping entry for this class
-            existing_entry = await self.engine.find_one(ModelMapping, ModelMapping.name == class_name)
+            existing_entry = await self.engine.find_one(
+                ModelMapping, ModelMapping.name == class_name
+            )
             if existing_entry is not None:
                 await self.engine.delete(existing_entry)
                 logger.debug(f"Deleted ModelMapping entry for {class_name}")
@@ -161,12 +169,12 @@ def create_model_table_main():
     elif args.verbose >= 2:
         level = logging.DEBUG
 
-
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     # Initialize context with this loop
     from simstack.core.context import context
+
     context.initialize(log_level=level)
 
     # Set pymongo logger level to INFO

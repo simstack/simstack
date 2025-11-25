@@ -13,7 +13,7 @@ logger = logging.getLogger("importer")
 
 async def function_from_model(model, task_id: ObjectId) -> Optional[Callable]:
     function_path = model.function_mapping
-    module_path, function_name = function_path.rsplit('.', 1)
+    module_path, function_name = function_path.rsplit(".", 1)
 
     # if model.pickle_function is not None:
     #     logger.info(f"task_id: {task_id} found pickle_function for {function_path}")
@@ -34,7 +34,9 @@ async def function_from_model(model, task_id: ObjectId) -> Optional[Callable]:
     #     return func
     # else:
 
-    logger.info(f"task_id: {task_id} loading function {function_path} using regular import")
+    logger.info(
+        f"task_id: {task_id} loading function {function_path} using regular import"
+    )
     # Import the module
     module = importlib.import_module(module_path)
     # Get the function from the module
@@ -42,7 +44,9 @@ async def function_from_model(model, task_id: ObjectId) -> Optional[Callable]:
     return function
 
 
-async def import_function(function_path: str, task_id: ObjectId = None) -> Optional[Callable]:
+async def import_function(
+    function_path: str, task_id: ObjectId = None
+) -> Optional[Callable]:
     """
     Dynamically import a function from a module using its full path.
     load the function information using NodeModel
@@ -58,15 +62,20 @@ async def import_function(function_path: str, task_id: ObjectId = None) -> Optio
     """
     engine = current_engine_context.get()
 
-    node_model = await engine.find_one(NodeModel, NodeModel.function_mapping == function_path)
+    node_model = await engine.find_one(
+        NodeModel, NodeModel.function_mapping == function_path
+    )
     if node_model is None:
-        raise LookupError(f"task_id: {task_id} Function {function_path} not found in the NodeModel Table")
+        raise LookupError(
+            f"task_id: {task_id} Function {function_path} not found in the NodeModel Table"
+        )
 
     return await function_from_model(node_model, task_id)
 
 
-async def import_function_by_name(function_name: str, task_id: ObjectId, engine: AIOEngine = None) -> Optional[
-    Callable]:
+async def import_function_by_name(
+    function_name: str, task_id: ObjectId, engine: AIOEngine = None
+) -> Optional[Callable]:
     if not engine:
         engine = context.db.engine
 
@@ -96,14 +105,18 @@ async def import_class(class_path: str) -> Type[Model] | None:
     try:
         engine = current_engine_context.get()
         # Split the path into module path and class name
-        module_path, class_name = class_path.rsplit('.', 1)
-        model_mapping = await engine.find_one(ModelMapping, ModelMapping.name == class_name)
+        module_path, class_name = class_path.rsplit(".", 1)
+        model_mapping = await engine.find_one(
+            ModelMapping, ModelMapping.name == class_name
+        )
 
         # If not found by name, try by mapping
         if not model_mapping:
-            model_mapping = await engine.find_one(ModelMapping, ModelMapping.mapping == class_path)
+            model_mapping = await engine.find_one(
+                ModelMapping, ModelMapping.mapping == class_path
+            )
         else:  # when searching by name the path may have changed
-            module_path, class_name = model_mapping.mapping.rsplit('.', 1)
+            module_path, class_name = model_mapping.mapping.rsplit(".", 1)
 
         if not model_mapping:
             logger.error(f"Error finding ModelMapping for {class_name}")

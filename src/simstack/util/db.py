@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=Model)
 
+
 class Database:
     """
     Asynchronous MongoDB database access class using ODMantic ORM.
@@ -36,7 +37,7 @@ class Database:
         if db_type == DBType.IN_MEMORY:
             # For tests, use in-memory MongoDB (mongomock)
             try:
-                import mongomock
+                # import mongomock
                 from mongomock_motor import AsyncMongoMockClient
 
                 self.client = AsyncMongoMockClient()
@@ -51,13 +52,13 @@ class Database:
             if not connection_string:
                 connection_string = "mongodb://localhost:27017"
             self.client = AsyncIOMotorClient(connection_string)
-            logger.info(f"Connected to MongoDB")
+            logger.info("Connected to MongoDB")
 
         else:
             raise ValueError(f"Unsupported database type for MongoDB: {db_type}")
 
         # Create engine
-        self.engine = AIOEngineProxy(client=self.client,database=db_name)
+        self.engine = AIOEngineProxy(client=self.client, database=db_name)
         # this will set the engine for all functions that are either called from the core package or the server
         current_engine_context.set(self.engine)
         self.db_name = db_name
@@ -81,12 +82,15 @@ class Database:
         """
         # First, handle all references to ensure they exist in the database
         if isinstance(Model, NodeRegistry):
-            if not hasattr(model,'name'):
-                logger.exception(f"Fatal Error A trying to save node_registry: {model.model_dump()} for task_id: {model.id}")
+            if not hasattr(model, "name"):
+                logger.exception(
+                    f"Fatal Error A trying to save node_registry: {model.model_dump()} for task_id: {model.id}"
+                )
                 return model
             if model.name is None:
                 logger.exception(
-                    f"Fatal Error B trying to save node_registry: {model.model_dump()} for task_id: {model.id}")
+                    f"Fatal Error B trying to save node_registry: {model.model_dump()} for task_id: {model.id}"
+                )
                 return model
 
         await self._save_references(model)
@@ -127,9 +131,13 @@ class Database:
         # Handle different field types
 
         # Case 1: Direct Reference fields
-        if hasattr(field_info, "annotation") and "Reference" in str(field_info.annotation):
+        if hasattr(field_info, "annotation") and "Reference" in str(
+            field_info.annotation
+        ):
             if field_value is not None:
-                logger.info(f"Saving reference field {field_name} of type {type(field_value).__name__}")
+                logger.info(
+                    f"Saving reference field {field_name} of type {type(field_value).__name__}"
+                )
                 await self._save_references(field_value, visited)
                 await self.engine.save(field_value)
 
@@ -137,19 +145,23 @@ class Database:
         elif isinstance(field_value, list):
             for item in field_value:
                 if isinstance(item, Model):
-                    logger.info(f"Saving list item of type {type(item).__name__} in field {field_name}")
+                    logger.info(
+                        f"Saving list item of type {type(item).__name__} in field {field_name}"
+                    )
                     await self._save_references(item, visited)
                     await self.engine.save(item)
 
         # Case 3: Embedded models (like in FileInstance within FileStack)
         elif isinstance(field_value, Model):
-            logger.info(f"Saving embedded model of type {type(field_value).__name__} in field {field_name}")
+            logger.info(
+                f"Saving embedded model of type {type(field_value).__name__} in field {field_name}"
+            )
             await self._save_references(field_value, visited)
 
     async def save(self, model: Model) -> Model:
         return await self.upsert(model)
 
-    async def find_one(self, model_class: Type[T], query = None, **kwargs) -> Optional[T]:
+    async def find_one(self, model_class: Type[T], query=None, **kwargs) -> Optional[T]:
         """
         Find a single document matching the query
             :param model_class:
@@ -160,7 +172,9 @@ class Database:
         """
         return await self.engine.find_one(model_class, query, **kwargs)
 
-    async def find_one_by_model_name(self, model_mapping: str, item_id: str) -> Optional[Any]:
+    async def find_one_by_model_name(
+        self, model_mapping: str, item_id: str
+    ) -> Optional[Any]:
         """
         Find a single document matching the query by model name
 
@@ -192,20 +206,26 @@ class Database:
         #         ):
         #             model_class = potential_class
         #             break
-        #if model_class is None:
+        # if model_class is None:
         #    logger.info(f"Trying to import model: {model_mapping}")
 
-        model_class  = await import_class(model_mapping)
+        model_class = await import_class(model_mapping)
         if model_class is None:
-            raise ValueError(f"DB: model class {model_mapping} not found in the available modules")
+            raise ValueError(
+                f"DB: model class {model_mapping} not found in the available modules"
+            )
 
         if isinstance(item_id, str):
             item_id = ObjectId(item_id)
 
         instance = await self.engine.find_one(model_class, model_class.id == item_id)
         if not instance:
-            logger.error(f"Instance of '{model_class.__name__}' with id '{item_id}' does not exist")
-            raise ValueError(f"Instance of '{model_class.__name__}' with id '{item_id}' does not exist")
+            logger.error(
+                f"Instance of '{model_class.__name__}' with id '{item_id}' does not exist"
+            )
+            raise ValueError(
+                f"Instance of '{model_class.__name__}' with id '{item_id}' does not exist"
+            )
         return instance
 
     async def find_all(self, model_class: Type[T], **kwargs) -> List[T]:
@@ -215,7 +235,7 @@ class Database:
         Args:
             model_class: The ODMantic model class
             **kwargs: Query filters
-            """
+        """
         return await self.engine.find(model_class, **kwargs)
 
     async def find_many(self, model_class: Type[T], query, **kwargs) -> List[T]:
@@ -242,7 +262,9 @@ class Database:
         """
         await self.engine.delete(model)
 
-    async def delete_by_id(self, model_class: Type[T], id: Union[str, ObjectId]) -> None:
+    async def delete_by_id(
+        self, model_class: Type[T], id: Union[str, ObjectId]
+    ) -> None:
         """
         Delete a document by its ID
 
@@ -326,7 +348,9 @@ class Database:
         )
         return result
 
-    async def load_node_model_by_name(self, node_model_name: str) -> Optional[NodeModel]:
+    async def load_node_model_by_name(
+        self, node_model_name: str
+    ) -> Optional[NodeModel]:
         """
         Load a node based on its name
 
@@ -367,20 +391,22 @@ class Database:
         Returns:
             List of matching NodeRegistry instances
         """
-        submitted_tasks = await self.engine.find(NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED)
+        submitted_tasks = await self.engine.find(
+            NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED
+        )
         # Then filter them in Python by checking the resource field
         matching_tasks = []
         for task in submitted_tasks:
             # Check if parameters has a resource attribute and if it matches our resource
             # the local runner will also do the immidiate tasks
-            if hasattr(task.parameters, "resource") and (task.parameters.resource == resource or
-               (resource == "local" and task.parameters.resource == "self")):
+            if hasattr(task.parameters, "resource") and (
+                task.parameters.resource == resource
+                or (resource == "local" and task.parameters.resource == "self")
+            ):
                 if resource == "local" and task.parameters.resource == "self":
                     logger.info(f"local runner taking job for 'self' with  {task.id}")
                 matching_tasks.append(task)
         return matching_tasks
-
-
 
     async def reset_database(self) -> None:
         """

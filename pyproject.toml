@@ -35,7 +35,7 @@ run_node = "simstack.core.run_node:run_node_main"
 simstack_write_sample_config = "simstack.util.sample_config:sample_config_writer_entrypoint"
 
 # UV Configuration
-# Forces PyYAML to a version compatible with Python 3.12, overriding any 
+# Forces PyYAML to a version compatible with Python 3.12, overriding any
 # conflicting requirements from other packages (like old pre-commit hooks or tools).
 [tool.uv]
 override-dependencies = [

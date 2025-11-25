@@ -4,9 +4,11 @@ from simstack.util.db_logger import DBLogHandler
 
 
 def setup_logging(
-    connection_string: str, db_name: str, log_level=logging.INFO, console=True,
-    log_format: str = "%(asctime)s - %(name)-15s - %(levelname)-10s - %(filename)-20s:%(lineno)4d - %(message)s"
-
+    connection_string: str,
+    db_name: str,
+    log_level=logging.INFO,
+    console=True,
+    log_format: str = "%(asctime)s - %(name)-15s - %(levelname)-10s - %(filename)-20s:%(lineno)4d - %(message)s",
 ):
     """
     Configures the root logger with specified logging level, handlers for both database

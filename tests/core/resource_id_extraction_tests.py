@@ -74,5 +74,5 @@ class TestResourcePatternExtraction(unittest.TestCase):
         self.assertEqual(extract_resource_id(message), uuid)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

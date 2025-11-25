@@ -17,6 +17,7 @@ class SampleClass(Model):
     def get_value(self):
         return self.value
 
+
 # Define a test class in a different module
 class AnotherSampleClass(Model):
     """Another sample class for testing import_class."""
@@ -25,6 +26,7 @@ class AnotherSampleClass(Model):
 
     def get_name(self):
         return self.name
+
 
 @pytest_asyncio.fixture
 async def setup_model_mapping():
@@ -42,6 +44,7 @@ async def setup_model_mapping():
         await context.db.delete(model_mapping)
     except Exception:
         pass  # Ignore cleanup errors
+
 
 @pytest_asyncio.fixture
 async def setup_pickled_class():
@@ -74,6 +77,7 @@ async def setup_pickled_class():
     except Exception:
         pass  # Ignore cleanup errors
 
+
 @pytest.mark.asyncio
 async def test_import_class_regular():
     """Test importing a class using regular Python import."""
@@ -86,6 +90,7 @@ async def test_import_class_regular():
     # Create an instance and verify it works
     instance = cls(value="test")
     assert instance.get_value() == "test"
+
 
 @pytest.mark.asyncio
 async def test_import_class_from_model_mapping(setup_model_mapping):
@@ -101,6 +106,7 @@ async def test_import_class_from_model_mapping(setup_model_mapping):
     instance = cls(value="test")
     assert instance.get_value() == "test"
 
+
 @pytest.mark.asyncio
 async def test_import_class_from_pickle(setup_pickled_class):
     """Test importing a class from a ClassPickle."""
@@ -114,11 +120,14 @@ async def test_import_class_from_pickle(setup_pickled_class):
     instance = cls(name="test")
     assert instance.get_name() == "test"
 
+
 @pytest.mark.asyncio
 async def test_import_class_nonexistent():
     """Test importing a non-existent class."""
     # Try to import a non-existent class
-    with pytest.raises(LookupError, match="Error finding ModelMapping for NonExistentClass"):
+    with pytest.raises(
+        LookupError, match="Error finding ModelMapping for NonExistentClass"
+    ):
         await import_class("tests.core.test_import_class.NonExistentClass")
 
 

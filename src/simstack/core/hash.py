@@ -19,6 +19,7 @@ hash_exclusions = [
     "sqlalchemy",
 ]
 
+
 def is_iterable(obj):
     try:
         iter(obj)
@@ -40,14 +41,14 @@ def hash_class_def(cls):
         source_code = inspect.getsource(cls)
         source_hash = hashlib.sha256(source_code.encode("utf-8")).hexdigest()
         return source_hash
-    except:
+    except Exception:
         mro = cls.__mro__
         for mro_class in mro:
             try:
                 source_code = inspect.getsource(mro_class)
                 source_hash = hashlib.sha256(source_code.encode("utf-8")).hexdigest()
                 return source_hash
-            except:
+            except Exception:
                 pass
         return "no source code"
 
@@ -97,22 +98,21 @@ class ComplexHash:
         class_name = class_type.__module__ + "." + class_type.__name__
         if class_type.__module__ == "builtins":
             return "builtin"
-        if any(
-            [class_name.startswith(exclusion) for exclusion in hash_exclusions]
-        ):
+        if any([class_name.startswith(exclusion) for exclusion in hash_exclusions]):
             return "excluded"
         # print("hashing class", cls_obj.__class__.__name__)
         class_hash = hash_class_def(cls_obj.__class__)
         # TODO is __dict__ better than vars ?
-        #dict_hash = self.hash_dict(vars(cls_obj))
-
+        # dict_hash = self.hash_dict(vars(cls_obj))
 
         obj_dict = cls_obj.__dict__.copy()
-        if hasattr(cls_obj, '__class__') and hasattr(cls_obj.__class__, '__bases__'):
+        if hasattr(cls_obj, "__class__") and hasattr(cls_obj.__class__, "__bases__"):
             for base in cls_obj.__class__.__bases__:
-                if base.__name__ == 'Model' and 'odmantic.model' in str(base.__module__):
-                    if 'id' in obj_dict:
-                        del obj_dict['id']
+                if base.__name__ == "Model" and "odmantic.model" in str(
+                    base.__module__
+                ):
+                    if "id" in obj_dict:
+                        del obj_dict["id"]
 
         dict_hash = self.hash_dict(obj_dict)
         if hasattr(cls_obj, "model_extra") and cls_obj.model_extra is not None:
@@ -152,7 +152,7 @@ class ComplexHash:
             if obj in self.hash_history:
                 return "recursive"
             self.hash_history.append(obj)
-            if hasattr(obj,"complex_hash"):
+            if hasattr(obj, "complex_hash"):
                 return obj.complex_hash()
             return self.hash_class(obj)
         elif isinstance(obj, dict):

@@ -37,7 +37,7 @@ class FileListMixin:
         :param file_stacks: List of FileStacks or another FileListMixin to extend with
         :type file_stacks: Union[List[FileStack], FileListMixin]
         """
-        if hasattr(file_stacks, 'file_stacks'):
+        if hasattr(file_stacks, "file_stacks"):
             # It's another FileListMixin object
             self.file_stacks.extend(file_stacks.file_stacks)
         else:
@@ -137,7 +137,9 @@ class FileListMixin:
         """
         return self.file_stacks.copy()
 
-    def __getitem__(self, index: Union[int, slice]) -> Union[FileStack, List[FileStack]]:
+    def __getitem__(
+        self, index: Union[int, slice]
+    ) -> Union[FileStack, List[FileStack]]:
         """
         Gets FileStack(s) at the specified index or slice.
 
@@ -148,7 +150,9 @@ class FileListMixin:
         """
         return self.file_stacks[index]
 
-    def __setitem__(self, index: Union[int, slice], value: Union[FileStack, List[FileStack]]):
+    def __setitem__(
+        self, index: Union[int, slice], value: Union[FileStack, List[FileStack]]
+    ):
         """
         Sets FileStack(s) at the specified index or slice.
 
@@ -234,7 +238,9 @@ class FileListMixin:
                 matches.append(file_stack)
         return matches
 
-    def filter_by_size(self, min_size: int = None, max_size: int = None) -> List[FileStack]:
+    def filter_by_size(
+        self, min_size: int = None, max_size: int = None
+    ) -> List[FileStack]:
         """
         Filters FileStacks by size range.
 
@@ -267,7 +273,10 @@ class FileListMixin:
         """
         results = []
         for file_stack in self.file_stacks:
-            if hasattr(file_stack, property_name) and getattr(file_stack, property_name) == value:
+            if (
+                hasattr(file_stack, property_name)
+                and getattr(file_stack, property_name) == value
+            ):
                 results.append(file_stack)
         return results
 
@@ -292,12 +301,16 @@ class FileListMixin:
 
 @simstack_model
 class FileList(EmbeddedModel, FileListMixin):
-    file_stacks: List[FileStack] = Field(default_factory=list, description="List of file stacks")
+    file_stacks: List[FileStack] = Field(
+        default_factory=list, description="List of file stacks"
+    )
 
 
 @simstack_model
 class FileListModel(Model, FileListMixin):
-    file_stacks: List[FileStack] = Field(default_factory=list, description="List of file stacks")
+    file_stacks: List[FileStack] = Field(
+        default_factory=list, description="List of file stacks"
+    )
 
 
 @simstack_model

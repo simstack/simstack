@@ -13,16 +13,19 @@ logger = logging.getLogger("file_instance")
 
 @simstack_model
 class FileInstance(EmbeddedModel):
-    """
+    """ """
 
-    """
-    path: str = Field(description="Path to the file relative to the host work directory")
+    path: str = Field(
+        description="Path to the file relative to the host work directory"
+    )
     resource: str = Field(description="Resource name")
 
     created_at: datetime = Field(description="Creation timestamp")
 
     @classmethod
-    def from_local_file(cls, path: Union[Path, str], file_stack_id: ObjectId, make_copy: bool = True):
+    def from_local_file(
+        cls, path: Union[Path, str], file_stack_id: ObjectId, make_copy: bool = True
+    ):
         """
         Creates a FileInstance object from a local file path.
 
@@ -48,9 +51,11 @@ class FileInstance(EmbeddedModel):
 
         try:
             from simstack.core.context import context
+
             if make_copy:
                 # make a local copy
                 import getpass
+
                 username = getpass.getuser()
                 relative_path = Path(username) / str(file_stack_id)
                 absolute_dir = Path(context.config.workdir) / relative_path
@@ -67,4 +72,6 @@ class FileInstance(EmbeddedModel):
             return file_instance
         except Exception as e:
             logger.error(f"Error creating FileInstance from local file {path}: {e}")
-            raise ValueError(f"Could not create FileInstance from local file {path}: {e}")
+            raise ValueError(
+                f"Could not create FileInstance from local file {path}: {e}"
+            )

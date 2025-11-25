@@ -32,13 +32,19 @@ def add_multiply_in_tests(args: BinaryOperationInput, **kwargs) -> FloatData:
 
 
 @node()
-def iterator_workflow_explicit_in_tests(args: IteratorInput, **kwargs) -> FloatData | None:
+def iterator_workflow_explicit_in_tests(
+    args: IteratorInput, **kwargs
+) -> FloatData | None:
     def generator(start, stop):
         for i in range(start, stop):
             yield i
 
     results_table = [
-        adder_in_tests(BinaryOperationInput(arg1=FloatData(value=2), arg2=FloatData(value=float(value))))
+        adder_in_tests(
+            BinaryOperationInput(
+                arg1=FloatData(value=2), arg2=FloatData(value=float(value))
+            )
+        )
         for value in generator(args.start, args.stop)
     ]
     if any([result.value is None for result in results_table]):
@@ -55,7 +61,11 @@ def iterator_workflow_in_tests(args: IteratorInput, **kwargs) -> FloatData | Non
         raise ValueError(f"Invalid generator expression: {e}")
 
     results_table = [
-        adder_in_tests(BinaryOperationInput(arg1=FloatData(value=2), arg2=FloatData(value=float(value))))
+        adder_in_tests(
+            BinaryOperationInput(
+                arg1=FloatData(value=2), arg2=FloatData(value=float(value))
+            )
+        )
         for value in generator_func(args.start, args.stop)
     ]
     if any([result.value is None for result in results_table]):
@@ -65,28 +75,42 @@ def iterator_workflow_in_tests(args: IteratorInput, **kwargs) -> FloatData | Non
 
 
 def test_adder():
-    assert(context.initialized == True)
-    result = adder_in_tests(BinaryOperationInput(type="adder", arg1=FloatData(value=1), arg2=FloatData(value=2)))
+    assert context.initialized is True
+    result = adder_in_tests(
+        BinaryOperationInput(
+            type="adder", arg1=FloatData(value=1), arg2=FloatData(value=2)
+        )
+    )
     assert result.value == pytest.approx(3)
 
 
 def test_wrapping():
     # a single node being wrapped in another node
-    result2 = add_multiply_in_tests(BinaryOperationInput(arg1=FloatData(value=6), arg2=FloatData(value=2)))
+    result2 = add_multiply_in_tests(
+        BinaryOperationInput(arg1=FloatData(value=6), arg2=FloatData(value=2))
+    )
     assert result2.value == pytest.approx(16)
 
 
 def test_iterator_workflow():
-    result3 = iterator_workflow_in_tests(IteratorInput(start=1, stop=3, generator="range"))
+    result3 = iterator_workflow_in_tests(
+        IteratorInput(start=1, stop=3, generator="range")
+    )
     assert result3.value == pytest.approx(7)
 
 
 def test_add_multiply():
-    result = add_multiply_in_tests(BinaryOperationInput(arg1=FloatData(value=6), arg2=FloatData(value=2)))
+    result = add_multiply_in_tests(
+        BinaryOperationInput(arg1=FloatData(value=6), arg2=FloatData(value=2))
+    )
     assert result.value == pytest.approx(16)
 
+
 def test_call_path():
-    result = use_adder_in_tests(BinaryOperationInput(
-        arg1=FloatData(name="a",value=12212),
-        arg2=FloatData(name="b",value=123123)))
+    result = use_adder_in_tests(
+        BinaryOperationInput(
+            arg1=FloatData(name="a", value=12212),
+            arg2=FloatData(name="b", value=123123),
+        )
+    )
     assert result.value == 135335, f"Expected 135335, got {result}"

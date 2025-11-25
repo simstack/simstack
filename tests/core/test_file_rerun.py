@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 
 from simstack.core.node import node
@@ -12,6 +10,7 @@ from simstack.models import StringData
 
 logger = logging.getLogger("FileArgumentNode")
 
+
 @node
 def run_file_argument(file_stack: FileStack, **kwargs):
     """
@@ -19,14 +18,15 @@ def run_file_argument(file_stack: FileStack, **kwargs):
     :param file_stack: FileStack object containing the file to be processed.
     :return: A success message with the file stack ID.
     """
-    task_id = kwargs.get("task_id",None)
+    task_id = kwargs.get("task_id", None)
 
     node_runner = NodeRunner(name="run_file_argument", **kwargs)
 
     node_runner.info(f"Processing file stack: {file_stack.id} with task_id: {task_id}")
-    node_runner.value = StringData(value=f"str(self.id")
+    node_runner.value = StringData(value="str(self.id")
 
     return node_runner.succeed(f"File {file_stack.id} processed successfully.")
+
 
 @pytest.mark.asyncio
 async def test_file_rerun(caplog, test_file_stack):
@@ -38,9 +38,6 @@ async def test_file_rerun(caplog, test_file_stack):
 
         caplog.clear()
         result2 = run_file_argument(test_file_stack)
-        assert not "Processing file stack" in caplog.text
+        assert "Processing file stack" not in caplog.text
         assert isinstance(result2, StringData)
         assert result2.value == run_id
-
-
-

@@ -1,9 +1,7 @@
 import pytest
-import os
 import shutil
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-import asyncio
 from simstack.core.context import context
 from simstack.core.node_runner import NodeRunner
 
@@ -47,7 +45,9 @@ class TestMakeInfoFiles:
         file1 = test_dir / "test1.log"
         file2 = test_dir / "config.txt"
 
-        with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
+        with patch(
+            "simstack.models.files.FileStack.from_local_file"
+        ) as mock_file_stack:
             mock_stack1 = MagicMock()
             mock_stack2 = MagicMock()
             mock_file_stack.side_effect = [mock_stack1, mock_stack2]
@@ -60,8 +60,12 @@ class TestMakeInfoFiles:
 
             # Verify FileStack.from_local_file was called correctly
             assert mock_file_stack.call_count == 2
-            mock_file_stack.assert_any_call(str(file1), in_memory=True, is_hashable=True, secure_source=True)
-            mock_file_stack.assert_any_call(str(file2), in_memory=True, is_hashable=True, secure_source=True)
+            mock_file_stack.assert_any_call(
+                str(file1), in_memory=True, is_hashable=True, secure_source=True
+            )
+            mock_file_stack.assert_any_call(
+                str(file2), in_memory=True, is_hashable=True, secure_source=True
+            )
 
     @pytest.mark.asyncio
     async def test_make_info_files_with_patterns(self, node_runner, test_dir):
@@ -69,7 +73,9 @@ class TestMakeInfoFiles:
         pattern1 = str(test_dir / "*.log")
         pattern2 = str(test_dir / "*.out")
 
-        with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
+        with patch(
+            "simstack.models.files.FileStack.from_local_file"
+        ) as mock_file_stack:
             mock_stacks = [MagicMock() for _ in range(4)]  # 2 .log + 2 .out files
             mock_file_stack.side_effect = mock_stacks
 
@@ -88,7 +94,9 @@ class TestMakeInfoFiles:
         direct_file = test_dir / "config.txt"
         pattern = str(test_dir / "*.err")
 
-        with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
+        with patch(
+            "simstack.models.files.FileStack.from_local_file"
+        ) as mock_file_stack:
             mock_stacks = [MagicMock(), MagicMock()]
             mock_file_stack.side_effect = mock_stacks
 
@@ -103,7 +111,9 @@ class TestMakeInfoFiles:
         nonexistent_file = test_dir / "nonexistent.txt"
         existing_file = test_dir / "test1.log"
 
-        with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
+        with patch(
+            "simstack.models.files.FileStack.from_local_file"
+        ) as mock_file_stack:
             mock_stack = MagicMock()
             mock_file_stack.return_value = mock_stack
 
@@ -112,7 +122,9 @@ class TestMakeInfoFiles:
             # Only existing file should be processed
             assert len(node_runner.info_files) == 1
             assert mock_file_stack.call_count == 1
-            mock_file_stack.assert_called_with(str(existing_file), in_memory=True, is_hashable=True, secure_source=True)
+            mock_file_stack.assert_called_with(
+                str(existing_file), in_memory=True, is_hashable=True, secure_source=True
+            )
 
     @pytest.mark.asyncio
     async def test_make_info_files_unreadable_file(self, node_runner, test_dir):
@@ -120,8 +132,10 @@ class TestMakeInfoFiles:
         unreadable_file = test_dir / "unreadable.txt"
         unreadable_file.write_text("content")
 
-        with patch('os.access', return_value=False):
-            with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
+        with patch("os.access", return_value=False):
+            with patch(
+                "simstack.models.files.FileStack.from_local_file"
+            ) as mock_file_stack:
                 await node_runner.make_info_files(str(unreadable_file))
 
                 # Should not process unreadable file
@@ -133,7 +147,9 @@ class TestMakeInfoFiles:
         """Test with pattern that matches no files"""
         empty_pattern = str(test_dir / "*.nonexistent")
 
-        with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
+        with patch(
+            "simstack.models.files.FileStack.from_local_file"
+        ) as mock_file_stack:
             await node_runner.make_info_files(empty_pattern)
 
             assert len(node_runner.info_files) == 0
@@ -147,7 +163,9 @@ class TestMakeInfoFiles:
         # Create a pattern that will match the same file
         pattern = str(file1)  # Direct path, not a glob pattern
 
-        with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
+        with patch(
+            "simstack.models.files.FileStack.from_local_file"
+        ) as mock_file_stack:
             mock_stack = MagicMock()
             mock_file_stack.return_value = mock_stack
 
@@ -160,7 +178,9 @@ class TestMakeInfoFiles:
     @pytest.mark.asyncio
     async def test_make_info_files_non_string_args(self, node_runner):
         """Test with non-string arguments"""
-        with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
+        with patch(
+            "simstack.models.files.FileStack.from_local_file"
+        ) as mock_file_stack:
             await node_runner.make_info_files(123, None, True, "valid_string")
 
             # Should ignore non-string arguments
@@ -172,8 +192,11 @@ class TestMakeInfoFiles:
         """Test exception handling in make_info_files"""
         file1 = test_dir / "test1.log"
 
-        with patch('simstack.models.files.FileStack.from_local_file', side_effect=Exception("File processing error")):
-            with patch.object(node_runner, 'error') as mock_error:
+        with patch(
+            "simstack.models.files.FileStack.from_local_file",
+            side_effect=Exception("File processing error"),
+        ):
+            with patch.object(node_runner, "error") as mock_error:
                 await node_runner.make_info_files(str(file1))
 
                 # Should handle exception and call error method
@@ -186,41 +209,56 @@ class TestMakeInfoFiles:
         file1 = test_dir / "test1.log"
         pattern = str(test_dir / "*.out")
 
-        with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
-            mock_stacks = [MagicMock() for _ in range(3)]  # 1 direct + 2 pattern matches
+        with patch(
+            "simstack.models.files.FileStack.from_local_file"
+        ) as mock_file_stack:
+            mock_stacks = [
+                MagicMock() for _ in range(3)
+            ]  # 1 direct + 2 pattern matches
             mock_file_stack.side_effect = mock_stacks
 
-            with patch.object(node_runner, 'info') as mock_info:
+            with patch.object(node_runner, "info") as mock_info:
                 await node_runner.make_info_files(str(file1), pattern)
 
                 # Should log processing patterns and found files
                 assert mock_info.call_count >= 2
                 # Check that logging includes pattern info
-                pattern_log_found = any("Processing patterns" in str(call) for call in mock_info.call_args_list)
-                files_log_found = any("Found info files" in str(call) for call in mock_info.call_args_list)
+                pattern_log_found = any(
+                    "Processing patterns" in str(call)
+                    for call in mock_info.call_args_list
+                )
+                files_log_found = any(
+                    "Found info files" in str(call) for call in mock_info.call_args_list
+                )
                 assert pattern_log_found
                 assert files_log_found
 
     @pytest.mark.asyncio
     async def test_make_info_files_no_args(self, node_runner):
         """Test with no arguments"""
-        with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
+        with patch(
+            "simstack.models.files.FileStack.from_local_file"
+        ) as mock_file_stack:
             await node_runner.make_info_files()
 
             assert len(node_runner.info_files) == 0
             assert mock_file_stack.call_count == 0
 
     @pytest.mark.asyncio
-    async def test_make_info_files_file_becomes_unavailable(self, node_runner, test_dir):
+    async def test_make_info_files_file_becomes_unavailable(
+        self, node_runner, test_dir
+    ):
         """Test when file exists during initial check but becomes unavailable later"""
         file1 = test_dir / "test1.log"
 
         # Mock os.path.exists to return True for initial check, False for final check
         exists_calls = [True, False]  # First call returns True, second returns False
 
-        with patch('os.path.exists', side_effect=exists_calls):
-            with patch('os.access', return_value=True):
-                with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
+        with patch("os.path.exists", side_effect=exists_calls):
+            with patch("os.access", return_value=True):
+                with patch(
+                    "simstack.models.files.FileStack.from_local_file"
+                ) as mock_file_stack:
                     await node_runner.make_info_files(str(file1))
 
                     # Should not process file if it becomes unavailable
@@ -237,7 +275,9 @@ class TestMakeInfoFiles:
 
         pattern = str(nested_dir / "*.log")
 
-        with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
+        with patch(
+            "simstack.models.files.FileStack.from_local_file"
+        ) as mock_file_stack:
             mock_stack = MagicMock()
             mock_file_stack.return_value = mock_stack
 
@@ -250,13 +290,19 @@ class TestMakeInfoFiles:
             assert "nested.log" in called_path
 
     @pytest.mark.asyncio
-    async def test_make_info_files_multiple_patterns_same_type(self, node_runner, test_dir):
+    async def test_make_info_files_multiple_patterns_same_type(
+        self, node_runner, test_dir
+    ):
         """Test multiple patterns that might overlap"""
         pattern1 = str(test_dir / "*.log")
         pattern2 = str(test_dir / "test*.log")  # Overlapping pattern
 
-        with patch('simstack.models.files.FileStack.from_local_file') as mock_file_stack:
-            mock_stacks = [MagicMock() for _ in range(2)]  # Should only process each file once
+        with patch(
+            "simstack.models.files.FileStack.from_local_file"
+        ) as mock_file_stack:
+            mock_stacks = [
+                MagicMock() for _ in range(2)
+            ]  # Should only process each file once
             mock_file_stack.side_effect = mock_stacks
 
             await node_runner.make_info_files(pattern1, pattern2)

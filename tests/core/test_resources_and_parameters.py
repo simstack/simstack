@@ -1,10 +1,8 @@
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from pydantic import ValidationError
 
 from simstack.models.parameters import Resource, Parameters, SlurmParameters
 from simstack.core.resources import allowed_resources
-import sys
+
 
 class TestResource:
     """Test suite for the Resource class."""
@@ -16,12 +14,9 @@ class TestResource:
         original_resources = allowed_resources.get_resources()
 
         # Set test resources
-        allowed_resources.set_resources([
-            "cpu_cluster",
-            "gpu_cluster",
-            "high_memory",
-            "self"
-        ])
+        allowed_resources.set_resources(
+            ["cpu_cluster", "gpu_cluster", "high_memory", "self"]
+        )
 
         yield
 
@@ -52,7 +47,7 @@ class TestResource:
 
         resource = Resource(value="invalid_resource")
         with pytest.raises(ValueError) as exc_info:
-            return_value = resource.value
+            resource.value
 
         msg = str(exc_info.value)
         assert "Invalid resource value" in msg
@@ -63,7 +58,7 @@ class TestResource:
 
         resource = Resource(value="invalid_resource")
         with pytest.raises(ValueError) as exc_info:
-            return_value = resource.value
+            resource.value
 
         msg = str(exc_info.value)
         assert "Invalid resource value" in msg
@@ -72,7 +67,7 @@ class TestResource:
     def test_resource_allowed_values_property(self):
         """Test the allowed_values property."""
 
-        resource = Resource(value="cpu_cluster")
+        Resource(value="cpu_cluster")
         expected_values = ["cpu_cluster", "gpu_cluster", "high_memory", "self"]
         assert Resource.allowed_values() == expected_values
 
@@ -100,7 +95,7 @@ class TestResource:
         resource = Resource(value="cpu_cluster")
 
         assert resource != 123
-        assert resource != None
+        assert resource is not None
         assert resource != ["cpu_cluster"]
 
 
@@ -114,12 +109,9 @@ class TestParameters:
         original_resources = allowed_resources.get_resources()
 
         # Set test resources
-        allowed_resources.set_resources([
-            "cpu_cluster",
-            "gpu_cluster",
-            "high_memory",
-            "self"
-        ])
+        allowed_resources.set_resources(
+            ["cpu_cluster", "gpu_cluster", "high_memory", "self"]
+        )
 
         yield
 
@@ -131,7 +123,7 @@ class TestParameters:
 
         params = Parameters()
 
-        assert params.force_rerun == False
+        assert params.force_rerun is False
         assert params.resource == "self"
         assert params.queue == "default"
         assert params.other_value == "other"
@@ -144,10 +136,10 @@ class TestParameters:
         params = Parameters(
             force_rerun=True,
             resource=Resource(value="gpu_cluster"),
-            queue="slurm-queue"
+            queue="slurm-queue",
         )
 
-        assert params.force_rerun == True
+        assert params.force_rerun is True
         assert params.resource == "gpu_cluster"
         assert params.queue == "slurm-queue"
 
@@ -156,12 +148,11 @@ class TestParameters:
 
         resource = Resource(value="invalid_resource")
         with pytest.raises(ValueError) as exc_info:
-            return_value = resource.value
+            resource.value
 
         msg = str(exc_info.value)
         assert "Invalid resource value" in msg
         assert "invalid_resource" in msg
-
 
     def test_parameters_slurm_parameters_property_default(self):
         """Test slurm_parameters property with default values."""
@@ -181,7 +172,7 @@ class TestParameters:
             "nodes": 4,
             "job_name": "test_job",
             "time": "12:00:00",
-            "partition": "gpu"
+            "partition": "gpu",
         }
 
         slurm_params = SlurmParameters(**slurm_data)
@@ -197,11 +188,7 @@ class TestParameters:
         """Test slurm_parameters setter."""
 
         params = Parameters()
-        new_slurm = SlurmParameters(
-            nodes=8,
-            job_name="custom_job",
-            time="24:00:00"
-        )
+        new_slurm = SlurmParameters(nodes=8, job_name="custom_job", time="24:00:00")
 
         params.slurm_parameters = new_slurm
 
@@ -217,7 +204,6 @@ class TestParameters:
 
         assert params.slurm_parameters == SlurmParameters()
 
-
     def test_parameters_full_model_validation(self):
         """Test full Parameters model validation with all fields."""
 
@@ -232,13 +218,13 @@ class TestParameters:
                 "job_name": "full_test",
                 "time": "48:00:00",
                 "partition": "special",
-                "gres": "gpu:4"
-            }
+                "gres": "gpu:4",
+            },
         }
 
         params = Parameters(**test_data)
 
-        assert params.force_rerun == True
+        assert params.force_rerun is True
         assert params.resource == "high_memory"
         assert params.queue == "priority"
         assert params.other_value == "custom"
@@ -262,9 +248,7 @@ class TestIntegration:
         original_resources = allowed_resources.get_resources()
 
         # Set test resources
-        allowed_resources.set_resources([
-            "local", "cluster_a", "cluster_b", "gpu_node"
-        ])
+        allowed_resources.set_resources(["local", "cluster_a", "cluster_b", "gpu_node"])
 
         yield
 
@@ -289,9 +273,7 @@ class TestIntegration:
         """Test serialization and deserialization of Parameters."""
 
         original_params = Parameters(
-            force_rerun=True,
-            resource=Resource(value="gpu_node"),
-            queue="gpu_queue"
+            force_rerun=True, resource=Resource(value="gpu_node"), queue="gpu_queue"
         )
         original_params.slurm_parameters = SlurmParameters(nodes=4, time="12:00:00")
 
@@ -304,8 +286,14 @@ class TestIntegration:
         assert restored_params.force_rerun == original_params.force_rerun
         assert restored_params.resource == original_params.resource
         assert restored_params.queue == original_params.queue
-        assert restored_params.slurm_parameters.nodes == original_params.slurm_parameters.nodes
-        assert restored_params.slurm_parameters.time == original_params.slurm_parameters.time
+        assert (
+            restored_params.slurm_parameters.nodes
+            == original_params.slurm_parameters.nodes
+        )
+        assert (
+            restored_params.slurm_parameters.time
+            == original_params.slurm_parameters.time
+        )
 
 
 class TestAllowedResourcesIntegration:
@@ -327,7 +315,7 @@ class TestAllowedResourcesIntegration:
             resource = Resource(value="invalid_resource")
             # Should reject invalid values
             with pytest.raises(ValueError):
-                value = resource.value
+                resource.value
 
         finally:
             # Restore original state

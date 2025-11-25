@@ -12,6 +12,7 @@ from simstack.models.files import FileStack
 
 local_logger = logging.getLogger("NodeRunner")
 
+
 class NodeRunner(SimstackResult):
     """
     A task runner class that extends SimstackResult for executing subprocess commands and managing task execution.
@@ -28,7 +29,7 @@ class NodeRunner(SimstackResult):
         info_file_patterns (Set[str]): File patterns used to collect information files
     """
 
-    def __init__(self, name: str = "node", logger = None, **kwargs):
+    def __init__(self, name: str = "node", logger=None, **kwargs):
         """
         Initialize the NodeRunner instance.
 
@@ -68,7 +69,7 @@ class NodeRunner(SimstackResult):
             # Process args for patterns and files
             for value in args:
                 if isinstance(value, str):
-                    if '*' in value:
+                    if "*" in value:
                         self.info_file_patterns.add(value)
                     elif os.path.exists(value) and os.access(value, os.R_OK):
                         files_set.add(value)
@@ -85,8 +86,9 @@ class NodeRunner(SimstackResult):
 
             for file_path in files_set:
                 if os.path.exists(file_path):
-                    file_stack = FileStack.from_local_file(file_path, in_memory=True, is_hashable=True,
-                                                           secure_source=True)
+                    file_stack = FileStack.from_local_file(
+                        file_path, in_memory=True, is_hashable=True, secure_source=True
+                    )
                     self.info_files.append(file_stack)
         except Exception as finally_error:
             self.error(f"Error in finally block: {str(finally_error)}")
@@ -149,7 +151,7 @@ class NodeRunner(SimstackResult):
         """
         if name == "":
             name = "process"
-        with  open(f"{name}.log", "w") as process_log:
+        with open(f"{name}.log", "w") as process_log:
             process_log.write(f"Command: {name}\n{command}\n")
             # TODO adapt for docker
             process = subprocess.run(
@@ -157,7 +159,7 @@ class NodeRunner(SimstackResult):
                 shell=True,  # Important: use shell=True for shell operators like &&
                 capture_output=True,
                 text=True,
-                cwd=cwd if cwd else None
+                cwd=cwd if cwd else None,
             )
             self.info(f"run script {name} finished: {process.returncode}")
             self.last_stdout = process.stdout
@@ -165,7 +167,9 @@ class NodeRunner(SimstackResult):
             process_log.write(f"Process return code:\n{process.returncode}\n\n")
             process_log.write(f"Process output:\n{process.stdout}\n\n")
             process_log.write(f"Process error:\n{process.stderr}\n\n")
-        file_stack = FileStack.from_local_file(f"{name}.log", in_memory=True, is_hashable=True, secure_source=True)
+        file_stack = FileStack.from_local_file(
+            f"{name}.log", in_memory=True, is_hashable=True, secure_source=True
+        )
         self.info_files.append(file_stack)
         return process.returncode == 0
 
@@ -192,12 +196,13 @@ class NodeRunner(SimstackResult):
         if name == "":
             name = "process"
         from simstack.util.submit_to_watchdog import submit_to_watchdog
+
         try:
-            with  open(f"{name}.log", "w") as process_log:
+            with open(f"{name}.log", "w") as process_log:
                 process_log.write(f"Command: {name}\n{command}\n")
 
                 job_id = str(self.task_id) + "_" + uuid.uuid4().hex
-                result = submit_to_watchdog(command,job_id, queue_dir)
+                result = submit_to_watchdog(command, job_id, queue_dir)
                 if result.status == "ok":
                     self.info(f"watchdog {result.exit_code}")
                 else:
@@ -208,7 +213,9 @@ class NodeRunner(SimstackResult):
                 process_log.write(f"Process return code:\n{result.exit_code}\n\n")
                 process_log.write(f"Process output:\n{result.stdout}\n\n")
                 process_log.write(f"Process error:\n{result.stderr}\n\n")
-            file_stack = FileStack.from_local_file(f"{name}.log", in_memory=True, is_hashable=True, secure_source=True)
+            file_stack = FileStack.from_local_file(
+                f"{name}.log", in_memory=True, is_hashable=True, secure_source=True
+            )
             self.info_files.append(file_stack)
             return result.status == "ok" and result.returncode == 0
         except Exception as e:

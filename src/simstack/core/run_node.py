@@ -8,6 +8,7 @@ from simstack.core.node import node_from_database
 
 logger = logging.getLogger("SlurmRunner")
 
+
 async def run_node(node_id: str, **kwargs):
     """Run a single node by its ID from the database"""
     registry_entry = None
@@ -20,7 +21,9 @@ async def run_node(node_id: str, **kwargs):
         # Create node from the registry entry
         node = await node_from_database(registry_entry)
         if not node:
-            logger.error(f"Failed to create node from registry entry task_id: {registry_entry.id}")
+            logger.error(
+                f"Failed to create node from registry entry task_id: {registry_entry.id}"
+            )
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
             return False
@@ -30,10 +33,9 @@ async def run_node(node_id: str, **kwargs):
     except Exception as e:
         logger.exception(f"Error running node task_id: {node_id}: {str(e)}")
         if registry_entry:
-           registry_entry.status = TaskStatus.FAILED
-           await context.db.save(registry_entry)
+            registry_entry.status = TaskStatus.FAILED
+            await context.db.save(registry_entry)
         return False
-
 
 
 def run_node_main():
@@ -58,6 +60,7 @@ def run_node_main():
     if args.node_id:
         # Run a specific node once
         asyncio.run(run_node(args.node_id))
+
 
 if __name__ == "__main__":
     run_node_main()

@@ -12,41 +12,43 @@ class TransformationBuilder:
         self.transforms: Dict[str, FieldTransform] = {}
         self.description: str = ""
 
-    def set_description(self, description: str) -> 'TransformationBuilder':
+    def set_description(self, description: str) -> "TransformationBuilder":
         """Set description for the transformation"""
         self.description = description
         return self
 
-    def drop_field(self, field_path: str) -> 'TransformationBuilder':
+    def drop_field(self, field_path: str) -> "TransformationBuilder":
         """Drop a field from the output"""
         self.transforms[field_path] = FieldTransform(
-            model_name=self.model_name,
-            field_path=field_path,
-            action="drop"
+            model_name=self.model_name, field_path=field_path, action="drop"
         )
         return self
 
-    def rename_field(self, field_path: str, new_name: str) -> 'TransformationBuilder':
+    def rename_field(self, field_path: str, new_name: str) -> "TransformationBuilder":
         """Rename a field"""
         self.transforms[field_path] = FieldTransform(
             model_name=self.model_name,
             field_path=field_path,
             action="rename",
-            target_field=new_name
+            target_field=new_name,
         )
         return self
 
-    def apply_function(self, field_path: str, function_code: str) -> 'TransformationBuilder':
+    def apply_function(
+        self, field_path: str, function_code: str
+    ) -> "TransformationBuilder":
         """Apply a transformation function to a field"""
         self.transforms[field_path] = FieldTransform(
             model_name=self.model_name,
             field_path=field_path,
             action="function",
-            function_code=function_code
+            function_code=function_code,
         )
         return self
 
-    def apply_compiled_function(self, field_path: str, func: Callable) -> 'TransformationBuilder':
+    def apply_compiled_function(
+        self, field_path: str, func: Callable
+    ) -> "TransformationBuilder":
         """Apply a compiled function to a field by storing its bytecode"""
         if not callable(func):
             raise ValueError("func must be callable")
@@ -111,7 +113,9 @@ except Exception as e:
 
         return self.apply_function(field_path, wrapper_code)
 
-    def apply_function_by_name(self, field_path: str, func_name: str) -> 'TransformationBuilder':
+    def apply_function_by_name(
+        self, field_path: str, func_name: str
+    ) -> "TransformationBuilder":
         """Apply a function by its name"""
         function_code = f"""
 if '{func_name}' in globals():
@@ -125,7 +129,9 @@ else:
 """
         return self.apply_function(field_path, function_code)
 
-    def extract_enum_value(self, field_path: str, value_key: str = "value") -> 'TransformationBuilder':
+    def extract_enum_value(
+        self, field_path: str, value_key: str = "value"
+    ) -> "TransformationBuilder":
         """Helper to extract value from enum-like objects"""
         function_code = f"""
 if isinstance(value, dict) and "{value_key}" in value:
@@ -135,7 +141,9 @@ else:
 """
         return self.apply_function(field_path, function_code)
 
-    def flatten_object(self, field_path: str, prefix: str = "") -> 'TransformationBuilder':
+    def flatten_object(
+        self, field_path: str, prefix: str = ""
+    ) -> "TransformationBuilder":
         """Helper to flatten nested objects"""
         function_code = f"""
 if isinstance(value, dict):
@@ -150,7 +158,7 @@ else:
 """
         return self.apply_function(field_path, function_code)
 
-    def pandas_to_react(self, field_path: str = "content_") -> 'TransformationBuilder':
+    def pandas_to_react(self, field_path: str = "content_") -> "TransformationBuilder":
         """Helper for common pandas transformation"""
         function_code = """
 import io
@@ -161,10 +169,10 @@ if value:
     try:
         buffer = io.BytesIO(value)
         df = pd.read_pickle(buffer)
-        
+
         for col in df.select_dtypes(include=['datetime64']):
             df[col] = df[col].dt.strftime('%Y-%m-%dT%H:%M:%S')
-        
+
         data = df.to_dict(orient='records')
         result = json.loads(json.dumps(data, default=str))
     except Exception as e:
@@ -178,7 +186,10 @@ else:
         """Export as JSON string"""
         export_data = {
             "model_name": self.model_name,
-            "transforms": [transform.model_dump(exclude={"id"}) for transform in self.transforms.values()]
+            "transforms": [
+                transform.model_dump(exclude={"id"})
+                for transform in self.transforms.values()
+            ],
         }
 
         return json.dumps(export_data, indent=2)

@@ -3,10 +3,11 @@ async def async_zip(async_gen1, async_gen2):
     async for item1, item2 in async_zip_multiple(async_gen1, async_gen2):
         yield item1, item2
 
+
 async def async_zip_multiple(*async_generators):
     """Async version of zip for multiple async generators"""
     iterators = [aiter(ag) for ag in async_generators]
-    
+
     while True:
         try:
             values = []

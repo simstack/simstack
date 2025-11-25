@@ -2,7 +2,15 @@ from datetime import datetime
 from typing import Union, Dict, Any
 
 
-def make_table_entries_helper(model_instance, table_name=None, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
+def make_table_entries_helper(
+    model_instance,
+    table_name=None,
+    max_recursion_level=1,
+    drop_id=True,
+    current_level=0,
+    visited=None,
+    field_prefix="",
+):
     """
     Create table data for AG Grid from a model instance.
     Handles datetime objects properly and can optionally drop ID fields.
@@ -33,12 +41,22 @@ def make_table_entries_helper(model_instance, table_name=None, max_recursion_lev
     # Get model class and fields
     model_class = type(model_instance)
 
-    if hasattr(model_instance, 'make_table_entries'):
+    if hasattr(model_instance, "make_table_entries"):
         field_prefix = f"{field_prefix}." if field_prefix else ""
-        field_prefix = f"{field_prefix}{model_instance.__class__.__name__}" if field_prefix else model_instance.__class__.__name__
-        return model_instance.make_table_entries(max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix="")
+        field_prefix = (
+            f"{field_prefix}{model_instance.__class__.__name__}"
+            if field_prefix
+            else model_instance.__class__.__name__
+        )
+        return model_instance.make_table_entries(
+            max_recursion_level=1,
+            drop_id=True,
+            current_level=0,
+            visited=None,
+            field_prefix="",
+        )
 
-    model_fields = getattr(model_instance, 'model_fields', {})
+    model_fields = getattr(model_instance, "model_fields", {})
 
     # Use class name if table_name not provided
     if table_name is None:
@@ -50,7 +68,7 @@ def make_table_entries_helper(model_instance, table_name=None, max_recursion_lev
     # Process each field
     for field_name, field_type in model_fields.items():
         # Skip ID fields if drop_id is True
-        if drop_id and (field_name == 'id' or field_name == '_id'):
+        if drop_id and (field_name == "id" or field_name == "_id"):
             continue
 
         # Calculate the full field path for AG Grid
@@ -70,7 +88,7 @@ def make_table_entries_helper(model_instance, table_name=None, max_recursion_lev
             continue
 
         # Check if the field is a nested model
-        is_nested_model = hasattr(field_value, 'model_fields')
+        is_nested_model = hasattr(field_value, "model_fields")
 
         # If the recursion level is 0, exclude all nested objects
         if max_recursion_level == 0 and is_nested_model:
@@ -79,12 +97,13 @@ def make_table_entries_helper(model_instance, table_name=None, max_recursion_lev
         # Handle nested model if it exists and we haven't reached max recursion
         if is_nested_model and current_level < max_recursion_level:
             # Check if the object has its own make_table method
-            if hasattr(field_value, 'make_table_entries'):
-                nested_result = field_value.make_table_entries  (
+            if hasattr(field_value, "make_table_entries"):
+                nested_result = field_value.make_table_entries(
                     max_recursion_level=max_recursion_level,
                     current_level=current_level + 1,
                     visited=visited,
-                    field_prefix=f"{field_path}." )
+                    field_prefix=f"{field_path}.",
+                )
 
                 if isinstance(nested_result, dict) and "tableData" in nested_result:
                     nested_summary = nested_result["tableData"]
@@ -100,16 +119,18 @@ def make_table_entries_helper(model_instance, table_name=None, max_recursion_lev
                     drop_id,
                     current_level + 1,
                     visited,
-                    f"{field_path}."
+                    f"{field_path}.",
                 )
                 nested_summary = nested_result
 
             # Add the nested object as a sub-dictionary
             summary[field_name] = nested_summary
 
-        elif field_type == 'self' and current_level < max_recursion_level:
+        elif field_type == "self" and current_level < max_recursion_level:
             # Handle self-referential field, but only go one level deep to avoid cycles
-            raise ValueError(f"Self-referential field '{field_name}' is not supported in make_table_entries.")
+            raise ValueError(
+                f"Self-referential field '{field_name}' is not supported in make_table_entries."
+            )
             if field_value is not None and id(field_value) not in visited:
                 # Process only the direct fields of the self-reference
                 nested_result = make_table_entries_helper(
@@ -119,7 +140,7 @@ def make_table_entries_helper(model_instance, table_name=None, max_recursion_lev
                     drop_id,
                     current_level + 1,
                     visited,
-                    f"{field_path}."
+                    f"{field_path}.",
                 )
                 nested_summary = nested_result["tableData"]
                 summary[field_name] = nested_summary
@@ -130,15 +151,22 @@ def make_table_entries_helper(model_instance, table_name=None, max_recursion_lev
                 for item in field_value:
                     if isinstance(item, datetime):
                         processed_list.append(item.isoformat())
-                    elif hasattr(item, 'model_fields') and current_level < max_recursion_level:
+                    elif (
+                        hasattr(item, "model_fields")
+                        and current_level < max_recursion_level
+                    ):
                         # Handle nested models in lists
-                        if hasattr(item, 'make_table'):
+                        if hasattr(item, "make_table"):
                             nested_result = item.make_table_entries(
                                 max_recursion_level=0,
                                 current_level=current_level + 1,
-                                visited=visited.copy())
+                                visited=visited.copy(),
+                            )
 
-                            if isinstance(nested_result, dict) and "tableData" in nested_result:
+                            if (
+                                isinstance(nested_result, dict)
+                                and "tableData" in nested_result
+                            ):
                                 processed_list.append(nested_result["tableData"])
                             else:
                                 processed_list.append(nested_result)
@@ -150,7 +178,7 @@ def make_table_entries_helper(model_instance, table_name=None, max_recursion_lev
                                 drop_id,
                                 current_level + 1,
                                 visited.copy(),
-                                ""
+                                "",
                             )
                             processed_list.append(nested_result["tableData"])
                     else:
@@ -162,41 +190,56 @@ def make_table_entries_helper(model_instance, table_name=None, max_recursion_lev
 
     return summary
 
+
 def is_pydantic_model(obj):
     """
     Check if an object is a Pydantic model class.
-    
+
     Args:
         obj: The object to check
-        
+
     Returns:
         bool: True if the object is a Pydantic model class, False otherwise
     """
     # For Pydantic V1
-    if hasattr(obj, '__fields__'):
+    if hasattr(obj, "__fields__"):
         return True
-    
+
     # For Pydantic V2
-    if hasattr(obj, 'model_fields'):
+    if hasattr(obj, "model_fields"):
         return True
-        
+
     # Check for BaseModel inheritance (works for both V1 and V2)
     if isinstance(obj, type):
         from inspect import getmro
+
         for base in getmro(obj):
-            if base.__name__ == 'BaseModel':
+            if base.__name__ == "BaseModel":
                 return True
-    
+
     # Handle typing objects like Optional[Model]
-    if hasattr(obj, '__origin__') and hasattr(obj, '__args__'):
+    if hasattr(obj, "__origin__") and hasattr(obj, "__args__"):
         # Check if it's a Union type (which includes Optional)
         from typing import _SpecialGenericAlias, _GenericAlias
-        if isinstance(obj, (_SpecialGenericAlias, _GenericAlias)) and obj.__origin__ is Union:
+
+        if (
+            isinstance(obj, (_SpecialGenericAlias, _GenericAlias))
+            and obj.__origin__ is Union
+        ):
             return any(is_pydantic_model(arg) for arg in obj.__args__)
-    
+
     return False
 
-def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
+
+def make_column_defs_helper(
+    model_class,
+    table_name=None,
+    max_recursion_level=1,
+    drop_id=True,
+    current_level=0,
+    visited=None,
+    field_prefix="",
+):
     """
     Create column definitions for AG Grid based on a model class.
     Uses the same logic as table data generation but for model class.
@@ -217,7 +260,7 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
         list: Column definitions for AG Grid
     """
     from typing import get_origin, get_args, List, Union
-    
+
     # Initialize a visited set to track classes for preventing infinite recursion
     if visited is None:
         visited = set()
@@ -229,10 +272,20 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
     # Mark this class as visited
     visited.add(id(model_class))
 
-    if hasattr(model_class, 'make_column_defs'):
-        return model_class.make_column_defs(model_class, table_name=None, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix="")
+    if hasattr(model_class, "make_column_defs"):
+        return model_class.make_column_defs(
+            model_class,
+            table_name=None,
+            max_recursion_level=1,
+            drop_id=True,
+            current_level=0,
+            visited=None,
+            field_prefix="",
+        )
     # Get model fields
-    model_fields = getattr(model_class, 'model_fields', getattr(model_class, '__fields__', {}))
+    model_fields = getattr(
+        model_class, "model_fields", getattr(model_class, "__fields__", {})
+    )
 
     # Use class name if table_name not provided
     if table_name is None:
@@ -244,17 +297,17 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
     # Process each field
     for field_name, field_info in model_fields.items():
         # Skip ID fields if drop_id is True
-        if drop_id and (field_name == 'id' or field_name == '_id'):
+        if drop_id and (field_name == "id" or field_name == "_id"):
             continue
 
         # Calculate the full field path for AG Grid
         field_path = f"{field_prefix}{field_name}" if field_prefix else field_name
 
         # Extract field type (different in V1 and V2)
-        if hasattr(field_info, 'annotation'):
+        if hasattr(field_info, "annotation"):
             # Pydantic V2
             field_type = field_info.annotation
-        elif hasattr(field_info, 'type_'):
+        elif hasattr(field_info, "type_"):
             # Pydantic V1
             field_type = field_info.type_
         else:
@@ -263,9 +316,9 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
 
         # Check if the field type is a Pydantic model
         is_nested_model = is_pydantic_model(field_type)
-        
+
         # Extract actual model class for nested types (like Optional[Model])
-        if is_nested_model and hasattr(field_type, '__args__'):
+        if is_nested_model and hasattr(field_type, "__args__"):
             args = get_args(field_type)
             for arg in args:
                 if is_pydantic_model(arg):
@@ -274,7 +327,7 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
 
         # Create column definition based on the field type
         column_def = create_column_def(field_name, field_type, None, field_path)
-        
+
         # Set object type for nested models
         if is_nested_model:
             column_def["type"] = "objectColumn"
@@ -287,11 +340,12 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
         # Handle nested model class if it exists and we haven't reached max recursion
         if is_nested_model and current_level < max_recursion_level:
             # Check if the class has its own make_columns method
-            if hasattr(field_type, 'make_column_defs'):
+            if hasattr(field_type, "make_column_defs"):
                 nested_columns = field_type.make_column_defs(
                     max_recursion_level=max_recursion_level,
                     current_level=current_level + 1,
-                    visited=visited.copy())
+                    visited=visited.copy(),
+                )
             else:
                 # Process the nested model class recursively
                 nested_columns = make_column_defs_helper(
@@ -301,7 +355,7 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
                     drop_id,
                     current_level + 1,
                     visited.copy(),
-                    f"{field_path}."
+                    f"{field_path}.",
                 )
 
             # Create a column group for nested fields if we have columns
@@ -309,12 +363,12 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
                 group_column = {
                     "headerName": field_name.capitalize(),
                     "marryChildren": True,
-                    "children": nested_columns
+                    "children": nested_columns,
                 }
                 column_defs.append(group_column)
             else:
                 column_defs.append(column_def)
-        elif field_type == 'self' and current_level < max_recursion_level:
+        elif field_type == "self" and current_level < max_recursion_level:
             # Handle self-referential field type
             # Create a new visited set for this branch to avoid affecting other branches
             self_visited = visited.copy()
@@ -327,7 +381,7 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
                     drop_id,
                     current_level + 1,
                     self_visited,
-                    f"{field_path}."
+                    f"{field_path}.",
                 )
 
                 # Create a column group for self-referential fields
@@ -335,7 +389,7 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
                     group_column = {
                         "headerName": field_name.capitalize(),
                         "marryChildren": True,
-                        "children": nested_columns
+                        "children": nested_columns,
                     }
                     column_defs.append(group_column)
                 else:
@@ -346,7 +400,7 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
             # Handle lists/arrays
             is_list_type = False
             inner_type = None
-            
+
             # Check for various list types using get_origin and get_args
             origin = get_origin(field_type)
             if origin is list or origin is List:
@@ -371,13 +425,13 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
                 list_column_def = {
                     "headerName": field_name.capitalize(),
                     "field": field_path,
-                    "cellRenderer": "agArrayCellRenderer"
+                    "cellRenderer": "agArrayCellRenderer",
                 }
-                
+
                 # If the list contains models, we might want to indicate that
                 if inner_type and is_pydantic_model(inner_type):
                     list_column_def["type"] = "modelArrayColumn"
-                
+
                 column_defs.append(list_column_def)
             else:
                 # This is a simple field, add column definition directly
@@ -385,7 +439,16 @@ def make_column_defs_helper(model_class, table_name=None, max_recursion_level=1,
 
     return column_defs
 
-def make_column_defs_instance(model_instance, table_name=None, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
+
+def make_column_defs_instance(
+    model_instance,
+    table_name=None,
+    max_recursion_level=1,
+    drop_id=True,
+    current_level=0,
+    visited=None,
+    field_prefix="",
+):
     """
     Create column definitions for AG Grid based on a model instance.
     Uses the same logic as table data generation but works on an actual instance.
@@ -418,20 +481,23 @@ def make_column_defs_instance(model_instance, table_name=None, max_recursion_lev
     visited.add(instance_id)
 
     # Check if the instance has a custom make_column_defs method
-    if hasattr(model_instance, 'make_column_defs_instance') and callable(getattr(model_instance, 'make_column_defs_instance')):
-
+    if hasattr(model_instance, "make_column_defs_instance") and callable(
+        getattr(model_instance, "make_column_defs_instance")
+    ):
         return model_instance.make_column_defs_instance(
             table_name=table_name,
             max_recursion_level=max_recursion_level,
             drop_id=drop_id,
             current_level=current_level,
             visited=visited.copy(),
-            field_prefix=field_prefix
+            field_prefix=field_prefix,
         )
 
     # Get model class and fields
     model_class = type(model_instance)
-    model_fields = getattr(model_class, 'model_fields', getattr(model_class, '__fields__', {}))
+    model_fields = getattr(
+        model_class, "model_fields", getattr(model_class, "__fields__", {})
+    )
 
     # Use class name if table_name not provided
     if table_name is None:
@@ -443,7 +509,7 @@ def make_column_defs_instance(model_instance, table_name=None, max_recursion_lev
     # Process each field
     for field_name, field_info in model_fields.items():
         # Skip ID fields if drop_id is True
-        if drop_id and (field_name == 'id' or field_name == '_id'):
+        if drop_id and (field_name == "id" or field_name == "_id"):
             continue
 
         # Calculate the full field path for AG Grid
@@ -456,10 +522,10 @@ def make_column_defs_instance(model_instance, table_name=None, max_recursion_lev
             field_value = None
 
         # Extract field type (different in V1 and V2)
-        if hasattr(field_info, 'annotation'):
+        if hasattr(field_info, "annotation"):
             # Pydantic V2
             field_type = field_info.annotation
-        elif hasattr(field_info, 'type_'):
+        elif hasattr(field_info, "type_"):
             # Pydantic V1
             field_type = field_info.type_
         else:
@@ -470,7 +536,7 @@ def make_column_defs_instance(model_instance, table_name=None, max_recursion_lev
         is_nested_model = is_pydantic_model(field_type)
 
         # Extract actual model class for nested types (like Optional[Model])
-        if is_nested_model and hasattr(field_type, '__args__'):
+        if is_nested_model and hasattr(field_type, "__args__"):
             args = get_args(field_type)
             for arg in args:
                 if is_pydantic_model(arg):
@@ -495,14 +561,21 @@ def make_column_defs_instance(model_instance, table_name=None, max_recursion_lev
             continue
 
         # Handle nested model instance if it exists and we haven't reached max recursion
-        if is_nested_model and field_value is not None and current_level < max_recursion_level:
+        if (
+            is_nested_model
+            and field_value is not None
+            and current_level < max_recursion_level
+        ):
             # Check if the instance has its own make_column_defs method
-            if hasattr(field_value, 'make_column_defs_instance') and callable(getattr(field_value, 'make_column_defs_instance')):
+            if hasattr(field_value, "make_column_defs_instance") and callable(
+                getattr(field_value, "make_column_defs_instance")
+            ):
                 nested_columns = field_value.make_column_defs_instance(
                     max_recursion_level=max_recursion_level,
                     current_level=current_level + 1,
                     visited=visited.copy(),
-                    field_prefix=f"{field_path}." if field_path else "")
+                    field_prefix=f"{field_path}." if field_path else "",
+                )
             else:
                 # Process the nested model instance recursively
                 nested_columns = make_column_defs_instance(
@@ -512,7 +585,7 @@ def make_column_defs_instance(model_instance, table_name=None, max_recursion_lev
                     drop_id,
                     current_level + 1,
                     visited.copy(),
-                    f"{field_path}."
+                    f"{field_path}.",
                 )
 
             # Create a column group for nested fields if we have columns
@@ -520,12 +593,12 @@ def make_column_defs_instance(model_instance, table_name=None, max_recursion_lev
                 group_column = {
                     "headerName": field_name.capitalize(),
                     "marryChildren": True,
-                    "children": nested_columns
+                    "children": nested_columns,
                 }
                 column_defs.append(group_column)
             else:
                 column_defs.append(column_def)
-        elif field_type == 'self' and current_level < max_recursion_level:
+        elif field_type == "self" and current_level < max_recursion_level:
             # Handle self-referential field type
             if field_value is not None:
                 # Create a new visited set for this branch to avoid affecting other branches
@@ -539,7 +612,7 @@ def make_column_defs_instance(model_instance, table_name=None, max_recursion_lev
                         drop_id,
                         current_level + 1,
                         self_visited,
-                        f"{field_path}."
+                        f"{field_path}.",
                     )
 
                     # Create a column group for self-referential fields
@@ -547,7 +620,7 @@ def make_column_defs_instance(model_instance, table_name=None, max_recursion_lev
                         group_column = {
                             "headerName": field_name.capitalize(),
                             "marryChildren": True,
-                            "children": nested_columns
+                            "children": nested_columns,
                         }
                         column_defs.append(group_column)
                     else:
@@ -595,7 +668,7 @@ def make_column_defs_instance(model_instance, table_name=None, max_recursion_lev
                 list_column_def = {
                     "headerName": field_name.capitalize(),
                     "field": field_path,
-                    "cellRenderer": "agArrayCellRenderer"
+                    "cellRenderer": "agArrayCellRenderer",
                 }
 
                 # If the list contains models, we might want to indicate that
@@ -618,7 +691,10 @@ def make_column_defs_instance(model_instance, table_name=None, max_recursion_lev
 
     return column_defs
 
-def make_table_entries(model_instances, table_name=None, max_recursion_level=1, drop_id=True):
+
+def make_table_entries(
+    model_instances, table_name=None, max_recursion_level=1, drop_id=True
+):
     """
     Create AG Grid table configuration for a list of model instances.
     This is the main function to make tables that are visible in the ui.
@@ -655,7 +731,7 @@ def make_table_entries(model_instances, table_name=None, max_recursion_level=1, 
         return {
             "tableName": table_name or "EmptyTable",
             "rowData": [],
-            "columnDefs": []
+            "columnDefs": [],
         }
 
     # Get the first instance and its class
@@ -664,37 +740,25 @@ def make_table_entries(model_instances, table_name=None, max_recursion_level=1, 
     model_class = type(first_instance)
 
     # Use the new helper functions
-    table_data_result = make_table_entries_helper(
-        first_instance,
-        table_name,
-        max_recursion_level,
-        drop_id
-    )
+    # table_data_result = make_table_entries_helper(
+    #     first_instance, table_name, max_recursion_level, drop_id
+    # )
 
     # Get column definitions using the model class
     column_defs = make_column_defs_helper(
-        model_class,
-        table_name,
-        max_recursion_level,
-        drop_id
+        model_class, table_name, max_recursion_level, drop_id
     )
 
     # Process all instances to get row data
     row_data = []
     for instance in model_instances:
         instance_result = make_table_entries_helper(
-            instance,
-            table_name,
-            max_recursion_level,
-            drop_id
+            instance, table_name, max_recursion_level, drop_id
         )
         row_data.append(instance_result)
 
-    return {
-        "tableName": "Table",
-        "rowData": row_data,
-        "columnDefs": column_defs
-    }
+    return {"tableName": "Table", "rowData": row_data, "columnDefs": column_defs}
+
 
 def create_column_def(field_name, field_type, field_value, field_path):
     """
@@ -730,11 +794,15 @@ def create_column_def(field_name, field_type, field_value, field_path):
             column_def["type"] = "textColumn"
     else:
         # Determine type from field_type if field_value is None
-        if field_type is bool or (isinstance(field_type, type) and issubclass(field_type, bool)):
+        if field_type is bool or (
+            isinstance(field_type, type) and issubclass(field_type, bool)
+        ):
             column_def["type"] = "booleanColumn"
-        elif field_type in (int, float) or (isinstance(field_type, type) and issubclass(field_type, (int, float))):
+        elif field_type in (int, float) or (
+            isinstance(field_type, type) and issubclass(field_type, (int, float))
+        ):
             column_def["type"] = "numericColumn"
-        elif hasattr(field_type, '__name__') and field_type.__name__ == 'datetime':
+        elif hasattr(field_type, "__name__") and field_type.__name__ == "datetime":
             column_def["type"] = "dateColumn"
         else:
             column_def["type"] = "textColumn"
@@ -742,7 +810,7 @@ def create_column_def(field_name, field_type, field_value, field_path):
     return column_def
 
 
-def ui_add_table(ui_options: Dict[str,Any]) -> Dict[str,Any]:
+def ui_add_table(ui_options: Dict[str, Any]) -> Dict[str, Any]:
     """
     Add table options to the UI schema for AG Grid.
 
@@ -751,13 +819,9 @@ def ui_add_table(ui_options: Dict[str,Any]) -> Dict[str,Any]:
     :return: modified ui_options
     """
     ui_options["ui:table"] = {  # this goes into gridOptions
-            'pagination': True,
-            'paginationPageSize': 20,
-            'domLayout': 'autoHeight',
-            'defaultColDef': {
-                'flex': 1,
-                'minWidth': 80,
-                'resizable': True
-            }
-        }
-    return ui_options # for chaining
+        "pagination": True,
+        "paginationPageSize": 20,
+        "domLayout": "autoHeight",
+        "defaultColDef": {"flex": 1, "minWidth": 80, "resizable": True},
+    }
+    return ui_options  # for chaining

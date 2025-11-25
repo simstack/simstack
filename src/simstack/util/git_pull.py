@@ -6,6 +6,7 @@ from datetime import datetime
 
 logger = logging.getLogger("git_pull")
 
+
 def git_pull_periodically(repo_path, interval_minutes=1, log_file=None):
     """
     Performs git pull in the specified repository at regular intervals.
@@ -23,11 +24,13 @@ def git_pull_periodically(repo_path, interval_minutes=1, log_file=None):
     interval_seconds = interval_minutes * 60
     logger.info("git_pull " + repo_path)
     # Check if the path is a valid git repository
-    if not os.path.exists(os.path.join(repo_path, '.git')):
+    if not os.path.exists(os.path.join(repo_path, ".git")):
         logging.error(f"The directory {repo_path} is not a valid Git repository.")
         return
 
-    logging.info(f"Starting periodic git pull every {interval_minutes} minutes for {repo_path}")
+    logging.info(
+        f"Starting periodic git pull every {interval_minutes} minutes for {repo_path}"
+    )
 
     try:
         while True:
@@ -41,10 +44,7 @@ def git_pull_periodically(repo_path, interval_minutes=1, log_file=None):
 
                 # Execute git pull
                 result = subprocess.run(
-                    ['git', 'pull'],
-                    capture_output=True,
-                    text=True,
-                    check=True
+                    ["git", "pull"], capture_output=True, text=True, check=True
                 )
 
                 # Log the output
@@ -63,4 +63,3 @@ def git_pull_periodically(repo_path, interval_minutes=1, log_file=None):
 
     except KeyboardInterrupt:
         logging.info("Git pull process stopped by user.")
-

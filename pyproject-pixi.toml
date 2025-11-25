@@ -186,7 +186,7 @@ norecursedirs = ["examples", "applications", "scripts", ".git", ".pixi", "build"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
-    "unit: marks tests as unit tests", 
+    "unit: marks tests as unit tests",
     "local_runner: marks tests that require local runner",
     "database: marks tests that require database",
     "rdkit: marks tests as RDKit-specific tests",

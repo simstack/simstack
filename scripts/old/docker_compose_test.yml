@@ -1,11 +1,11 @@
 services:
   simstack-pip:
-    build: 
+    build:
       context: ../..
       dockerfile: ../../Dockerfile3
     image: xerius65/test:latest  # Add this line to control the image name
     container_name: test
-    
+
     depends_on:
       - mongodb
     environment:

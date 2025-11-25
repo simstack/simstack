@@ -1,7 +1,4 @@
 import pytest
-import asyncio
-from typing import Dict, Any
-from odmantic import ObjectId
 
 from simstack.models.artifact_models import ArtifactModel
 
@@ -17,7 +14,7 @@ class TestArtifactModel:
             name="test_int_artifact",
             description="Test artifact with integer data",
             data={"value": 42, "count": 100},
-            path="/test/path/int"
+            path="/test/path/int",
         )
 
         assert artifact_int.name == "test_int_artifact"
@@ -30,7 +27,7 @@ class TestArtifactModel:
             name="test_str_artifact",
             description="Test artifact with string data",
             data={"message": "hello world", "status": "completed"},
-            path="/test/path/str"
+            path="/test/path/str",
         )
 
         assert artifact_str.data["message"] == "hello world"
@@ -42,7 +39,7 @@ class TestArtifactModel:
             name="test_bool_artifact",
             description="Test artifact with boolean data",
             data={"is_valid": True, "is_processed": False},
-            path="/test/path/bool"
+            path="/test/path/bool",
         )
 
         assert artifact_bool.data["is_valid"] is True
@@ -60,15 +57,15 @@ class TestArtifactModel:
             "nested_dict": {
                 "inner_int": 456,
                 "inner_str": "nested_string",
-                "inner_bool": False
-            }
+                "inner_bool": False,
+            },
         }
 
         artifact = ArtifactModel(
             name="mixed_data_artifact",
             description="Artifact with mixed data types",
             data=mixed_data,
-            path="/test/path/mixed"
+            path="/test/path/mixed",
         )
 
         assert artifact.data["integer_value"] == 123
@@ -88,17 +85,14 @@ class TestArtifactModel:
             "bool_list": [True, False, True, True],
             "mixed_list": [1, "two", True, 4.0],
             "nested_list": [[1, 2], [3, 4], [5, 6]],
-            "dict_list": [
-                {"id": 1, "name": "first"},
-                {"id": 2, "name": "second"}
-            ]
+            "dict_list": [{"id": 1, "name": "first"}, {"id": 2, "name": "second"}],
         }
 
         artifact = ArtifactModel(
             name="list_data_artifact",
             description="Artifact with various list types",
             data=list_data,
-            path="/test/path/lists"
+            path="/test/path/lists",
         )
 
         # Test integer list
@@ -126,7 +120,9 @@ class TestArtifactModel:
         assert artifact.data["dict_list"][1]["id"] == 2
 
     @pytest.mark.asyncio
-    async def test_save_and_retrieve_artifact_with_basic_data(self, initialized_context):
+    async def test_save_and_retrieve_artifact_with_basic_data(
+        self, initialized_context
+    ):
         """Test saving and retrieving ArtifactModel with basic data types from database."""
         original_artifact = ArtifactModel(
             name="db_test_basic",
@@ -135,9 +131,9 @@ class TestArtifactModel:
                 "count": 42,
                 "message": "test message",
                 "active": True,
-                "score": 95.5
+                "score": 95.5,
             },
-            path="/database/test/basic"
+            path="/database/test/basic",
         )
 
         # Save to database
@@ -146,8 +142,7 @@ class TestArtifactModel:
 
         # Retrieve from database
         retrieved_artifact = await initialized_context.db.find_one(
-            ArtifactModel,
-            ArtifactModel.id == saved_artifact.id
+            ArtifactModel, ArtifactModel.id == saved_artifact.id
         )
 
         # Verify all data was correctly saved and retrieved
@@ -167,21 +162,15 @@ class TestArtifactModel:
             "numbers": [10, 20, 30, 40, 50],
             "words": ["hello", "world", "test"],
             "flags": [True, False, True],
-            "nested_data": {
-                "inner_list": [1, 2, 3],
-                "inner_dict": {"key": "value"}
-            },
-            "complex_list": [
-                {"type": "A", "value": 100},
-                {"type": "B", "value": 200}
-            ]
+            "nested_data": {"inner_list": [1, 2, 3], "inner_dict": {"key": "value"}},
+            "complex_list": [{"type": "A", "value": 100}, {"type": "B", "value": 200}],
         }
 
         original_artifact = ArtifactModel(
             name="db_test_lists",
             description="Database test with list data",
             data=list_data,
-            path="/database/test/lists"
+            path="/database/test/lists",
         )
 
         # Save to database
@@ -189,8 +178,7 @@ class TestArtifactModel:
 
         # Retrieve from database
         retrieved_artifact = await initialized_context.db.find_one(
-            ArtifactModel,
-            ArtifactModel.id == saved_artifact.id
+            ArtifactModel, ArtifactModel.id == saved_artifact.id
         )
 
         # Verify all list data was correctly saved and retrieved
@@ -212,7 +200,7 @@ class TestArtifactModel:
             name="updateable_artifact",
             description="Test artifact for updates",
             data={"counter": 1, "status": "initial"},
-            path="/test/update"
+            path="/test/update",
         )
 
         # Save initial version
@@ -228,8 +216,7 @@ class TestArtifactModel:
 
         # Retrieve and verify updates
         retrieved_artifact = await initialized_context.db.find_one(
-            ArtifactModel,
-            ArtifactModel.id == updated_artifact.id
+            ArtifactModel, ArtifactModel.id == updated_artifact.id
         )
 
         assert retrieved_artifact.data["counter"] == 2
@@ -243,7 +230,7 @@ class TestArtifactModel:
             name="empty_data_artifact",
             description="Artifact with empty data",
             data={},  # Empty dict
-            path="/test/empty"
+            path="/test/empty",
         )
 
         # Save to database
@@ -251,8 +238,7 @@ class TestArtifactModel:
 
         # Retrieve from database
         retrieved_artifact = await initialized_context.db.find_one(
-            ArtifactModel,
-            ArtifactModel.id == saved_artifact.id
+            ArtifactModel, ArtifactModel.id == saved_artifact.id
         )
 
         assert retrieved_artifact is not None
@@ -264,7 +250,7 @@ class TestArtifactModel:
         """Test that data field defaults to empty dict when not provided."""
         artifact = ArtifactModel(
             name="default_data_artifact",
-            path="/test/default"
+            path="/test/default",
             # Note: not providing data field
         )
 
@@ -274,8 +260,7 @@ class TestArtifactModel:
         # Test saving and retrieving
         saved_artifact = await initialized_context.db.save(artifact)
         retrieved_artifact = await initialized_context.db.find_one(
-            ArtifactModel,
-            ArtifactModel.id == saved_artifact.id
+            ArtifactModel, ArtifactModel.id == saved_artifact.id
         )
 
         assert retrieved_artifact.data == {}
@@ -288,18 +273,18 @@ class TestArtifactModel:
             ArtifactModel(
                 name="search_test_1",
                 data={"category": "test", "priority": "high"},
-                path="/search/1"
+                path="/search/1",
             ),
             ArtifactModel(
                 name="search_test_2",
                 data={"category": "production", "priority": "low"},
-                path="/search/2"
+                path="/search/2",
             ),
             ArtifactModel(
                 name="search_test_3",
                 data={"category": "test", "priority": "medium"},
-                path="/search/3"
-            )
+                path="/search/3",
+            ),
         ]
 
         # Save all artifacts
@@ -312,8 +297,7 @@ class TestArtifactModel:
         found_artifacts = []
         for saved in saved_artifacts:
             retrieved = await initialized_context.db.find_one(
-                ArtifactModel,
-                ArtifactModel.id == saved.id
+                ArtifactModel, ArtifactModel.id == saved.id
             )
             if retrieved and "test" in retrieved.name:
                 found_artifacts.append(retrieved)
@@ -321,5 +305,7 @@ class TestArtifactModel:
         assert len(found_artifacts) == 3
 
         # Verify data content
-        test_artifacts = [a for a in found_artifacts if a.data.get("category") == "test"]
+        test_artifacts = [
+            a for a in found_artifacts if a.data.get("category") == "test"
+        ]
         assert len(test_artifacts) == 2

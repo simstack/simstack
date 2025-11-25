@@ -23,7 +23,11 @@ def model_to_graph_data(model, exclude_none=True, exclude_unset=True, exclude=No
         fields = model.__fields__
     else:
         # Fallback if field access pattern is different
-        fields = {k: None for k in dir(model) if not k.startswith('_') and not callable(getattr(model, k))}
+        fields = {
+            k: None
+            for k in dir(model)
+            if not k.startswith("_") and not callable(getattr(model, k))
+        }
 
     # Process each field to find lists with numeric or string values
     for field_name in fields:
@@ -37,7 +41,9 @@ def model_to_graph_data(model, exclude_none=True, exclude_unset=True, exclude=No
             continue
 
         # Handle unset values if exclude_unset is True
-        if exclude_unset and value == getattr(fields.get(field_name), 'default', object()):
+        if exclude_unset and value == getattr(
+            fields.get(field_name), "default", object()
+        ):
             continue
 
         # Check if the field is a list with numeric or string values
@@ -58,9 +64,6 @@ def model_to_graph_data(model, exclude_none=True, exclude_unset=True, exclude=No
     list_length = next(iter(list_lengths))
     if list_length == 0:
         return None  # Empty lists
-
-    # Create data points for the graph
-    data_points = []
 
     # Generate data series for each potential y-axis
     series = []
@@ -84,35 +87,21 @@ def model_to_graph_data(model, exclude_none=True, exclude_unset=True, exclude=No
             # Create a series for this y-axis
             series_data = []
             for i in range(list_length):
-                series_data.append({
-                    'x': x_values[i],
-                    'y': values[i]
-                })
+                series_data.append({"x": x_values[i], "y": values[i]})
 
-            series.append({
-                'name': field_name,
-                'data': series_data
-            })
+            series.append({"name": field_name, "data": series_data})
 
     # Create the graph data structure
     graph_data = {
-        'chart': {
-            'type': 'line'  # Default chart type, can be changed
+        "chart": {
+            "type": "line"  # Default chart type, can be changed
         },
-        'title': {
-            'text': model.__class__.__name__  # Use model class name as title
+        "title": {
+            "text": model.__class__.__name__  # Use model class name as title
         },
-        'xAxis': {
-            'title': {
-                'text': x_axis_field
-            }
-        },
-        'yAxis': {
-            'title': {
-                'text': 'Value'
-            }
-        },
-        'series': series
+        "xAxis": {"title": {"text": x_axis_field}},
+        "yAxis": {"title": {"text": "Value"}},
+        "series": series,
     }
 
     return graph_data

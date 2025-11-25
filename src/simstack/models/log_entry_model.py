@@ -15,7 +15,6 @@ class LogLevel(str, Enum):
     CRITICAL = "CRITICAL"
 
 
-
 class LogEntry(Model):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     level: LogLevel  # Use enum for validation

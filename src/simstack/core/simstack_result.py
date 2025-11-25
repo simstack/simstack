@@ -30,6 +30,7 @@ class SimstackResult(BaseModel):
         but not passed to the calling function
     :type info_files: List[FileStack]
     """
+
     status: TaskStatus = TaskStatus.COMPLETED
     error_message: Optional[str] = None
     message: Optional[str] = None
@@ -37,4 +38,4 @@ class SimstackResult(BaseModel):
     info_files: List[FileStack] = Field(default_factory=list)
 
     class Config:
-        extra = 'allow'  # Allow extra fields without validation
+        extra = "allow"  # Allow extra fields without validation

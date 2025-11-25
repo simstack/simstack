@@ -12,6 +12,7 @@ from simstack.util.importer import import_function
 
 logger = logging.getLogger("recompute_artifacts")
 
+
 async def recompute_artifacts(node_registry: NodeRegistry):
     """
     Recomputes artifacts for a node and all its children recursively.
@@ -32,7 +33,9 @@ async def recompute_artifacts(node_registry: NodeRegistry):
 
     # Find all children of this node
 
-    children = await engine.find(NodeRegistry, NodeRegistry.parent_ids.in_([node_registry.id]))
+    children = await engine.find(
+        NodeRegistry, NodeRegistry.parent_ids.in_([node_registry.id])
+    )
 
     # Recursively recompute artifacts for all children first
     for child_registry in children:
@@ -40,28 +43,32 @@ async def recompute_artifacts(node_registry: NodeRegistry):
 
     # Remove current node's artifacts
     if node_registry.artifact_ids:
-        logger.info(f"Removing {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}")
+        logger.info(
+            f"Removing {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}"
+        )
 
         table_artifacts = await engine.find(
-            TableArtifactModel,
-            TableArtifactModel.parent_id == node_registry.id
+            TableArtifactModel, TableArtifactModel.parent_id == node_registry.id
         )
         for table_artifact in table_artifacts:
             await engine.delete(table_artifact)
 
         chart_artifacts = await engine.find(
-            ChartArtifactModel,
-            ChartArtifactModel.parent_id == node_registry.id
+            ChartArtifactModel, ChartArtifactModel.parent_id == node_registry.id
         )
         for chart_artifact in chart_artifacts:
             await engine.delete(chart_artifact)
         # Delete artifacts from the database
         for artifact_id in node_registry.artifact_ids:
-            instance = await engine.find_one(ArtifactModel, ArtifactModel.id == artifact_id)
+            instance = await engine.find_one(
+                ArtifactModel, ArtifactModel.id == artifact_id
+            )
             if instance:
                 await engine.delete(instance)
             else:
-                logger.warning(f"task_id: {node_registry.id} Failed to delete artifact {artifact_id} from database")
+                logger.warning(
+                    f"task_id: {node_registry.id} Failed to delete artifact {artifact_id} from database"
+                )
         node_registry.artifact_ids = []
 
     # Recompute artifacts for this node
@@ -74,29 +81,41 @@ async def recompute_artifacts(node_registry: NodeRegistry):
             artifact_arguments = ArtifactArguments(result, node_registry.id)
             # Reconstruct the function arguments for artifact creation
             args = []
-            for table, table_id in zip(node_registry.input_tables, node_registry.input_ids):
+            for table, table_id in zip(
+                node_registry.input_tables, node_registry.input_ids
+            ):
                 model = await import_class(table)
-                arg = await engine.find_one(model,model.id== table_id)
+                arg = await engine.find_one(model, model.id == table_id)
                 if arg:
                     args.append(arg)
 
             # Get the function for artifact creation
             wrapped_func = await import_function(node_registry.func_mapping)
-            func = wrapped_func if not hasattr(wrapped_func, "_inner") else wrapped_func._inner
+            func = (
+                wrapped_func
+                if not hasattr(wrapped_func, "_inner")
+                else wrapped_func._inner
+            )
 
             # Create node kwargs similar to run_local
             node_kwargs = {
-                'parent_id': node_registry.id,
-                'task_id': node_registry.id,
-                'call_path': node_registry.call_path,
-                'parent_parameters': node_registry.parameters
+                "parent_id": node_registry.id,
+                "task_id": node_registry.id,
+                "call_path": node_registry.call_path,
+                "parent_parameters": node_registry.parameters,
             }
 
             artifact_arguments.add_attributes(func, *args, **node_kwargs)
-            node_registry.artifact_ids = await create_artifacts(artifact_arguments, node_registry)
+            node_registry.artifact_ids = await create_artifacts(
+                artifact_arguments, node_registry
+            )
 
             # Save the updated registry
             await engine.save(node_registry)
-            logger.info(f"Recomputed {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}")
+            logger.info(
+                f"Recomputed {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}"
+            )
     else:
-        logger.warning(f"Node {node_registry.id} is not completed, cannot recompute artifacts")
+        logger.warning(
+            f"Node {node_registry.id} is not completed, cannot recompute artifacts"
+        )

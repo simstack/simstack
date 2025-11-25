@@ -54,14 +54,12 @@ class AIOEngineProxy(AIOEngine):
         Tries positional engine and keyword engine forms, awaits if coroutine.
         Returns True if a save was invoked, False otherwise.
         """
-        if not hasattr(target, 'save'):
+        if not hasattr(target, "save"):
             return False
-        save_attr = getattr(target, 'save')
+        save_attr = getattr(target, "save")
         if not callable(save_attr):
-            raise AttributeError(f"Model {target} has no callable `save` method"
-                                 )
+            raise AttributeError(f"Model {target} has no callable `save` method")
         return await target.save(self)
-
 
     async def _call_parts_saves(self, model: Any) -> bool:
         """
@@ -108,7 +106,10 @@ class AIOEngineProxy(AIOEngine):
         return any_saved
 
 
-current_engine_context: ContextVar[Optional[AIOEngineProxy]] = ContextVar('current_engine', default=None)
+current_engine_context: ContextVar[Optional[AIOEngineProxy]] = ContextVar(
+    "current_engine", default=None
+)
+
 
 def get_current_engine_from_context() -> Optional[AIOEngineProxy]:
     """Get the current engine from context"""

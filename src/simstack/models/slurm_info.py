@@ -15,4 +15,3 @@ class SlurmInfo(Model):
     code: str
     time: str
     nodes: list[str]
-

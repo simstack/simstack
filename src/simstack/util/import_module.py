@@ -8,6 +8,7 @@ from simstack.util.project_root_finder import find_project_root
 
 logger = logging.getLogger("import_module_from_file")
 
+
 def import_module_from_file(file_path: Path):
     """
     Import a Python file as a module.
@@ -27,9 +28,9 @@ def import_module_from_file(file_path: Path):
         root_dir = find_project_root()
         relative_path = file_path.relative_to(root_dir)
         directory, filename = os.path.split(str(relative_path))
-        basename = filename.split('.')[0]
+        basename = filename.split(".")[0]
 
-        module_name = '.'.join(relative_path.parts[:-1]) + "." + basename
+        module_name = ".".join(relative_path.parts[:-1]) + "." + basename
 
         if root_dir not in sys.path:
             sys.path.insert(0, root_dir)
@@ -59,6 +60,6 @@ def import_module_from_file(file_path: Path):
     except Exception as e:
         logger.error(f"Error importing module from {file_path}: {e}")
         import traceback
+
         traceback.print_exc()
         return None
-

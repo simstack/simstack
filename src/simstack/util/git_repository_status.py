@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Dict
 
+
 def get_git_status(repo_path: Path) -> Dict[str, Optional[object]]:
     """
     Get the current Git short commit hash and whether the branch is up to date with its upstream.
@@ -16,10 +17,13 @@ def get_git_status(repo_path: Path) -> Dict[str, Optional[object]]:
         "behind": Optional[int],       # commits behind upstream (0 if up to date), None if unknown
       }
     """
+
     def run_git(args, check=False):
         return subprocess.run(
             ["git", "-C", str(repo_path), *args],
-            capture_output=True, text=True, check=check
+            capture_output=True,
+            text=True,
+            check=check,
         )
 
     result: Dict[str, Optional[object]] = {
@@ -55,7 +59,9 @@ def get_git_status(repo_path: Path) -> Dict[str, Optional[object]]:
 
     # Find upstream; if none, we can't determine up-to-date status against a remote
     try:
-        upstream_res = run_git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"])
+        upstream_res = run_git(
+            ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"]
+        )
         if upstream_res.returncode != 0:
             # No upstream configured
             return result
@@ -67,13 +73,16 @@ def get_git_status(repo_path: Path) -> Dict[str, Optional[object]]:
 
         # Compute ahead/behind relative to upstream
         # Format: "<behind> <ahead>" because left is upstream, right is HEAD
-        counts_res = run_git(["rev-list", "--left-right", "--count", f"{upstream_ref}...HEAD"], check=True)
+        counts_res = run_git(
+            ["rev-list", "--left-right", "--count", f"{upstream_ref}...HEAD"],
+            check=True,
+        )
         behind_str, ahead_str = counts_res.stdout.strip().split()
         behind, ahead = int(behind_str), int(ahead_str)
 
         result["behind"] = behind
         result["ahead"] = ahead
-        result["up_to_date"] = (behind == 0 and ahead == 0)
+        result["up_to_date"] = behind == 0 and ahead == 0
     except subprocess.CalledProcessError:
         # If comparison fails, leave up_to_date/ahead/behind as None
         pass

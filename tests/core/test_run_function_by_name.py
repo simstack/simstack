@@ -1,12 +1,13 @@
 import pytest
-import pytest_asyncio
 from simstack.core.node import node
 from simstack.models import BinaryOperationInput, FloatData
 from simstack.util.importer import import_function
 
+
 @node
-def adder_for_tests(arg: BinaryOperationInput,**kwargs) -> FloatData:
+def adder_for_tests(arg: BinaryOperationInput, **kwargs) -> FloatData:
     return FloatData(value=arg.arg1.value + arg.arg2.value)
+
 
 @pytest.mark.skip(reason="Function comparison fails in pipeline")
 @pytest.mark.asyncio

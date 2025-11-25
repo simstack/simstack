@@ -9,23 +9,46 @@ class IntData(Model):
     field_name: str = "int"
     value: int
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def ensure_fieldname(cls, data):
         """Ensure fieldname is set for existing documents"""
-        if isinstance(data, dict) and 'field_name' not in data:
-            data['field_name'] = "int"
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = "int"
         return data
 
-    def make_table_entries(self, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
-        return { self.field_name: self.value}
+    def make_table_entries(
+        self,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return {self.field_name: self.value}
 
-    def make_column_defs_instance(self, table_name=None, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
-        return [{ "field": self.field_name, "headerName": self.field_name, "type": "numericColumn"}]
+    def make_column_defs_instance(
+        self,
+        table_name=None,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return [
+            {
+                "field": self.field_name,
+                "headerName": self.field_name,
+                "type": "numericColumn",
+            }
+        ]
 
     @classmethod
     def ui_schema(cls, **kwargs) -> dict:
-        return { "ui:field" : "IntDataField" }  # This tells RJSF to use the custom component
+        return {
+            "ui:field": "IntDataField"
+        }  # This tells RJSF to use the custom component
 
 
 @simstack_model
@@ -33,23 +56,46 @@ class FloatData(Model):
     field_name: str = "float"
     value: float
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def ensure_fieldname(cls, data):
         """Ensure fieldname is set for existing documents"""
-        if isinstance(data, dict) and 'field_name' not in data:
-            data['field_name'] = "float"
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = "float"
         return data
 
-    def make_table_entries(self, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
-        return { self.field_name: self.value}
+    def make_table_entries(
+        self,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return {self.field_name: self.value}
 
-    def make_column_defs_instance(self, table_name=None, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
-        return [{ "field": self.field_name, "headerName": self.field_name, "type": "numericColumn"}]
+    def make_column_defs_instance(
+        self,
+        table_name=None,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return [
+            {
+                "field": self.field_name,
+                "headerName": self.field_name,
+                "type": "numericColumn",
+            }
+        ]
 
     @classmethod
     def ui_schema(cls, **kwargs) -> dict:
-        return { "ui:field" : "FloatDataField" }  # This tells RJSF to use the custom component
+        return {
+            "ui:field": "FloatDataField"
+        }  # This tells RJSF to use the custom component
 
 
 @simstack_model
@@ -57,23 +103,46 @@ class StringData(Model):
     field_name: str = "text"
     value: str
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def ensure_fieldname(cls, data):
         """Ensure fieldname is set for existing documents"""
-        if isinstance(data, dict) and 'field_name' not in data:
-            data['field_name'] = "text"
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = "text"
         return data
 
-    def make_table_entries(self, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
-        return { self.field_name: self.value}
+    def make_table_entries(
+        self,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return {self.field_name: self.value}
 
-    def make_column_defs_instance(self, table_name=None, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
-        return [{ "field": self.field_name, "headerName": self.field_name, "type": "textColumn"}]
+    def make_column_defs_instance(
+        self,
+        table_name=None,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return [
+            {
+                "field": self.field_name,
+                "headerName": self.field_name,
+                "type": "textColumn",
+            }
+        ]
 
     @classmethod
     def ui_schema(cls, **kwargs) -> dict:
-        return { "ui:field" : "StringDataField" }  # This tells RJSF to use the custom component
+        return {
+            "ui:field": "StringDataField"
+        }  # This tells RJSF to use the custom component
 
 
 @simstack_model
@@ -81,23 +150,46 @@ class BooleanData(Model):
     field_name: str = "boolean"
     value: bool
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def ensure_fieldname(cls, data):
         """Ensure fieldname is set for existing documents"""
-        if isinstance(data, dict) and 'field_name' not in data:
-            data['field_name'] = "boolean"
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = "boolean"
         return data
 
-    def make_table_entries(self, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
-        return { self.field_name: self.value}
+    def make_table_entries(
+        self,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return {self.field_name: self.value}
 
-    def make_column_defs_instance(self, table_name=None, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
-        return [{ "field": self.field_name, "headerName": self.field_name, "type": "booleanColumn"}]
+    def make_column_defs_instance(
+        self,
+        table_name=None,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return [
+            {
+                "field": self.field_name,
+                "headerName": self.field_name,
+                "type": "booleanColumn",
+            }
+        ]
 
     @classmethod
     def ui_schema(cls, **kwargs) -> dict:
-        return { "ui:field" : "BooleanDataField" }  # This tells RJSF to use the custom component
+        return {
+            "ui:field": "BooleanDataField"
+        }  # This tells RJSF to use the custom component
 
 
 @simstack_model

@@ -29,16 +29,25 @@ class ConfigReader:
     :ivar _environment_start: Environment-specific start command extracted from the resource settings.
     :type _environment_start: str | None
     """
+
     def __init__(self, **kwargs):
-        config_path = kwargs["config_path"] if "config_path" in kwargs else find_project_root()
-        config_file = kwargs["config_file"] if "config_file" in kwargs else "simstack.toml"
+        config_path = (
+            kwargs["config_path"] if "config_path" in kwargs else find_project_root()
+        )
+        config_file = (
+            kwargs["config_file"] if "config_file" in kwargs else "simstack.toml"
+        )
         try:
             toml_file = os.path.join(config_path, config_file)
             if os.path.exists(toml_file):
                 with open(toml_file, "rb") as f:
                     self.config = tomllib.load(f)
             elif kwargs.get("is_test", False):
-                self.config = {"paths": {"tests": {"path": "tests", "drops": "", "use_pickle": False}}}
+                self.config = {
+                    "paths": {
+                        "tests": {"path": "tests", "drops": "", "use_pickle": False}
+                    }
+                }
             else:
                 print(f"Config file {toml_file} does not exist. Aborting.")
                 sys.exit(-1)
@@ -47,8 +56,7 @@ class ConfigReader:
             print("There was an error decoding the TOML file.")
             sys.exit(-1)
 
-
-        self._resource = kwargs.get("resource","local")
+        self._resource = kwargs.get("resource", "local")
         self._is_test = kwargs.get("is_test", False)
         self._secret_key = None
         # parameter overrides config file
@@ -57,15 +65,22 @@ class ConfigReader:
         # for tests we can use an in_memory db
         if self._db_name is None:
             # the package simstack.toml has no db_name and connections string
-            self._db_name = self.config.get("parameters", {}).get("common", {}).get("database", "NONE")
+            self._db_name = (
+                self.config.get("parameters", {})
+                .get("common", {})
+                .get("database", "NONE")
+            )
             if not self._is_test and self._db_name == "NONE":
                 print("You must specify a database name in the config file")
                 sys.exit(-1)
 
         self._connection_string = kwargs.get("connection_string", None)
         if self._connection_string is None:
-            self._connection_string = self.config.get("parameters", {}).get("common", {}).get("connection_string",
-                                                                    "NONE")
+            self._connection_string = (
+                self.config.get("parameters", {})
+                .get("common", {})
+                .get("connection_string", "NONE")
+            )
         if not self._is_test and self._connection_string == "NONE":
             print("You must specify a connection string in the config file")
             sys.exit(-1)
@@ -77,7 +92,7 @@ class ConfigReader:
         self._python_path = None
         self._external_source_dir = None
         self._environment_start = None
-        self._routes =  []
+        self._routes = []
         self._git = []
 
     def secondary_init(self, workdir):
@@ -95,17 +110,32 @@ class ConfigReader:
         """
 
         import logging
+
         logger = logging.getLogger("ConfigReader")
 
-        logger.info(f"Initializing ConfigReader with resource: {self._resource} on database {self._db_name}")
+        logger.info(
+            f"Initializing ConfigReader with resource: {self._resource} on database {self._db_name}"
+        )
 
-        self._docker = self.config.get("parameters", {}).get(self._resource, {}).get("docker", False)
+        self._docker = (
+            self.config.get("parameters", {})
+            .get(self._resource, {})
+            .get("docker", False)
+        )
         logger.info(f"docker: {self._docker}")
         if workdir is None:
-            workdir = self.config.get("parameters", {}).get(self._resource, {}).get("workdir", "NONE")
+            workdir = (
+                self.config.get("parameters", {})
+                .get(self._resource, {})
+                .get("workdir", "NONE")
+            )
         if workdir == "NONE":
-            logger.error(f"You must specify a working directory for resource: {self._resource} in the config file")
-            raise ValueError(f"You must specify a working directory for resource: {self._resource} in the config file")
+            logger.error(
+                f"You must specify a working directory for resource: {self._resource} in the config file"
+            )
+            raise ValueError(
+                f"You must specify a working directory for resource: {self._resource} in the config file"
+            )
         self._workdir = Path(workdir)
         logger.info(f"workdir: {self._workdir}")
 
@@ -114,21 +144,39 @@ class ConfigReader:
             self._workdir = Path("/home/appuser/simstack")
             logger.info(f"external_workdir: {self._external_workdir}")
 
-        self._external_source_dir = Path(self.config.get("parameters", {}).get(self._resource, {}).get("source_dir", "NONE"))
+        self._external_source_dir = Path(
+            self.config.get("parameters", {})
+            .get(self._resource, {})
+            .get("source_dir", "NONE")
+        )
         logger.info(f"source directory: {self._external_source_dir}")
         if self.docker and self._external_source_dir == Path("NONE"):
-            logger.error(f"You must specify an external source directory for resource: {self._resource} in the config file")
-            raise ValueError(f"You must specify an external source directory for resource: {self._resource} in the config file")
+            logger.error(
+                f"You must specify an external source directory for resource: {self._resource} in the config file"
+            )
+            raise ValueError(
+                f"You must specify an external source directory for resource: {self._resource} in the config file"
+            )
 
-        self._python_path = self.config.get("parameters", {}).get(self._resource, {}).get("python_path", "NONE")
+        self._python_path = (
+            self.config.get("parameters", {})
+            .get(self._resource, {})
+            .get("python_path", "NONE")
+        )
         if self._python_path == "NONE":
             logger.error("PYTHON PATH IS MISSING")
         logger.info(f"python_path: {self._python_path}")
 
-        self._environment_start = self.config.get("parameters", {}).get(self._resource, {}).get("environment_start", "")
+        self._environment_start = (
+            self.config.get("parameters", {})
+            .get(self._resource, {})
+            .get("environment_start", "")
+        )
         logger.info(f"environment_start: {self._environment_start}")
 
-        self._resources = self.config.get("parameters", {}).get("common", {}).get("resources", [])
+        self._resources = (
+            self.config.get("parameters", {}).get("common", {}).get("resources", [])
+        )
         logger.info(f"Initialized resources to: {self._resources}")
 
         self._routes = self.config.get("routes", [])
@@ -137,11 +185,17 @@ class ConfigReader:
                 logger.error(f"Route {route} is not a dictionary.")
                 raise ValueError("Route {route} is not a dictionary.")
             if not ("source" in route and "target" in route and "host" in route):
-                logger.error(f"Route {route} does not contain 'source', 'target', 'host' keys.")
-                raise ValueError(f"Route {route} does not contain 'source', 'target', 'host' keys.")
+                logger.error(
+                    f"Route {route} does not contain 'source', 'target', 'host' keys."
+                )
+                raise ValueError(
+                    f"Route {route} does not contain 'source', 'target', 'host' keys."
+                )
 
         self._secret_key = self.config.get("server", {}).get("secret_key", "")
-        self._git = self.config.get("parameters", {}).get(self._resource, {}).get("git", [])
+        self._git = (
+            self.config.get("parameters", {}).get(self._resource, {}).get("git", [])
+        )
 
     def get_route(self, source: str, target: str) -> List[Dict[str, str]]:
         """
@@ -194,7 +248,7 @@ class ConfigReader:
 
     @property
     def connection_string(self) -> str:
-        return  self._connection_string
+        return self._connection_string
 
     @property
     def database_name(self) -> str:
@@ -205,7 +259,7 @@ class ConfigReader:
         return self._resource
 
     @resource.setter
-    def resource(self, value:str):
+    def resource(self, value: str):
         self._resource = value
 
     @property

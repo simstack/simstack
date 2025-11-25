@@ -1,5 +1,6 @@
 from typing import Dict, Any, List
 
+
 def ui_hide_fields(ui_schema: Dict[str, Any], fields: str | List[str]) -> dict:
     """
     Hides specified fields in the JSON schema.
@@ -9,23 +10,25 @@ def ui_hide_fields(ui_schema: Dict[str, Any], fields: str | List[str]) -> dict:
         fields: List of field names to hide
     """
 
-    local_fields = [fields]  if isinstance(fields, str) else fields
+    local_fields = [fields] if isinstance(fields, str) else fields
     # Iterate through the fields to hide
     for field in local_fields:
-        ui_schema[field] = { "ui:widget" :  "hidden" }
+        ui_schema[field] = {"ui:widget": "hidden"}
     return ui_schema
 
-def ui_make_properties_optional(json_schema: Dict[str, Any], properties: List[str],
-                                option_field: str = "Show More") -> dict:
+
+def ui_make_properties_optional(
+    json_schema: Dict[str, Any], properties: List[str], option_field: str = "Show More"
+) -> dict:
     """
     Modifies a JSON schema to make specified properties visible only when an option is enabled.
-    
+
     Args:
         cls: The class to which the JSON schema belongs
         json_schema: The original JSON schema
         properties: List of property names to make optional
         option_field: Name of the boolean field that controls visibility
-    
+
     Returns:
         Modified JSON schema with dependencies
     """
@@ -35,10 +38,10 @@ def ui_make_properties_optional(json_schema: Dict[str, Any], properties: List[st
         assert json_schema["properties"][option_field]["type"] == "boolean"
     else:
         json_schema["properties"][option_field] = {
-        "type": "boolean",
-        "title": option_field,
-        "default": False
-    }
+            "type": "boolean",
+            "title": option_field,
+            "default": False,
+        }
 
     # Create dependencies object if it doesn't exist
     if "dependencies" not in json_schema:
@@ -46,31 +49,27 @@ def ui_make_properties_optional(json_schema: Dict[str, Any], properties: List[st
 
     new_props = {}
     for prop in properties:
-        if not prop in json_schema["properties"]:
+        if prop not in json_schema["properties"]:
             raise ValueError(f"Property {prop} is not in json_schema")
         new_props[prop] = json_schema["properties"][prop]
         del json_schema["properties"][prop]
 
     # Add dependency rules for each property
-    sub_schema = {
-        "properties": {
-            option_field: {"enum": [True]},
-            **new_props
-        }
-    }
+    sub_schema = {"properties": {option_field: {"enum": [True]}, **new_props}}
     json_schema["dependencies"][option_field] = {
         "oneOf": [
             {
                 "properties": {
                     option_field: {"enum": [False]},
-                    **{prop: {"type": "null"} for prop in properties}
+                    **{prop: {"type": "null"} for prop in properties},
                 }
             },
-            sub_schema
+            sub_schema,
         ]
     }
 
     return sub_schema
+
 
 #
 # def ui_make_dependencies_optional(cls, json_schema: Dict[str, Any], option_field_path: List[str],
@@ -156,6 +155,7 @@ def ui_make_properties_optional(json_schema: Dict[str, Any], properties: List[st
 #     return json_schema
 #
 
+
 def ui_make_title(cls, ui_schema: Dict[str, Any], field: str, title: str) -> dict:
     """
     Adds a title to the JSON schema.
@@ -168,9 +168,7 @@ def ui_make_title(cls, ui_schema: Dict[str, Any], field: str, title: str) -> dic
     Returns:
         Modified JSON schema with title
     """
-    ui_schema[field] = {
-        "ui:title": title
-    }
+    ui_schema[field] = {"ui:title": title}
     return ui_schema
 
 
