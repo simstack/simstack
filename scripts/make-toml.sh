@@ -7,5 +7,3 @@ sed -i "s|XXXTEST_DATABASEXXX|${TEST_DATABASE}|g" simstack.toml
 sed -i "s|XXXEXTERNAL_SOURCE_DIRXXX|${EXTERNAL_SOURCE_DIR}|g" simstack.toml
 
 cat simstack.toml
-
-

@@ -1,6 +1,7 @@
-from typing import Type, TypeVar, Dict, List, Optional
-from odmantic import Model, ObjectId
 import asyncio
+from typing import Type, TypeVar, Dict, List, Optional
+
+from odmantic import Model, ObjectId
 
 T = TypeVar("T", bound=Model)
 
@@ -26,8 +27,11 @@ class InMemoryAIOEngine:
         self._store: Dict[str, InMemoryCollection] = {}
 
     async def save(self, instance: T) -> T:
-        collection_name = instance.__collection__ if hasattr(instance,
-                                                             "__collection__") else instance.__class__.__name__.lower()
+        collection_name = (
+            instance.__collection__
+            if hasattr(instance, "__collection__")
+            else instance.__class__.__name__.lower()
+        )
 
         obj_dict = instance.model_dump()
 
@@ -41,8 +45,14 @@ class InMemoryAIOEngine:
             self._store[collection_name] = InMemoryCollection(self)
 
         # Update if already exists
-        existing_index = next((i for i, obj in enumerate(self._store[collection_name]) if obj["id"] == instance.id),
-                              None)
+        existing_index = next(
+            (
+                i
+                for i, obj in enumerate(self._store[collection_name])
+                if obj["id"] == instance.id
+            ),
+            None,
+        )
         if existing_index is not None:
             self._store[collection_name][existing_index] = obj_dict
         else:
@@ -51,7 +61,11 @@ class InMemoryAIOEngine:
         return instance
 
     async def find(self, model: Type[T], **query) -> List[T]:
-        collection_name = model.__collection__ if hasattr(model, "__collection__") else model.__name__.lower()
+        collection_name = (
+            model.__collection__
+            if hasattr(model, "__collection__")
+            else model.__name__.lower()
+        )
         all_objects = self._store.get(collection_name, [])
         results = []
 
@@ -69,18 +83,21 @@ async def find_one(self, model: Type[T], condition=None, **query) -> Optional[T]
         condition_str = str(condition)
 
         # Look for the pattern: field_name == value or field_name: {$eq: value}
-        if '==' in condition_str:
+        if "==" in condition_str:
             # Handle direct comparison like ModelMapping.name == 'TestClass'
-            parts = condition_str.split('==')
+            parts = condition_str.split("==")
             if len(parts) == 2:
-                field_name = parts[0].strip().split('.')[-1]
+                field_name = parts[0].strip().split(".")[-1]
                 value = parts[1].strip().strip("'\"")
                 query[field_name] = value
-        elif '$eq' in condition_str:
+        elif "$eq" in condition_str:
             # Handle MongoDB-style query like {'mapping': {'$eq': 'tests.core.test_import_class.TestClass'}}
             import re
+
             # Extract field name and value using regex
-            field_match = re.search(r"'(\w+)':\s*\{'?\$eq'?:\s*'([^']+)'", condition_str)
+            field_match = re.search(
+                r"'(\w+)':\s*\{'?\$eq'?:\s*'([^']+)'", condition_str
+            )
             if field_match:
                 field_name = field_match.group(1)
                 value = field_match.group(2)
@@ -88,7 +105,7 @@ async def find_one(self, model: Type[T], condition=None, **query) -> Optional[T]
             else:
                 # Fallback - try to extract from the string representation
                 # Look for pattern like "ModelMapping.field_name"
-                field_match = re.search(r'(\w+)\.(\w+)', condition_str)
+                field_match = re.search(r"(\w+)\.(\w+)", condition_str)
                 if field_match:
                     field_name = field_match.group(2)
                     # Try to extract the value (this is still a fallback)
@@ -105,11 +122,9 @@ async def find_one(self, model: Type[T], condition=None, **query) -> Optional[T]
 if __name__ == "__main__":
     from odmantic import Model
 
-
     class BinaryOperationInput(Model):
         arg1: int
         arg2: int
-
 
     async def test_engine():
         engine = InMemoryAIOEngine()
@@ -125,6 +140,5 @@ if __name__ == "__main__":
         # Find one object
         found_one = await engine.find_one(BinaryOperationInput, arg2=2)
         print("Found single object:", found_one)
-
 
     asyncio.run(test_engine())

@@ -1,6 +1,5 @@
 import pytest
 from datetime import datetime
-from typing import Tuple
 
 from simstack.core.context import context
 from simstack.core.engine import current_engine_context
@@ -40,7 +39,6 @@ class TestDataSetSection:
         assert section.data[0] == [float_data.id, string_data.id]
         assert bool(section)
 
-
     @pytest.mark.asyncio
     async def test_add_multiple_model_groups_same_types(self):
         """Test adding multiple tuples with the same model types."""
@@ -75,7 +73,9 @@ class TestDataSetSection:
         section.add_model_group((float_data, string_data))
 
         # Should fail when adding different types
-        with pytest.raises(ValueError, match="Model types .* don't match section's expected types"):
+        with pytest.raises(
+            ValueError, match="Model types .* don't match section's expected types"
+        ):
             section.add_model_group((float_data, float_data))
 
     @pytest.mark.asyncio
@@ -90,7 +90,7 @@ class TestDataSetSection:
         section = DataSetSection()
         section.add_model_group((float_data, string_data))
 
-        retrieved =  section.get_model_group(0)
+        retrieved = section.get_model_group(0)
 
         assert len(retrieved) == 2
         assert isinstance(retrieved[0], FloatData)
@@ -176,9 +176,8 @@ class TestDataSet:
         """Test creating an empty DataSet."""
         metadata = DataSetMetadata(
             dataset_type="test_empty_with_description",
-            data={"description": "Empty test dataset"}
+            data={"description": "Empty test dataset"},
         )
-
 
         dataset = DataSet(metadata=metadata)
         engine = current_engine_context.get()
@@ -194,7 +193,7 @@ class TestDataSet:
         # Create metadata
         metadata = DataSetMetadata(
             dataset_type="test_multi_section",
-            data={"description": "Multi-section test dataset"}
+            data={"description": "Multi-section test dataset"},
         )
 
         # Create test models
@@ -210,7 +209,7 @@ class TestDataSet:
 
         node_registry_instance = node_registry
         section2 = DataSetSection()
-        section2.add_model_group((node_registry_instance,float_data))
+        section2.add_model_group((node_registry_instance, float_data))
 
         # Create dataset
         dataset = DataSet(metadata=metadata)
@@ -224,15 +223,13 @@ class TestDataSet:
         assert "training" in dataset
         assert "validation" in dataset
 
-
     @pytest.mark.asyncio
     async def test_dict_like_operations(self, real_database_context):
         """Test dictionary-like operations on DataSet."""
         metadata = DataSetMetadata(
             dataset_type="test_dict_ops",
-            data={"description": "Dictionary operations test"}
+            data={"description": "Dictionary operations test"},
         )
-
 
         dataset = DataSet(metadata=metadata)
 
@@ -276,7 +273,7 @@ class TestDataSet:
         # Create metadata
         metadata = DataSetMetadata(
             dataset_type="test_persistence",
-            data={"version": "1.0", "created": datetime.now()}
+            data={"version": "1.0", "created": datetime.now()},
         )
 
         # Create test models
@@ -321,11 +318,7 @@ class TestDataSet:
         # Create metadata
         metadata = DataSetMetadata(
             dataset_type="test_complex_workflow",
-            data={
-                "experiment": "ML_Pipeline",
-                "version": "2.1",
-                "samples": 1000
-            }
+            data={"experiment": "ML_Pipeline", "version": "2.1", "samples": 1000},
         )
 
         # Create various test models - we'll create multiple node instances
@@ -333,9 +326,10 @@ class TestDataSet:
         for i in range(5):
             float_model = FloatData(value=float(i * 10))
             string_model = StringData(value=f"sample_{i}")
-            
+
             # Create a new NodeRegistry for each iteration
             from simstack.models.parameters import Parameters
+
             parameters = Parameters()
             node_model = NodeRegistry(
                 name=f"node_{i}",
@@ -345,7 +339,7 @@ class TestDataSet:
                 function_hash=f"test_function_hash_{i}",
                 arg_hash=f"test_arg_hash_{i}",
                 func_mapping="test.module.function",
-                parameters=parameters
+                parameters=parameters,
             )
 
             models.extend([float_model, string_model, node_model])
@@ -358,12 +352,12 @@ class TestDataSet:
         # Training section: (FloatData, StringData) tuples
         training_section = DataSetSection()
         for i in range(0, 6, 3):  # indices 0, 3
-            training_section.add_model_group((models[i], models[i+1]))
+            training_section.add_model_group((models[i], models[i + 1]))
 
         # Validation section: (FloatData, StringData) tuples
         validation_section = DataSetSection()
         for i in range(9, 15, 3):  # indices 9, 12
-            validation_section.add_model_group((models[i], models[i+1]))
+            validation_section.add_model_group((models[i], models[i + 1]))
 
         # Node section: single NodeRegistry tuples
         node_section = DataSetSection()
@@ -485,14 +479,22 @@ class TestDataSet:
         f2 = FloatData(value=99.9)
         await context.db.save(f2)
 
-        meta2 = DataSetMetadata(dataset_type="ds_struct_v2", data={"desc": "should fail"})
+        meta2 = DataSetMetadata(
+            dataset_type="ds_struct_v2", data={"desc": "should fail"}
+        )
         ds2 = DataSet(metadata=meta2)
 
         sec_pair_changed = DataSetSection()
-        sec_pair_changed.add_model_group((f2,))  # ["FloatData"] instead of ["FloatData", "StringData"]
+        sec_pair_changed.add_model_group(
+            (f2,)
+        )  # ["FloatData"] instead of ["FloatData", "StringData"]
 
-        ds2["pair"] = sec_pair_changed  # keep the same key to emphasize structural mismatch
-        ds2["nodes"] = sec_nodes        # keep one section same
+        ds2[
+            "pair"
+        ] = sec_pair_changed  # keep the same key to emphasize structural mismatch
+        ds2["nodes"] = sec_nodes  # keep one section same
 
-        with pytest.raises(ValueError, match="Section pair has different content in existing structure"):
+        with pytest.raises(
+            ValueError, match="Section pair has different content in existing structure"
+        ):
             await ds2.save(engine)

@@ -1,0 +1,215 @@
+[project]
+name = "simstack"
+authors = [
+    {name = "Wolfgang Wenzel", email = "wolfgang.wenzel@kit.edu"},
+    {name = "Timo Strunk", email = "timo.strunk@nanomatch.de"}]
+requires-python = ">= 3.11"
+dependencies = [
+    "odmantic >=1.0.2,<2",
+    "cloudpickle >=3.1.1,<4",
+    "fastapi >=0.115.0,<0.116",
+    "coolname  >=2.2.0,<3",
+    "nest-asyncio  >=1.6.0,<2",
+    "numpy >=2.3.0",
+    "pandas >=2.3.3"
+]
+readme = "README.md"
+license = "MIT"  # Use a simple SPDX license expression instead of a file reference
+dynamic = ["version"]
+description="A python based workflow engineering platform with a react-js UI"
+
+[project.urls]
+Homepage = "https://gitlab.kit.edu/kit/ag_wenzel/simstack-model/"
+
+[project.scripts]
+create_node_table = "simstack.core.node_table:create_node_table_main"
+create_model_table = "simstack.core.model_table:create_model_table_main"
+simstack_runner = "simstack.core.runner:runner_main"
+run_node = "simstack.core.run_node:run_node_main"
+simstack_write_sample_config = "simstack.util.sample_config:sample_config_writer_entrypoint"
+
+[build-system]
+requires = ["setuptools>=61.0", "setuptools-scm>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# setuptools_scm configuration for automatic versioning from git tags
+[tool.setuptools_scm]
+write_to = "src/simstack/_version.py"
+fallback_version = "0.1.0-dev"
+version_scheme = "release-branch-semver"
+local_scheme = "no-local-version"
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "win-64"]
+
+[tool.feature.test.pypi-dependencies]
+# These dependencies are the main pypi dependencies for your project
+# Add these also to the tool.pixi.dependencies. Keep the package itself in the first line:
+simstack = { path = ".", editable = true }
+# Your dependencies come here:
+odmantic = ">=1.0.2,<2"
+#pydantic = ">=2.10,<3"
+#python-jose = ">=3.4.0,<4"
+#python-multipart = ">=0.0.19,<1"
+#hypercorn = ">=0.17.3,<1"
+#openbabel-wheel = ">=3.1.1,<4"
+contextvars = ">=2.4,<3"
+numpy = ">=2.3.0"
+# Test-only dependencies that need PyPI
+mongomock-motor = ">=0.0.32,<1"
+# Remove numpy from here to avoid conflict - it will be handled by conda
+# numpy = ">=1.26.4,<3"
+# End of your dependencies
+
+[tool.pixi.dependencies]
+# These the main conda dependencies, they will override the pypi ones
+python = "3.12.*"
+pixi-pycharm = ">=0.0.10,<0.0.11"
+#pixi-pycharm = ">=0.0.10,<0.0.11"
+#pixi-pycharm = "*"
+
+[tool.pixi.feature.dev.dependencies]
+# Cruft dependencies here:
+#pixi-pycharm = "*"
+# End of cruft dependencies
+
+# Your dependencies come here:
+
+# End of your dependencies
+
+[tool.pixi.environments]
+test = { features = ["basetests", "test"], solve-group = "default" }
+mypy = ["mypy"]
+default = { features = ["dev"], solve-group = "main" }
+cruft = { features = ["cruft"], no-default-feature = true }
+pythonbuild = { features = ["pythonbuild"], no-default-feature = true, solve-group = "default" }
+condabuild = { features = ["condabuild"], no-default-feature = true, solve-group = "default" }
+lint = { features = ["lint"], no-default-feature = true, solve-group = "default" }
+docker = { features = ["docker"], no-default-feature = false, solve-group = "main" }
+
+[tool.pixi.feature.lint.dependencies]
+ruff = "*"
+pre-commit = ">=3.7.1,<4"
+pre-commit-hooks = ">=4.6.0,<5"
+typos = ">=1.23.1,<2"
+
+[tool.pixi.feature.lint.tasks]
+pre-commit-install = "pre-commit install"
+pre-commit-run = "pre-commit run --all"
+lint = { depends-on = ["pre-commit-run"] }
+
+[tool.pixi.feature.cruft.dependencies]
+cruft = "*"
+
+[tool.pixi.feature.cruft.tasks]
+cruft = "cruft"
+
+[tool.pixi.feature.basetests.dependencies]
+# Base test dependencies shared by all test environments
+pytest = ">=8"
+pytest-cov = "*"
+pytest-asyncio = ">=0.26.0,<1"
+mongomock = ">=4.1.0,<5"
+
+[tool.pixi.feature.test.dependencies]
+# Test-specific dependencies (none currently)
+cloudpickle = ">=3.1.1,<4"
+fastapi = ">=0.115.0,<0.116"
+coolname = ">=2.2.0,<3"
+nest-asyncio = ">=1.6.0,<2"
+#pixi-pycharm = ">=0.0.9,<0.0.10"
+pandas = ">=2.3.3"
+
+[tool.pixi.feature.test.tasks]
+write_sample_config = "simstack_write_sample_config"
+tests = { cmd = "python -m pytest tests/ --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml -m 'not local_runner'" , depends-on = [] }
+
+# I would like to see these in the main tasks, but they rely on pytest infra
+create_node_table = "create_node_table"
+create_model_table = "create_model_table"
+#
+#[tool.pixi.feature.rdkit.dependencies]
+## RDKit-specific dependencies
+#pytest-mock = ">=3.0.0"
+#rdkit = ">=2023.03.1"
+
+#[tool.pixi.feature.rdkit.tasks]
+#rdkit-tests = "python -m pytest tests/ -k rdkit -v --tb=short --strict-markers --disable-warnings"
+
+[tool.pixi.feature.mypy.dependencies]
+mypy = "*"
+# Add your mypy dependencies here:
+
+# End of your mypy dependencies
+
+[tool.pixi.feature.mypy.tasks]
+mypy = "mypy ."
+
+[tool.pixi.feature.condabuild.dependencies]
+conda-build = "*"
+
+[tool.pixi.feature.condabuild.tasks]
+condabuild = "conda build conda-recipe/"
+
+[tool.pixi.feature.pythonbuild.dependencies]
+python-build = "*"
+twine = "*"
+
+[tool.pixi.feature.pythonbuild.tasks]
+pythonbuild = "python3 -m build"
+
+[tool.pixi.feature.docker.dependencies]
+docker-compose = "*"
+
+[tool.pixi.feature.docker.tasks]
+startmongo = { cmd = "docker-compose -f docker-compose.test.yml up -d", cwd = "docker-mongo" }
+stopmongo = { cmd = "docker-compose -f docker-compose.test.yml down -v --rmi all", cwd = "docker-mongo" }
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+norecursedirs = ["examples", "applications", "scripts", ".git", ".pixi", "build", "dist"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "local_runner: marks tests that require local runner",
+    "database: marks tests that require database",
+    "rdkit: marks tests as RDKit-specific tests",
+    "edge_case: marks tests as edge case tests",
+]
+
+[tool.ruff]
+exclude = [
+    "doc",
+    "docs",
+    ".git",
+    ".pixi",
+    "build",
+    "dist",
+    "__pycache__",
+]
+
+[tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+python_version = "3.12"
+disallow_untyped_defs = true
+show_error_codes = true
+no_implicit_optional = true
+warn_return_any = true
+warn_unused_ignores = true
+exclude = ["tests", "doc", "docs"]

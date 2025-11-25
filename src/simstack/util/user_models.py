@@ -1,7 +1,9 @@
-from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from typing import Optional
+
 from odmantic import Model, Field
+from pydantic import BaseModel, EmailStr
+
 
 # Main ODM models for database
 class User(Model):
@@ -13,9 +15,8 @@ class User(Model):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     is_active: bool = False
 
-    model_config = {
-        "collection": "users"
-    }
+    model_config = {"collection": "users"}
+
 
 # Pydantic models for API requests/responses
 class UserCreate(BaseModel):
@@ -25,6 +26,7 @@ class UserCreate(BaseModel):
     db_name: str
     db_uri: str
 
+
 class UserResponse(BaseModel):
     id: str
     email: EmailStr
@@ -32,9 +34,11 @@ class UserResponse(BaseModel):
     created_at: datetime
     is_active: bool
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
+
 
 class TokenData(BaseModel):
     username: Optional[str] = None

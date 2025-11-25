@@ -1,8 +1,9 @@
 import inspect
 import uuid
 from typing import get_origin, get_args, Any, Type, Optional
-from sqlmodel import SQLModel, Field
+
 from pydantic import BaseModel
+from sqlmodel import SQLModel, Field
 
 
 def get_recursive(data: Any, key: str):

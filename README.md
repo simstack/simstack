@@ -22,7 +22,7 @@ The most modern managers are **pixi** for conda-style and **uv** for pip-style.
 
 Install **Mamba** if you don’t have it
 See mamba [documentation](https://mamba.readthedocs.io/en/latest/) for Windows, Linux and macOS.
-    
+
 ```bash
 mamba create -n simstack python=3.12 -y
 mamba activate simstack
@@ -36,11 +36,11 @@ mamba activate simstack
 micromamba create -n simstack python=3.12 -y
 micromamba activate simstack
 ```
-</details> 
+</details>
 
 <details>
 <summary><strong>⬤ Classic conda</strong></summary>
-    
+
 ```bash
 conda create -n simstack python=3.12 -y
 conda activate simstack
@@ -91,8 +91,8 @@ Simstack II reads a single **TOML** file (`simstack.toml`) to learn
 * how to reach your **MongoDB** backend,
 * and where each host should place logs / artifacts.
 
-> **Where should the file live?**  
-> Save it next in the folder simstack-model in both your local and HPC accounts.  
+> **Where should the file live?**
+> Save it next in the folder simstack-model in both your local and HPC accounts.
 > The CLI searches those paths automatically.
 
 ### 2.1 Minimal template
@@ -292,7 +292,7 @@ Try changing the numbers in AddMultiplyInput(a, b, c) and re‑running to see di
 
 #### 🔑 Prerequisites
 
-1. **Runner up & listening on int-nano**  
+1. **Runner up & listening on int-nano**
    ```bash
    # on the int-nano login node
    ssh user@int-nano.int.kit.edu
@@ -324,7 +324,7 @@ That single command does three things behind the scenes:
 3. **Streams status** back to your local terminal until completion.
 
 ### 🖥️ Expected local console output
-    
+
 ```bash!
 task_id: 680f4ac265bb513834eeb92a created in read_db Task adder with 680f4ac265bb513834eeb92a is waiting for results
 2025-04-28 11:30:47 - simstack.core.node - INFO - Task adder with task_id: 680f4ac265bb513834eeb92a completed remotely

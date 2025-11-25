@@ -18,18 +18,24 @@ import queue
 async def initialized_context(tmp_path_factory):
     # Use environment variable to control the database type for tests
     import os
-    db_mode = os.getenv('SIMSTACK_TEST_USE_REAL_DB', 'false').lower()
-    use_real_db = db_mode == 'true'
+
+    db_mode = os.getenv("SIMSTACK_TEST_USE_REAL_DB", "false").lower()
+    use_real_db = db_mode == "true"
 
     if use_real_db and not _mongodb_available():
-        raise RuntimeError("SIMSTACK_TEST_USE_REAL_DB=true but MongoDB not available at localhost:27017")
+        raise RuntimeError(
+            "SIMSTACK_TEST_USE_REAL_DB=true but MongoDB not available at localhost:27017"
+        )
 
     working_dir = tmp_path_factory.mktemp("simstack_test")
     # Initialize context - use test mode for logging, real DB mode for data if requested
-    context.initialize(console=False, is_test=True,
-                       connection_string="mongodb://localhost:27017" if use_real_db else None,
-                       db_name="simstack_test" if use_real_db else None,
-                       workdir=working_dir)
+    context.initialize(
+        console=False,
+        is_test=True,
+        connection_string="mongodb://localhost:27017" if use_real_db else None,
+        db_name="simstack_test" if use_real_db else None,
+        workdir=working_dir,
+    )
 
     if use_real_db:
         await context.db.reset_database()
@@ -75,7 +81,7 @@ async def initialized_context(tmp_path_factory):
     else:
         print("Test context initialized with mock database (patched for mongomock)")
 
-    if hasattr(context, 'log_handler') and context.log_handler:
+    if hasattr(context, "log_handler") and context.log_handler:
         root_logger = context.log_handler.root
         root_logger.setLevel("ERROR")
 
@@ -86,18 +92,18 @@ async def initialized_context(tmp_path_factory):
     try:
         if context.initialized:
             # Close main database connection
-            if hasattr(context, 'db') and context.db:
+            if hasattr(context, "db") and context.db:
                 await context.db.close()
                 context.db = None
 
             # Close logging handler's MongoDB connection
-            if hasattr(context, 'log_handler') and context.log_handler:
+            if hasattr(context, "log_handler") and context.log_handler:
                 # Close all handlers that might have MongoDB connections
                 for handler in context.log_handler.handlers[:]:
-                    if hasattr(handler, 'close'):
+                    if hasattr(handler, "close"):
                         # This is likely a DBLogHandler with a close method
                         handler.close()
-                    elif hasattr(handler, 'client') and handler.client:
+                    elif hasattr(handler, "client") and handler.client:
                         # Fallback: directly close the client
                         handler.client.close()
                     context.log_handler.removeHandler(handler)
@@ -164,7 +170,11 @@ def test_runner():
 
     # Cross-platform command chaining
     system = platform.system().lower()
-    env_start = context.config.environment_start.strip() if context.config.environment_start else ""
+    env_start = (
+        context.config.environment_start.strip()
+        if context.config.environment_start
+        else ""
+    )
 
     if system == "windows":
         if env_start:
@@ -175,17 +185,21 @@ def test_runner():
         if env_start:
             command_string = f"{env_start} && {sys.executable} {command} --resource tests --db-name samira_test"
         else:
-            command_string = f"{sys.executable} {command} --resource tests --db-name samira_test"
+            command_string = (
+                f"{sys.executable} {command} --resource tests --db-name samira_test"
+            )
 
     print(f"Starting subprocess with command: {command_string}")
 
     # Start the process with non-blocking pipes
-    process = subprocess.Popen(command_string,
-                               shell=True,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE,
-                               text=True,
-                               bufsize=0)  # Unbuffered
+    process = subprocess.Popen(
+        command_string,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=0,
+    )  # Unbuffered
 
     # Queues to store output
     stdout_queue = queue.Queue()
@@ -193,7 +207,7 @@ def test_runner():
 
     def read_stdout():
         try:
-            for line in iter(process.stdout.readline, ''):
+            for line in iter(process.stdout.readline, ""):
                 if line:
                     line = line.strip()
                     stdout_queue.put(line)
@@ -206,7 +220,7 @@ def test_runner():
 
     def read_stderr():
         try:
-            for line in iter(process.stderr.readline, ''):
+            for line in iter(process.stderr.readline, ""):
                 if line:
                     line = line.strip()
                     stderr_queue.put(line)
@@ -269,9 +283,10 @@ def _mongodb_available():
     try:
         # Use a simple socket connection test instead of Motor client
         import socket
+
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)  # 1 second timeout
-        result = sock.connect_ex(('localhost', 27017))
+        result = sock.connect_ex(("localhost", 27017))
         sock.close()
         return result == 0
     except Exception:
@@ -283,21 +298,25 @@ async def real_database_context():
     """
     Use the regular context but skip tests if real MongoDB is not available or if using mock database.
     For tests that require MongoDB features not supported by mongomock.
-    
+
     Supports three modes:
-    - SIMSTACK_TEST_USE_REAL_DB=false (default): Skip these tests 
+    - SIMSTACK_TEST_USE_REAL_DB=false (default): Skip these tests
     - SIMSTACK_TEST_USE_REAL_DB=true: Run with real DB (already configured)
     """
     import os
 
     # Check database mode
-    db_mode = os.getenv('SIMSTACK_TEST_USE_REAL_DB', 'false').lower()
+    db_mode = os.getenv("SIMSTACK_TEST_USE_REAL_DB", "false").lower()
 
-    if db_mode == 'false':
-        pytest.skip("Test requires real MongoDB - set SIMSTACK_TEST_USE_REAL_DB=true to enable")
-    elif db_mode == 'true':
+    if db_mode == "false":
+        pytest.skip(
+            "Test requires real MongoDB - set SIMSTACK_TEST_USE_REAL_DB=true to enable"
+        )
+    elif db_mode == "true":
         assert _mongodb_available(), "Real MongoDB not available at localhost:27017, but testing with real db was requested. Start using pixi run startmongo"
         # Use the regular context which should already be using real MongoDB
         yield context
     else:
-        assert False, f"Invalid SIMSTACK_TEST_USE_REAL_DB value: {db_mode}. Use 'false', 'true'"
+        assert (
+            False
+        ), f"Invalid SIMSTACK_TEST_USE_REAL_DB value: {db_mode}. Use 'false', 'true'"

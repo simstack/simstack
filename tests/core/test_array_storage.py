@@ -103,7 +103,9 @@ async def test_store_complex_array(odmantic_engine):
     await odmantic_engine.save(storage)
 
     # Retrieve array
-    retrieved = await odmantic_engine.find_one(ArrayStorage, ArrayStorage.id == storage.id)
+    retrieved = await odmantic_engine.find_one(
+        ArrayStorage, ArrayStorage.id == storage.id
+    )
     reconstructed = retrieved.get_array()
 
     # Verify array contents
@@ -126,4 +128,4 @@ async def test_delete_array(odmantic_engine):
 
     # Check it's gone
     result = await odmantic_engine.find_one(ArrayStorage, ArrayStorage.id == storage_id)
-    assert result == None
+    assert result is None

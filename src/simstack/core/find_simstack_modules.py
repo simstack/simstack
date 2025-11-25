@@ -1,9 +1,10 @@
 import importlib
 import pkgutil
-from logging import getLogger
 from importlib.metadata import entry_points
+from logging import getLogger
 
 logger = getLogger("find_simstack_modules")
+
 
 def discover_simstack_modules():
     """Discover all packages and modules within the simstack package."""
@@ -24,8 +25,7 @@ def find_simstack_modules():
             # print(f"Path: {package_path}")
 
             for importer, modname, ispkg in pkgutil.walk_packages(
-                    package_path,
-                    prefix=f"{package_name}."
+                package_path, prefix=f"{package_name}."
             ):
                 if ispkg:
                     logger.debug(f"  Subpackage: {modname}")

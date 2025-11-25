@@ -71,4 +71,3 @@ methods = { path = "src/simstack/methods", drops = "src" }
 examples = { path = "examples", drops = "", use_pickle = false }
 applications = { path = "applications", drops = "", use_pickle = false }
 tests = { path = "tests", drops = "", use_pickle = false }
-

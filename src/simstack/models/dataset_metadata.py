@@ -2,12 +2,10 @@ from datetime import datetime
 from typing import Dict, Any, Union, List
 
 from odmantic import Model, EmbeddedModel, Field
-from pydantic import model_validator
 
 from simstack.core.asnyc_helper import async_helper
 from simstack.core.context import context
 from simstack.core.engine import current_engine_context
-
 from simstack.models import simstack_model
 
 
@@ -19,11 +17,7 @@ def _get_json_schema(data: Dict) -> dict:
         dict: JSON schema describing the structure and types of the current data dict
     """
     if not data:
-        return {
-            "type": "object",
-            "properties": {},
-            "additionalProperties": False
-        }
+        return {"type": "object", "properties": {}, "additionalProperties": False}
 
     properties = {}
 
@@ -38,62 +32,65 @@ def _get_json_schema(data: Dict) -> dict:
         elif isinstance(value, float):
             properties[key] = {"type": "number"}
         elif isinstance(value, datetime):
-            properties[key] = {
-                "type": "string",
-                "format": "date-time"
-            }
+            properties[key] = {"type": "string", "format": "date-time"}
         else:
             # Fallback for any unexpected types
             properties[key] = {"type": "string"}
 
-    schema = {
-        "type": "object",
-        "properties": properties,
-        "additionalProperties": False
-    }
+    schema = {"type": "object", "properties": properties, "additionalProperties": False}
 
     return schema
 
 
 class DataSetMetadataTemplate(Model):
     dataset_type: str
-    model_json: dict[str,Any]
-    structure: Dict[str,List[str]] = Field(default_factory=dict)
+    model_json: dict[str, Any]
+    structure: Dict[str, List[str]] = Field(default_factory=dict)
+
 
 @simstack_model
 class DataSetMetadata(EmbeddedModel):
     dataset_type: str = Field(unique=True)
-    data: Dict[str, Union[str, int, float, bool, datetime]] = Field(default_factory=dict)
+    data: Dict[str, Union[str, int, float, bool, datetime]] = Field(
+        default_factory=dict
+    )
     is_validated: bool = False
-    structure: Dict[str,List[str]] = Field(default_factory=dict)
+    structure: Dict[str, List[str]] = Field(default_factory=dict)
 
     def get_json_schema(self):
         return _get_json_schema(self.data)
 
-    async def validate_dict(self, new_structure: Dict[str,List[str]]) -> bool:
+    async def validate_dict(self, new_structure: Dict[str, List[str]]) -> bool:
         engine = current_engine_context.get()
-        reference_metadata = await engine.find_one(DataSetMetadataTemplate,
-                                                   DataSetMetadataTemplate.dataset_type == self.dataset_type)
+        reference_metadata = await engine.find_one(
+            DataSetMetadataTemplate,
+            DataSetMetadataTemplate.dataset_type == self.dataset_type,
+        )
         if reference_metadata is None:
-            metadata_template = DataSetMetadataTemplate(dataset_type=self.dataset_type,
-                                                        model_json=_get_json_schema(self.data),
-                                                        structure=new_structure)
+            metadata_template = DataSetMetadataTemplate(
+                dataset_type=self.dataset_type,
+                model_json=_get_json_schema(self.data),
+                structure=new_structure,
+            )
 
             await context.db.save(metadata_template)
             return True  # first model of this type
 
         new_data_json = _get_json_schema(self.data)
         if reference_metadata.model_json != new_data_json:
-            raise ValueError(f"Data schema has changed in the database reference: {reference_metadata.model_json} current: {new_data_json}")
+            raise ValueError(
+                f"Data schema has changed in the database reference: {reference_metadata.model_json} current: {new_data_json}"
+            )
 
         # Check if lists in existing sections match
         save_template = False
         for section, content in new_structure.items():
-            if content: # if there are no elements in a section this should be None
+            if content:  # if there are no elements in a section this should be None
                 if section in reference_metadata.structure:
                     if content != reference_metadata.structure[section]:
-
-                        raise ValueError(f"Section {section} has different content in existing structure")
+                        raise ValueError(
+                            f"Section {section} has different content in existing structure"
+                        )
                 else:
                     save_template = True
                     self.structure[section] = content
@@ -110,8 +107,10 @@ class DataSetMetadata(EmbeddedModel):
     @async_helper
     async def freeze(self, new_structure: Dict[str, Dict[str, Any]]) -> bool:
         engine = current_engine_context.get()
-        reference_metadata = await engine.find_one(DataSetMetadataTemplate,
-                                                   DataSetMetadataTemplate.dataset_type == self.dataset_type)
+        reference_metadata = await engine.find_one(
+            DataSetMetadataTemplate,
+            DataSetMetadataTemplate.dataset_type == self.dataset_type,
+        )
         if not reference_metadata:
             raise ValueError("Metadata does not exist")
         if self.structure != reference_metadata.structure:
@@ -127,7 +126,7 @@ class DataSetMetadata(EmbeddedModel):
     def initialized(self) -> bool:
         """Check if the model has been fully constructed."""
         # A simple heuristic: if we have an ID or if type is set, we're initialized
-        return hasattr(self, 'dataset_type') and self.dataset_type is not None
+        return hasattr(self, "dataset_type") and self.dataset_type is not None
 
     # Dict-like behavior methods
     def __getitem__(self, key: str):
@@ -138,12 +137,15 @@ class DataSetMetadata(EmbeddedModel):
         """Set item in data dict with validation."""
         # Validate value type
         if not isinstance(value, (str, int, float, bool, datetime)):
-            raise TypeError(f"Value must be str, int, float, bool, or datetime, got {type(value).__name__}")
+            raise TypeError(
+                f"Value must be str, int, float, bool, or datetime, got {type(value).__name__}"
+            )
 
         # Only check for structural changes after initialization
         if self.initialized and key not in self.data:
             raise KeyError(
-                f"Cannot add new key '{key}' after initialization. Existing keys: {list(self.data.keys())}")
+                f"Cannot add new key '{key}' after initialization. Existing keys: {list(self.data.keys())}"
+            )
 
         # Only check for type changes after initialization
         if self.initialized and key in self.data:
@@ -228,7 +230,8 @@ class DataSetMetadata(EmbeddedModel):
             # Type validation (always required)
             if not isinstance(value, (str, int, float, bool, datetime)):
                 raise TypeError(
-                    f"Value for key '{key}' must be str, int, float, bool, or datetime, got {type(value).__name__}")
+                    f"Value for key '{key}' must be str, int, float, bool, or datetime, got {type(value).__name__}"
+                )
 
             # Structural validation (only after initialization)
             if self.initialized:
@@ -252,8 +255,12 @@ class DataSetMetadata(EmbeddedModel):
             if self.initialized:
                 raise KeyError(f"Cannot add new key '{key}' after initialization")
 
-            if default is not None and not isinstance(default, (str, int, float, bool, datetime)):
-                raise TypeError(f"Default value must be str, int, float, bool, or datetime, got {type(default).__name__}")
+            if default is not None and not isinstance(
+                default, (str, int, float, bool, datetime)
+            ):
+                raise TypeError(
+                    f"Default value must be str, int, float, bool, or datetime, got {type(default).__name__}"
+                )
 
             self.data[key] = default
 
@@ -294,4 +301,3 @@ class DataSetMetadata(EmbeddedModel):
             return {"type": "string", "format": "date-time"}
         else:
             return {"type": "string"}
-

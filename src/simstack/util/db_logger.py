@@ -2,6 +2,7 @@ import logging
 import re
 from datetime import datetime
 from typing import Optional, Dict, Any
+
 from pymongo import MongoClient
 
 # Regular expression patterns
@@ -25,11 +26,10 @@ class DBLogHandler(logging.Handler):
     """Logging handler that stores logs in MongoDB using pymongo."""
 
     def __init__(
-            self,
-            connection_string: str,
-            db_name: str,
-            collection_name: str = "logs",
-
+        self,
+        connection_string: str,
+        db_name: str,
+        collection_name: str = "logs",
     ):
         super().__init__()
 
@@ -40,7 +40,6 @@ class DBLogHandler(logging.Handler):
             raise ValueError("Invalid database name")
         if not collection_name or not isinstance(collection_name, str):
             raise ValueError("Invalid collection name")
-
 
         # Store configuration
         self.connection_string = connection_string
@@ -108,11 +107,11 @@ class DBLogHandler(logging.Handler):
     def close(self) -> None:
         """Close the MongoDB client connection."""
         try:
-            if hasattr(self, 'client') and self.client:
+            if hasattr(self, "client") and self.client:
                 self.client.close()
         except Exception as e:
             print(f"Error closing DB log handler client: {e}")
-            
+
     def __del__(self):
         """Ensure connection is closed when handler is destroyed."""
         self.close()

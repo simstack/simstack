@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import tomllib
@@ -5,9 +6,9 @@ from typing import List
 
 from simstack.core.config_file import get_config_file
 from simstack.util.project_root_finder import find_project_root
-import logging
 
 logger = logging.getLogger("resources")
+
 
 class AllowedResources:
     """
@@ -15,6 +16,7 @@ class AllowedResources:
     # This class is independent of context because its initialized to an empty list.
     Creating any resource will fail if the config has not been read
     """
+
     _instance = None
     _resources: List[str] = []
 
@@ -25,7 +27,7 @@ class AllowedResources:
 
     def __init__(self):
         # Only initialize once
-        if not hasattr(self, '_initialized'):
+        if not hasattr(self, "_initialized"):
             config_file = get_config_file().config_file_path
             config_path = find_project_root()
 
@@ -41,7 +43,9 @@ class AllowedResources:
                 print("There was an error decoding the TOML file.")
                 sys.exit(-1)
 
-            self._resources = self.config.get("parameters", {}).get("common", {}).get("resources",[])
+            self._resources = (
+                self.config.get("parameters", {}).get("common", {}).get("resources", [])
+            )
             logger.info(f"Initialized resources to: {self._resources}")
             self._initialized = True
 
@@ -93,5 +97,5 @@ class AllowedResources:
         """String representation."""
         return f"AllowedResources({self._resources!r})"
 
-allowed_resources = AllowedResources()
 
+allowed_resources = AllowedResources()

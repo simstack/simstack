@@ -2,15 +2,15 @@ import logging
 import os
 import tempfile
 import zlib
+from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
+
 from odmantic import Model, Field, ObjectId
 
-from pathlib import Path
-
+from simstack.core.hash import complex_hash_function
 from simstack.models import simstack_model
 from simstack.models.file_instance import FileInstance
 from simstack.util.file_hashing import hash_file
-from simstack.core.hash import complex_hash_function
 
 logger = logging.getLogger(__name__)
 
@@ -19,12 +19,22 @@ logger = logging.getLogger(__name__)
 class FileStack(Model):
     name: Optional[str] = Field(description="Name of the file", default=None)
     size: Optional[int] = Field(description="Size of the file in bytes", default=None)
-    is_hashable: bool = Field(default=False, description="Whether the file stack is hashable")
-    hash: Optional[str] = Field(default=None, description="Hash of the file stack content", index=True)
-    in_memory: bool = Field(default=False, description="Whether the file stack is in memory")
-    content: Optional[bytes] = Field(description="Compressed file content", default=None)
+    is_hashable: bool = Field(
+        default=False, description="Whether the file stack is hashable"
+    )
+    hash: Optional[str] = Field(
+        default=None, description="Hash of the file stack content", index=True
+    )
+    in_memory: bool = Field(
+        default=False, description="Whether the file stack is in memory"
+    )
+    content: Optional[bytes] = Field(
+        description="Compressed file content", default=None
+    )
 
-    locations: List[FileInstance] = Field(default_factory=list, description="List of file locations")
+    locations: List[FileInstance] = Field(
+        default_factory=list, description="List of file locations"
+    )
 
     def __str__(self):
         return f"FileStack(name={self.name}, size={self.size}, is_hashable={self.is_hashable}, in_memory={self.in_memory}, locations={self.locations})"
@@ -32,24 +42,30 @@ class FileStack(Model):
     def __repr__(self):
         return f"FileStack(name={self.name}, size={self.size}, is_hashable={self.is_hashable}, in_memory={self.in_memory}, locations={self.locations})"
 
-    async def custom_model_dump(self,**kwargs) -> Dict[str, Any]:
+    async def custom_model_dump(self, **kwargs) -> Dict[str, Any]:
         dumped_data = self.model_dump()
         del dumped_data["content"]  # Exclude content from the dumped data
         return dumped_data
 
-
-
     @classmethod
     def ui_base_schema(cls, **kwargs) -> Dict[str, Any]:
         # TODO get the model programatically
-        return { "ui:field": "FileField",
-                 "ui:options": {
-                     "model": "simstack.models.files.FileStack",
-                 }}
+        return {
+            "ui:field": "FileField",
+            "ui:options": {
+                "model": "simstack.models.files.FileStack",
+            },
+        }
 
     @classmethod
-    def from_local_file(cls, path: Union[Path, str], is_hashable: bool = True, in_memory: bool = True,
-                        secure_source: bool = False, task_id: str = ""):
+    def from_local_file(
+        cls,
+        path: Union[Path, str],
+        is_hashable: bool = True,
+        in_memory: bool = True,
+        secure_source: bool = False,
+        task_id: str = "",
+    ):
         """
         Creates a FileStack object from a local file path.
 
@@ -93,29 +109,33 @@ class FileStack(Model):
         if in_memory:
             try:
                 # Read the file content
-                with open(source_path, 'rb') as f:
+                with open(source_path, "rb") as f:
                     file_content = f.read()
                 # Compress the content using zlib
                 content = zlib.compress(file_content)
                 logger.debug(
-                    f"Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes")
+                    f"Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes"
+                )
             except Exception as e:
                 logger.warning(f"Failed to compress file {source_path}: {e}")
 
-        file_stack = cls(name=name,
-                         in_memory=in_memory,
-                         content=content,
-                         is_hashable=is_hashable,
-                         size=size,
-                         hash=file_hash)
+        file_stack = cls(
+            name=name,
+            in_memory=in_memory,
+            content=content,
+            is_hashable=is_hashable,
+            size=size,
+            hash=file_hash,
+        )
 
         if not in_memory:
-            location = FileInstance.from_local_file(path=path, file_stack_id=file_stack.id, make_copy=not secure_source)
+            location = FileInstance.from_local_file(
+                path=path, file_stack_id=file_stack.id, make_copy=not secure_source
+            )
             file_stack.locations.append(location)
         return file_stack
 
     def complex_hash(self) -> str:
-
         if self.is_hashable:
             if self.hash:
                 return self.hash
@@ -127,7 +147,9 @@ class FileStack(Model):
                 local_file = self.get(local_dir=temp_dir)
                 return complex_hash_function(local_file.read_bytes())
         else:
-            logger.warning(f"FileStack {self.id} is not hashable, returning unique hash.")
+            logger.warning(
+                f"FileStack {self.id} is not hashable, returning unique hash."
+            )
             return str(ObjectId())
 
     def append(self, file_instance: FileInstance):
@@ -139,23 +161,24 @@ class FileStack(Model):
         """
         self.locations.append(file_instance)
 
-    def get(self, local_dir: Optional[Path] = None, config = None) -> Path:
+    def get(self, local_dir: Optional[Path] = None, config=None) -> Path:
         """
-            Copies the file stack to a local directory.
+        Copies the file stack to a local directory.
 
-            :param config: configuration, needed when called outside of simstack (webserver)
-            :param local_dir: The local directory to copy the file stack to.
-            :type local_dir: Path
-            """
+        :param config: configuration, needed when called outside of simstack (webserver)
+        :param local_dir: The local directory to copy the file stack to.
+        :type local_dir: Path
+        """
         if config is None:
             from simstack.core.context import context
+
             config = context.config
 
         if local_dir is None:
             import getpass
+
             username = getpass.getuser()
             local_dir = Path(config.workdir) / username / str(self.id)
-
 
         # select the best instance
         # first search for an instance with "in_memory" set to True
@@ -166,20 +189,24 @@ class FileStack(Model):
                 # Decompress the content
                 decompressed_content = zlib.decompress(self.content)
                 # Write the decompressed content to the local directory
-                with open(local_dir / self.name, 'wb') as f:
+                with open(local_dir / self.name, "wb") as f:
                     f.write(decompressed_content)
                 return local_dir / self.name
             except Exception as e:
                 logger.error(f"Failed to decompress and write file {self.name}: {e}")
-                raise ValueError(f"Failed to decompress and write file {self.name}: {e}")
+                raise ValueError(
+                    f"Failed to decompress and write file {self.name}: {e}"
+                )
         # If in-memory instance not found or decompression failed, try finding instance on same resource
-        if same_resource_instance := next((f for f in self.locations if f.resource == config.resource), None):
+        if same_resource_instance := next(
+            (f for f in self.locations if f.resource == config.resource), None
+        ):
             # Copy the file from the source path to the destination path
             return Path(same_resource_instance.path)
         else:
             local_dir.mkdir(parents=True, exist_ok=True)
-            logger.error(f"No suitable file instance found for copying.")
-            raise ValueError(f"No suitable file instance found for copying.")
+            logger.error("No suitable file instance found for copying.")
+            raise ValueError("No suitable file instance found for copying.")
 
     def str(self):
         return f"FileStack(name={self.name}, size={self.size}, is_hashable={self.is_hashable}, in_memory={self.in_memory}, locations={self.locations})"
@@ -187,6 +214,7 @@ class FileStack(Model):
 
 async def main():
     from simstack.core.context import context
+
     context.initialize()
     # write a file test.txt
     with open("test.txt", "w") as f:
@@ -194,12 +222,13 @@ async def main():
     file_stack = FileStack.from_local_file("test.txt", is_hashable=True, in_memory=True)
     print(file_stack)
     await context.db.save(file_stack)
-    local_dir =   local_dir = Path(context.config.workdir) / "samira" / str(file_stack.id)
+    local_dir = local_dir = Path(context.config.workdir) / "samira" / str(file_stack.id)
     retrieved = file_stack.get(local_dir=local_dir, config=context.config)
     print("Retrieved file path:", retrieved)
 
 
 if __name__ == "__main__":
     import asyncio
+
     logging.basicConfig(level=logging.DEBUG)
     asyncio.run(main())

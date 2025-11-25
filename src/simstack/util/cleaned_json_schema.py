@@ -8,7 +8,7 @@ def cleaned_json_schema(cls):
     :return:
     """
     schema = cls.model_json_schema()
-    schema['title'] = cls.__name__
+    schema["title"] = cls.__name__
 
     # for field_name, field in cls.model_fields.items():
     #     field_type = field.annotation

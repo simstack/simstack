@@ -1,39 +1,44 @@
 import hashlib
 from pathlib import Path
 from typing import Union, BinaryIO
+
 from fastapi import UploadFile
 
 
-def hash_file(file_path: Union[str, Path], algorithm: str = 'sha256', chunk_size: int = 8192) -> str:
+def hash_file(
+    file_path: Union[str, Path], algorithm: str = "sha256", chunk_size: int = 8192
+) -> str:
     """
     Calculate hash of a file on disk.
-    
+
     Args:
         file_path: Path to the file
         algorithm: Hash algorithm (md5, sha1, sha256, etc.)
         chunk_size: Size of chunks to read
-        
+
     Returns:
         str: Hexadecimal digest of the hash
     """
     hash_obj = hashlib.new(algorithm)
 
-    with open(file_path, 'rb') as f:
-        for chunk in iter(lambda: f.read(chunk_size), b''):
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(chunk_size), b""):
             hash_obj.update(chunk)
 
     return hash_obj.hexdigest()
 
 
-def hash_file_object(file_obj: BinaryIO, algorithm: str = 'sha256', chunk_size: int = 8192) -> str:
+def hash_file_object(
+    file_obj: BinaryIO, algorithm: str = "sha256", chunk_size: int = 8192
+) -> str:
     """
     Calculate hash of a file-like object.
-    
+
     Args:
         file_obj: File-like object (must be in binary mode)
         algorithm: Hash algorithm (md5, sha1, sha256, etc.)
         chunk_size: Size of chunks to read
-        
+
     Returns:
         str: Hexadecimal digest of the hash
     """
@@ -52,7 +57,7 @@ def hash_file_object(file_obj: BinaryIO, algorithm: str = 'sha256', chunk_size: 
         pass
 
     # Calculate hash
-    for chunk in iter(lambda: file_obj.read(chunk_size), b''):
+    for chunk in iter(lambda: file_obj.read(chunk_size), b""):
         hash_obj.update(chunk)
 
     # Restore original position if possible
@@ -65,15 +70,17 @@ def hash_file_object(file_obj: BinaryIO, algorithm: str = 'sha256', chunk_size: 
     return hash_obj.hexdigest()
 
 
-async def hash_uploadfile(upload_file: UploadFile, algorithm: str = 'sha256', chunk_size: int = 8192) -> str:
+async def hash_uploadfile(
+    upload_file: UploadFile, algorithm: str = "sha256", chunk_size: int = 8192
+) -> str:
     """
     Calculate hash of a FastAPI UploadFile.
-    
+
     Args:
         upload_file: FastAPI UploadFile object
         algorithm: Hash algorithm (md5, sha1, sha256, etc.)
         chunk_size: Size of chunks to read
-        
+
     Returns:
         str: Hexadecimal digest of the hash
     """

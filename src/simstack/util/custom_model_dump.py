@@ -13,7 +13,7 @@ async def custom_model_dump(self, **kwargs) -> Dict[str, Any]:
     """
     # First get the dictionary from the standard model_dump
 
-    filtered_kwargs = {k: v for k, v in kwargs.items() if k != 'engine'}
+    filtered_kwargs = {k: v for k, v in kwargs.items() if k != "engine"}
     data = self.model_dump(**filtered_kwargs)
 
     # Process each field - the key is to process the original values from self
@@ -33,7 +33,7 @@ async def _recursive_process(obj, **kwargs):
     """
     Helper function to recursively process an object that might contain models
     """
-    if hasattr(obj, 'custom_model_dump'):
+    if hasattr(obj, "custom_model_dump"):
         return await obj.custom_model_dump(**kwargs)
     elif isinstance(obj, dict):
         return {k: await _recursive_process(v, **kwargs) for k, v in obj.items()}
@@ -55,7 +55,7 @@ async def _process_container(container, **kwargs):
     if isinstance(container, dict):
         result = {}
         for k, v in container.items():
-            if hasattr(v, 'custom_model_dump'):
+            if hasattr(v, "custom_model_dump"):
                 result[k] = await v.custom_model_dump(**kwargs)
             elif isinstance(v, (dict, list)):
                 result[k] = await _process_container(v, **kwargs)
@@ -65,7 +65,7 @@ async def _process_container(container, **kwargs):
     elif isinstance(container, list):
         result = []
         for item in container:
-            if hasattr(item, 'custom_model_dump'):
+            if hasattr(item, "custom_model_dump"):
                 result.append(await item.custom_model_dump(**kwargs))
             elif isinstance(item, (dict, list)):
                 result.append(await _process_container(item, **kwargs))

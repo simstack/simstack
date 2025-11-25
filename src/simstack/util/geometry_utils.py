@@ -15,7 +15,7 @@ def _cross_product(a: List[float], b: List[float]) -> List[float]:
     return [
         a[1] * b[2] - a[2] * b[1],
         a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0]
+        a[0] * b[1] - a[1] * b[0],
     ]
 
 
@@ -81,11 +81,7 @@ def _get_eigenvectors_3x3(matrix: List[List[float]]) -> List[List[float]]:
     v3 = _normalize_vector(v3)
 
     # Return as columns of transformation matrix
-    return [
-        [v1[0], v2[0], v3[0]],
-        [v1[1], v2[1], v3[1]],
-        [v1[2], v2[2], v3[2]]
-    ]
+    return [[v1[0], v2[0], v3[0]], [v1[1], v2[1], v3[1]], [v1[2], v2[2], v3[2]]]
 
 
 def _get_canonical_orientation(coords: List[List[float]]) -> List[List[float]]:

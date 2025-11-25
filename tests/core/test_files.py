@@ -4,16 +4,15 @@ import zlib
 from datetime import datetime
 from pathlib import Path
 import pytest
-from unittest.mock import patch, MagicMock
-from functools import wraps
-from typing import Type, get_type_hints, Any, TypeVar, cast
+from unittest.mock import patch
+from typing import Type, TypeVar
 import tempfile
 
 from simstack.models.files import FileStack
 from simstack.models.file_instance import FileInstance
 
 # Define a TypeVar for classes
-T = TypeVar('T', bound=Type)
+T = TypeVar("T", bound=Type)
 
 
 @pytest.fixture
@@ -48,13 +47,14 @@ def test_file(tmp_path):
 
 # FileInstance Tests
 
+
 @pytest.fixture
 def file_instance():
     """Create a basic FileInstance for testing"""
     return FileInstance(
         path="test/path/file.txt",
         resource="test_resource",
-        created_at=datetime(2023, 1, 1, 12, 0, 0)
+        created_at=datetime(2023, 1, 1, 12, 0, 0),
     )
 
 
@@ -63,7 +63,7 @@ def test_file_instance_creation():
     instance = FileInstance(
         path="test/path/file.txt",
         resource="local",
-        created_at=datetime(2023, 1, 1, 12, 0, 0)
+        created_at=datetime(2023, 1, 1, 12, 0, 0),
     )
 
     assert instance.path == "test/path/file.txt"
@@ -79,18 +79,16 @@ def test_from_local_file(test_file, setup_test_env):
     try:
         # Create test file in temporary directory
         temp_path = Path(context.config.workdir) / "test_file.txt"
-        with open(temp_path, 'w') as f:
+        with open(temp_path, "w") as f:
             f.write("test content")
 
         # Patch the context import that happens inside the from_local_file method
-        with patch('simstack.core.context.context', context):
+        with patch("simstack.core.context.context", context):
             from simstack.models.file_instance import FileInstance
             from bson import ObjectId
 
             file_instance = FileInstance.from_local_file(
-                path=temp_path,
-                file_stack_id=ObjectId(),
-                make_copy=False
+                path=temp_path, file_stack_id=ObjectId(), make_copy=False
             )
 
             assert file_instance.resource == context.config.resource
@@ -118,9 +116,7 @@ def test_from_local_file_no_copy(test_file, setup_test_env):
         # Mock the relative_to function
         with patch.object(Path, "relative_to", return_value=rel_path):
             instance = FileInstance.from_local_file(
-                path=full_path,
-                file_stack_id=file_stack_id,
-                make_copy=False
+                path=full_path, file_stack_id=file_stack_id, make_copy=False
             )
 
         assert rel_path.name in instance.path
@@ -137,40 +133,30 @@ def test_from_local_file_error(tmp_path):
     non_existent_file = tmp_path / "non_existent.txt"
 
     with pytest.raises(ValueError):
-        FileInstance.from_local_file(
-            path=non_existent_file,
-            file_stack_id="any_id"
-        )
+        FileInstance.from_local_file(path=non_existent_file, file_stack_id="any_id")
 
 
 # FileStack Tests
+
 
 @pytest.fixture
 def file_stack():
     """Create a basic FileStack for testing"""
     return FileStack(
-        name="test_file.txt",
-        size=100,
-        is_hashable=True,
-        in_memory=False,
-        locations=[]
+        name="test_file.txt", size=100, is_hashable=True, in_memory=False, locations=[]
     )
 
 
 def test_file_stack_creation():
     """Test basic FileStack creation"""
-    stack = FileStack(
-        name="test_file.txt",
-        size=100,
-        is_hashable=True,
-        in_memory=False
-    )
+    stack = FileStack(name="test_file.txt", size=100, is_hashable=True, in_memory=False)
 
     assert stack.name == "test_file.txt"
     assert stack.size == 100
     assert stack.is_hashable is True
     assert stack.in_memory is False
     assert stack.locations == []
+
 
 @pytest.mark.asyncio
 async def test_custom_model_dump(file_stack):
@@ -205,9 +191,7 @@ def test_from_local_file_in_memory(test_file, setup_test_env):
 
         with patch("simstack.models.files.hash_file", return_value="test_hash"):
             stack = FileStack.from_local_file(
-                path=temp_file,
-                is_hashable=True,
-                in_memory=True
+                path=temp_file, is_hashable=True, in_memory=True
             )
 
         assert stack.name == temp_file.name
@@ -232,9 +216,7 @@ def test_from_local_file_not_in_memory(test_file, setup_test_env):
 
         with patch("simstack.models.files.hash_file", return_value="test_hash"):
             stack = FileStack.from_local_file(
-                path=temp_file,
-                is_hashable=True,
-                in_memory=False
+                path=temp_file, is_hashable=True, in_memory=False
             )
 
         assert stack.name == temp_file.name
@@ -289,7 +271,7 @@ def test_get_in_memory(file_stack, setup_test_env):
 
         # Verify
         assert os.path.exists(result_path)
-        with open(result_path, 'rb') as f:
+        with open(result_path, "rb") as f:
             assert f.read() == original_content
 
 
@@ -301,7 +283,6 @@ def test_get_same_resource(file_stack, file_instance, setup_test_env):
     file_stack.in_memory = False
     file_instance.resource = context.config.resource
     file_stack.locations.append(file_instance)
-
 
     # Test
     result_path = file_stack.get()
