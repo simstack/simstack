@@ -14,8 +14,6 @@ from simstack.util.import_module import import_module_from_file
 
 logger = logging.getLogger("NodeTable")
 
-
-
 def is_node_function(func: Callable) -> bool:
     """Check if a function is marked as a node using the @node decorator."""
     return hasattr(func, '_is_node') and getattr(func, '_is_node', False) is True
