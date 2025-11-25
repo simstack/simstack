@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class TaskStatus(str,Enum):
+class TaskStatus(str, Enum):
     SUBMITTED = "submitted"
     RUNNING = "running"
     SLURM_QUEUED = "slurm_queued"
@@ -11,8 +11,9 @@ class TaskStatus(str,Enum):
     COMPLETED = "completed"
     RECOVERED = "recovered"
 
+
 # TODO: eliminate
-class DBType(str,Enum):
+class DBType(str, Enum):
     SQLITE = "sqlite"
     MONGODB = "mongodb"
     POSTGRES = "postgres"

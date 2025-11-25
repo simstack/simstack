@@ -1,9 +1,9 @@
-from typing import List, Union, Literal, Optional, Dict, Any, TYPE_CHECKING
-from odmantic import Model, Field, ObjectId
+from typing import Optional, Dict, Any
 
-from simstack.models.simstack_model import simstack_model
+from odmantic import Model, Field
 
 from simstack.models.pickle_models import FunctionPickle
+from simstack.models.simstack_model import simstack_model
 
 
 # class ArtifactList(List):
@@ -56,6 +56,7 @@ from simstack.models.pickle_models import FunctionPickle
 #         super().reverse()
 #         self.parent_artifact[self.key] = self
 
+
 @simstack_model
 class ArtifactModel(Model):
     name: str
@@ -66,6 +67,7 @@ class ArtifactModel(Model):
     model_config = {
         "collection": "artifacts"  # All subclasses will use the same collection
     }
+
 
 # class IntArtifactModel(ArtifactModel):
 #     type: Literal["int"] = "int"  # Fixed value for this subclass
@@ -92,7 +94,6 @@ class ArtifactModel(Model):
 #     items: List[ArtifactType] = Field(default_factory=list)  # List of Item objects
 
 
-
 class ArtifactMapping(Model):
     """
     ArtifactsMapper is a mapping between the artifact and a node registry-path.
@@ -110,13 +111,14 @@ class ArtifactMapping(Model):
 
 
     """
+
     name: str = Field(default="artifact", unique=True)
     regex_pattern: str = Field(default="")
     function_mapping: str = Field(default="")
     function_code: str = Field(default="")
     pickle_function: Optional[FunctionPickle] = None
 
-    def set_values(self, other: 'ArtifactMapping') -> 'ArtifactMapping':
+    def set_values(self, other: "ArtifactMapping") -> "ArtifactMapping":
         self.name = other.name
         self.regex_pattern = other.regex_pattern
         self.function_mapping = other.function_mapping

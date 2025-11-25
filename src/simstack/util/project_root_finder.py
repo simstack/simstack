@@ -1,7 +1,9 @@
 import os
 
 
-def find_project_root(current_file=None, marker_files=(".git", "simstack.toml", "setup.py")):
+def find_project_root(
+    current_file=None, marker_files=(".git", "simstack.toml", "setup.py")
+):
     """
     Find the project root directory by searching for common marker files
 

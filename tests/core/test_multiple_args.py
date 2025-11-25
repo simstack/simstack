@@ -1,4 +1,3 @@
-
 from simstack.core.node import node
 from simstack.models import Parameters, IntData
 
@@ -16,5 +15,7 @@ def test_adder():
 
 def test_adder_kwarg():
     parameters = Parameters(force_rerun=True)
-    result = adder_two_args(IntData(value=1), arg2 = IntData(value=2), parameters=parameters)
+    result = adder_two_args(
+        IntData(value=1), arg2=IntData(value=2), parameters=parameters
+    )
     assert result.value == 3

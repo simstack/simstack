@@ -1,19 +1,16 @@
-import asyncio
-import logging
+import logging  # Import logging before using it
 import os
 import sys
+from urllib.parse import urlparse, urlunparse
 
-from simstack.core.asnyc_helper import async_helper
 from simstack.core.definitions import DBType
+from simstack.util.config_reader import ConfigReader
+from simstack.util.path_manager import PathManager
+
 # from simstack.core.model_table import make_models_for_path
 # from simstack.core.node_table import make_nodes_for_path
 from simstack.util.project_root_finder import find_project_root
-from simstack.util.config_reader import ConfigReader
-from simstack.util.path_manager import PathManager
-from urllib.parse import urlparse, urlunparse
 from simstack.util.setup_logging import setup_logging
-
-import logging  # Import logging before using it
 
 
 def remove_password_from_connection_string(connection_string):
@@ -52,16 +49,15 @@ class GlobalState:
         This method only runs once due to the singleton pattern.
         Use the initialize() method to set up the instance with database settings.
         """
-        if not hasattr(self, '_initialized'):
+        if not hasattr(self, "_initialized"):
             self._initialized = True
 
             self.db = None
             self.log_handler = None
             self.path_manager = None
             self.config = None
-            # If initialization parameters are provided, call initialize
-            if kwargs:
-                self.initialize(**kwargs)
+
+            self.initialize(**kwargs)
 
     def __getattribute__(self, name):
         # These special attributes should always be accessible
@@ -86,10 +82,9 @@ class GlobalState:
     #         await make_nodes_for_path(parent_path, self.path_manager, context.db.engine)
 
     def initialize(self, **kwargs):
-        path: str | None = kwargs.get("path", None)
         db_name = kwargs.get("db_name", None)
         connection_string = kwargs.get("connection_string", None)
-        resource_str : str = kwargs.get("resource", "self")
+        resource_str: str = kwargs.get("resource", "self")
 
         """Initialize the GlobalState with database settings"""
         if self._initialized:
@@ -97,20 +92,26 @@ class GlobalState:
         self._initialized = True
 
         is_test = kwargs.get("is_test", False)
-        self.config = ConfigReader(db_name=db_name, connection_string=connection_string, resource=resource_str,
-                                   is_test=is_test)
+        self.config = ConfigReader(
+            db_name=db_name,
+            connection_string=connection_string,
+            resource=resource_str,
+            is_test=is_test,
+        )
 
         # check that the database can be reached and set logging up
         from simstack.util.db import Database
-        
+
         # Use in-memory database for tests
         db_type = DBType.IN_MEMORY if is_test and db_name is None else DBType.MONGODB
-        
+
         try:
-            self.db = Database(db_type, self.config.database_name, self.config.connection_string)
+            self.db = Database(
+                db_type, self.config.database_name, self.config.connection_string
+            )
             if db_type == DBType.MONGODB:
                 # Only ping real MongoDB connections
-                self.db.client.admin.command('ping')
+                self.db.client.admin.command("ping")
         except ConnectionError as e:
             if not is_test:
                 print(f"Could not connect to the database: {e}")
@@ -118,7 +119,7 @@ class GlobalState:
             else:
                 # For tests, continue without the database connection failure
                 print(f"Warning: Database connection failed in test mode: {e}")
-        
+
         if is_test:
             # For tests, use simple console logging without the database handler
             logging.basicConfig(
@@ -127,15 +128,22 @@ class GlobalState:
             )
             self.log_handler = logging.getLogger()
         else:
-            self.log_handler = setup_logging(self.config.connection_string, self.config.database_name,
-                                             kwargs.get("log_level", "INFO"))
+            self.log_handler = setup_logging(
+                self.config.connection_string,
+                self.config.database_name,
+                kwargs.get("log_level", "INFO"),
+            )
 
         # initialize the rest of the variables in the config, but now we can get the errors in the database
         self.config.secondary_init(kwargs.get("workdir", None))
 
         logger = logging.getLogger("Context")
-        safe_connection_string = remove_password_from_connection_string(self.config.connection_string)
-        logger.info(f"Database connection established to {self.config.database_name} at {safe_connection_string}")
+        safe_connection_string = remove_password_from_connection_string(
+            self.config.connection_string
+        )
+        logger.info(
+            f"Database connection established to {self.config.database_name} at {safe_connection_string}"
+        )
 
         # Initialize PathManager from config
         self.path_manager = PathManager.from_config(self.config)

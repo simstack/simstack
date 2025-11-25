@@ -1,11 +1,11 @@
-import asyncio
 from datetime import datetime
 from typing import Optional, List
+
 from odmantic import Model, Field, ObjectId, Reference
 
+from simstack.core.definitions import TaskStatus
 from simstack.core.engine import current_engine_context
 from simstack.models import Parameters
-from simstack.core.definitions import TaskStatus
 from simstack.models.file_list import FileList
 
 
@@ -61,6 +61,7 @@ class NodeRegistry(Model):
     :ivar call_path: An optional path indicating where the function is called from by concatenating the name of all nodes in the call stack.
     :type call_path: Optional[str]
     """
+
     name: str
     status: TaskStatus
     custom_name: Optional[str] = None
@@ -72,9 +73,15 @@ class NodeRegistry(Model):
     message: Optional[str] = None
 
     input_names: List[str] = Field(default_factory=list)
-    input_tables: List[str] = Field(default_factory=list)     # The model mappings the input classes
-    input_ids: List[ObjectId]  = Field(default_factory=list)  # The ID of the specific workflow instance
-    result_tables: List[str] = Field(default_factory=list)    # The model mappings of the result classes
+    input_tables: List[str] = Field(
+        default_factory=list
+    )  # The model mappings the input classes
+    input_ids: List[ObjectId] = Field(
+        default_factory=list
+    )  # The ID of the specific workflow instance
+    result_tables: List[str] = Field(
+        default_factory=list
+    )  # The model mappings of the result classes
     result_ids: List[ObjectId] = Field(default_factory=list)
     result_names: List[str] = Field(default_factory=list)
 
@@ -92,7 +99,7 @@ class NodeRegistry(Model):
     is_async: bool = False
     parameters: Parameters = Reference()
 
+
 async def find_child_nodes(task_id: str) -> List[NodeRegistry]:
     engine = current_engine_context.get()
     return await engine.find(NodeRegistry, {"parent_ids": {"$in": [task_id]}})
-

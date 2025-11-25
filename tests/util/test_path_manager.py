@@ -1,13 +1,6 @@
 import os
-import sys
 import unittest
-from pathlib import Path
-
-# Add the src directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-
 from simstack.util.path_manager import PathManager
-from simstack.util.directory_iterator import DirectoryPath
 from simstack.util.project_root_finder import find_project_root
 
 
@@ -20,8 +13,16 @@ class TestPathManager(unittest.TestCase):
         self.root_dir = find_project_root()
 
         # Add test paths
-        self.path_manager.add_path("test_models", os.path.join(self.root_dir, "src", "simstack", "models"), "src")
-        self.path_manager.add_path("test_methods", os.path.join(self.root_dir, "src", "simstack", "methods"), "src")
+        self.path_manager.add_path(
+            "test_models",
+            os.path.join(self.root_dir, "src", "simstack", "models"),
+            "src",
+        )
+        self.path_manager.add_path(
+            "test_methods",
+            os.path.join(self.root_dir, "src", "simstack", "methods"),
+            "src",
+        )
 
     def test_add_path(self):
         """Test adding a path to the PathManager."""
@@ -101,7 +102,7 @@ class TestPathManager(unittest.TestCase):
                     return {
                         "config_models": {
                             "path": os.path.join(root_dir, "src", "simstack", "models"),
-                            "drops": "src"
+                            "drops": "src",
                         }
                     }
                 return default

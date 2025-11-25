@@ -18,8 +18,8 @@ async def node_registry():
         function_hash="test_function_hash",  # Required field
         arg_hash="test_arg_hash",  # Required field
         func_mapping="test.module.function",  # Required field
-        parameters=parameters  # Required field
+        parameters=parameters,  # Required field
     )
-    
+
     await context.db.save(node_data)
     return node_data

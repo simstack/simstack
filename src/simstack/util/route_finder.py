@@ -1,16 +1,7 @@
-
 # TODO rmeove duplicate route finder this is a test implementation
 routes_table = [
-    {
-        "target": "local",
-        "source": "int-nano",
-        "host": "local"
-    },
-    {
-        "target": "int-nano",
-        "source": "local",
-        "host": "local"
-    },
+    {"target": "local", "source": "int-nano", "host": "local"},
+    {"target": "int-nano", "source": "local", "host": "local"},
     {
         "target": "horeka",
         "source": "local",
@@ -22,6 +13,8 @@ routes_table = [
         "host": "horeka",
     },
 ]
+
+
 def find_route(target, source):
     """
     Find the minimal route from source to target using available routes.
@@ -68,6 +61,7 @@ def find_route(target, source):
 
     # If we've exhausted all possibilities without finding a path
     return None
+
 
 if __name__ == "__main__":
     # Example usage

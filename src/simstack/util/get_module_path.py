@@ -1,4 +1,3 @@
-import sys
 import os
 
 from simstack.util.project_root_finder import find_project_root
@@ -20,8 +19,8 @@ def get_module_path(file_path: str):
     # If not found in sys.path, use an alternative approach
     project_root = find_project_root()  # Assumes running from project root
     if file_path.startswith(project_root):
-        relative_path = file_path[len(project_root):].lstrip(os.sep)
-        module_path = os.path.splitext(relative_path)[0].replace(os.sep, '.')
+        relative_path = file_path[len(project_root) :].lstrip(os.sep)
+        module_path = os.path.splitext(relative_path)[0].replace(os.sep, ".")
         return module_path
 
     return None

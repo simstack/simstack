@@ -3,7 +3,7 @@ from typing import Optional
 
 from odmantic import Model
 
-from simstack.models import simstack_model
+from simstack.models.simstack_model import simstack_model
 from simstack.util.ui_tools import ui_hide_fields
 
 
@@ -21,15 +21,33 @@ class ArrayStorage(Model):
     def get_array(self):
         """Retrieve the numpy array"""
         import numpy as np
+
         shape = tuple(int(dim) for dim in self.shape.split(",")) if self.shape else ()
-        flat_array = np.array(json.loads(self.data_json)) if self.data_json else np.array([])
+        flat_array = (
+            np.array(json.loads(self.data_json)) if self.data_json else np.array([])
+        )
         return flat_array.reshape(shape)
 
-    def make_table_entries(self, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
-        return { "name": self.name }
+    def make_table_entries(
+        self,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return {"name": self.name}
 
-    def make_column_defs_instance(self, table_name=None, max_recursion_level=1, drop_id=True, current_level=0, visited=None, field_prefix=""):
-        return [{ "field": self.name, "headerName": "Array" } ]
+    def make_column_defs_instance(
+        self,
+        table_name=None,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return [{"field": self.name, "headerName": "Array"}]
 
     @classmethod
     def ui_schema(cls, **kwargs) -> dict:

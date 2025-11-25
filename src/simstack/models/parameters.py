@@ -1,9 +1,11 @@
 from enum import Enum
-from odmantic import Field, EmbeddedModel
 from typing import Optional, List, ClassVar, Dict, Any
+
+from odmantic import Field, EmbeddedModel
 from pydantic import field_validator, model_validator
-from simstack.core.context import context
+
 from simstack.core.resources import allowed_resources
+
 
 class Resource(EmbeddedModel):
     """
@@ -70,66 +72,108 @@ class Queue(str, Enum):
     SLURM_QUEUE = "slurm-queue"
 
 
-#TODO Fix Slurm Parameters
+# TODO Fix Slurm Parameters
 class SlurmParameters(EmbeddedModel):
     # Essential Resource Allocation Parameters
     nodes: Optional[int] = Field(default=1, ge=1, description="Number of compute nodes")
-    tasks: Optional[int] = Field(default=1, ge=1, description="Total number of tasks/processes")
-    tasks_per_node: Optional[int] = Field(default=1, ge=1, description="Number of tasks per node")
-    cpus_per_task: Optional[int] = Field(default=1, ge=1, description="Number of CPU cores per task")
-    
-    # Memory Parameters
-    mem: Optional[str] = Field(default="1G", description="Memory per node (e.g., '32G', '1024M')")
-    mem_per_cpu: Optional[str] = Field(default=None, description="Memory per CPU core (e.g., '4G')")
+    tasks: Optional[int] = Field(
+        default=1, ge=1, description="Total number of tasks/processes"
+    )
+    tasks_per_node: Optional[int] = Field(
+        default=1, ge=1, description="Number of tasks per node"
+    )
+    cpus_per_task: Optional[int] = Field(
+        default=1, ge=1, description="Number of CPU cores per task"
+    )
 
+    # Memory Parameters
+    mem: Optional[str] = Field(
+        default="1G", description="Memory per node (e.g., '32G', '1024M')"
+    )
+    mem_per_cpu: Optional[str] = Field(
+        default=None, description="Memory per CPU core (e.g., '4G')"
+    )
 
     # Time Parameters
-    time: Optional[str] = Field(default="1:00:00", description="Maximum runtime (e.g., '24:00:00', '1-12:00:00')")
-    begin: Optional[str] = Field(default=None, description="Defer job start until specified time")
-    
+    time: Optional[str] = Field(
+        default="1:00:00",
+        description="Maximum runtime (e.g., '24:00:00', '1-12:00:00')",
+    )
+    begin: Optional[str] = Field(
+        default=None, description="Defer job start until specified time"
+    )
+
     # Queue/Partition Parameters
-    partition: Optional[str] = Field(default=None, description="Queue/partition to submit to")
+    partition: Optional[str] = Field(
+        default=None, description="Queue/partition to submit to"
+    )
     qos: Optional[str] = Field(default=None, description="Quality of Service level")
-    
+
     # Job Information Parameters
     job_name: Optional[str] = Field(default="simstack", description="Job name")
     output: Optional[str] = Field(default=None, description="Standard output file path")
     error: Optional[str] = Field(default=None, description="Standard error file path")
-    
+
     # Notification Parameters
-    mail_type: Optional[str] = Field(default=None, description="Email notification triggers (BEGIN,END,FAIL,ALL)")
-    mail_user: Optional[str] = Field(default=None, description="Email address for notifications")
-    
+    mail_type: Optional[str] = Field(
+        default=None, description="Email notification triggers (BEGIN,END,FAIL,ALL)"
+    )
+    mail_user: Optional[str] = Field(
+        default=None, description="Email address for notifications"
+    )
+
     # GPU Parameters
-    gres: Optional[str] = Field(default=None, description="Generic resources (e.g., 'gpu:2', 'gpu:v100:1')")
-    
+    gres: Optional[str] = Field(
+        default=None, description="Generic resources (e.g., 'gpu:2', 'gpu:v100:1')"
+    )
+
     # Advanced Scheduling Parameters
     account: Optional[str] = Field(default=None, description="Billing account")
     priority: Optional[int] = Field(default=None, description="Job priority")
-    reservation: Optional[str] = Field(default=None, description="Use specific reservation")
-    constraint: Optional[str] = Field(default=None, description="Node feature constraints")
+    reservation: Optional[str] = Field(
+        default=None, description="Use specific reservation"
+    )
+    constraint: Optional[str] = Field(
+        default=None, description="Node feature constraints"
+    )
     exclusive: Optional[bool] = Field(default=None, description="Exclusive node access")
     nice: Optional[int] = Field(default=None, description="Adjust scheduling priority")
-    
+
     # Dependency and Array Parameters
-    dependency: Optional[str] = Field(default=None, description="Job dependencies (e.g., 'afterok:jobid')")
-    array: Optional[str] = Field(default=None, description="Job arrays (e.g., '1-100', '1-10:2')")
-    
+    dependency: Optional[str] = Field(
+        default=None, description="Job dependencies (e.g., 'afterok:jobid')"
+    )
+    array: Optional[str] = Field(
+        default=None, description="Job arrays (e.g., '1-100', '1-10:2')"
+    )
+
     # Additional Commands
-    startup_commands: List[str] = Field(default_factory=list, description="Commands to run before main job")
-    
+    startup_commands: List[str] = Field(
+        default_factory=list, description="Commands to run before main job"
+    )
+
     # Working Directory
-    chdir: Optional[str] = Field(default=None, description="Working directory for the job")
-    
+    chdir: Optional[str] = Field(
+        default=None, description="Working directory for the job"
+    )
+
     # Export Environment
-    export: Optional[str] = Field(default=None, description="Environment variables to export")
-    
+    export: Optional[str] = Field(
+        default=None, description="Environment variables to export"
+    )
+
     # Signal handling
-    signal: Optional[str] = Field(default=None, description="Signal to send when time limit is reached")
-    
+    signal: Optional[str] = Field(
+        default=None, description="Signal to send when time limit is reached"
+    )
+
     # Requeue options
-    requeue: Optional[bool] = Field(default=None, description="Allow job to be requeued")
-    no_requeue: Optional[bool] = Field(default=None, description="Prevent job from being requeued")
+    requeue: Optional[bool] = Field(
+        default=None, description="Allow job to be requeued"
+    )
+    no_requeue: Optional[bool] = Field(
+        default=None, description="Prevent job from being requeued"
+    )
 
     model_config: ClassVar[Dict[str, Any]] = {
         "extra": "forbid",
@@ -149,73 +193,71 @@ class SlurmParameters(EmbeddedModel):
                     "output": "job_%j.out",
                     "error": "job_%j.err",
                     "mail_type": "END,FAIL",
-                    "mail_user": "user@institution.edu"
+                    "mail_user": "user@institution.edu",
                 }
-            ]
-        }
+            ],
+        },
     }
-    
-    
 
     def to_sbatch_args(self) -> List[str]:
         """Convert parameters to SBATCH arguments list."""
         args = []
-        
+
         # Validate memory parameters first
         memory_options = []
         if self.mem is not None:
-            memory_options.append('mem')
+            memory_options.append("mem")
         if self.mem_per_cpu is not None:
-            memory_options.append('mem_per_cpu')
-        if hasattr(self, 'mem_per_gpu') and getattr(self, 'mem_per_gpu') is not None:
-            memory_options.append('mem_per_gpu')
-        
+            memory_options.append("mem_per_cpu")
+        if hasattr(self, "mem_per_gpu") and getattr(self, "mem_per_gpu") is not None:
+            memory_options.append("mem_per_gpu")
+
         if len(memory_options) > 1:
             raise ValueError(
                 f"SLURM memory parameters are mutually exclusive. "
                 f"Found: {', '.join(memory_options)}. "
                 f"Please specify only one of: --mem, --mem-per-cpu, or --mem-per-gpu"
             )
-        
+
         # Map field names to SBATCH parameters
         field_mapping = {
-            'nodes': '--nodes',
-            'tasks': '--ntasks',
-            'tasks_per_node': '--ntasks-per-node',
-            'cpus_per_task': '--cpus-per-task',
-            'mem': '--mem',
-            'mem_per_cpu': '--mem-per-cpu',
-            'time': '--time',
-            'begin': '--begin',
-            'partition': '--partition',
-            'qos': '--qos',
-            'job_name': '--job-name',
-            'output': '--output',
-            'error': '--error',
-            'mail_type': '--mail-type',
-            'mail_user': '--mail-user',
-            'gres': '--gres',
-            'account': '--account',
-            'priority': '--priority',
-            'reservation': '--reservation',
-            'constraint': '--constraint',
-            'dependency': '--dependency',
-            'array': '--array',
-            'chdir': '--chdir',
-            'export': '--export',
-            'signal': '--signal'
+            "nodes": "--nodes",
+            "tasks": "--ntasks",
+            "tasks_per_node": "--ntasks-per-node",
+            "cpus_per_task": "--cpus-per-task",
+            "mem": "--mem",
+            "mem_per_cpu": "--mem-per-cpu",
+            "time": "--time",
+            "begin": "--begin",
+            "partition": "--partition",
+            "qos": "--qos",
+            "job_name": "--job-name",
+            "output": "--output",
+            "error": "--error",
+            "mail_type": "--mail-type",
+            "mail_user": "--mail-user",
+            "gres": "--gres",
+            "account": "--account",
+            "priority": "--priority",
+            "reservation": "--reservation",
+            "constraint": "--constraint",
+            "dependency": "--dependency",
+            "array": "--array",
+            "chdir": "--chdir",
+            "export": "--export",
+            "signal": "--signal",
         }
-        
+
         # Add mem_per_gpu to field mapping if it exists
-        if hasattr(self, 'mem_per_gpu'):
-            field_mapping['mem_per_gpu'] = '--mem-per-gpu'
-        
+        if hasattr(self, "mem_per_gpu"):
+            field_mapping["mem_per_gpu"] = "--mem-per-gpu"
+
         # Add parameters with values
         for field_name, sbatch_param in field_mapping.items():
             value = getattr(self, field_name, None)
             if value is not None:
                 args.append(f"{sbatch_param}={value}")
-        
+
         # Add boolean flags
         if self.exclusive:
             args.append("--exclusive")
@@ -225,20 +267,20 @@ class SlurmParameters(EmbeddedModel):
             args.append("--no-requeue")
         if self.nice is not None:
             args.append(f"--nice={self.nice}")
-        
+
         return args
-    
+
     def to_sbatch_header(self) -> str:
         """Convert parameters to SBATCH header string for script files."""
         lines = ["#!/bin/bash"]
-        
+
         for arg in self.to_sbatch_args():
             lines.append(f"#SBATCH {arg}")
-            
+
         if self.startup_commands:
             lines.append("")
             lines.extend(self.startup_commands)
-            
+
         return "\n".join(lines)
 
 
@@ -246,13 +288,15 @@ class Parameters(EmbeddedModel):
     force_rerun: bool = False
     resource: Resource = Field(default_factory=lambda: Resource(value="self"))
     queue: str = Field(default="default")
-    recompute_artifacts : Optional[bool] = Field(default=False, description="Recompute artifacts for this node")
+    recompute_artifacts: Optional[bool] = Field(
+        default=False, description="Recompute artifacts for this node"
+    )
 
     other_value: str = Field(default="other")
-    test_dict: Dict[str, Any] = Field(default_factory=lambda: { "test": "value"})
+    test_dict: Dict[str, Any] = Field(default_factory=lambda: {"test": "value"})
 
     slurm_parameters: SlurmParameters = Field(default=None)
-    #slurm_parameters_data: Dict[str, Any] = Field(default_factory=dict)
+    # slurm_parameters_data: Dict[str, Any] = Field(default_factory=dict)
 
     model_config = {
         "extra": "forbid",
@@ -265,23 +309,23 @@ class Parameters(EmbeddedModel):
                     "queue": "default",
                     "slurm_parameters": {
                         "nodes": 2,
-                    }
+                    },
                 }
-            ]
-        }
+            ],
+        },
     }
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def migrate_slurm_parameters(cls, data):
-        if 'slurm_parameters_data' in data and not ('slurm_parameters' in data):
-            data['slurm_parameters'] = SlurmParameters(**data['slurm_parameters_data'])
-            del data['slurm_parameters_data']
-        if not 'slurm_parameters' in data or data['slurm_parameters'] is None:
-            data['slurm_parameters'] = SlurmParameters()
+        if "slurm_parameters_data" in data and "slurm_parameters" not in data:
+            data["slurm_parameters"] = SlurmParameters(**data["slurm_parameters_data"])
+            del data["slurm_parameters_data"]
+        if "slurm_parameters" not in data or data["slurm_parameters"] is None:
+            data["slurm_parameters"] = SlurmParameters()
         return data
 
-    @field_validator('resource', mode='before')
+    @field_validator("resource", mode="before")
     @classmethod
     def validate_resource(cls, v):
         """
@@ -304,12 +348,16 @@ class Parameters(EmbeddedModel):
             return v
         elif isinstance(v, dict):
             # Handle deserialization from the dictionary
-            if 'value' in v:
-                return Resource(value=v['value'])
+            if "value" in v:
+                return Resource(value=v["value"])
             else:
-                raise ValueError(f"Dictionary representation of resource must contain 'value' key, got {v}")
+                raise ValueError(
+                    f"Dictionary representation of resource must contain 'value' key, got {v}"
+                )
         else:
-            raise ValueError(f"resource must be a string, Resource object, or dictionary, got {type(v)}")
+            raise ValueError(
+                f"resource must be a string, Resource object, or dictionary, got {type(v)}"
+            )
 
     # # property getters and setters to handle the slurm_parameters
     # @property

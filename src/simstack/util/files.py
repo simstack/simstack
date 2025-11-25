@@ -1,5 +1,4 @@
 import os
-import urllib.parse
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
@@ -8,26 +7,39 @@ from pydantic import BaseModel
 
 
 class SshAuthMethod(BaseModel):
-    """
-
-    """
+    """ """
 
     # Authentication type
-    auth_type: str = Field(description="Authentication type (password, key, agent, none)")
+    auth_type: str = Field(
+        description="Authentication type (password, key, agent, none)"
+    )
 
     # Password authentication
-    password: Optional[str] = Field(default=None, description="Password for authentication (should be stored securely)")
+    password: Optional[str] = Field(
+        default=None,
+        description="Password for authentication (should be stored securely)",
+    )
 
     # Key-based authentication
-    key_filename: Optional[str] = Field(default=None, description="Path to the private key file")
-    key_passphrase: Optional[str] = Field(default=None, description="Passphrase for the private key")
+    key_filename: Optional[str] = Field(
+        default=None, description="Path to the private key file"
+    )
+    key_passphrase: Optional[str] = Field(
+        default=None, description="Passphrase for the private key"
+    )
 
     # Allow host key to be added automatically to known_hosts
-    allow_host_key_add: bool = Field(default=True, description="Whether to automatically add host key to known_hosts")
+    allow_host_key_add: bool = Field(
+        default=True, description="Whether to automatically add host key to known_hosts"
+    )
 
     # Host key verification options
-    host_key_policy: str = Field(default="ask", description="Host key policy (ask, auto_add, strict)")
-    known_hosts_file: Optional[str] = Field(default=None, description="Path to known_hosts file")
+    host_key_policy: str = Field(
+        default="ask", description="Host key policy (ask, auto_add, strict)"
+    )
+    known_hosts_file: Optional[str] = Field(
+        default=None, description="Path to known_hosts file"
+    )
 
     model_config = {"extra": "allow"}
 
@@ -90,13 +102,21 @@ class FfspecFile(BaseModel):
     extension: str = Field(description="File extension")
 
     # Protocol and location information
-    protocol: str = Field(description="Storage protocol (e.g., 'file', 's3', 'http', 'sftp', 'scp')")
-    host: Optional[str] = Field(default=None, description="Host name or address where the file is located")
+    protocol: str = Field(
+        description="Storage protocol (e.g., 'file', 's3', 'http', 'sftp', 'scp')"
+    )
+    host: Optional[str] = Field(
+        default=None, description="Host name or address where the file is located"
+    )
     port: Optional[int] = Field(default=None, description="Port number if applicable")
 
     # Authentication information
-    username: Optional[str] = Field(default=None, description="Username for authentication if required")
-    ssh_auth: Optional[SshAuthMethod] = Field(default=None, description="SSH authentication configuration")
+    username: Optional[str] = Field(
+        default=None, description="Username for authentication if required"
+    )
+    ssh_auth: Optional[SshAuthMethod] = Field(
+        default=None, description="SSH authentication configuration"
+    )
 
     # File metadata
     size: int = Field(description="Size of the file in bytes")
@@ -104,35 +124,52 @@ class FfspecFile(BaseModel):
     modified_at: datetime = Field(description="Last modification timestamp")
 
     # Ffspec-specific attributes
-    storage_options: Dict[str, Any] = Field(default_factory=dict, description="Protocol-specific storage options")
+    storage_options: Dict[str, Any] = Field(
+        default_factory=dict, description="Protocol-specific storage options"
+    )
 
     # Content addressing
     checksum: Optional[str] = Field(default=None, description="File content checksum")
-    content_type: Optional[str] = Field(default=None, description="MIME type of the file")
+    content_type: Optional[str] = Field(
+        default=None, description="MIME type of the file"
+    )
 
     # Hierarchical structure support
-    parent_path: Optional[str] = Field(default=None, description="Path to parent directory")
+    parent_path: Optional[str] = Field(
+        default=None, description="Path to parent directory"
+    )
     is_directory: bool = Field(default=False, description="Whether this is a directory")
-    children: List[str] = Field(default_factory=list, description="Child file/directory paths if this is a directory")
+    children: List[str] = Field(
+        default_factory=list,
+        description="Child file/directory paths if this is a directory",
+    )
 
     # Access metadata
-    last_accessed: Optional[datetime] = Field(default=None, description="Last access timestamp")
-    access_count: int = Field(default=0, description="Number of times this file has been accessed")
+    last_accessed: Optional[datetime] = Field(
+        default=None, description="Last access timestamp"
+    )
+    access_count: int = Field(
+        default=0, description="Number of times this file has been accessed"
+    )
 
     # Custom metadata
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata as key-value pairs")
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata as key-value pairs"
+    )
 
     @classmethod
-    def from_ssh_key(cls,
-                     host: str,
-                     path: str,
-                     username: str,
-                     key_filename: str,
-                     protocol: str = "sftp",
-                     port: int = 22,
-                     key_passphrase: Optional[str] = None,
-                     host_key_policy: str = "auto_add",
-                     **kwargs) -> "FfspecFile":
+    def from_ssh_key(
+        cls,
+        host: str,
+        path: str,
+        username: str,
+        key_filename: str,
+        protocol: str = "sftp",
+        port: int = 22,
+        key_passphrase: Optional[str] = None,
+        host_key_policy: str = "auto_add",
+        **kwargs,
+    ) -> "FfspecFile":
         """
         Create a FfspecFile instance with SSH key authentication.
 
@@ -161,8 +198,8 @@ class FfspecFile(BaseModel):
             raise FileNotFoundError(f"SSH key file not found: {key_filename}")
 
         # Ensure path is absolute (starts with /)
-        if not path.startswith('/'):
-            path = '/' + path
+        if not path.startswith("/"):
+            path = "/" + path
 
         # Create SSH authentication config with proper host key policy
         ssh_auth = SshAuthMethod(
@@ -170,13 +207,13 @@ class FfspecFile(BaseModel):
             key_filename=key_filename,
             key_passphrase=key_passphrase,
             host_key_policy=host_key_policy,
-            allow_host_key_add=(host_key_policy == "auto_add")
+            allow_host_key_add=(host_key_policy == "auto_add"),
         )
 
         # Extract file name and extension from path
         p = Path(path)
         name = p.name
-        extension = p.suffix.lstrip('.') if p.suffix else ""
+        extension = p.suffix.lstrip(".") if p.suffix else ""
         parent_path = str(p.parent) if p.parent != p else None
 
         # Create comprehensive storage options for fsspec
@@ -213,7 +250,7 @@ class FfspecFile(BaseModel):
             created_at=kwargs.pop("created_at", datetime.now()),
             modified_at=kwargs.pop("modified_at", datetime.now()),
             is_directory=kwargs.pop("is_directory", False),
-            **kwargs
+            **kwargs,
         )
 
     def get_filesystem(self):
@@ -250,7 +287,9 @@ class FfspecFile(BaseModel):
                 return fsspec.filesystem(self.protocol, **self.storage_options)
 
         except (ImportError, KeyError) as e:
-            raise ValueError(f"Could not create filesystem for protocol '{self.protocol}': {e}")
+            raise ValueError(
+                f"Could not create filesystem for protocol '{self.protocol}': {e}"
+            )
 
     def can_connect(self) -> bool:
         """
@@ -292,14 +331,16 @@ class FfspecFile(BaseModel):
             netloc += f":{self.port}"
 
         # Assemble the URI
-        return urllib.parse.urlunparse((
-            self.protocol,  # scheme
-            netloc,  # netloc
-            self.path,  # path
-            "",  # params
-            "",  # query (not including auth info for security)
-            ""  # fragment
-        ))
+        return urllib.parse.urlunparse(
+            (
+                self.protocol,  # scheme
+                netloc,  # netloc
+                self.path,  # path
+                "",  # params
+                "",  # query (not including auth info for security)
+                "",  # fragment
+            )
+        )
 
     def copy_to_local(self, local_path: Optional[str] = None) -> str:
         """
@@ -314,7 +355,9 @@ class FfspecFile(BaseModel):
         import tempfile
 
         if self.is_directory:
-            raise ValueError("Cannot copy a directory, only individual files are supported")
+            raise ValueError(
+                "Cannot copy a directory, only individual files are supported"
+            )
 
         # Create a destination path if none is provided
         if local_path is None:
@@ -349,5 +392,5 @@ class FfspecFile(BaseModel):
             info = fs.info(self.path)
             self.size = info.get("size", 0)
             self.modified_at = datetime.now()
-        except:
+        except Exception:
             pass

@@ -29,7 +29,7 @@ def test_task_id_extraction():
     # Test case 6: No space after colon
     message = "task_id:QR456 (no space after colon)"
     assert (
-        extract_task_id(message) == None
+        extract_task_id(message) is None
     ), "Failed to extract task ID without space after colon"
 
     # Test case 7: Task ID with complex structure

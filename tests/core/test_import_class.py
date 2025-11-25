@@ -1,12 +1,6 @@
-import os
-import sys
 import pytest
 import pytest_asyncio
-from pathlib import Path
-from odmantic import ObjectId, Model
-
-# Add the src directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
+from odmantic import Model
 
 from simstack.core.context import context
 from simstack.models.models import ModelMapping
@@ -23,6 +17,7 @@ class SampleClass(Model):
     def get_value(self):
         return self.value
 
+
 # Define a test class in a different module
 class AnotherSampleClass(Model):
     """Another sample class for testing import_class."""
@@ -31,6 +26,7 @@ class AnotherSampleClass(Model):
 
     def get_name(self):
         return self.name
+
 
 @pytest_asyncio.fixture
 async def setup_model_mapping():
@@ -46,8 +42,9 @@ async def setup_model_mapping():
     # Clean up - remove the test data
     try:
         await context.db.delete(model_mapping)
-    except:
+    except Exception:
         pass  # Ignore cleanup errors
+
 
 @pytest_asyncio.fixture
 async def setup_pickled_class():
@@ -77,8 +74,9 @@ async def setup_pickled_class():
     try:
         await context.db.engine.delete(model_mapping)
         await context.db.engine.delete(class_pickle)
-    except:
+    except Exception:
         pass  # Ignore cleanup errors
+
 
 @pytest.mark.asyncio
 async def test_import_class_regular():
@@ -92,6 +90,7 @@ async def test_import_class_regular():
     # Create an instance and verify it works
     instance = cls(value="test")
     assert instance.get_value() == "test"
+
 
 @pytest.mark.asyncio
 async def test_import_class_from_model_mapping(setup_model_mapping):
@@ -107,11 +106,11 @@ async def test_import_class_from_model_mapping(setup_model_mapping):
     instance = cls(value="test")
     assert instance.get_value() == "test"
 
+
 @pytest.mark.asyncio
 async def test_import_class_from_pickle(setup_pickled_class):
     """Test importing a class from a ClassPickle."""
     # Import the AnotherSampleClass using import_class
-    engine = setup_pickled_class
     cls = await import_class("tests.core.test_import_class.AnotherSampleClass")
 
     # Verify that the class was imported correctly
@@ -121,11 +120,14 @@ async def test_import_class_from_pickle(setup_pickled_class):
     instance = cls(name="test")
     assert instance.get_name() == "test"
 
+
 @pytest.mark.asyncio
 async def test_import_class_nonexistent():
     """Test importing a non-existent class."""
     # Try to import a non-existent class
-    with pytest.raises(LookupError, match="Error finding ModelMapping for NonExistentClass"):
+    with pytest.raises(
+        LookupError, match="Error finding ModelMapping for NonExistentClass"
+    ):
         await import_class("tests.core.test_import_class.NonExistentClass")
 
 
