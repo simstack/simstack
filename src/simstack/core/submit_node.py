@@ -93,7 +93,7 @@ async def submit_node(registry_entry: NodeRegistry):
             slurm_parameters.startup_commands.append(docker_start)
         else:
             slurm_parameters.startup_commands.append(
-               f"pixi run python {base_path}/src/simstack/core/run_node.py --node-id {registry_entry.id}")
+               f"uv run --directory {base_path} run_node --node-id {registry_entry.id}")
 
         slurm_script = slurm_parameters.to_sbatch_header()
 
