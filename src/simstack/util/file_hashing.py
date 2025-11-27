@@ -2,9 +2,6 @@ import hashlib
 from pathlib import Path
 from typing import Union, BinaryIO
 
-from fastapi import UploadFile
-
-
 def hash_file(
     file_path: Union[str, Path], algorithm: str = "sha256", chunk_size: int = 8192
 ) -> str:
@@ -69,31 +66,3 @@ def hash_file_object(
 
     return hash_obj.hexdigest()
 
-
-async def hash_uploadfile(
-    upload_file: UploadFile, algorithm: str = "sha256", chunk_size: int = 8192
-) -> str:
-    """
-    Calculate hash of a FastAPI UploadFile.
-
-    Args:
-        upload_file: FastAPI UploadFile object
-        algorithm: Hash algorithm (md5, sha1, sha256, etc.)
-        chunk_size: Size of chunks to read
-
-    Returns:
-        str: Hexadecimal digest of the hash
-    """
-    hash_obj = hashlib.new(algorithm)
-
-    # Reset file position
-    await upload_file.seek(0)
-
-    # Read file in chunks and update hash
-    while content := await upload_file.read(chunk_size):
-        hash_obj.update(content)
-
-    # Reset file position
-    await upload_file.seek(0)
-
-    return hash_obj.hexdigest()
