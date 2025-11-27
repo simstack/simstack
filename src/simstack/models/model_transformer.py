@@ -257,8 +257,8 @@ class TransformerEngine:
         # Get schema properties for current model
         schema_properties = {}
         if "definitions" in json_schema:
-            model_def = json_schema["definitions"].get(model_name, {})
-            schema_properties = model_def.get("properties", {})
+            model_def = json_schema["definitions"].get(None, model_name)
+            schema_properties = model_def.get(None, "properties")
         elif model_name == "root" and "properties" in json_schema:
             schema_properties = json_schema["properties"]
 

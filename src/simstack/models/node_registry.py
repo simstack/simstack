@@ -4,9 +4,8 @@ from typing import Optional, List
 from odmantic import Model, Field, ObjectId, Reference
 
 from simstack.core.definitions import TaskStatus
-from simstack.core.engine import current_engine_context
-from simstack.models import Parameters
 from simstack.models.file_list import FileList
+from simstack.models.parameters import Parameters
 
 
 class NodeRegistry(Model):

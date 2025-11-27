@@ -134,7 +134,7 @@ def test_filestack_get_local_in_memory(setup_test_env, mock_context):
     file_stack = FileStack(stack_ref=stack_ref, locations=[instance])
 
     # Act
-    output_path = file_stack.get(local_dir=setup_test_env["output_dir"])
+    output_path = file_stack.get(mock_context.config.resource, local_dir=setup_test_env["output_dir"])
 
     # Assert
     assert output_path.exists(), "Output file should exist"
@@ -173,7 +173,7 @@ def test_filestack_get_local_on_disk(setup_test_env, mock_context):
     file_stack = FileStack(stack_ref=stack_ref, locations=[instance])
 
     # Act
-    output_path = file_stack.get(local_dir=setup_test_env["output_dir"])
+    output_path = file_stack.get(None, local_dir=setup_test_env["output_dir"])
 
     # Assert
     assert output_path.exists(), "Output file should exist"
@@ -230,7 +230,7 @@ def test_filestack_get_remote(
         mock_status.side_effect = create_file_after_status
 
         # Act
-        output_path = file_stack.get(local_dir=setup_test_env["output_dir"])
+        output_path = file_stack.get(None, local_dir=setup_test_env["output_dir"])
 
         # Assert
         assert output_path.exists(), "Output file should exist"
@@ -344,7 +344,7 @@ def test_filestack_get_multi_remote_first_fails(
         mock_status.side_effect = status_check_side_effect
 
         # Act
-        output_path = file_stack.get(local_dir=setup_test_env["output_dir"])
+        output_path = file_stack.get(None, local_dir=setup_test_env["output_dir"])
 
         # Assert
         assert output_path.exists(), "Output file should exist"
@@ -392,7 +392,7 @@ def test_filestack_get_no_valid_instances(
 
         # Act and Assert
         with pytest.raises(ValueError) as excinfo:
-            file_stack.get(local_dir=setup_test_env["output_dir"])
+            file_stack.get(None, local_dir=setup_test_env["output_dir"])
 
         # Check that the error message is appropriate
         assert "No suitable file instance found locally" in str(excinfo.value)

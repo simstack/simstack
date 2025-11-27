@@ -14,6 +14,7 @@ from simstack.models.file_instance import FileInstance
 # Define a TypeVar for classes
 T = TypeVar("T", bound=Type)
 
+#TODO why do filetests not use the context fixture from conftest?
 
 @pytest.fixture
 def setup_test_env(initialized_context, monkeypatch):
@@ -267,7 +268,7 @@ def test_get_in_memory(file_stack, setup_test_env):
         os.makedirs(user_dir, exist_ok=True)
 
         # Test
-        result_path = file_stack.get()
+        result_path = file_stack.get(context.config.resource, user_dir / file_stack.name)
 
         # Verify
         assert os.path.exists(result_path)
@@ -285,21 +286,36 @@ def test_get_same_resource(file_stack, file_instance, setup_test_env):
     file_stack.locations.append(file_instance)
 
     # Test
-    result_path = file_stack.get()
 
-    # Verify
-    assert result_path == Path(file_instance.path)
+    # Mock context config
+    with patch("getpass.getuser", return_value="testuser"):
+        # Create the necessary directory structure
+        user_dir = Path(context.config.workdir) / "testuser" / str(file_stack.id)
+        os.makedirs(user_dir, exist_ok=True)
 
 
-def test_get_no_suitable_instance(file_stack):
+        result_path = file_stack.get(context.config.resource, user_dir / file_stack.name)
+
+        # Verify
+        assert result_path == Path(file_instance.path)
+
+
+def test_get_no_suitable_instance(file_stack, setup_test_env):
     """Test error when no suitable file instance available"""
     # Setup
+    context = setup_test_env
     file_stack.in_memory = False
     file_stack.locations = []  # No locations
 
+    # Mock context config
+    with patch("getpass.getuser", return_value="testuser"):
+        # Create the necessary directory structure
+        user_dir = Path(context.config.workdir) / "testuser" / str(file_stack.id)
+        os.makedirs(user_dir, exist_ok=True)
+
     # Test
-    with pytest.raises(ValueError):
-        file_stack.get()
+        with pytest.raises(ValueError):
+            file_stack.get(context.config.resource, user_dir / file_stack.name)
 
 
 def test_str_representation(file_stack):

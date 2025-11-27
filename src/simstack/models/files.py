@@ -7,9 +7,10 @@ from typing import List, Optional, Union, Dict, Any
 
 from odmantic import Model, Field, ObjectId
 
-from simstack.core.hash import complex_hash_function
+
 from simstack.models import simstack_model
 from simstack.models.file_instance import FileInstance
+from simstack.models.parameters import Resource
 from simstack.util.file_hashing import hash_file
 
 logger = logging.getLogger(__name__)
@@ -139,13 +140,15 @@ class FileStack(Model):
         if self.is_hashable:
             if self.hash:
                 return self.hash
-            elif self.in_memory and self.content:
-                # If the content is in memory, hash the compressed content
-                return complex_hash_function(zlib.decompress(self.content))
             else:
-                temp_dir = Path(tempfile.mkdtemp())
-                local_file = self.get(local_dir=temp_dir)
-                return complex_hash_function(local_file.read_bytes())
+                raise ValueError("FileStack is hashable but hash is not set.")
+            #elif self.in_memory and self.content:
+            #    # If the content is in memory, hash the compressed content
+            #    return complex_hash_function(zlib.decompress(self.content))
+            #else:
+            #    temp_dir = Path(tempfile.mkdtemp())
+            #    local_file = self.get(None, local_dir=temp_dir)
+            #    return complex_hash_function(local_file.read_bytes())
         else:
             logger.warning(
                 f"FileStack {self.id} is not hashable, returning unique hash."
@@ -161,24 +164,14 @@ class FileStack(Model):
         """
         self.locations.append(file_instance)
 
-    def get(self, local_dir: Optional[Path] = None, config=None) -> Path:
+    def get(self, local_resource: Resource, local_dir: Path) -> Path:
         """
         Copies the file stack to a local directory.
 
-        :param config: configuration, needed when called outside of simstack (webserver)
+        :param local_resource: the local resource to copy the file stack to. Defaults to the current resource.
         :param local_dir: The local directory to copy the file stack to.
         :type local_dir: Path
         """
-        if config is None:
-            from simstack.core.context import context
-
-            config = context.config
-
-        if local_dir is None:
-            import getpass
-
-            username = getpass.getuser()
-            local_dir = Path(config.workdir) / username / str(self.id)
 
         # select the best instance
         # first search for an instance with "in_memory" set to True
@@ -199,14 +192,16 @@ class FileStack(Model):
                 )
         # If in-memory instance not found or decompression failed, try finding instance on same resource
         if same_resource_instance := next(
-            (f for f in self.locations if f.resource == config.resource), None
+            (f for f in self.locations if f.resource == local_resource), None
         ):
             # Copy the file from the source path to the destination path
             return Path(same_resource_instance.path)
         else:
             local_dir.mkdir(parents=True, exist_ok=True)
             logger.error("No suitable file instance found for copying.")
-            raise ValueError("No suitable file instance found for copying.")
+            from simstack.methods.get_file import get_file
+            return get_file(self,local_resource, local_dir / self.name)
+
 
     def str(self):
         return f"FileStack(name={self.name}, size={self.size}, is_hashable={self.is_hashable}, in_memory={self.in_memory}, locations={self.locations})"
@@ -222,8 +217,8 @@ async def main():
     file_stack = FileStack.from_local_file("test.txt", is_hashable=True, in_memory=True)
     print(file_stack)
     await context.db.save(file_stack)
-    local_dir = local_dir = Path(context.config.workdir) / "samira" / str(file_stack.id)
-    retrieved = file_stack.get(local_dir=local_dir, config=context.config)
+    local_dir = Path(context.config.workdir) / "samira" / str(file_stack.id)
+    retrieved = file_stack.get(context.config.resource, local_dir=local_dir)
     print("Retrieved file path:", retrieved)
 
 

@@ -121,7 +121,7 @@ from simstack.models.file_instance import FileInstance
 file_stack = FileStack.from_local_file("/path/to/local/file.txt")
 
 # Retrieve the file to a specific directory
-output_path = file_stack.get(local_dir="/output/directory")
+output_path = file_stack.get(resource, local_dir="/output/directory")
 
 # Transfer the file to a remote resource
 file_stack.transfer_to_resource("remote_resource")
