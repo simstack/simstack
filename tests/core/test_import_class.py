@@ -33,7 +33,9 @@ async def setup_model_mapping():
     """Set up a ModelMapping entry for SampleClass."""
     # Create a ModelMapping entry for SampleClass
     model_mapping = ModelMapping(
-        name="SampleClass", mapping="tests.core.test_import_class.SampleClass"
+        name="SampleClass",
+        mapping="tests.core.test_import_class.SampleClass",
+        collection_name="test_collection"
     )
     await context.db.save(model_mapping)
 
@@ -44,39 +46,6 @@ async def setup_model_mapping():
         await context.db.delete(model_mapping)
     except Exception:
         pass  # Ignore cleanup errors
-
-
-@pytest_asyncio.fixture
-async def setup_pickled_class():
-    """Set up a ClassPickle entry for AnotherSampleClass."""
-    # Create a ClassPickle instance
-    class_pickle = ClassPickle(
-        name="AnotherSampleClass", module_path="tests.core.test_import_class"
-    )
-
-    # Store the class
-    class_pickle.store_class(AnotherSampleClass)
-
-    # Save the ClassPickle instance
-    await context.db.engine.save(class_pickle)
-
-    # Create a ModelMapping entry that references the ClassPickle
-    model_mapping = ModelMapping(
-        name="AnotherSampleClass",
-        mapping="tests.core.test_import_class.AnotherSampleClass",
-        pickle_class=class_pickle,  # Pass the ClassPickle instance directly
-    )
-    await context.db.engine.save(model_mapping)
-
-    yield context.db.engine
-
-    # Clean up - remove the test data
-    try:
-        await context.db.engine.delete(model_mapping)
-        await context.db.engine.delete(class_pickle)
-    except Exception:
-        pass  # Ignore cleanup errors
-
 
 @pytest.mark.asyncio
 async def test_import_class_regular():
@@ -105,20 +74,6 @@ async def test_import_class_from_model_mapping(setup_model_mapping):
     # Create an instance and verify it works
     instance = cls(value="test")
     assert instance.get_value() == "test"
-
-
-@pytest.mark.asyncio
-async def test_import_class_from_pickle(setup_pickled_class):
-    """Test importing a class from a ClassPickle."""
-    # Import the AnotherSampleClass using import_class
-    cls = await import_class("tests.core.test_import_class.AnotherSampleClass")
-
-    # Verify that the class was imported correctly
-    assert cls.__name__ == "AnotherSampleClass"
-
-    # Create an instance and verify it works
-    instance = cls(name="test")
-    assert instance.get_name() == "test"
 
 
 @pytest.mark.asyncio

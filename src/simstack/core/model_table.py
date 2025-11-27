@@ -72,6 +72,8 @@ class CreateModelTable:
             )
             is_model = any(s == "Model" for s in bases)
 
+            is_embedded_model = any(s == "EmbeddedModel" for s in bases)
+
             if not (is_model or is_ui_model):
                 continue
             if class_name == "Model":
@@ -103,17 +105,25 @@ class CreateModelTable:
                 await self.engine.delete(existing_entry)
                 logger.debug(f"Deleted ModelMapping entry for {class_name}")
 
+            # EmbeddedModels have no collection by may be simstack_models. They are never saved/retrieved
+            collection_name = getattr(new_class, "__collection__", None)
+            if collection_name is None:
+                if is_embedded_model:
+                    collection_name = f"EmbeddedModel"
+                else:
+                    logger.error(f"No collection specified for {class_name}")
+
             # Create the new ModelMapping entry (pickle functionality removed)
             if is_ui_model:
                 model_entry = ModelMapping(
                     name=class_name,
                     mapping=full_mapping,
-                    collection_name=getattr(new_class, "__collection__", None),
+                    collection_name=collection_name,
                     json_schema=json.dumps(new_class.json_schema()),
                     ui_schema=json.dumps(new_class.ui_schema()),
                     route="",
                 )
-                logger.debug(f"SimStack Model: {class_name} Mapping: {full_mapping}")
+                logger.debug(f"SimStack Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}")
                 # open a file in a subdirectory of the current file schema/model.json
                 project_root = find_project_root()
                 json_file_dir = os.path.join(project_root, "schema")
@@ -128,9 +138,9 @@ class CreateModelTable:
                 model_entry = ModelMapping(
                     name=class_name,
                     mapping=full_mapping,
-                    collection_name=getattr(new_class, "__collection__", None),
+                    collection_name=collection_name,
                 )
-                logger.debug(f"Model: {class_name} Mapping: {full_mapping}")
+                logger.debug(f"Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}")
 
             await self.engine.save(model_entry)
 

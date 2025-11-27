@@ -15,14 +15,11 @@ class ModelMapping(Model):
     name: shorthand - must be unique
     mapping: full name - path relative to project root in module.module.class/function format
     """
-
     name: str = Field(unique=True)
     mapping: str = Field(unique=True)
-    collection_name: Optional[str] = None
+    collection_name: str
     json_schema: Optional[str] = None
     ui_schema: Optional[str] = None
-    route: Optional[str] = None
-    pickle_class: Optional[ClassPickle] = None
 
 
 class NodeModel(Model):
