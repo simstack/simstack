@@ -22,6 +22,7 @@ class ModelMapping(Model):
     ui_schema: Optional[str] = None
 
 
+
 class NodeModel(Model):
     name: str = Field(unique=True)
     function_mapping: str = Field(unique=True)
