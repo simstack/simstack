@@ -31,11 +31,12 @@ async def recompute_artifacts(node_registry: NodeRegistry):
         logger.error(f"Failed to create node from registry task_id: {node_registry.id}")
         return
 
-    # Find all children of this node
+    if node.status != TaskStatus.COMPLETED:
+        logger.error(f"Cannot recompute artifacts for task_id: {node_registry.id} name: {node.name} status: {node.status}")
+        return
 
-    children = await engine.find(
-        NodeRegistry, NodeRegistry.parent_ids.in_([node_registry.id])
-    )
+    # Find all children of this node
+    children = await engine.find(NodeRegistry, NodeRegistry.parent_ids.in_([node_registry.id]))
 
     # Recursively recompute artifacts for all children first
     for child_registry in children:
@@ -43,9 +44,7 @@ async def recompute_artifacts(node_registry: NodeRegistry):
 
     # Remove current node's artifacts
     if node_registry.artifact_ids:
-        logger.info(
-            f"Removing {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}"
-        )
+        logger.info(f"Removing {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}")
 
         table_artifacts = await engine.find(
             TableArtifactModel, TableArtifactModel.parent_id == node_registry.id

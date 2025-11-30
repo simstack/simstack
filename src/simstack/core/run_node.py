@@ -27,16 +27,16 @@ async def run_node(node_id: str, **kwargs):
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
             return False
-
-        await node.execute_node_locally()
-        return True
+        # if the node was recovered we do not have to run it again
+        if node.status == TaskStatus.SUBMITTED:
+            await node.execute_node_locally()
+        return node.status == TaskStatus.COMPLETED
     except Exception as e:
         logger.exception(f"Error running node task_id: {node_id}: {str(e)}")
         if registry_entry:
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
         return False
-
 
 def run_node_main():
     parser = argparse.ArgumentParser(description="Run nodes for a specific resource")
