@@ -4,7 +4,15 @@ import inspect
 import logging
 import os
 from datetime import datetime
-from multiprocessing.reduction import duplicate
+try:
+    from multiprocessing.reduction import duplicate
+except ImportError:
+    import os
+
+
+    def duplicate(handle, target_process=None):
+        return os.dup(handle)
+
 from pathlib import Path
 from typing import Callable, Optional, TypeVar, cast, List, ParamSpec, Union, overload
 
