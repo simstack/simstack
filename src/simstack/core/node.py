@@ -4,7 +4,15 @@ import inspect
 import logging
 import os
 from datetime import datetime
-from multiprocessing.reduction import duplicate
+try:
+    from multiprocessing.reduction import duplicate
+except ImportError:
+    import os
+
+
+    def duplicate(handle, target_process=None):
+        return os.dup(handle)
+
 from pathlib import Path
 from typing import Callable, Optional, TypeVar, cast, List, ParamSpec, Union, overload
 
@@ -73,7 +81,7 @@ def compute_arg_hash(args: List[Model]) -> str:
         Model class.
     """
     arg_hashes = []
-    for arg in self._args:
+    for arg in args:
         if not isinstance(arg, Model):
             raise TypeError(f"Argument {arg} is not an instance of {Model}")
         arg_hash = (
