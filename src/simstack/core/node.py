@@ -73,7 +73,7 @@ def compute_arg_hash(args: List[Model]) -> str:
         Model class.
     """
     arg_hashes = []
-    for arg in self._args:
+    for arg in args:
         if not isinstance(arg, Model):
             raise TypeError(f"Argument {arg} is not an instance of {Model}")
         arg_hash = (
