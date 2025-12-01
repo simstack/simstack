@@ -66,8 +66,9 @@ async def run_node(registry_entry: NodeRegistry):
                 registry_entry.status = TaskStatus.FAILED
                 await context.db.save(registry_entry)
                 return False
-            await node.execute_node_locally()
-        return True
+            if node.status == TaskStatus.SUBMITTED:
+                await node.execute_node_locally()
+            return node.status == TaskStatus.COMPLETED
     except Exception as e:
         logger.exception(
             f"Error running node task_id: {registry_entry.id} on resource {context.config.resource} : {str(e)}"
