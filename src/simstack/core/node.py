@@ -720,7 +720,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             await engine.save(registry_entry) # save the fixed entry
             duplicate_entry = await engine.find_one(
                 NodeRegistry,
-                (NodeRegistry.name == node_registry.name)
+                (NodeRegistry.name == registry_entry.name)
                 & (NodeRegistry.arg_hash == arg_hash)
                 & (NodeRegistry.function_hash == function_hash))
             if duplicate_entry is not None:
