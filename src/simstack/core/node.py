@@ -4,6 +4,7 @@ import inspect
 import logging
 import os
 from datetime import datetime
+from multiprocessing.reduction import duplicate
 from pathlib import Path
 from typing import Callable, Optional, TypeVar, cast, List, ParamSpec, Union, overload
 
@@ -48,6 +49,40 @@ def hashable_inputs(arg):
     """
     return {key: value for key, value in arg.__dict__.items() if key not in ["id"]}
 
+
+def compute_arg_hash(args: List[Model]) -> str:
+    """
+    Computes a hash for a list of arguments provided, where each argument
+    is an instance of the Model class or can be processed into a hashable
+    format. Uses a complex hashing function for the resulting computation.
+
+    Parameters:
+    args: List[Model]
+        A list of objects where each object must be an instance of the
+        Model class. The objects are used to compute their respective
+        hash values via a specified complex hashing mechanism.
+
+    Returns:
+    str
+        A string representation of the computed hash for the provided
+        list of arguments.
+
+    Raises:
+    TypeError
+        If any item in the provided list is not an instance of the
+        Model class.
+    """
+    arg_hashes = []
+    for arg in self._args:
+        if not isinstance(arg, Model):
+            raise TypeError(f"Argument {arg} is not an instance of {Model}")
+        arg_hash = (
+            arg.complex_hash()
+            if hasattr(arg, "complex_hash")
+            else complex_hash_function(hashable_inputs(arg))
+        )
+        arg_hashes.append(arg_hash)
+    return complex_hash_function(arg_hashes)
 
 class Node:
     """
@@ -135,9 +170,7 @@ class Node:
         :rtype: NodeRegistry
         """
 
-        function_mapping = await context.db.find_one(
-            NodeModel, NodeModel.name == self.name
-        )
+        function_mapping = await context.db.find_one(NodeModel, NodeModel.name == self.name)
         if function_mapping is None:
             logger.error(f"Could not find function mapping for name: {self.name}")
             raise ValueError(f"Could not find function mapping for name: {self.name}")
@@ -194,6 +227,8 @@ class Node:
         )
         return self.registry_entry
 
+
+
     async def get_node_registry(self) -> TaskStatus:
         """
         Reads or initializes the task registry entry in the database.
@@ -211,19 +246,7 @@ class Node:
         if context.db is None:
             raise ValueError("Database is not connected")
 
-        arg_hashes = []
-        for arg in self._args:
-            if not isinstance(arg, Model):
-                raise TypeError(f"Argument {arg} is not an instance of {Model}")
-            arg_hash = (
-                arg.complex_hash()
-                if hasattr(arg, "complex_hash")
-                else complex_hash_function(hashable_inputs(arg))
-            )
-            # logger.info(f"Argument hash: {arg_hash}")
-            arg_hashes.append(arg_hash)
-
-        arg_hash = complex_hash_function(arg_hashes)
+        arg_hash = compute_arg_hash(self._args)
         function_hash = complex_hash_function(self._func)
 
         self.registry_entry = (
@@ -638,6 +661,11 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
     the function and initializes a corresponding Node instance, associating it
     with the given registry entry.
 
+    This function can delete the registry_entry !!!
+    The only way that registry_entry.function_hash is "NOT INITIALIZED" is when the node
+    is created from the frontend. No other node is listening specifically for this registry_entry to complete.
+    If a duplicate is found the node from the duplication is returned
+
     :param registry_entry: The registry entry containing information necessary to
         reconstruct the Node instance. Includes input table names, function pickled
         as a string, and other metadata.
@@ -661,37 +689,43 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             )
             return None
 
+    if registry_entry.arg_hash is "NOT INITIALIZED":
+        logger.debug(f"Task task_id: {registry_entry.id} computes arg hashes")
+        registry_entry.arg_hash = compute_arg_hash(args)
+
     logger.debug(f"Task task_id: {registry_entry.id} loaded {len(args)} inputs")
     try:
         wrapped_func = await import_function(
             registry_entry.func_mapping, registry_entry.id
         )
         if wrapped_func is None:
-            logger.error(
-                f"Task task_id: {registry_entry.id} could not import function {registry_entry.func_mapping}"
-            )
+            logger.error(f"Task task_id: {registry_entry.id} could not import function {registry_entry.func_mapping}")
             return None
         # for nodes the mapping points to the wrapped func to we use that
-        func = (
-            wrapped_func if not hasattr(wrapped_func, "_inner") else wrapped_func._inner
-        )
+        func = (wrapped_func if not hasattr(wrapped_func, "_inner") else wrapped_func._inner)
         logger.info(
             f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
         )
+        if registry_entry.function_hash == "NOT INITIALIZED":
+            registry_entry.function_hash = complex_hash_function(func)
+            registry_entry.is_async = asyncio.iscoroutinefunction(func)
+            await engine.save(registry_entry) # save the fixed entry
+            duplicate_entry = await engine.find_one(
+                NodeRegistry,
+                (NodeRegistry.name == node_registry.name)
+                & (NodeRegistry.arg_hash == arg_hash)
+                & (NodeRegistry.function_hash == function_hash))
+            if duplicate_entry is not None:
+                logger.info(f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}")
+                engine.delete(registry_entry)
+                registry_entry = duplicate_entry
+
     except Exception as e:
         logger.exception(
             f"Task task_id: {registry_entry.id} failed to import function {registry_entry.func_mapping} {str(e)}"
         )
         return None
-    try:
-        if registry_entry.function_hash == "none":  # this entry was submitted
-            registry_entry.function_hash = complex_hash_function(func)
-            logger.debug(f"Task task_id: {registry_entry.id} computed function hash")
-    except Exception as e:
-        logger.exception(
-            f"Task task_id: {registry_entry.id} function hashing failed {registry_entry.func_mapping} {str(e)}"
-        )
-        return None
+
     kwargs = {
         "func": func,
         "is_async": False,
