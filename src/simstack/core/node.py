@@ -697,7 +697,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             )
             return None
 
-    if registry_entry.arg_hash is "NOT INITIALIZED":
+    if registry_entry.arg_hash == "NOT INITIALIZED":
         logger.debug(f"Task task_id: {registry_entry.id} computes arg hashes")
         registry_entry.arg_hash = compute_arg_hash(args)
 
