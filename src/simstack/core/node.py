@@ -725,7 +725,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 & (NodeRegistry.function_hash == registry_entry.function_hash))
             if duplicate_entry is not None:
                 logger.info(f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}")
-                engine.delete(registry_entry)
+                await engine.delete(registry_entry)
                 registry_entry = duplicate_entry
 
     except Exception as e:
