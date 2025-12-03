@@ -46,6 +46,13 @@ class RunnerManager:
         self.hostname = socket.gethostname()
         self.time_started = datetime.now()
 
+    def _get_uptime_string(self) -> str:
+        time_diff = datetime.now() - self.time_started
+        days = time_diff.days
+        hours, remainder = divmod(time_diff.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{days}d {hours}h {minutes}m {seconds}s"
+
     async def write_node_event(self, event: RunnerEventEnum, node_id: ObjectId, message: str = None):
         runner_event = RunnerEvent(
             runner_type=RunnerType.NODE_RUNNER,
@@ -61,7 +68,13 @@ class RunnerManager:
 
     async def write_resource_event(self, event: RunnerEventEnum, message: str = None):
         if event == RunnerEventEnum.ALIVE:
-            message = f"Alive at {datetime.now()}"
+
+            time_diff = datetime.now() - self.time_started
+            days = time_diff.days
+            hours, remainder = divmod(time_diff.seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            uptime = f"{days}d {hours}h {minutes}m {seconds}s"
+            message = f"Uptime: {uptime}"
 
             runner_event = await context.db.find_one(
                 RunnerEvent,
