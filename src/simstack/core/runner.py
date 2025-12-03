@@ -66,6 +66,7 @@ async def run_node(registry_entry: NodeRegistry):
                 registry_entry.status = TaskStatus.FAILED
                 await context.db.save(registry_entry)
                 return False
+            registry_entry = node.registry_entry # it may have changed
             if node.status == TaskStatus.SUBMITTED:
                 await node.execute_node_locally()
             return node.status == TaskStatus.COMPLETED
