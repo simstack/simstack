@@ -49,12 +49,13 @@ class RunnerManager:
     async def write_node_event(self, event: RunnerEventEnum, node_id: ObjectId, message: str = None):
         runner_event = RunnerEvent(
             runner_type=RunnerType.NODE_RUNNER,
-            event=RunnerEventEnum.NODE_STARTED,
+            event=event,
             pid=self.pid,
             hostname=self.hostname,
             user=self.username,
             resource=self.resource,
             node_id=node_id,
+            message=message,
         )
         await context.db.save(runner_event)
 
@@ -95,7 +96,7 @@ class RunnerManager:
             ):
                 await submit_node(registry_entry)
             else:
-                return await self.run_node_from_registry(registry_entry)
+                return await run_node_from_registry(registry_entry)
 
         except Exception as e:
             logger.exception(
