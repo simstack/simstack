@@ -69,6 +69,10 @@ async def run_node(registry_entry: NodeRegistry):
             registry_entry = node.registry_entry # it may have changed
             if node.status == TaskStatus.SUBMITTED or node.status == TaskStatus.SLURM_QUEUED or node.status == TaskStatus.SLURM_QUEUED:
                 await node.execute_node_locally()
+            else:
+                logger.info(
+                    f"task_id: {registry_entry.id} skipping task: {registry_entry.name} with status {registry_entry.status}")
+
             return node.status == TaskStatus.COMPLETED
     except Exception as e:
         logger.exception(
