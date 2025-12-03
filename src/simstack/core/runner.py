@@ -62,12 +62,13 @@ class RunnerManager:
     async def write_resource_event(self, event: RunnerEventEnum, message: str = None):
         if event == RunnerEventEnum.ALIVE:
             message = f"Alive at {datetime.now()}"
+
             runner_event = await context.db.find_one(
                 RunnerEvent,
-                RunnerEvent.runner_type == RunnerType.RESOURCE_RUNNER
-                and RunnerEvent.resource == self.resource
-                and RunnerEvent.event == RunnerEventEnum.ALIVE
-                and RunnerEvent.pid == self.pid,
+                (RunnerEvent.runner_type == RunnerType.RESOURCE_RUNNER)
+                & (RunnerEvent.resource == self.resource)
+                & (RunnerEvent.event == RunnerEventEnum.ALIVE)
+                & (RunnerEvent.pid == self.pid),
             )
             if runner_event:
                 runner_event.message = message
