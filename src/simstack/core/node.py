@@ -697,7 +697,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             )
             return None
 
-    if registry_entry.arg_hash is "NOT INITIALIZED":
+    if registry_entry.arg_hash == "NOT INITIALIZED":
         logger.debug(f"Task task_id: {registry_entry.id} computes arg hashes")
         registry_entry.arg_hash = compute_arg_hash(args)
 
@@ -717,16 +717,23 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
         if registry_entry.function_hash == "NOT INITIALIZED":
             registry_entry.function_hash = complex_hash_function(func)
             registry_entry.is_async = asyncio.iscoroutinefunction(func)
-            await engine.save(registry_entry) # save the fixed entry
             duplicate_entry = await engine.find_one(
                 NodeRegistry,
-                (NodeRegistry.name == node_registry.name)
-                & (NodeRegistry.arg_hash == arg_hash)
-                & (NodeRegistry.function_hash == function_hash))
+                (NodeRegistry.name == registry_entry.name)
+                & (NodeRegistry.arg_hash == registry_entry.arg_hash)
+                & (NodeRegistry.function_hash == registry_entry.function_hash))
+            await engine.save(registry_entry)  # save the fixed entry AFTER checking for duplicates
+            # the calling function may have the originial entry unsaved !
             if duplicate_entry is not None:
+                logger.info(f"Original Entry: {duplicate_entry.id} {duplicate_entry.arg_hash} {duplicate_entry.function_hash}")
+                logger.info(f"Current Entry: {registry_entry.id} {registry_entry.arg_hash} {registry_entry.function_hash} ")
                 logger.info(f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}")
-                engine.delete(registry_entry)
-                registry_entry = duplicate_entry
+                if duplicate_entry.id == registry_entry.id:
+                    logger.error(f"Task task_id: {registry_entry.id} recovered itself. This should not happen")
+
+                if duplicate_entry.id != registry_entry.id:
+                    await engine.delete(registry_entry)
+                    registry_entry = duplicate_entry
 
     except Exception as e:
         logger.exception(

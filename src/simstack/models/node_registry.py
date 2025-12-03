@@ -6,6 +6,7 @@ from odmantic import Model, Field, ObjectId, Reference
 from simstack.core.definitions import TaskStatus
 from simstack.models.file_list import FileList
 from simstack.models.parameters import Parameters
+from simstack.core.engine import current_engine_context
 
 
 class NodeRegistry(Model):

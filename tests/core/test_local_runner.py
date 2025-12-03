@@ -5,6 +5,9 @@ import subprocess
 @pytest.fixture(scope="function")
 def runner_process(test_runner) -> subprocess.Popen:
     """
+
+
+
     Function-scoped fixture that provides access to the running runner process.
     Uses the session-scoped local_runner fixture.
     """

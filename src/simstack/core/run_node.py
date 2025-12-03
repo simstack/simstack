@@ -27,9 +27,12 @@ async def run_node(node_id: str, **kwargs):
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
             return False
+        registry_entry = node.registry_entry # it may have changed
         # if the node was recovered we do not have to run it again
-        if node.status == TaskStatus.SUBMITTED:
+        if node.status == TaskStatus.SUBMITTED or node.status == TaskStatus.SLURM_QUEUED or node.status == TaskStatus.SLURM_QUEUED:
             await node.execute_node_locally()
+        else:
+            logger.info(f"task_id: {registry_entry.id} skipping task: {registry_entry.name} with status {registry_entry.status}")
         return node.status == TaskStatus.COMPLETED
     except Exception as e:
         logger.exception(f"Error running node task_id: {node_id}: {str(e)}")
