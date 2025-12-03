@@ -204,9 +204,10 @@ class RunnerManager:
                                     await context.db.save(job)
 
                     await clean_slurm_info(self.username, self.resource)
-
+                    await self.write_resource_event(RunnerEventEnum.ALIVE)
                     await asyncio.sleep(polling_interval)
                     count = count + 1
+
                     if restart_minutes and count > restart_minutes:
                         await self.write_resource_event(RunnerEventEnum.RESTART, message="Restart by timeout")
                         return "restart"
