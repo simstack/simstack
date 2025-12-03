@@ -72,13 +72,17 @@ class RunnerManager:
             if runner_event:
                 runner_event.message = message
                 runner_event.timestamp = datetime.now()
-                runner_event.event = RunnerEventEnum.ALIVE
                 runner_event.git_status = make_git_list()
                 await context.db.save(runner_event)
                 return # updated existing event
 
         runner_event = RunnerEvent(
             runner_type=RunnerType.RESOURCE_RUNNER,
+            pid=self.pid,
+            hostname=self.hostname,
+            user=self.username,
+            timestamp=datetime.now(),
+            git_status=make_git_list(),
             event=event,
             resource=self.resource,
             message=message,
