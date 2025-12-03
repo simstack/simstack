@@ -67,7 +67,7 @@ async def run_node(registry_entry: NodeRegistry):
                 await context.db.save(registry_entry)
                 return False
             registry_entry = node.registry_entry # it may have changed
-            if node.status == TaskStatus.SUBMITTED:
+            if node.status == TaskStatus.SUBMITTED or node.status == TaskStatus.SLURM_QUEUED or node.status == TaskStatus.SLURM_QUEUED:
                 await node.execute_node_locally()
             return node.status == TaskStatus.COMPLETED
     except Exception as e:
