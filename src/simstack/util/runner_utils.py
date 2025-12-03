@@ -48,7 +48,7 @@ def run_squeue_for_job(job_id: str) -> str:
     return result.stdout
 
 
-def get_job_info(job_id: str, task_id: ObjectId, resource: str) -> SlurmInfo | None:
+def get_job_info(job_id: str, task_id: ObjectId, resource: Resource) -> SlurmInfo | None:
     """Get job information from SLURM queue using squeue"""
     try:
         result = run_squeue_for_job(job_id)
