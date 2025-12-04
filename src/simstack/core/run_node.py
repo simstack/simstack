@@ -9,8 +9,10 @@ from simstack.core.node import node_from_database
 logger = logging.getLogger("SlurmRunner")
 
 
-async def run_node(node_id: str, **kwargs):
+async def run_node(node_id: str, resource):
     """Run a single node by its ID from the database"""
+    await context.initialize(resource=resource)
+
     registry_entry = None
     try:
         registry_entry = await context.db.load_task_by_id(node_id)
@@ -58,11 +60,11 @@ def run_node_main():
     )
 
     args = parser.parse_args()
-    context.initialize(resource=args.resource)
+
 
     if args.node_id:
         # Run a specific node once
-        asyncio.run(run_node(args.node_id))
+        asyncio.run(run_node(args.node_id, args.resource))
 
 
 if __name__ == "__main__":

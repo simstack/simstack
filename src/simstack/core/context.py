@@ -1,10 +1,13 @@
 import logging  # Import logging before using it
 import os
 import sys
+from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 from simstack.core.definitions import DBType
 from simstack.util.config_reader import ConfigReader
+from simstack.toml_reader import TomlReader
+from simstack.util.database_information import DatabaseInformation
 from simstack.util.path_manager import PathManager
 
 # from simstack.core.model_table import make_models_for_path
@@ -82,57 +85,40 @@ class GlobalState:
     #         await make_nodes_for_path(parent_path, self.path_manager, context.db.engine)
 
     def initialize(self, **kwargs):
-        db_name = kwargs.get("db_name", None)
-        connection_string = kwargs.get("connection_string", None)
-        resource_str: str = kwargs.get("resource", "self")
 
         """Initialize the GlobalState with database settings"""
         if self._initialized:
             raise RuntimeError("GlobalState already initialized")
         self._initialized = True
 
+        db_name : str | None = kwargs.get("db_name", None)
+        connection_string: str | None = kwargs.get("connection_string", None)
+        toml_reader = None
+        if db_name is None or connection_string is None:
+            # use toml
+            toml_reader = TomlReader()
+            db_info = DatabaseInformation.from_config(toml_reader.config,**kwargs)
+        else:
+            db_info = DatabaseInformation(db_name, connection_string, **kwargs)
+
         is_test = kwargs.get("is_test", False)
-        self.config = ConfigReader(
+
+        # check that the database can be reached and set logging up
+        self.initialize_database(db_info, is_test)
+
+        self.initialize_logging(is_test, kwargs.get("log_level", "INFO"))
+
+        # here we have a db, we may or may not have a toml reader
+        resource_str: str | None = kwargs.get("resource", None)
+        self.config = ConfigReader(db_info, toml_reader,
             db_name=db_name,
             connection_string=connection_string,
             resource=resource_str,
             is_test=is_test,
         )
 
-        # check that the database can be reached and set logging up
-        from simstack.util.db import Database
 
-        # Use in-memory database for tests
-        db_type = DBType.IN_MEMORY if is_test and db_name is None else DBType.MONGODB
 
-        try:
-            self.db = Database(
-                db_type, self.config.database_name, self.config.connection_string
-            )
-            if db_type == DBType.MONGODB:
-                # Only ping real MongoDB connections
-                self.db.client.admin.command("ping")
-        except ConnectionError as e:
-            if not is_test:
-                print(f"Could not connect to the database: {e}")
-                sys.exit(-1)
-            else:
-                # For tests, continue without the database connection failure
-                print(f"Warning: Database connection failed in test mode: {e}")
-
-        if is_test:
-            # For tests, use simple console logging without the database handler
-            logging.basicConfig(
-                level=logging.ERROR,
-                format="%(asctime)s - %(name)-15s - %(levelname)-10s - %(filename)-20s:%(lineno)4d - %(message)s",
-            )
-            self.log_handler = logging.getLogger()
-        else:
-            self.log_handler = setup_logging(
-                self.config.connection_string,
-                self.config.database_name,
-                kwargs.get("log_level", "INFO"),
-            )
 
         # initialize the rest of the variables in the config, but now we can get the errors in the database
         self.config.secondary_init(kwargs.get("workdir", None))
@@ -153,11 +139,41 @@ class GlobalState:
             setattr(self, key, value)
         return self
 
+    def initialize_logging(self, is_test: bool, log_level: str = "INFO"):
+        if is_test:
+            # For tests, use simple console logging without the database handler
+            logging.basicConfig(
+                level=log_level,
+                format="%(asctime)s - %(name)-15s - %(levelname)-10s - %(filename)-20s:%(lineno)4d - %(message)s",
+            )
+            self.log_handler = logging.getLogger()
+        else:
+            self.log_handler = setup_logging(
+                self.config.connection_string,
+                self.config.database_name,
+                log_level,
+            )
+
+    def initialize_database(self, db_info: DatabaseInformation, is_test: bool):
+        from simstack.util.db import Database
+        try:
+            self.db = Database.from_db_info(db_info)
+            if db_info.db_type == DBType.MONGODB:
+                # Only ping real MongoDB connections
+                self.db.client.admin.command("ping")
+        except ConnectionError as e:
+            if not is_test:
+                print(f"Could not connect to the database: {e}")
+                sys.exit(-1)
+            else:
+                # For tests, continue ignoring the database connection failure
+                print(f"Warning: Database connection failed in test mode: {e}")
+
     @property
     def initialized(self):
         return self._initialized
 
-
+# TODO find out if this is still needed
 root_dir = find_project_root()
 path_dir = os.path.join(root_dir, "src")
 if path_dir not in os.sys.path:

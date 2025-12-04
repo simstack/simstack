@@ -1,28 +1,22 @@
-import os
-import sys
-import tomllib
 from pathlib import Path
 from typing import List, Dict
 
-from simstack.util.project_root_finder import find_project_root
+from simstack.models.resource_definition import ResourceDefinition
+from simstack.toml_reader import TomlReader
+from simstack.util.database_information import DatabaseInformation
+from simstack.util.db import Database
 
 
-class ConfigReader:
+class ConfigReader(DatabaseInformation):
     """
     Handles the loading and processing of a TOML configuration file,
     to retrieve relevant settings for the workflow environment.
     Provides critical parameters such as database name and connection string are provided, and
     allows resource-based configurations for flexibility.
 
-    :ivar config: The dictionary representation of the parsed configuration file.
-    :type config: dict
     :ivar _resource: Specifies the resource type or scope used to determine configurations.
     :type _resource: str
-    :ivar _db_name: The name of the database specified in the configuration.
-    :type _db_name: str
-    :ivar _connection_string: The connection string for the database specified in the configuration.
-    :type _connection_string: str
-    :ivar _workdir: The working directory based on the resource settings from the configuration.
+    :ivar _workdir: The working directory.
     :type _workdir: Path | None
     :ivar _python_path: The Python executable path defined in the resource settings from the configuration.
     :type _python_path: str | None
@@ -30,61 +24,21 @@ class ConfigReader:
     :type _environment_start: str | None
     """
 
-    def __init__(self, **kwargs):
-        config_path = (
-            kwargs["config_path"] if "config_path" in kwargs else find_project_root()
-        )
-        config_file = (
-            kwargs["config_file"] if "config_file" in kwargs else "simstack.toml"
-        )
-        try:
-            toml_file = os.path.join(config_path, config_file)
-            if os.path.exists(toml_file):
-                with open(toml_file, "rb") as f:
-                    self.config = tomllib.load(f)
-            elif kwargs.get("is_test", False):
-                self.config = {
-                    "paths": {
-                        "tests": {"path": "tests", "drops": "", "use_pickle": False}
-                    }
-                }
-            else:
-                print(f"Config file {toml_file} does not exist. Aborting.")
-                sys.exit(-1)
+    def __init__(self, db: Database, toml_reader: TomlReader, **kwargs):
+        super().__init__(*db.get_information())
+        
+        # the resource must be in the kwargs 
+        self._resource: str | None = kwargs.get("resource",None)
 
-        except tomllib.TOMLDecodeError:
-            print("There was an error decoding the TOML file.")
-            sys.exit(-1)
+        resource_records = await db.find_all(ResourceDefinition)
+        if resource_records is not None:
+            self._allowed_resources = [r.name for r in resource_records]
+            if self._allowed_resources is None or self._resource not in self._allowed_resources:
 
-        self._resource = kwargs.get("resource", "local")
         self._is_test = kwargs.get("is_test", False)
         self._secret_key = None
         # parameter overrides config file
-        self._db_name = kwargs.get("db_name", None)
-
-        # for tests we can use an in_memory db
-        if self._db_name is None:
-            # the package simstack.toml has no db_name and connections string
-            self._db_name = (
-                self.config.get("parameters", {})
-                .get("common", {})
-                .get("database", "NONE")
-            )
-            if not self._is_test and self._db_name == "NONE":
-                print("You must specify a database name in the config file")
-                sys.exit(-1)
-
-        self._connection_string = kwargs.get("connection_string", None)
-        if self._connection_string is None:
-            self._connection_string = (
-                self.config.get("parameters", {})
-                .get("common", {})
-                .get("connection_string", "NONE")
-            )
-        if not self._is_test and self._connection_string == "NONE":
-            print("You must specify a connection string in the config file")
-            sys.exit(-1)
-
+      
         self._docker = False
         self._workdir = None
         self._external_workdir = None
@@ -94,21 +48,10 @@ class ConfigReader:
         self._environment_start = None
         self._routes = []
         self._git = []
+        self._resources = []
+        self._allowed_resources = []
 
-    def secondary_init(self, workdir):
-        """
-        Called to perform secondary initialization after the context has been set.
-
-        This method is responsible for configuring certain parameters such as the
-        working directory (`workdir`), Python path (`python_path`), and the environment
-        start command (`environment_start`). It fetches these setups from the provided
-        configuration. If critical settings such as the `workdir` are not provided,
-        an error is logged, and a `ValueError` is raised. Logging is used throughout
-        to provide information about the initialization process.
-
-        :raises ValueError: If the `workdir` configuration for the resource is not specified.
-        """
-
+   
         import logging
 
         logger = logging.getLogger("ConfigReader")
