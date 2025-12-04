@@ -84,7 +84,7 @@ class GlobalState:
     #         await make_models_for_path(parent_path, self.path_manager, context.db.engine)
     #         await make_nodes_for_path(parent_path, self.path_manager, context.db.engine)
 
-    def initialize(self, **kwargs):
+    async def initialize(self, **kwargs):
 
         """Initialize the GlobalState with database settings"""
         if self._initialized:
@@ -108,21 +108,6 @@ class GlobalState:
 
         self.initialize_logging(is_test, kwargs.get("log_level", "INFO"))
 
-        # here we have a db, we may or may not have a toml reader
-        resource_str: str | None = kwargs.get("resource", None)
-        self.config = ConfigReader(db_info, toml_reader,
-            db_name=db_name,
-            connection_string=connection_string,
-            resource=resource_str,
-            is_test=is_test,
-        )
-
-
-
-
-        # initialize the rest of the variables in the config, but now we can get the errors in the database
-        self.config.secondary_init(kwargs.get("workdir", None))
-
         logger = logging.getLogger("Context")
         safe_connection_string = remove_password_from_connection_string(
             self.config.connection_string
@@ -130,14 +115,15 @@ class GlobalState:
         logger.info(
             f"Database connection established to {self.config.database_name} at {safe_connection_string}"
         )
+        # here we have a db, we may or may not have a toml reader
+        resource_str: str | None = kwargs.get("resource", None)
+        self.config = await ConfigReader.create(db_info, toml_reader,**kwargs)
 
         # Initialize PathManager from config
-        self.path_manager = PathManager.from_config(self.config)
-
-        # Set any additional parameters
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-        return self
+        if toml_reader is not None:
+            self.path_manager = PathManager.from_config(toml_reader.config)
+        else:
+            self.path_manager = PathManager()
 
     def initialize_logging(self, is_test: bool, log_level: str = "INFO"):
         if is_test:
@@ -174,10 +160,10 @@ class GlobalState:
         return self._initialized
 
 # TODO find out if this is still needed
-root_dir = find_project_root()
-path_dir = os.path.join(root_dir, "src")
-if path_dir not in os.sys.path:
-    os.sys.path.append(path_dir)
+# root_dir = find_project_root()
+# path_dir = os.path.join(root_dir, "src")
+# if path_dir not in os.sys.path:
+#     os.sys.path.append(path_dir)
 
 # Create the singleton instance, but it's not initialized yet
 context = GlobalState()

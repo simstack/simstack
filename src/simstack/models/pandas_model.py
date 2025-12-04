@@ -163,9 +163,9 @@ class PandasModel(Model):
             return f"PandasModel with shape {df.shape}:\n{df.head(5).to_string()}\n..."
         return f"PandasModel with shape {df.shape}:\n{df.to_string()}"
 
-
+#TODO move to test
 async def main():
-    context.initialize()
+    await context.initialize()
     # Create the data structure
     data = []
 

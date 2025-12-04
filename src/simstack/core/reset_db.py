@@ -2,7 +2,7 @@ from simstack.core.context import context
 
 
 async def main():
-    context.initialize()
+    await context.initialize()
     await context.db.reset_database()
 
 
