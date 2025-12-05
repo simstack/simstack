@@ -51,8 +51,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" ]]; then
             # Upload to main PyPI for release tags
             echo "Uploading to main PyPI for release tag ${{ github.ref_name }}"
-            # Still disabled for testing:
-            #uv publish
+            uv publish
           else
             # Upload to TestPyPI for manual dispatch
             echo "Uploading to TestPyPI for manual workflow dispatch"
