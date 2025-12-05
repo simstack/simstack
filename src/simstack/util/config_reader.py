@@ -1,11 +1,12 @@
+from logging import Logger
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Any
 
-from simstack.core.resources import allowed_resources, Resource
+from simstack.models.parameters import Resource
 from simstack.models.resource_definition import ResourceDefinition, GitRepo
-from simstack.toml_reader import TomlReader
+from simstack.util.init_data_source import initialize_resource_from_db, initialize_paths_from_db
+from simstack.util.toml_reader import TomlReader
 from simstack.util.database_information import DatabaseInformation
-from simstack.util.db import Database
 
 
 class ConfigReader(DatabaseInformation, ResourceDefinition):
@@ -21,14 +22,6 @@ class ConfigReader(DatabaseInformation, ResourceDefinition):
 
     inheritance: DatabaseInformation, ResourceDefinition
 
-    :ivar config: The entire configuration loaded, typically from a TOML reader.
-    :type config: dict
-    :ivar allowed_resources: The list of resources allowed to be accessed, either
-        from the database or the configuration file.
-    :type allowed_resources: List[str]
-    :ivar routes: List of routes defined in the configuration file. Each route must
-        include 'source', 'target', and 'host' keys.
-    :type routes: List[dict]
     :ivar secret_key: The secret key read from the configuration file (if specified).
     :type secret_key: str
     :ivar docker: Whether Docker parameters are enabled in the configuration.
@@ -37,108 +30,83 @@ class ConfigReader(DatabaseInformation, ResourceDefinition):
     :type external_source_dir: pathlib.Path | None
     """
 
-    def __init__(self, db: DatabaseInformation, resource_definition: ResourceDefinition,
-                 allowed_resources: List[str], git_list: List[GitRepo],
-                 toml_reader: TomlReader, **kwargs):
-        DatabaseInformation.__init__(self, *db.get_information())
-        ResourceDefinition.__init__(self, **resource_definition.dict())
-
-        self._allowed_resources = allowed_resources  # these are strings !
-        self._is_test = kwargs.get("is_test", False)
-
-        import logging
-        logger = logging.getLogger("ConfigReader")
-        logger.info(f"Initializing ConfigReader with resource: {self.resource}")
-        logger.info(f"ConfigReader kwargs: {kwargs}")
-        logger.info(f"ConfigReader db_info: {self.get_database_information()}")
-        logger.info(f"ConfigReader resources: {self.allowed_resources}")
-
-        logger.info(f"ConfigReader is_test: {self._is_test}")
-
-        # unused and legacy keys
-        self._external_workdir = None
-        self._external_source_dir = None
-        self._secret_key = None
-        self._docker = False  # no longer supported for now
-        self._routes = []
-        self._git = []
-        self._resources = []
-        self._allowed_resources = []
-
-        if toml_reader is not None:
-            self.config = toml_reader.config
-            self._docker = toml_reader.get("parameters.common.docker", False)
-            logger.info(f"docker: {self._docker}")
-
-            external_source_dir = toml_reader.get("parameters.common.source_dir", None)
-            if external_source_dir is not None:
-                self._external_source_dir = Path(external_source_dir)
-                logger.info(f"external source directory: {self._external_source_dir}")
-
-            if self.docker and self._external_source_dir == Path("NONE"):
-                logger.error(
-                    f"You must specify an external source directory for resource: {self._resource} in the config file"
-                )
-                raise ValueError(
-                    f"You must specify an external source directory for resource: {self._resource} in the config file"
-                )
-
-            self._routes = self.config.get("routes", [])
-            for route in self._routes:
-                if not isinstance(route, dict):
-                    logger.error(f"Route {route} is not a dictionary.")
-                    raise ValueError("Route {route} is not a dictionary.")
-                if not ("source" in route and "target" in route and "host" in route):
-                    logger.error(
-                        f"Route {route} does not contain 'source', 'target', 'host' keys."
-                    )
-                    raise ValueError(
-                        f"Route {route} does not contain 'source', 'target', 'host' keys."
-                    )
-
-            self._secret_key = toml_reader.get("server.secret_key", "")
+    def __init__(self, db_info: DatabaseInformation, resource_definition: ResourceDefinition, **kwargs):
+        DatabaseInformation.__init__(self, *db_info.get_information())
+        ResourceDefinition.__init__(self, **resource_definition)
+        self.__dict__ = {**self.__dict__, **kwargs}
 
     @classmethod
-    async def create(cls, db: Database, toml_reader: TomlReader | None, **kwargs):
-        resource = kwargs.get("resource", None)
-        if resource is None:
-            raise ValueError("Resource must be specified in the kwargs of ConfigReader.create")
+    async def create(cls, resource_str, db: "Database", toml_reader: TomlReader, **kwargs):
+        """
+        Asynchronous class method for creating an instance using either keyword arguments
+        or configuration from external sources (e.g., a database or a TOML file). This method
+        initializes the necessary parameters to create the instance, ensuring required keys
+        are provided. It supports both cases where initialization details are provided
+        directly or fetched from an external configuration source.
 
-        resource_records = await db.find_all(ResourceDefinition)
-        if resource_records is not None:
-            # this is the sign that we can initialize from the database
-            allowed_resources = [r.name for r in resource_records]
-            logger.info(f"Intilializing ConfigReader from database, allowed resources: {allowed_resources}")
-            if resource not in allowed_resources:
-                raise ValueError(f"Resource {resource} not found in the list of allowed resources")
+        As side effects, it initializes the allowed resources, the route_table, and the path_manager.
 
-            # Find the resource definition matching the resource name
-            resource_definition = next((r for r in resource_records if r.name == resource), None)
-            if resource_definition is None:
-                raise ValueError(f"Resource definition for {resource} not found")
-        elif toml_reader is not None:
-            # this is the sign that we can initialize from the toml file
-            allowed_resources = toml_reader.get("parameters.common.allowed_resources", None)
-            logger.info(f"Intilializing ConfigReader from toml file, allowed resources: {allowed_resources}")
+        Attributes:
+            required_keys: List of strings representing the mandatory keys that must be initialized.
+            init_done: Boolean indicating whether all required keys have been initialized.
+            init_dict: Dictionary storing the initialized key-value pairs.
+            resource_definition: Object that contains resource details fetched from the
+                                 database or a configuration file.
 
-            if allowed_resources is None:
-                raise ValueError("Allowed resources not found in the toml file")
-            if resource not in allowed_resources:
-                raise ValueError(f"Resource {resource} not found in the list of allowed resources")
+        Args:
+            resource_str (str): A string key representing the resource for initialization.
+            db (Database): Database instance used to fetch initialization parameters when required.
+            toml_reader (TomlReader): Reader instance to access configuration values from a TOML file.
+            **kwargs: Additional keyword arguments for resource initialization that will
+                      override default values from the external sources.
 
-            resource_definition_dict = toml_reader.get(f"parameters.{resource}", None)
-            if resource_definition_dict is None:
-                raise ValueError(f"Resource definition for {resource} not found in the toml file")
-            resource_definition = ResourceDefinition(**resource_definition_dict)
-        else:
-            raise ValueError("Either the database must allow initialization or a toml file must be specified")
+        Returns:
+            cls: Returns an initialized instance of the class.
 
-        git_list = await db.find_all(GitRepo)
-        if git_list is None and toml_reader is not None:
-            git_list = toml_reader.get("parameters.common.git", [])
+        Raises:
+            ValueError: When no valid initialization data is found from either the keyword arguments,
+                        configuration file, or database.
+        """
 
-        return cls(db, resource_definition, allowed_resources, git_list, toml_reader,
-                   **kwargs)
+        import logging
+        logger = logging.getLogger(__name__)  # do this here because the calling function sets the logger up
+
+        required_keys = ["resource", "python_path", "ssh_key", "git_list", "allowed_resources",
+                         "workdir", "environment_start"]
+        init_done = False
+        config = {}
+        for key in required_keys:
+            if key in kwargs:
+                config[key] = kwargs.get(key)
+                logger.info(f"Init from kwargs: {key}: {kwargs.get(key)}")
+            else:
+                init_done = False
+
+        resource_definition = None
+        if not init_done:
+            if not toml_reader:
+                toml_reader = TomlReader()
+            use_db_for_init = toml_reader.get("parameters.common.use_db", False)
+            logger.info(f"toml-file read, use_db_for_init: {use_db_for_init}")
+            if use_db_for_init:  # get all data from the simstack.toml file
+                # this will give python_path, ssh_key, and initialize allowed resources
+                resource_definition = initialize_resource_from_db(resource_str, db)
+                initialize_paths_from_db(db)
+            else:
+                resource_definition = toml_reader.get_resource_definition(resource_str)
+                toml_reader.initialize_path_manager()
+
+        if resource_definition is None:
+            raise ValueError("No valid resource definition found.")
+
+        # override the values in resource definition with those from the keyword arguments
+        for key in resource_definition.keys():
+            if key in config:
+                resource_definition[key] = config[key]
+                del config[key]
+                del required_keys[required_keys.index(key)]
+
+        return cls(db, resource_definition, **config)
 
     @property
     def allowed_resources(self) -> List[str]:

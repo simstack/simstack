@@ -1,20 +1,19 @@
 import logging
-import os
-import sys
-import tomllib
 from typing import List
-
-from simstack.core.config_file import get_config_file
-from simstack.util.project_root_finder import find_project_root
-
 logger = logging.getLogger("resources")
 
 
 class AllowedResources:
     """
     Singleton class that holds a list of allowed resource strings.
-    # This class is independent of context because its initialized to an empty list.
-    Creating any resource will fail if the config has not been read
+
+    This class is problematic because the @node decorator is called before the config is read.
+    @node may contain Parameters which set default values for resources.
+    The solution is to create the AllowedResources singleton class here, and set the resources from
+    context.initialize. Before context.initialize is called, any resource is allowed.
+
+    However, resources are validated on read, so before any node is executed, the resources must be set.
+    AllowedResources can be set only once.
     """
 
     _instance = None
@@ -27,30 +26,13 @@ class AllowedResources:
 
     def __init__(self):
         # Only initialize once
-        if not hasattr(self, "_initialized"):
-            config_file = get_config_file().config_file_path
-            config_path = find_project_root()
-
-            try:
-                toml_file = os.path.join(config_path, config_file)
-                if os.path.exists(toml_file):
-                    with open(toml_file, "rb") as f:
-                        self.config = tomllib.load(f)
-                else:
-                    print("simstack.toml file not found in the project root.")
-                    sys.exit(-1)
-            except tomllib.TOMLDecodeError:
-                print("There was an error decoding the TOML file.")
-                sys.exit(-1)
-
-            self._resources = (
-                self.config.get("parameters", {}).get("common", {}).get("resources", [])
-            )
-            logger.info(f"Initialized resources to: {self._resources}")
-            self._initialized = True
+        self._initialized = False
 
     def set_resources(self, resources: List[str]) -> None:
         """Set the list of allowed resources."""
+        if self._initialized:
+            raise RuntimeError("Resources can only be set once")
+        self._initialized = True
         self._resources = resources.copy() if resources else []
 
     def get_resources(self) -> List[str]:
@@ -75,7 +57,10 @@ class AllowedResources:
 
     def has_resource(self, resource: str) -> bool:
         """Check if a resource exists in the list."""
-        return resource in self._resources
+        if hasattr(self, "_initialized") and self._initialized:
+            return resource in self._resources
+        else:
+            return True # before this is initialized, any resource is allowed
 
     def __len__(self) -> int:
         """Return the number of resources."""
@@ -97,5 +82,8 @@ class AllowedResources:
         """String representation."""
         return f"AllowedResources({self._resources!r})"
 
+    @property
+    def initialized(self):
+        return hasattr(self, "_initialized")
 
 allowed_resources = AllowedResources()

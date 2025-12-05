@@ -3,13 +3,10 @@ import logging
 from typing import Callable, Optional, Type
 
 from odmantic import Model, AIOEngine, ObjectId
-
-from simstack.core.context import context
 from simstack.core.engine import current_engine_context
 from simstack.models.models import ModelMapping, NodeModel
 
 logger = logging.getLogger("importer")
-
 
 async def function_from_model(model, task_id: ObjectId) -> Optional[Callable]:
     function_path = model.function_mapping
@@ -55,7 +52,7 @@ async def import_function(
 
     Args:
         function_path: Dot notation path to the function (e.g. 'methods.submodule.function_name')
-        task_id: Optional task Id
+        task_id: Optional task id
 
     Returns:
         The imported function object or None if import fails
@@ -73,11 +70,9 @@ async def import_function(
     return await function_from_model(node_model, task_id)
 
 
-async def import_function_by_name(
-    function_name: str, task_id: ObjectId, engine: AIOEngine = None
-) -> Optional[Callable]:
+async def import_function_by_name(function_name: str, task_id: ObjectId, engine: AIOEngine = None) -> Optional[Callable]:
     if not engine:
-        engine = context.db.engine
+        engine = current_engine_context.get()
 
     node_model = await engine.find_one(NodeModel, NodeModel.name == function_name)
     if node_model is None:
@@ -85,7 +80,6 @@ async def import_function_by_name(
         raise ValueError(f"Could not find function mapping for name: {function_name}")
 
     return await function_from_model(node_model, task_id)
-
 
 async def import_class(class_path: str) -> Type[Model] | None:
     """
@@ -110,37 +104,17 @@ async def import_class(class_path: str) -> Type[Model] | None:
             ModelMapping, ModelMapping.name == class_name
         )
 
-        # If not found by name, try by mapping
+       # If not found by name, try by mapping
         if not model_mapping:
             model_mapping = await engine.find_one(
                 ModelMapping, ModelMapping.mapping == class_path
             )
-        else:  # when searching by name the path may have changed
+        else:  # when searching by name, the path may have changed
             module_path, class_name = model_mapping.mapping.rsplit(".", 1)
 
         if not model_mapping:
             logger.error(f"Error finding ModelMapping for {class_name}")
             raise LookupError(f"Error finding ModelMapping for {class_name}")
-
-        # TODO where do picke classes come from?
-        # If we found a ModelMapping with a pickle_class reference, try to load from the database
-        # if model_mapping.pickle_class:
-        #     logger.info(f"Found ModelMapping for {class_name} with pickle_class")
-        #     try:
-        #         # The pickle_class is a reference to the ClassPickle
-        #         class_pickle = model_mapping.pickle_class
-        #         if class_pickle:
-        #             logger.info(f"Loading class {class_name} from database")
-        #             # Load the class from the ClassPickle
-        #             pickle_result = cast(Type[Model], class_pickle.load_class())
-        #             return pickle_result
-        #         else:
-        #             logger.warning(f"ClassPickle not found for {class_name}")
-        #             raise LookupError(f"ClassPickle not found for {class_name}")
-        #     except Exception as e:
-        #         logger.error(f"Error loading class {class_name} from database: {e}")
-        #         raise e
-        # else:
 
         # Import the module
         module = importlib.import_module(module_path)

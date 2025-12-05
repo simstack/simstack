@@ -5,7 +5,6 @@ from pathlib import Path
 from odmantic import Model, Field, EmbeddedModel
 from pydantic import field_validator
 
-
 class GitRepo(Model):
     """
     Represents a Git repository with relevant attributes such as its URL, branch,
@@ -46,6 +45,7 @@ class ResourceDefinition(Model):
     workdir: str
     python_path: List[str]
     environment_start: str
+    routes: Optional[List[str]] = [] # this is the list of resources that this resource can reach by ssh
 
     @field_validator("ssh_key_path", mode="after")
     @classmethod
@@ -69,3 +69,7 @@ class ResourceDefinition(Model):
 
     def __repr__(self):
         return f"ResourceDefinition(name={self.name})"
+
+    @classmethod
+    def from_resource_definition(cls, resource_definition: dict):
+        return cls(**resource_definition)
