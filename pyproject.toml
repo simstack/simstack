@@ -124,3 +124,9 @@ exclude = ["tests", "doc", "docs"]
 [project.entry-points."simstack.modules"]
 example_modules = "simstack.models"
 applicatio_modules = "simstack.methods"
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true

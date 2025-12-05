@@ -23,6 +23,9 @@ jobs:
         with:
           fetch-depth: 0  # Fetch full history to check tag ancestry
 
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v7
+
       - name: Verify tag is from main branch
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
@@ -32,14 +35,10 @@ jobs:
             exit 1
           fi
           echo "Tag ${{ github.ref_name }} is from main branch - proceeding with build"
-      - name: Setup Pixi
-        uses: prefix-dev/setup-pixi@v0.8.1
-        with:
-          environments: pythonbuild
       - name: Build
         id: build
         run: |
-          pixi run pythonbuild
+          uv build
       - name: Archive package on github
         uses: actions/upload-artifact@v4
         with:
@@ -53,9 +52,9 @@ jobs:
             # Upload to main PyPI for release tags
             echo "Uploading to main PyPI for release tag ${{ github.ref_name }}"
             # Still disabled for testing:
-            #pixi run -e pythonbuild twine upload dist/*
+            #uv publish
           else
             # Upload to TestPyPI for manual dispatch
             echo "Uploading to TestPyPI for manual workflow dispatch"
-            pixi run -e pythonbuild twine upload --repository testpypi dist/*
+            uv publish --index testpypi 
           fi
