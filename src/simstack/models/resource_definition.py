@@ -1,6 +1,6 @@
 from typing import Optional, List
 import urllib.parse
-import os
+import socket
 from pathlib import Path
 from odmantic import Model, Field, EmbeddedModel
 from pydantic import field_validator
@@ -40,35 +40,46 @@ class GitRepo(Model):
         return v
 
 class ResourceDefinition(Model):
-    resource: str = Field(unique=True)
-    ssh_key_path: Optional[str]   
-    workdir: str
-    python_path: List[str]
-    environment_start: str
+    resource_str: str = Field(unique=True)
+    workdir: Path
+    hostname: str
+    python_paths: List[Path] = Field(default_factory=list)
+    environment_start: Optional[str] = None
+    ssh_key: Optional[Path] = None
     routes: Optional[List[str]] = [] # this is the list of resources that this resource can reach by ssh
 
-    @field_validator("ssh_key_path", mode="after")
+    @field_validator("hostname", mode="after")
+    @classmethod
+    def validate_hostname(cls, v):
+        current_hostname = socket.gethostname()
+        if v != current_hostname:
+            raise ValueError(f"Hostname must match current host. Expected: {current_hostname}, got: {v}")
+        return v
+
+    @field_validator("ssh_key", mode="after")
     @classmethod
     def validate_ssh_key(cls, v):
         if v is not None:
-            path = Path(v)
-            if not path.is_file():
+            if not v.is_file():
                 raise ValueError(f"SSH key path does not exist: {v}")
         return v
 
-    @field_validator("python_path", mode="after")
+    
+    @field_validator("python_paths", mode="after")
     @classmethod
     def validate_python_path(cls, v):
         for path in v:
-            if not os.path.exists(path):
+            if not path.exists():
                 raise ValueError(f"Python path does not exist: {path}")
+            if not path.is_dir():
+                raise ValueError(f"Python path is not a directory: {path}")
         return v
 
     def __str__(self):
-        return f"ResourceDefinition(name={self.name},\n ssh_key_path={self.ssh_key_path}, workdir={self.workdir}, \npython_path={self.python_path}, \nenvironment_start={self.environment_start})"
+        return f"ResourceDefinition(name={self.resource_str},\n ssh_key_path={self.ssh_key}, workdir={self.workdir}, \npython_path={self.python_paths}, \nenvironment_start={self.environment_start})"
 
     def __repr__(self):
-        return f"ResourceDefinition(name={self.name})"
+        return f"ResourceDefinition(name={self.resource_str})"
 
     @classmethod
     def from_resource_definition(cls, resource_definition: dict):

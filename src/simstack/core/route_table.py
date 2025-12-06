@@ -18,5 +18,7 @@ class RouteTable:
     def add_route_set(self, source: str, targets: List[str]) -> None:
         self.targets[source] = targets
 
+    def clear_routes(self) -> None:
+        self.targets.clear()
 
 route_table = RouteTable.get_instance()

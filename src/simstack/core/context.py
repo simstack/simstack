@@ -101,7 +101,7 @@ class GlobalState:
         if db_name is None or connection_string is None:
             # use toml
             toml_reader = TomlReader()
-            db_info = DatabaseInformation.from_config(toml_reader.config, db_type)
+            db_info = DatabaseInformation.from_config(toml_reader.config)
         else:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
 

@@ -30,7 +30,7 @@ class AllowedResources:
 
     def set_resources(self, resources: List[str]) -> None:
         """Set the list of allowed resources."""
-        if self._initialized:
+        if self._initialized and resources != self._resources:
             raise RuntimeError("Resources can only be set once")
         self._initialized = True
         self._resources = resources.copy() if resources else []

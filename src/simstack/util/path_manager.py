@@ -44,7 +44,7 @@ class PathManager:
             "venv",
         ]
 
-    def add_path(self, name: str, path: str, drops: str = "", use_pickle: bool = False) -> None:
+    def add_path(self, name: str, path: Path, drops: str = "", use_pickle: bool = False) -> None:
         """
         Add a path to the manager.
 

@@ -54,8 +54,8 @@ class TestResourceDefinition:
         )
 
         assert resource.name == "local-resource"
-        assert resource.ssh_key_path == valid_paths["ssh_key"]
-        assert len(resource.python_path) == 1
+        assert resource.ssh_key == valid_paths["ssh_key"]
+        assert len(resource.python_paths) == 1
         assert len(resource.git) == 1
 
     def test_optional_ssh_key(self, valid_paths):
@@ -70,7 +70,7 @@ class TestResourceDefinition:
             environment_start="cmd",
             git=[git_repo]
         )
-        assert resource.ssh_key_path is None
+        assert resource.ssh_key is None
 
     def test_invalid_ssh_key_path(self, valid_paths):
         """Test validation of a non-existent SSH key path."""
@@ -114,11 +114,11 @@ class TestResourceDefinition:
         )
 
         # Test valid assignment
-        resource.ssh_key_path = valid_paths["ssh_key"]
+        resource.ssh_key = valid_paths["ssh_key"]
 
         # Test invalid assignment
         with pytest.raises(ValueError, match="SSH key path does not exist"):
-            resource.ssh_key_path = "/non/existent/path"
+            resource.ssh_key = "/non/existent/path"
 
         with pytest.raises(ValueError, match="Python path does not exist"):
-            resource.python_path = ["/non/existent/path"]
+            resource.python_paths = ["/non/existent/path"]

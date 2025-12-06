@@ -31,31 +31,29 @@ class DatabaseInformation:
         Initialize DatabaseInformation from TOML config
         kwargs override config file.
         """
-        common_params = config.get("parameters", {}).get("common", {})
+        common_params = config.get("parameters", {}).get("db", {})
+        is_test = kwargs.get("is_test", False)
 
         # Standard initialization from TOML
         db_name = kwargs.get("db_name")
         # for testing we can use an in_memory db
         if db_name is None:
             # the package simstack.toml has no db_name and connections string
-            db_name = common_params.get("database", "NONE")
-
-            is_test = kwargs.get("is_test", False)
-            if not is_test and db_name == "NONE":
+            db_name = common_params.get("database")
+            if db_name is None:
                 print("You must specify a database name in the config file")
                 sys.exit(-1)
 
         connection_string = kwargs.get("connection_string")
         if connection_string is None:
-            connection_string = common_params.get("connection_string", "NONE")
+            connection_string = common_params.get("connection_string")
 
-        is_test = kwargs.get("is_test", False)
-        if not is_test and connection_string == "NONE":
+        if not is_test and connection_string is None:
             print("You must specify a connection string in the config file")
             sys.exit(-1)
 
         # Use in-memory database for tests
-        db_type = DBType.IN_MEMORY if is_test and db_name is None else DBType.MONGODB
+        db_type = DBType.IN_MEMORY if is_test and connection_string is None else DBType.MONGODB
 
         return cls(db_name=db_name, connection_string=connection_string, db_type=db_type)
 

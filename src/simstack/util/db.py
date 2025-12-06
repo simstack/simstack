@@ -61,7 +61,7 @@ class Database(DatabaseInformation):
         self.engine = AIOEngineProxy(client=self.client, database=db_name)
         # this will set the engine for all functions that are either called from the core package or the server
         current_engine_context.set(self.engine)
-        self.db_name = db_name
+
 
     @classmethod
     def from_db_info(cls, db_info: DatabaseInformation):

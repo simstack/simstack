@@ -1,79 +1,104 @@
+import socket
 from pathlib import Path
 import pytest
+import sys
 import tempfile
 
+from odmantic.config import validate_config
+
 from simstack.core.definitions import DBType
+from simstack.core.route_table import route_table
+from simstack.models.parameters import Resource
+from simstack.models.resource_definition import ResourceDefinition
 from simstack.util.config_reader import ConfigReader
 from simstack.util.database_information import DatabaseInformation
+from simstack.util.db import Database
 from simstack.util.toml_reader import TomlReader
 
-class TestTomlReader:
+
+def validate_routes():
+    assert route_table.targets == {'local': ['uploads'], 'self': ['local', 'uploads'], 'uploads': []}
+
+
+class TestConfigReader:
     """Test suite for the TomlReader class."""
 
     @pytest.fixture
     def toml_file_path(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
+            
+            # Create dummy files/dirs for validation
+            ssh_key_path = temp_path / "id_rsa"
+            ssh_key_path.touch()
+            ssh_key_str = str(ssh_key_path)
+            if sys.platform == "win32":
+                ssh_key_str = ssh_key_str.replace("\\", "\\\\")
+
+            python_path = temp_path / "simstack-model"
+            python_path.mkdir()
+
+            python_path_str = str(python_path)
+            if sys.platform == "win32":
+                python_path_str = python_path_str.replace("\\", "\\\\")
+
+            workdir_path = temp_path / "simstack"
+            workdir_path.mkdir()
+            workdir_path_str = str(workdir_path)
+            if sys.platform == "win32":
+                workdir_path_str = workdir_path_str.replace("\\", "\\\\")
+
+            # Create required directory paths
+            examples_path = temp_path / "examples"
+            examples_path.mkdir()
+            applications_path = temp_path / "applications"
+            applications_path.mkdir()
+            tests_path = temp_path / "tests"
+            tests_path.mkdir()
+
+            current_hostname = socket.gethostname()
             config_file = temp_path / "simstack.toml"
-            config_file.write_text(r"""
+            config_file.write_text(f"""
 [parameters]
-# these are parameters for one user for all hosts
-[parameters.common]
-allowed_resources = ["local", "self", "remote", "uploads"]
-database = "wolfgang_data"
-test_database = "wolfgang_test"
+[parameters.general]
 use_db = false
+git = [ "{python_path_str}"]
+[parameters.db]
+database = "user_data"
+test_database = "user_test"
 connection_string="mongodb://name:XXXXXX@mongo-server.com:27017/"
-git = [ "C:\\Users\\XXX\\PyCharmProjects\\simstack-model"]
 # these parameters must be adapted for each host
-[parameters.self]
-ssh-key = "C:\\Users\\XXX\\Documents\\etc\\.ssh\\openssh"  # path to your private key
-resource = "local" # resource the runner on your computer will use
-workdir = "C:\\Users\\XXX\\simstack" # path to your simstack working directory
-python_path = [ "C:\\Users\\XXX\\PyCharmProjects\\simstack-model"]
+[resources]
+allowed_resources = ["local", "self", "uploads"]
+[resources.self]
+ssh-key = "{ssh_key_str}"  # path to your private key
+workdir = "{workdir_path_str}" # path to your simstack working directory
+python_paths = [ "{python_path_str}"]
+hostname = "{current_hostname}"
+routes = ["local", "uploads"]
 environment_start = ""
-[parameters.local]
-ssh-key = "C:\\Users\\XXX\\Documents\\etc\\.ssh\\openssh"  # path to your private key
+[resources.local]
+ssh-key = "{ssh_key_str}"  # path to your private key
 resource = "local" # resource the runner on your computer will use
-workdir = "C:\\Users\\XXX\\simstack" # path to your simstack working directory
-python_path = [ "C:\\Users\\XXX\\PyCharmProjects\\simstack-model"]
+workdir = "{workdir_path_str}" # path to your simstack working directory
+python_paths = [ "{python_path_str}"]
+hostname = "{current_hostname}"
 environment_start = ""
-[parameters.uploads]
-ssh-key = "C:\\Users\\bj7610\\Documents\\etc\\.ssh\\surface11_openssh"  # path to your private key
+routes = ["uploads"]
+[resources.uploads]
+ssh-key = "{ssh_key_str}"  # path to your private key
 resource = "self" # resource the runner on your computer will used
-workdir = "C:\\Users\\bj7610\\simstack" # path to your simstack working directory
-python_path = [ "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model",
-               "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model\\src"]
-[parameters.remote]
-ssh-key = "/home/remote_user/.ssh/id_rsa"  # path to your private key
-workdir = "/home/remote_user/simstack" # path to your simstack working directory
-python_path = [ "/home/remote_user/projects/simstack-model"]
-environment_start = "conda activate simstack-env"
-# normal users do not have to change anything below this line
-# these are the parameters for the overall configurations
-[hosts]
-local = "localhost"
-remote="remote.int.kit.edu"
-justus="justus.int.kit.edu"
-horeka="horeka.int.kit.edu"
-
-[[routes]]
-source = "local"
-target = "remote"
-host = "local"
-
-[[routes]]
-source = "remote"
-target = "local"
-host = "local"
+workdir = "{workdir_path_str}" # path to your simstack working directory
+python_paths = [ "{python_path_str}"]
+hostname = "{current_hostname}"
 [paths]
 # Path configuration for the PathManager.
 # Each path entry should have a path and an optional drops value.
 # The path is the directory to search for Python files
 # The "drops" value is a prefix to drop from module names (for import paths)
-#examples = { path = "examples", drops = "", use_pickle = false }
-#applications = { path = "applications", drops = "", use_pickle = false }
-#tests = { path = "tests", drops = "", use_pickle = false }
+examples = {{ path = "examples", drops = "", use_pickle = false }}
+applications = {{ path = "applications", drops = "", use_pickle = false }}
+tests = {{ path = "tests", drops = "", use_pickle = false }}
 """)
             yield temp_path
 
@@ -85,9 +110,10 @@ host = "local"
             config_file.write_text(r"""
 [parameters]
 # these are parameters for one user for all hosts
-[parameters.common]
+[parameters.db]
 database = "wolfgang_data"
 test_database = "wolfgang_test"
+[parameters.general]
 use_db = true
 """)
             yield temp_path
@@ -97,103 +123,168 @@ use_db = true
         reader = TomlReader(config_path=toml_file_path)
         yield reader
 
-    def test_reader(self,toml_reader):
-        assert toml_reader.get("parameters.common.resources") == ["local", "self", "remote", "uploads"]
+    @pytest.fixture
+    def resource_definitions(self, toml_reader):
+        resources = ["local", "self", "uploads"]
+        definitions = []
+        for resource in resources:
+            definition = toml_reader.get_resource_definition(resource)
+            definitions.append(definition)
+        yield definitions
+
+    @pytest.fixture
+    def mock_db_info(self, toml_reader):
+        kwargs = { 'is_test' : True }
+        toml_reader.config["parameters"]["db"]["connection_string"] = None
+        db_info = DatabaseInformation.from_config(toml_reader.config, **kwargs)
+        return db_info
+
+    @pytest.fixture
+    def mock_db(self, mock_db_info):
+        db = Database.from_db_info(mock_db_info)
+
+        # Patch ODMantic engine to work without sessions in test mode
+        async def patched_save(instance, **kwargs):
+            """Patched save method that doesn't use sessions"""
+            # Use the collection directly without transactions
+            collection = db.engine.get_collection(type(instance))
+
+            # Ensure the instance has an ObjectId
+            if not instance.id:
+                from odmantic import ObjectId
+
+                instance.id = ObjectId()
+
+            # Convert to dict and save
+            doc = instance.model_dump(by_alias=True)
+            doc["_id"] = instance.id
+
+            # Recursively convert Path objects to strings for BSON encoding
+            def convert_paths(obj):
+                if isinstance(obj, dict):
+                    return {k: convert_paths(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [convert_paths(v) for v in obj]
+                elif isinstance(obj, Path):
+                    return str(obj)
+                return obj
+
+            doc = convert_paths(doc)
+
+            # Upsert the document
+            await collection.replace_one({"_id": instance.id}, doc, upsert=True)
+            return instance
+
+        async def patched_save_all(instances, **kwargs):
+            """Patched save_all method that doesn't use sessions"""
+            results = []
+            for instance in instances:
+                result = await patched_save(instance, **kwargs)
+                results.append(result)
+            return results
+
+        # Apply patches only for mock database
+        db.engine.save = patched_save
+        db.engine.save_all = patched_save_all
+
+        yield db
+        db.close()
+
+    def test_reader(self, toml_reader):
+        assert toml_reader.get("resources.allowed_resources") == ["local", "self", "uploads"]
+
+    def test_resource_definitions(self, resource_definitions):
+        assert len(resource_definitions) == 3
+        assert all(isinstance(rd, ResourceDefinition) for rd in resource_definitions)
+        assert resource_definitions[0].resource_str == "local"
+        assert resource_definitions[1].resource_str == "self"
+        assert resource_definitions[2].resource_str == "uploads"
 
     @pytest.mark.asyncio
     async def test_init_datasource_no_db(self,toml_reader):
-        assert toml_reader.get("parameters.common.use_db") == False
+        assert toml_reader.use_db() == False
         kwargs_dict = {"resource" : "local", "is_test" : False}
 
         db_info = DatabaseInformation(connection_string="mongo_db",db_name="test_db",db_type=DBType.IN_MEMORY)
-        config_reader = await ConfigReader.create("local", db_info, toml_reader,**kwargs_dict)
+        self.config_reader = await ConfigReader.create("local", db_info, toml_reader,**kwargs_dict)
+        self.validate_config_reader(toml_reader)
 
-        assert config_reader.workdir == Path("C:\\Users\\XXX\\simstack-model")
-        assert config_reader.python_path == [r"C:\\Users\\XXX\\PyCharmProjects\\simstack-model"]
-        assert config_reader.resource.resource == "local"
-        assert config_reader.connection_string == "mongo_db"
-        assert config_reader.db_name == "test_db"
-        assert config_reader.db_type == DBType.IN_MEMORY
+    def validate_config_reader(self, toml_reader):
+        # Path comparisons need to be careful about resolution/absolute paths
+        # We just check if the name matches the one created in the fixture
+        assert self.config_reader.workdir == toml_reader.get("resources.local.workdir")
+        assert str(self.config_reader.python_paths[0]).endswith("simstack-model")
+        assert self.config_reader.resource == Resource(value="local")
+        assert self.config_reader.connection_string == "mongo_db"
+        assert self.config_reader.db_name == "test_db"
+        assert self.config_reader.db_type == DBType.IN_MEMORY
+        validate_routes()
 
     @pytest.mark.asyncio
     async def test_overwrite_workdir_in_toml(self, toml_reader):
-        assert toml_reader.get("parameters.common.use_db") == False
-        kwargs_dict = {"resource": "local", "is_test": False, "workdir": "new"}
+        assert toml_reader.use_db() == False
 
-        db_info = DatabaseInformation(connection_string="mongo_db", db_name="test_db", db_type=DBType.IN_MEMORY)
-        config_reader = await ConfigReader.create("local", db_info, toml_reader, **kwargs_dict)
-        assert config_reader.workdir == Path("new")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_workdir = Path(temp_dir) / "workdir"
+            temp_workdir.mkdir()
 
-    #
-    # def test_initialize_with_default_path(self, mocker):
-    #     """Test initialization with the default path and file."""
-    #     mocked_find_project_root = mocker.patch(
-    #         "simstack.toml_reader.find_project_root", return_value=Path("/mock/root")
-    #     )
-    #     mocked_tomllib_load = mocker.patch("simstack.toml_reader.tomllib.load", return_value={"key": "value"})
-    #     mocked_open = mocker.patch("builtins.open", mocker.mock_open(read_data="mock data"))
-    #
-    #     reader = TomlReader()
-    #
-    #     mocked_find_project_root.assert_called_once()
-    #     mocked_tomllib_load.assert_called_once()
-    #     mocked_open.assert_called_once_with(Path("/mock/root/simstack.toml"), "rb")
-    #     assert reader.config == {"key": "value"}
-    #
-    # def test_initialize_with_custom_path(self, mocker):
-    #     """Test initialization with a custom path and file."""
-    #     mocked_tomllib_load = mocker.patch("simstack.toml_reader.tomllib.load", return_value={"key": "value"})
-    #     mocked_open = mocker.patch("builtins.open", mocker.mock_open(read_data="mock data"))
-    #
-    #     custom_path = Path("/custom/path")
-    #     custom_file = "custom.toml"
-    #     reader = TomlReader(config_path=custom_path, config_file=custom_file)
-    #
-    #     mocked_open.assert_called_once_with(custom_path / custom_file, "rb")
-    #     mocked_tomllib_load.assert_called_once()
-    #     assert reader.config == {"key": "value"}
-    #
-    # def test_initialize_file_not_found(self, mocker):
-    #     """Test behavior when the TOML file is not found."""
-    #     mocker.patch("simstack.toml_reader.find_project_root", return_value=Path("/mock/root"))
-    #
-    #     with pytest.raises(SystemExit) as excinfo:
-    #         TomlReader(config_file="non_existent.toml")
-    #     assert excinfo.value.code == -1
-    #
-    # def test_initialize_invalid_toml(self, mocker):
-    #     """Test behavior when the TOML file contains invalid syntax."""
-    #     mocker.patch("simstack.toml_reader.find_project_root", return_value=Path("/mock/root"))
-    #     mocker.patch("builtins.open", mocker.mock_open(read_data="invalid toml"))
-    #     mocker.patch("simstack.toml_reader.tomllib.load", side_effect=tomllib.TOMLDecodeError("error", "doc", 1))
-    #
-    #     with pytest.raises(SystemExit) as excinfo:
-    #         TomlReader()
-    #     assert excinfo.value.code == -1
-    #
-    # def test_get_existing_key(self, mocker):
-    #     """Test retrieving an existing key."""
-    #     mocker.patch("simstack.toml_reader.find_project_root", return_value=Path("/mock/root"))
-    #     mocker.patch("builtins.open", mocker.mock_open(read_data="mock"))
-    #     mocker.patch("simstack.toml_reader.tomllib.load", return_value={"key1": {"key2": "value"}})
-    #
-    #     reader = TomlReader()
-    #     assert reader.get("key1.key2") == "value"
-    #
-    # def test_get_non_existing_key(self, mocker):
-    #     """Test retrieving a non-existing key."""
-    #     mocker.patch("simstack.toml_reader.find_project_root", return_value=Path("/mock/root"))
-    #     mocker.patch("builtins.open", mocker.mock_open(read_data="mock"))
-    #     mocker.patch("simstack.toml_reader.tomllib.load", return_value={"key1": {"key2": "value"}})
-    #
-    #     reader = TomlReader()
-    #     assert reader.get("key1.key3") is None
-    #
-    # def test_get_with_default_value(self, mocker):
-    #     """Test retrieving a non-existing key with a default value."""
-    #     mocker.patch("simstack.toml_reader.find_project_root", return_value=Path("/mock/root"))
-    #     mocker.patch("builtins.open", mocker.mock_open(read_data="mock"))
-    #     mocker.patch("simstack.toml_reader.tomllib.load", return_value={"key1": {"key2": "value"}})
-    #
-    #     reader = TomlReader()
-    #     assert reader.get("key1.key3", default="default_value") == "default_value"
+            kwargs_dict = {"resource": "local", "is_test": False, "workdir": str(temp_workdir)}
+
+            db_info = DatabaseInformation(connection_string="mongo_db", db_name="test_db", db_type=DBType.IN_MEMORY)
+            config_reader = await ConfigReader.create("local", db_info, toml_reader, **kwargs_dict)
+            assert config_reader.workdir == temp_workdir
+
+    @pytest.mark.asyncio
+    async def test_init_datasource_with_db(self,mock_db, toml_reader, resource_definitions):
+        assert mock_db.db_name == "user_data"
+        toml_reader.config["parameters"]["general"]["use_db"] = True
+        
+        for resource_def in resource_definitions:
+            await mock_db.save(resource_def)
+        config_reader = await ConfigReader.create("local", mock_db, toml_reader)
+        assert config_reader.db_name == "user_data"
+        validate_routes()
+
+    @pytest.mark.asyncio
+    async def test_resource_property_restrictions(self, toml_reader, mock_db):
+        """Test that the resource property is read-only."""
+        config_reader = await ConfigReader.create("local", mock_db, toml_reader)
+
+        # Test getter
+        assert isinstance(config_reader.resource, Resource)
+        assert config_reader.resource.value == "local"
+
+        # Test setter raises ValueError
+        with pytest.raises(ValueError, match="ConfigReader: Resource cannot be set directly"):
+            config_reader.resource = "new_value"
+
+    @pytest.mark.asyncio
+    async def test_create_invalid_resource(self, toml_reader, mock_db):
+        """Test ConfigReader creation with a non-existent resource."""
+        # 'non_existent' is not in allowed_resources ["local", "self", "uploads"]
+        with pytest.raises(ValueError):
+            await ConfigReader.create("non_existent", mock_db, toml_reader)
+
+    @pytest.mark.asyncio
+    async def test_override_ssh_key(self, toml_reader, mock_db):
+        """Test overriding ssh_key via kwargs."""
+
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_ssh_key:
+            tmp_ssh_key.write(b"test ssh key content")
+            tmp_ssh_key.flush()
+
+            kwargs = {"ssh_key": tmp_ssh_key.name}
+            config_reader = await ConfigReader.create("local", mock_db, toml_reader, **kwargs)
+
+            assert Path(config_reader.ssh_key).exists()
+            assert config_reader.ssh_key == Path(tmp_ssh_key.name)
+
+    @pytest.mark.asyncio
+    async def test_git_list_property(self, toml_reader, mock_db):
+        """Test that the git_list property is populated correctly."""
+        config_reader = await ConfigReader.create("local", mock_db, toml_reader)
+
+        git_list = config_reader.git_list
+        assert isinstance(git_list, list)
+        assert len(git_list) == 1
+

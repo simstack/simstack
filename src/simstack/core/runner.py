@@ -86,7 +86,7 @@ async def run_node(registry_entry: NodeRegistry):
 
 def make_git_list() -> List[str]:
     git_list = []
-    for path in context.config.git:
+    for path in context.config.git_list:
         result = get_git_status(path)
         if result["branch"]:
             value = result["branch"] + "[" + result["short_hash"] + "]"
@@ -274,7 +274,7 @@ async def run_nodes_for_resource(
                     running_tasks.remove(task)
 
                 # Check for STOP file in python path
-                for path in context.config.python_path:
+                for path in context.config.python_paths:
                     stop_file = Path(path) / "STOP"
                     if stop_file.exists():
                         runner_event = RunnerEvent(
