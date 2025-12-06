@@ -1,18 +1,16 @@
 import logging  # Import logging before using it
-import os
 import sys
-from typing import Any
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse, urlunparse
 
 from simstack.core.definitions import DBType
+from simstack.core.engine import current_engine_context
+from simstack.models.resource_definition import GitRepo
 from simstack.util.config_reader import ConfigReader
-from simstack.toml_reader import TomlReader
+from simstack.util.toml_reader import TomlReader
 from simstack.util.database_information import DatabaseInformation
-from simstack.util.path_manager import PathManager
-
-# from simstack.core.model_table import make_models_for_path
-# from simstack.core.node_table import make_nodes_for_path
-from simstack.util.project_root_finder import find_project_root
+if TYPE_CHECKING:
+    from simstack.util.db import Database
 from simstack.util.setup_logging import setup_logging
 
 
@@ -30,6 +28,11 @@ def remove_password_from_connection_string(connection_string):
 
     return urlunparse(clean_url)
 
+async def initialize_git_list(db: "Database", toml_reader: TomlReader | None):
+    git_list = await db.find_all(GitRepo)
+    if git_list is None and toml_reader is not None:
+        git_list = toml_reader.get("parameters.common.git", [])
+    return git_list
 
 class GlobalState:
     _instance = None
@@ -84,7 +87,7 @@ class GlobalState:
     #         await make_models_for_path(parent_path, self.path_manager, context.db.engine)
     #         await make_nodes_for_path(parent_path, self.path_manager, context.db.engine)
 
-    def initialize(self, **kwargs):
+    async def initialize(self, **kwargs):
 
         """Initialize the GlobalState with database settings"""
         if self._initialized:
@@ -93,51 +96,44 @@ class GlobalState:
 
         db_name : str | None = kwargs.get("db_name", None)
         connection_string: str | None = kwargs.get("connection_string", None)
+        db_type: DBType | None = kwargs.get(DBType("db_type"), None)
         toml_reader = None
         if db_name is None or connection_string is None:
             # use toml
             toml_reader = TomlReader()
-            db_info = DatabaseInformation.from_config(toml_reader.config,**kwargs)
+            db_info = DatabaseInformation.from_config(toml_reader.config, db_type)
         else:
-            db_info = DatabaseInformation(db_name, connection_string, **kwargs)
+            db_info = DatabaseInformation(db_name, connection_string, db_type)
 
         is_test = kwargs.get("is_test", False)
 
         # check that the database can be reached and set logging up
         self.initialize_database(db_info, is_test)
-
         self.initialize_logging(is_test, kwargs.get("log_level", "INFO"))
+
+        logger = logging.getLogger("Context")
+        safe_connection_string = remove_password_from_connection_string(self.config.connection_string)
+        logger.info(f"Database connection to {self.config.database_name} at {safe_connection_string}")
 
         # here we have a db, we may or may not have a toml reader
         resource_str: str | None = kwargs.get("resource", None)
-        self.config = ConfigReader(db_info, toml_reader,
-            db_name=db_name,
-            connection_string=connection_string,
-            resource=resource_str,
-            is_test=is_test,
-        )
+        if resource_str is None:
+            raise ValueError("Resource must be specified in the kwargs of Context.initialize")
 
-
-
-
-        # initialize the rest of the variables in the config, but now we can get the errors in the database
-        self.config.secondary_init(kwargs.get("workdir", None))
-
-        logger = logging.getLogger("Context")
-        safe_connection_string = remove_password_from_connection_string(
-            self.config.connection_string
-        )
-        logger.info(
-            f"Database connection established to {self.config.database_name} at {safe_connection_string}"
-        )
-
-        # Initialize PathManager from config
-        self.path_manager = PathManager.from_config(self.config)
-
-        # Set any additional parameters
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-        return self
+        self.config = await ConfigReader.create(db_info, resource_str, self.db, **kwargs)
+        #
+        #
+        # resource_definition = await initialize_resources(resource_str, self.db, toml_reader, logger)
+        # git_list = await initialize_git_list(self.db, toml_reader)
+        # route_set = await initialize_route_set(self.db, toml_reader)
+        #
+        # self.config = await ConfigReader.create(db_info, toml_reader, resource_definition, **kwargs)
+        #
+        # # Initialize PathManager from config
+        # if toml_reader is not None:
+        #     self.path_manager = PathManager.from_config(toml_reader.config)
+        # else:
+        #     self.path_manager = PathManager()
 
     def initialize_logging(self, is_test: bool, log_level: str = "INFO"):
         if is_test:
@@ -161,6 +157,8 @@ class GlobalState:
             if db_info.db_type == DBType.MONGODB:
                 # Only ping real MongoDB connections
                 self.db.client.admin.command("ping")
+            current_engine_context.set(self.db.engine)
+
         except ConnectionError as e:
             if not is_test:
                 print(f"Could not connect to the database: {e}")
@@ -174,10 +172,10 @@ class GlobalState:
         return self._initialized
 
 # TODO find out if this is still needed
-root_dir = find_project_root()
-path_dir = os.path.join(root_dir, "src")
-if path_dir not in os.sys.path:
-    os.sys.path.append(path_dir)
+# root_dir = find_project_root()
+# path_dir = os.path.join(root_dir, "src")
+# if path_dir not in os.sys.path:
+#     os.sys.path.append(path_dir)
 
 # Create the singleton instance, but it's not initialized yet
 context = GlobalState()

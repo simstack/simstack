@@ -11,7 +11,7 @@ class MockContext:
     def initialized(self):
         return True
     
-    def initialize(self):
+    async def initialize(self):
         pass
 
 # Apply the mock before any problematic imports

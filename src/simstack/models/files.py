@@ -209,8 +209,8 @@ class FileStack(Model):
 
 async def main():
     from simstack.core.context import context
+    await context.initialize()
 
-    context.initialize()
     # write a file test.txt
     with open("test.txt", "w") as f:
         f.write("Hello World")
@@ -224,6 +224,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
-
     logging.basicConfig(level=logging.DEBUG)
     asyncio.run(main())

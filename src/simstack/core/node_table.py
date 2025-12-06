@@ -73,16 +73,15 @@ class CreateNodeTable:
 
     def __init__(self, engine):
         # Ensure context is initialized and store frequently used objects
-        if not context.initialized:
-            context.initialize()
-
-        self.context = context
         self.engine = engine
         self.path_manager = context.path_manager
 
     async def make_node_table(self):
         """Entry point to (re)build the node table."""
         # First, process all simstack modules
+        if not context.initialized:
+            context.initialize()
+
         all_modules = find_simstack_modules()
         for module_name in all_modules:
             logger.info(f"Processing node module: {module_name}")

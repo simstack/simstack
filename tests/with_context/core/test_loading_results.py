@@ -1,7 +1,7 @@
 import logging
 import pytest
 
-from tests.core.test_simple_nodes import adder_in_tests
+from tests.with_context.core.test_simple_nodes import adder_in_tests
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.node import node
 from simstack.core.node_runner import NodeRunner

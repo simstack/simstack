@@ -406,11 +406,8 @@ async def run_nodes_for_resource(
 
 async def async_main(args):
     """Async entry point"""
-    context.initialize(resource=args.resource, db_name=args.db_name)
-
+    await context.initialize(resource=args.resource, db_name=args.db_name)
     if args.resource:
-        context.config.resource = Resource(value=args.resource)
-        logger.info(f"Setting resource for runner to {args.resource}")
         await run_nodes_for_resource(args.resource, args.polling_interval, None)
 
 

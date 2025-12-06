@@ -29,9 +29,10 @@ async def initialized_context(tmp_path_factory):
 
     working_dir = tmp_path_factory.mktemp("simstack_test")
     # Initialize context - use test mode for logging, real DB mode for data if requested
-    context.initialize(
+    await context.initialize(
         console=False,
         is_test=True,
+        resource="local",
         connection_string="mongodb://localhost:27017" if use_real_db else None,
         db_name="simstack_test" if use_real_db else None,
         workdir=working_dir,

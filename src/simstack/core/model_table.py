@@ -26,19 +26,19 @@ class CreateModelTable:
     """
 
     def __init__(self, engine):
-        from simstack.core.context import context
 
-        # Ensure context is initialized and store frequently used objects
-        if not context.initialized:
-            context.initialize()
-
-        self.context = context
         self.engine = engine
         self.path_manager = context.path_manager
 
     async def make_model_table(self):
         """Entry point to (re)build the model table."""
         # First, process all simstack modules
+
+        # Ensure context is initialized and store frequently used objects
+        from simstack.core.context import context
+        if not context.initialized:
+            await context.initialize()
+
         all_modules = find_simstack_modules()
         for module_name in all_modules:
             logger.info(f"Processing module: {module_name}")
@@ -182,15 +182,11 @@ def create_model_table_main():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    # Initialize context with this loop
-    from simstack.core.context import context
-
-    context.initialize(log_level=level)
-
     # Set pymongo logger level to INFO
     logging.getLogger("pymongo").setLevel(logging.INFO)
 
     # Run in the same loop
+    loop.run_until_complete(context.initialize(log_level=level))
     loop.run_until_complete(make_model_table(context.db.engine))
     loop.close()
 

@@ -1,144 +1,140 @@
+from logging import Logger
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Any
 
-from simstack.models.resource_definition import ResourceDefinition
-from simstack.toml_reader import TomlReader
+from simstack.models.parameters import Resource
+from simstack.models.resource_definition import ResourceDefinition, GitRepo
+from simstack.util.init_data_source import initialize_resource_from_db, initialize_paths_from_db
+from simstack.util.toml_reader import TomlReader
 from simstack.util.database_information import DatabaseInformation
-from simstack.util.db import Database
 
 
-class ConfigReader(DatabaseInformation):
+class ConfigReader(DatabaseInformation, ResourceDefinition):
     """
-    Handles the loading and processing of a TOML configuration file,
-    to retrieve relevant settings for the workflow environment.
-    Provides critical parameters such as database name and connection string are provided, and
-    allows resource-based configurations for flexibility.
+    Represents a configuration reader that integrates with a database and a resource
+    definition system. The class is designed to read configurations from multiple sources,
+    including databases and TOML files, and exposes interfaces to obtain detailed resource
+    and routing information.
 
-    :ivar _resource: Specifies the resource type or scope used to determine configurations.
-    :type _resource: str
-    :ivar _workdir: The working directory.
-    :type _workdir: Path | None
-    :ivar _python_path: The Python executable path defined in the resource settings from the configuration.
-    :type _python_path: str | None
-    :ivar _environment_start: Environment-specific start command extracted from the resource settings.
-    :type _environment_start: str | None
+    The primary purpose of this class is to manage application configurations, validate
+    resource definitions, and provide utility methods for retrieving specific routing
+    and resource data.
+
+    inheritance: DatabaseInformation, ResourceDefinition
+
+    :ivar secret_key: The secret key read from the configuration file (if specified).
+    :type secret_key: str
+    :ivar docker: Whether Docker parameters are enabled in the configuration.
+    :type docker: bool
+    :ivar external_source_dir: The path to an external source directory, if specified.
+    :type external_source_dir: pathlib.Path | None
     """
 
-    def __init__(self, db: Database, toml_reader: TomlReader, **kwargs):
-        super().__init__(*db.get_information())
-        
-        # the resource must be in the kwargs 
-        self._resource: str | None = kwargs.get("resource",None)
+    def __init__(self, db_info: DatabaseInformation, resource_definition: ResourceDefinition, **kwargs):
+        DatabaseInformation.__init__(self, *db_info.get_information())
+        ResourceDefinition.__init__(self, **resource_definition)
+        self.__dict__ = {**self.__dict__, **kwargs}
 
-        resource_records = await db.find_all(ResourceDefinition)
-        if resource_records is not None:
-            self._allowed_resources = [r.name for r in resource_records]
-            if self._allowed_resources is None or self._resource not in self._allowed_resources:
+    @classmethod
+    async def create(cls, resource_str, db: "Database", toml_reader: TomlReader, **kwargs):
+        """
+        Asynchronous class method for creating an instance using either keyword arguments
+        or configuration from external sources (e.g., a database or a TOML file). This method
+        initializes the necessary parameters to create the instance, ensuring required keys
+        are provided. It supports both cases where initialization details are provided
+        directly or fetched from an external configuration source.
 
-        self._is_test = kwargs.get("is_test", False)
-        self._secret_key = None
-        # parameter overrides config file
-      
-        self._docker = False
-        self._workdir = None
-        self._external_workdir = None
+        As side effects, it initializes the allowed resources, the route_table, and the path_manager.
 
-        self._python_path = None
-        self._external_source_dir = None
-        self._environment_start = None
-        self._routes = []
-        self._git = []
-        self._resources = []
-        self._allowed_resources = []
+        Attributes:
+            required_keys: List of strings representing the mandatory keys that must be initialized.
+            init_done: Boolean indicating whether all required keys have been initialized.
+            init_dict: Dictionary storing the initialized key-value pairs.
+            resource_definition: Object that contains resource details fetched from the
+                                 database or a configuration file.
 
-   
+        Args:
+            resource_str (str): A string key representing the resource for initialization.
+            db (Database): Database instance used to fetch initialization parameters when required.
+            toml_reader (TomlReader): Reader instance to access configuration values from a TOML file.
+            **kwargs: Additional keyword arguments for resource initialization that will
+                      override default values from the external sources.
+
+        Returns:
+            cls: Returns an initialized instance of the class.
+
+        Raises:
+            ValueError: When no valid initialization data is found from either the keyword arguments,
+                        configuration file, or database.
+        """
+
         import logging
+        logger = logging.getLogger(__name__)  # do this here because the calling function sets the logger up
 
-        logger = logging.getLogger("ConfigReader")
+        required_keys = ["resource", "python_path", "ssh_key", "git_list", "allowed_resources",
+                         "workdir", "environment_start"]
+        init_done = False
+        config = {}
+        for key in required_keys:
+            if key in kwargs:
+                config[key] = kwargs.get(key)
+                logger.info(f"Init from kwargs: {key}: {kwargs.get(key)}")
+            else:
+                init_done = False
 
-        logger.info(
-            f"Initializing ConfigReader with resource: {self._resource} on database {self._db_name}"
-        )
+        resource_definition = None
+        if not init_done:
+            if not toml_reader:
+                toml_reader = TomlReader()
+            use_db_for_init = toml_reader.get("parameters.common.use_db", False)
+            logger.info(f"toml-file read, use_db_for_init: {use_db_for_init}")
+            if use_db_for_init:  # get all data from the simstack.toml file
+                # this will give python_path, ssh_key, and initialize allowed resources
+                resource_definition = initialize_resource_from_db(resource_str, db)
+                initialize_paths_from_db(db)
+            else:
+                resource_definition = toml_reader.get_resource_definition(resource_str)
+                toml_reader.initialize_path_manager()
 
-        self._docker = (
-            self.config.get("parameters", {})
-            .get(self._resource, {})
-            .get("docker", False)
-        )
-        logger.info(f"docker: {self._docker}")
-        if workdir is None:
-            workdir = (
-                self.config.get("parameters", {})
-                .get(self._resource, {})
-                .get("workdir", "NONE")
-            )
-        if workdir == "NONE":
-            logger.error(
-                f"You must specify a working directory for resource: {self._resource} in the config file"
-            )
-            raise ValueError(
-                f"You must specify a working directory for resource: {self._resource} in the config file"
-            )
-        self._workdir = Path(workdir)
-        logger.info(f"workdir: {self._workdir}")
+        if resource_definition is None:
+            raise ValueError("No valid resource definition found.")
 
-        if self._docker:
-            self._external_workdir = workdir
-            self._workdir = Path("/home/appuser/simstack")
-            logger.info(f"external_workdir: {self._external_workdir}")
+        # override the values in resource definition with those from the keyword arguments
+        for key in resource_definition.keys():
+            if key in config:
+                resource_definition[key] = config[key]
+                del config[key]
+                del required_keys[required_keys.index(key)]
 
-        self._external_source_dir = Path(
-            self.config.get("parameters", {})
-            .get(self._resource, {})
-            .get("source_dir", "NONE")
-        )
-        logger.info(f"source directory: {self._external_source_dir}")
-        if self.docker and self._external_source_dir == Path("NONE"):
-            logger.error(
-                f"You must specify an external source directory for resource: {self._resource} in the config file"
-            )
-            raise ValueError(
-                f"You must specify an external source directory for resource: {self._resource} in the config file"
-            )
+        return cls(db, resource_definition, **config)
 
-        self._python_path = (
-            self.config.get("parameters", {})
-            .get(self._resource, {})
-            .get("python_path", "NONE")
-        )
-        if self._python_path == "NONE":
-            logger.error("PYTHON PATH IS MISSING")
-        logger.info(f"python_path: {self._python_path}")
+    @property
+    def allowed_resources(self) -> List[str]:
+        return self._allowed_resources
 
-        self._environment_start = (
-            self.config.get("parameters", {})
-            .get(self._resource, {})
-            .get("environment_start", "")
-        )
-        logger.info(f"environment_start: {self._environment_start}")
+    @property
+    def docker(self) -> bool:
+        return self._docker
 
-        self._resources = (
-            self.config.get("parameters", {}).get("common", {}).get("resources", [])
-        )
-        logger.info(f"Initialized resources to: {self._resources}")
+    @property
+    def external_workdir(self) -> Path:
+        return self._external_workdir
 
-        self._routes = self.config.get("routes", [])
-        for route in self._routes:
-            if not isinstance(route, dict):
-                logger.error(f"Route {route} is not a dictionary.")
-                raise ValueError("Route {route} is not a dictionary.")
-            if not ("source" in route and "target" in route and "host" in route):
-                logger.error(
-                    f"Route {route} does not contain 'source', 'target', 'host' keys."
-                )
-                raise ValueError(
-                    f"Route {route} does not contain 'source', 'target', 'host' keys."
-                )
+    @property
+    def external_source_dir(self) -> Path:
+        return self._external_source_dir
 
-        self._secret_key = self.config.get("server", {}).get("secret_key", "")
-        self._git = (
-            self.config.get("parameters", {}).get(self._resource, {}).get("git", [])
-        )
+    @property
+    def git(self) -> List[GitRepo]:
+        return self._git
+
+    @property
+    def resource(self) -> Resource:
+        return Resource(ResourceDefinition.resource)
+
+    @resource.setter
+    def resource(self, value: str):
+        raise ValueError("ConfigReader: Resource cannot be set directly")
 
     def get_route(self, source: str, target: str) -> List[Dict[str, str]]:
         """
@@ -152,65 +148,3 @@ class ConfigReader(DatabaseInformation):
             if route.get("source") == source and route.get("target") == target:
                 return route
         return []
-
-    @property
-    def allowed_resources(self) -> List[str]:
-        return self._allowed_resources
-
-    @property
-    def secret_key(self) -> str:
-        return self._secret_key
-
-    @property
-    def docker(self) -> bool:
-        return self._docker
-
-    @property
-    def environment_start(self) -> str:
-        return self._environment_start
-
-    @property
-    def python_path(self) -> str:
-        return self._python_path
-
-    @property
-    def workdir(self) -> Path:
-        return self._workdir
-
-    @property
-    def external_workdir(self) -> Path:
-        return self._external_workdir
-
-    @property
-    def external_source_dir(self) -> Path:
-        return self._external_source_dir
-
-    @property
-    def git(self) -> List[Dict]:
-        return self._git
-
-    @property
-    def connection_string(self) -> str:
-        return self._connection_string
-
-    @property
-    def database_name(self) -> str:
-        return self._db_name
-
-    @property
-    def resource(self) -> str:
-        return self._resource
-
-    @resource.setter
-    def resource(self, value: str):
-        self._resource = value
-
-    @property
-    def paths(self) -> Dict:
-        """
-        Get the path configuration from the TOML file.
-
-        Returns:
-            Dictionary containing path configurations or an empty dict if not found
-        """
-        return self.config.get("paths", {})
