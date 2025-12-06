@@ -78,6 +78,21 @@ host = "local"
             yield temp_path
 
     @pytest.fixture
+    def toml_file_path_for_db_init(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            config_file = temp_path / "simstack.toml"
+            config_file.write_text(r"""
+[parameters]
+# these are parameters for one user for all hosts
+[parameters.common]
+database = "wolfgang_data"
+test_database = "wolfgang_test"
+use_db = true
+""")
+            yield temp_path
+
+    @pytest.fixture
     def toml_reader(self,toml_file_path:Path):
         reader = TomlReader(config_path=toml_file_path)
         yield reader
@@ -99,6 +114,15 @@ host = "local"
         assert config_reader.connection_string == "mongo_db"
         assert config_reader.db_name == "test_db"
         assert config_reader.db_type == DBType.IN_MEMORY
+
+    @pytest.mark.asyncio
+    async def test_overwrite_workdir_in_toml(self, toml_reader):
+        assert toml_reader.get("parameters.common.use_db") == False
+        kwargs_dict = {"resource": "local", "is_test": False, "workdir": "new"}
+
+        db_info = DatabaseInformation(connection_string="mongo_db", db_name="test_db", db_type=DBType.IN_MEMORY)
+        config_reader = await ConfigReader.create("local", db_info, toml_reader, **kwargs_dict)
+        assert config_reader.workdir == Path("new")
 
     #
     # def test_initialize_with_default_path(self, mocker):

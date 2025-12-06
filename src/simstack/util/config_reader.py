@@ -2,6 +2,7 @@ from logging import Logger
 from pathlib import Path
 from typing import List, Dict, Any
 
+from simstack.models import resource_definition
 from simstack.models.parameters import Resource
 from simstack.models.resource_definition import ResourceDefinition, GitRepo
 from simstack.util.init_data_source import initialize_resource_from_db, initialize_paths_from_db
@@ -32,7 +33,9 @@ class ConfigReader(DatabaseInformation, ResourceDefinition):
 
     def __init__(self, db_info: DatabaseInformation, resource_definition: ResourceDefinition, **kwargs):
         DatabaseInformation.__init__(self, *db_info.get_information())
-        ResourceDefinition.__init__(self, **resource_definition)
+        # Create a new resource definition from the existing one
+        rd_dict = resource_definition.copy()
+        ResourceDefinition.__init__(self, **rd_dict)
         self.__dict__ = {**self.__dict__, **kwargs}
 
     @classmethod
