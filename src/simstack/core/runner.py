@@ -100,31 +100,44 @@ def make_git_list() -> List[str]:
     return git_list
 
 
-def run_squeue_for_job(job_id: str) -> str:
+def run_squeue_for_job(job_id: str) -> subprocess.CompletedProcess:
     if context.config.docker:
-        result = subprocess.run(
-            f"squeue -j {job_id}",
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
+        try:
+            result = subprocess.run(
+                f"squeue -j {job_id}",
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            return result
+        except subprocess.TimeoutExpired as e:
+            return subprocess.CompletedProcess(args=e.cmd, returncode=1, stdout="", stderr=str(e))
+        except subprocess.SubprocessError as e:
+            return subprocess.CompletedProcess(args=str(e), returncode=1, stdout="", stderr=str(e))
     else:
         watchdog_id = f"slurm_{uuid.uuid4()}"
         queue_dir = context.config.workdir / "queue"
         result = submit_to_watchdog(
             f"squeue -j {job_id}", watchdog_id, queue_dir=queue_dir
         )
-    return result.stdout
+        if not isinstance(result, subprocess.CompletedProcess):
+            return subprocess.CompletedProcess(args=f"squeue -j {job_id}",
+                                               returncode=0 if result.stdout else 1,
+                                               stdout=result.stdout,
+                                               stderr=result.stderr if hasattr(result, 'stderr') else "")
+        return result
 
 
 def get_job_info(job_id: str, task_id: ObjectId, resource: str) -> SlurmInfo | None:
     """Get job information from SLURM queue using squeue"""
     try:
         result = run_squeue_for_job(job_id)
-        if result.returncode == 0:
-            if not result.stdout or result.stdout == "":
-                return None
+        if result.returncode != 0:
+            logger.error(f"squeue command failed: {result.stderr}")
+            return None
+        if not result.stdout or result.stdout == "":
+            return None
             lines = result.stdout.splitlines()
             logger.info(f"slurm info for job {job_id}: {lines}")
             if len(lines) < 2:
