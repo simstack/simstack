@@ -49,7 +49,9 @@ class TestDatabaseInformation:
     def test_from_config_missing_db_name(self):
         config = {
             "parameters": {
-                "db": {}
+                "db": {
+                    "connection_string": "mongodb://test_connection_string"
+                }
             }
         }
         kwargs = {}

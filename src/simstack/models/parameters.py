@@ -33,7 +33,7 @@ class Resource(EmbeddedModel):
         if name == "value":
             # Get raw stored value without triggering this override again
             raw_value = object.__getattribute__(self, "__dict__").get("value")
-            return object.__getattribute__(self, "_validate_value_on_read")(raw_value)
+            return _validate_value_on_read(raw_value)
         return object.__getattribute__(self, name)
 
     def __str__(self) -> str:

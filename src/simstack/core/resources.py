@@ -54,6 +54,7 @@ class AllowedResources:
     def clear_resources(self) -> None:
         """Clear all resources from the list."""
         self._resources.clear()
+        self._initialized = False
 
     def has_resource(self, resource: str) -> bool:
         """Check if a resource exists in the list."""

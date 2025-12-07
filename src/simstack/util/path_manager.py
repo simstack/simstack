@@ -20,7 +20,21 @@ class PathManager:
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, use_pickle: bool = False):
+    def default_excludes(self):
+        return [
+            "__pycache__",
+            "*.pyc",
+            ".git",
+            ".venv",
+            "venv",
+        ]
+
+    def reset(self):
+        self._initialized = False
+        self.paths.clear()
+        self._excluded_patterns = self.default_excludes()
+
+    def __init__(self, use_pickle: bool = False, include_project_root: bool = False):
         """
         Initialize the PathManager.
 
@@ -35,13 +49,10 @@ class PathManager:
         self.root_dir = find_project_root()
         self.paths: Dict[str, Dict[str, Union[Path, str, bool]]] = {}
 
-        self._default_excluded_patterns = [
-            "__pycache__",
-            "*.pyc",
-            ".git",
-            ".venv",
-            "venv",
-        ]
+        if include_project_root:
+            self.add_path("project_root", self.root_dir)
+
+        self._excluded_patterns = self.default_excludes()
 
     def add_path(self, name: str, path: Path, drops: str = "", use_pickle: bool = False) -> None:
         """
@@ -92,7 +103,7 @@ class PathManager:
         path = path_info["path"]
 
         # Combine default and additional exclusion patterns
-        all_excluded_patterns = self._default_excluded_patterns.copy()
+        all_excluded_patterns = self._excluded_patterns.copy()
         if excluded_patterns:
             all_excluded_patterns.extend(excluded_patterns)
 
@@ -120,7 +131,7 @@ class PathManager:
         path = path_info["path"]
 
         # Combine default and additional exclusion patterns
-        all_excluded_patterns = self._default_excluded_patterns.copy()
+        all_excluded_patterns = self._excluded_patterns.copy()
         if excluded_patterns:
             all_excluded_patterns.extend(excluded_patterns)
 
@@ -156,30 +167,14 @@ class PathManager:
             Initialized PathManager instance
         """
         # Get use_pickle from config
-        use_pickle = False
-        if hasattr(config, "config"):
-            # If config is a ConfigReader instance
-            use_pickle = (
-                config.config.get("parameters", {})
-                .get("common", {})
-                .get("use_pickle", False)
-            )
-        else:
-            # If config is a dictionary
-            use_pickle = config.get("use_pickle", False)
+
+        use_pickle = config.get("parameters", {}).get("general", {}).get("use_pickle", False)
 
         path_manager = cls(use_pickle=use_pickle)
 
-        # Get paths from config
-        if hasattr(config, "paths"):
-            # If config is a ConfigReader instance
-            paths = config.paths
-        else:
-            # If config is a dictionary
-            paths = config.get("paths", {})
-
-        # Add paths from configuration if available
-        root_dir = find_project_root()
+        config_paths = config.get("paths", {})
+        for path_name, path_info in config_paths.items():
+            path_manager.add_path(path_name, path_info["path"], path_info.get("drops", ""))
 
         return path_manager
 

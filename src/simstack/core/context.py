@@ -125,19 +125,7 @@ class GlobalState:
             raise ValueError("Resource must be specified in the kwargs of context.initialize")
 
         self.config = await ConfigReader.create(resource_str, self.db, toml_reader, **kwargs)
-        #
-        #
-        # resource_definition = await initialize_resources(resource_str, self.db, toml_reader, logger)
-        # git_list = await initialize_git_list(self.db, toml_reader)
-        # route_set = await initialize_route_set(self.db, toml_reader)
-        #
-        # self.config = await ConfigReader.create(db_info, toml_reader, resource_definition, **kwargs)
-        #
-        # # Initialize PathManager from config
-        # if toml_reader is not None:
-        #     self.path_manager = PathManager.from_config(toml_reader.config)
-        # else:
-        #     self.path_manager = PathManager()
+
 
     def initialize_logging(self, is_test: bool, log_level: str = "INFO"):
         if is_test:

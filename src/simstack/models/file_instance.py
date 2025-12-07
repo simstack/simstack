@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import Union
 
 from odmantic import EmbeddedModel, Field, ObjectId
+from pydantic import model_validator
 
 from simstack.models import simstack_model
+from simstack.models.parameters import Resource
 
 logger = logging.getLogger("file_instance")
 
@@ -15,12 +17,15 @@ logger = logging.getLogger("file_instance")
 class FileInstance(EmbeddedModel):
     """ """
 
-    path: str = Field(
-        description="Path to the file relative to the host work directory"
-    )
-    resource: str = Field(description="Resource name")
-
+    path: Path = Field(description="Path to the file relative to the host work directory")
+    resource: Resource = Field(description="Resource name")
     created_at: datetime = Field(description="Creation timestamp")
+
+    @model_validator(mode='before')
+    def validate_resource(cls, values):
+        if isinstance(values.get('resource'), str):
+            values['resource'] = Resource(value=values['resource'])
+        return values
 
     @classmethod
     def from_local_file(

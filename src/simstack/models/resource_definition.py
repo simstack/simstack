@@ -5,6 +5,9 @@ from pathlib import Path
 from odmantic import Model, Field, EmbeddedModel
 from pydantic import field_validator
 
+from simstack.util.transform_file_name import transform_file_name
+
+
 class GitRepo(Model):
     """
     Represents a Git repository with relevant attributes such as its URL, branch,
@@ -48,32 +51,34 @@ class ResourceDefinition(Model):
     ssh_key: Optional[Path] = None
     routes: Optional[List[str]] = [] # this is the list of resources that this resource can reach by ssh
 
-    @field_validator("hostname", mode="after")
-    @classmethod
-    def validate_hostname(cls, v):
+    def validate_hostname(self):
         current_hostname = socket.gethostname()
-        if v != current_hostname:
+        if self.hostname != current_hostname:
             raise ValueError(f"Hostname must match current host. Expected: {current_hostname}, got: {v}")
-        return v
 
-    @field_validator("ssh_key", mode="after")
-    @classmethod
-    def validate_ssh_key(cls, v):
-        if v is not None:
-            if not v.is_file():
+    def validate_ssh_key(self):
+        if self.ssh_key is not None:
+            file_path = transform_file_name(self.ssh_key)
+            if not file_path:
                 raise ValueError(f"SSH key path does not exist: {v}")
-        return v
 
-    
-    @field_validator("python_paths", mode="after")
-    @classmethod
-    def validate_python_path(cls, v):
-        for path in v:
+    def get_ssh_key_path(self):
+        if self.ssh_key is not None:
+            return transform_file_name(self.ssh_key)
+        return None
+
+    def validate_python_path(self):
+        for path in self.python_paths:
+            real_path = transform_file_name(path)
             if not path.exists():
                 raise ValueError(f"Python path does not exist: {path}")
             if not path.is_dir():
                 raise ValueError(f"Python path is not a directory: {path}")
-        return v
+
+    def get_python_path(self):
+        if self.python_path is not None:
+            return [ transform_file_name(p) for p in self.python_path]
+        return None
 
     def __str__(self):
         return f"ResourceDefinition(name={self.resource_str},\n ssh_key_path={self.ssh_key}, workdir={self.workdir}, \npython_path={self.python_paths}, \nenvironment_start={self.environment_start})"

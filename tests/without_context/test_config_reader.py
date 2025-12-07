@@ -5,6 +5,7 @@ import sys
 import tempfile
 
 from simstack.core.definitions import DBType
+from simstack.core.resources import allowed_resources
 from simstack.core.route_table import route_table
 from simstack.models.parameters import Resource
 from simstack.models.resource_definition import ResourceDefinition
@@ -19,6 +20,11 @@ from simstack.util.path_manager import path_manager
 def validate_routes():
     assert route_table.targets == {'local': ['uploads'], 'self': ['local', 'uploads'], 'uploads': []}
 
+@pytest.fixture(autouse=True)
+def reset_resources():
+    allowed_resources.clear_resources()
+    yield
+    allowed_resources.clear_resources()
 
 class TestConfigReader:
     """Test suite for the TomlReader class."""
@@ -34,8 +40,9 @@ class TestConfigReader:
             
             # Save original paths and use a copy of project_root to avoid modifying it
             original_paths = path_manager.paths.copy()
-            path_manager.paths["project_root"] = path_manager.paths["project_root"].copy()
-            path_manager.paths["project_root"]["path"] = temp_path
+            if "project_root" in path_manager.paths:
+                path_manager.paths["project_root"] = path_manager.paths["project_root"].copy()
+                path_manager.paths["project_root"]["path"] = temp_path
 
             # Create dummy files/dirs for validation
             ssh_key_path = temp_path / "id_rsa"
@@ -100,6 +107,10 @@ resource = "self" # resource the runner on your computer will used
 workdir = "{workdir_path_str}" # path to your simstack working directory
 python_paths = [ "{python_path_str}"]
 hostname = "{current_hostname}"
+[routes]
+local =  ['uploads']
+self =  ['local', 'uploads']
+uploads =  []
 [paths]
 # Path configuration for the PathManager.
 # Each path entry should have a path and an optional drops value.

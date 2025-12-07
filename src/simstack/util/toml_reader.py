@@ -8,7 +8,7 @@ from typing import Dict
 from simstack.core.resources import allowed_resources
 from simstack.core.route_table import route_table
 from simstack.models.resource_definition import ResourceDefinition
-from simstack.util.path_manager import PathManager, path_manager
+from simstack.util.path_manager import path_manager
 from simstack.util.project_root_finder import find_project_root
 import logging
 
@@ -47,8 +47,7 @@ class TomlReader:
         return value
 
     def get_git_list(self):
-        git_list = self.get("parameters.general.git", [])
-        return [ TransformedPath(p) for p in git_list ]
+        return self.get("parameters.general.git", [])
 
     def use_db(self):
         return self.get("parameters.general.use_db", False)
@@ -67,7 +66,7 @@ class TomlReader:
         """
 
         if not allowed_resources.has_resource(resource_str):
-            raise ValueError("Allowed resources must be specified in the config file.")
+            raise ValueError(f"Illegal resource {resource_str}. Allowed resources are: {allowed_resources.get_resources()}.")
 
         resource_definition = self.get(f"resources.{resource_str}", None)
         if resource_definition is None:

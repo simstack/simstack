@@ -8,8 +8,11 @@ from unittest.mock import patch
 from typing import Type, TypeVar
 import tempfile
 
+from mongomock.object_id import ObjectId
+
 from simstack.models.files import FileStack
 from simstack.models.file_instance import FileInstance
+from simstack.models.parameters import Resource
 
 # Define a TypeVar for classes
 T = TypeVar("T", bound=Type)
@@ -54,7 +57,7 @@ def file_instance():
     """Create a basic FileInstance for testing"""
     return FileInstance(
         path="test/path/file.txt",
-        resource="test_resource",
+        resource=Resource(value="local"),
         created_at=datetime(2023, 1, 1, 12, 0, 0),
     )
 
@@ -63,12 +66,12 @@ def test_file_instance_creation():
     """Test basic FileInstance creation"""
     instance = FileInstance(
         path="test/path/file.txt",
-        resource="local",
+        resource=Resource(value="local"),
         created_at=datetime(2023, 1, 1, 12, 0, 0),
     )
 
-    assert instance.path == "test/path/file.txt"
-    assert instance.resource == "local"
+    assert instance.path == Path("test/path/file.txt")
+    assert instance.resource.value == "local"
     assert instance.created_at == datetime(2023, 1, 1, 12, 0, 0)
 
 
@@ -103,7 +106,7 @@ def test_from_local_file(test_file, setup_test_env):
 def test_from_local_file_no_copy(test_file, setup_test_env):
     """Test creating FileInstance without making a copy"""
     context = setup_test_env
-    file_stack_id = "test_stack_id"
+    file_stack_id = ObjectId()
 
     temp_dir = tempfile.mkdtemp(prefix="simstack_test_file_")
 
@@ -120,9 +123,8 @@ def test_from_local_file_no_copy(test_file, setup_test_env):
                 path=full_path, file_stack_id=file_stack_id, make_copy=False
             )
 
-        assert rel_path.name in instance.path
+        assert instance.path == rel_path / test_file.name
         assert instance.resource == context.config.resource
-
     finally:
         # Clean up temporary files
         if os.path.exists(temp_dir):
