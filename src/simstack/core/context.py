@@ -96,31 +96,35 @@ class GlobalState:
 
         db_name : str | None = kwargs.get("db_name", None)
         connection_string: str | None = kwargs.get("connection_string", None)
-        db_type: DBType | None = kwargs.get(DBType("db_type"), None)
+        db_type: DBType | None = kwargs.get("db_type",None)
+        is_test = kwargs.get("is_test", False)
+
         toml_reader = None
-        if db_name is None or connection_string is None:
+        if is_test:
+            db_info = DatabaseInformation(db_name, connection_string, db_type)
+        elif db_name is None or connection_string is None or db_type is None:
             # use toml
             toml_reader = TomlReader()
             db_info = DatabaseInformation.from_config(toml_reader.config)
         else:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
 
-        is_test = kwargs.get("is_test", False)
-
         # check that the database can be reached and set logging up
         self.initialize_database(db_info, is_test)
         self.initialize_logging(is_test, kwargs.get("log_level", "INFO"))
 
         logger = logging.getLogger("Context")
-        safe_connection_string = remove_password_from_connection_string(self.config.connection_string)
-        logger.info(f"Database connection to {self.config.database_name} at {safe_connection_string}")
-
+        if connection_string is not None:
+            safe_connection_string = remove_password_from_connection_string(connection_string)
+            logger.info(f"Database connection to {db_type} {safe_connection_string}/{db_name}")
+        else:
+            logger.info(f"Database connection in_memory {db_type}")
         # here we have a db, we may or may not have a toml reader
         resource_str: str | None = kwargs.get("resource", None)
         if resource_str is None:
-            raise ValueError("Resource must be specified in the kwargs of Context.initialize")
+            raise ValueError("Resource must be specified in the kwargs of context.initialize")
 
-        self.config = await ConfigReader.create(db_info, resource_str, self.db, **kwargs)
+        self.config = await ConfigReader.create(resource_str, self.db, toml_reader, **kwargs)
         #
         #
         # resource_definition = await initialize_resources(resource_str, self.db, toml_reader, logger)

@@ -4,8 +4,6 @@ import pytest
 import sys
 import tempfile
 
-from odmantic.config import validate_config
-
 from simstack.core.definitions import DBType
 from simstack.core.route_table import route_table
 from simstack.models.parameters import Resource
@@ -13,7 +11,9 @@ from simstack.models.resource_definition import ResourceDefinition
 from simstack.util.config_reader import ConfigReader
 from simstack.util.database_information import DatabaseInformation
 from simstack.util.db import Database
+import simstack.util.project_root_finder as project_root_finder
 from simstack.util.toml_reader import TomlReader
+from simstack.util.path_manager import path_manager
 
 
 def validate_routes():
@@ -24,10 +24,19 @@ class TestConfigReader:
     """Test suite for the TomlReader class."""
 
     @pytest.fixture
-    def toml_file_path(self):
+    def toml_file_path(self, monkeypatch):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
+
+            # Patch path_manager to use the temp_path as root
+            original_root = path_manager.root_dir
+            path_manager.root_dir = temp_path
             
+            # Save original paths and use a copy of project_root to avoid modifying it
+            original_paths = path_manager.paths.copy()
+            path_manager.paths["project_root"] = path_manager.paths["project_root"].copy()
+            path_manager.paths["project_root"]["path"] = temp_path
+
             # Create dummy files/dirs for validation
             ssh_key_path = temp_path / "id_rsa"
             ssh_key_path.touch()
@@ -102,9 +111,14 @@ tests = {{ path = "tests", drops = "", use_pickle = false }}
 """)
             yield temp_path
 
+            # Restore path_manager
+            path_manager.root_dir = original_root
+            path_manager.paths = original_paths
+
     @pytest.fixture
-    def toml_file_path_for_db_init(self):
+    def toml_file_path_for_db_init(self, monkeypatch):
         with tempfile.TemporaryDirectory() as temp_dir:
+            monkeypatch.setattr("simstack.util.project_root_finder.find_project_root", lambda: temp_path)
             temp_path = Path(temp_dir)
             config_file = temp_path / "simstack.toml"
             config_file.write_text(r"""
@@ -220,6 +234,7 @@ use_db = true
         assert self.config_reader.db_type == DBType.IN_MEMORY
         validate_routes()
 
+
     @pytest.mark.asyncio
     async def test_overwrite_workdir_in_toml(self, toml_reader):
         assert toml_reader.use_db() == False
@@ -238,7 +253,7 @@ use_db = true
     async def test_init_datasource_with_db(self,mock_db, toml_reader, resource_definitions):
         assert mock_db.db_name == "user_data"
         toml_reader.config["parameters"]["general"]["use_db"] = True
-        
+
         for resource_def in resource_definitions:
             await mock_db.save(resource_def)
         config_reader = await ConfigReader.create("local", mock_db, toml_reader)
@@ -266,6 +281,22 @@ use_db = true
             await ConfigReader.create("non_existent", mock_db, toml_reader)
 
     @pytest.mark.asyncio
+    async def test_missing_resource_definition(self, toml_reader, mock_db):
+        """Test handling of missing resource definition."""
+        # Remove the resource definition from the TOML config
+        del toml_reader.config["resources"]["local"]
+        with pytest.raises(ValueError, match="Resource definition for local not found."):
+            await ConfigReader.create("local", mock_db, toml_reader)
+
+    @pytest.mark.asyncio
+    async def test_validate_invalid_resource(self, toml_reader, mock_db):
+        """Test validation of invalid resource names."""
+        invalid_resources = ["", " ", None, "invalid!resource", "123"]
+        for invalid_resource in invalid_resources:
+            with pytest.raises(ValueError):
+                await ConfigReader.create(invalid_resource, mock_db, toml_reader)
+
+    @pytest.mark.asyncio
     async def test_override_ssh_key(self, toml_reader, mock_db):
         """Test overriding ssh_key via kwargs."""
 
@@ -287,4 +318,3 @@ use_db = true
         git_list = config_reader.git_list
         assert isinstance(git_list, list)
         assert len(git_list) == 1
-

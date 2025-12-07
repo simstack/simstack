@@ -1,6 +1,5 @@
 import importlib
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -27,13 +26,12 @@ def import_module_from_file(file_path: Path):
 
         root_dir = find_project_root()
         relative_path = file_path.relative_to(root_dir)
-        directory, filename = os.path.split(str(relative_path))
-        basename = filename.split(".")[0]
 
+        basename = relative_path.stem
         module_name = ".".join(relative_path.parts[:-1]) + "." + basename
 
         if root_dir not in sys.path:
-            sys.path.insert(0, root_dir)
+            sys.path.insert(0, str(root_dir))
             logger.debug(f"Added {root_dir} to sys.path")
         # Try simple import first
         try:

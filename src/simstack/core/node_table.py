@@ -11,6 +11,7 @@ from simstack.core.find_simstack_modules import find_simstack_modules
 from simstack.models import Parameters
 from simstack.models.models import NodeModel, ModelMapping
 from simstack.util.import_module import import_module_from_file
+from simstack.util.path_manager import path_manager
 
 logger = logging.getLogger("NodeTable")
 
@@ -74,7 +75,6 @@ class CreateNodeTable:
     def __init__(self, engine):
         # Ensure context is initialized and store frequently used objects
         self.engine = engine
-        self.path_manager = context.path_manager
 
     async def make_node_table(self):
         """Entry point to (re)build the node table."""
@@ -96,18 +96,18 @@ class CreateNodeTable:
             await self._register_nodes_from_module(module, drops="")
 
         # Then process all configured paths (user/project code)
-        for path_name in self.path_manager.paths.keys():
+        for path_name in path_manager.paths.keys():
             await self._make_nodes_for_path(path_name)
 
     async def _make_nodes_for_path(self, path_name: str):
         """Discover/register nodes for all Python files under a configured path."""
-        path_info = self.path_manager.get_path(path_name)
+        path_info = path_manager.get_path(path_name)
         base_path = path_info["path"]
         drops = path_info["drops"]
 
         logger.info(f"Making node_table entries for files in {base_path}")
 
-        for file_path in self.path_manager.find_python_files(path_name):
+        for file_path in path_manager.find_python_files(path_name):
             await self._create_nodes_from_file(file_path, drops)
 
     async def _create_nodes_from_file(self, file_path: str, drops: str):

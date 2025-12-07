@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import unittest
 from simstack.util.path_manager import PathManager
 from simstack.util.project_root_finder import find_project_root
@@ -11,23 +11,23 @@ class TestPathManager(unittest.TestCase):
         """Set up test fixtures."""
         self.path_manager = PathManager(use_pickle=False)
         self.root_dir = find_project_root()
-
+        
         # Add test paths
         self.path_manager.add_path(
             "test_models",
-            os.path.join(self.root_dir, "src", "simstack", "models"),
+            Path(self.root_dir) / "src" / "simstack" / "models",
             "src",
         )
         self.path_manager.add_path(
             "test_methods",
-            os.path.join(self.root_dir, "src", "simstack", "methods"),
+            Path(self.root_dir) / "src" / "simstack" / "methods",
             "src",
         )
 
     def test_add_path(self):
         """Test adding a path to the PathManager."""
         # Add a new path
-        test_path = os.path.join(self.root_dir, "tests")
+        test_path = Path(self.root_dir) / "tests"
         self.path_manager.add_path("test_tests", test_path, "")
 
         # Verify the path was added
@@ -39,7 +39,7 @@ class TestPathManager(unittest.TestCase):
         """Test getting a path from the PathManager."""
         # Get an existing path
         path_info = self.path_manager.get_path("test_models")
-        expected_path = os.path.join(self.root_dir, "src", "simstack", "models")
+        expected_path = self.root_dir / "src" / "simstack" / "models"
         self.assertEqual(path_info["path"], expected_path)
         self.assertEqual(path_info["drops"], "src")
 
@@ -61,7 +61,7 @@ class TestPathManager(unittest.TestCase):
 
         # Verify that __init__.py files are excluded
         for file_path in python_files:
-            self.assertFalse(os.path.basename(file_path) == "__init__.py")
+            self.assertFalse(Path(file_path).name == "__init__.py")
 
     def test_iterate_python_files(self):
         """Test iterating over Python files in a path."""
@@ -77,7 +77,7 @@ class TestPathManager(unittest.TestCase):
 
         # Verify that __init__.py files are excluded
         for file_path in python_files:
-            self.assertFalse(os.path.basename(str(file_path)) == "__init__.py")
+            self.assertFalse(Path(file_path).name == "__init__.py")
 
     def test_get_drops(self):
         """Test getting the drops value for a path."""
@@ -101,7 +101,7 @@ class TestPathManager(unittest.TestCase):
                 elif key == "paths":
                     return {
                         "config_models": {
-                            "path": os.path.join(root_dir, "src", "simstack", "models"),
+                            "path": Path(root_dir) / "src" / "simstack" / "models",
                             "drops": "src",
                         }
                     }
@@ -116,7 +116,7 @@ class TestPathManager(unittest.TestCase):
 
         # Verify the paths were added correctly
         path_info = path_manager.get_path("config_models")
-        expected_path = os.path.join(self.root_dir, "src", "simstack", "models")
+        expected_path = Path(self.root_dir) / "src" / "simstack" / "models"
         self.assertEqual(path_info["path"], expected_path)
         self.assertEqual(path_info["drops"], "src")
 

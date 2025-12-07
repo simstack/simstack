@@ -1,10 +1,12 @@
 import sys
+from os import mkdir
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
 import asyncio
 from simstack.core.context import context
+from simstack.core.definitions import DBType
 from simstack.core.model_table import make_model_table
 from simstack.core.node_table import make_node_table
 from simstack.models.files import FileStack
@@ -28,13 +30,24 @@ async def initialized_context(tmp_path_factory):
         )
 
     working_dir = tmp_path_factory.mktemp("simstack_test")
+    # set the variables such that fake dirs exist, project_root is the actual project root
+    (working_dir / "home").mkdir()
+    (working_dir / "home" / "simstack").mkdir()
+    ssh_dir = working_dir / "home" / ".ssh"
+    ssh_dir.mkdir()
+    (ssh_dir / "id_rsa").touch()
+
+    os.environ["HOME"] = str(working_dir / "home")
+    os.environ["TEMP"] = str(working_dir)
+
     # Initialize context - use test mode for logging, real DB mode for data if requested
     await context.initialize(
         console=False,
         is_test=True,
         resource="local",
         connection_string="mongodb://localhost:27017" if use_real_db else None,
-        db_name="simstack_test" if use_real_db else None,
+        db_type=DBType.MONGODB if use_real_db else DBType.IN_MEMORY,
+        db_name="simstack_test",
         workdir=working_dir,
     )
 
@@ -69,7 +82,7 @@ async def initialized_context(tmp_path_factory):
                 results.append(result)
             return results
 
-        # Apply patches only for mock database
+        # Apply patches only for the mock database
         context.db.engine.save = patched_save
         context.db.engine.save_all = patched_save_all
 
@@ -164,7 +177,7 @@ def test_runner():
     import time
 
     # allowed_resources.add_resource("test_resource")
-    root = Path(find_project_root())
+    root = find_project_root()
     command = root / "src" / "simstack" / "core" / "runner.py"
 
     print("environment_start", context.config.environment_start)

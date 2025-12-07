@@ -32,7 +32,7 @@ async def submit_node(registry_entry: NodeRegistry):
         base_path = find_project_root()
 
         python_path = ":".join(context.config.python_paths)
-        work_dir = os.path.join(context.config.workdir, registry_entry.name, str(registry_entry.id))
+        work_dir = context.config.workdir / registry_entry.name / str(registry_entry.id)
         job_name = registry_entry.name + "." + str(registry_entry.id)
 
         logger.info(f"task_id: {task_id} workdir {work_dir} python path {python_path}")

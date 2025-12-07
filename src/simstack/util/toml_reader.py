@@ -1,4 +1,5 @@
 import os
+import socket
 import sys
 import tomllib
 from pathlib import Path
@@ -10,12 +11,15 @@ from simstack.models.resource_definition import ResourceDefinition
 from simstack.util.path_manager import PathManager, path_manager
 from simstack.util.project_root_finder import find_project_root
 import logging
+
+from simstack.util.transform_file_name import TransformedPath
+
 logger = logging.getLogger(__name__)
 
 class TomlReader:
     def __init__(self, config_path: Path = None, config_file: str = "simstack.toml"):
         if config_path is None:
-            config_path = Path(find_project_root())
+            config_path = find_project_root()
         try:
             toml_file = config_path / config_file
             if toml_file.exists():
@@ -43,7 +47,8 @@ class TomlReader:
         return value
 
     def get_git_list(self):
-        return self.get("parameters.general.git", [])
+        git_list = self.get("parameters.general.git", [])
+        return [ TransformedPath(p) for p in git_list ]
 
     def use_db(self):
         return self.get("parameters.general.use_db", False)
@@ -62,35 +67,44 @@ class TomlReader:
         """
 
         if not allowed_resources.has_resource(resource_str):
-            raise ValueError("Allowed resources must be specified in the config file")
+            raise ValueError("Allowed resources must be specified in the config file.")
 
         resource_definition = self.get(f"resources.{resource_str}", None)
         if resource_definition is None:
-            raise ValueError(f"Resource definition for {resource_str} not found")
+            raise ValueError(f"Resource definition for {resource_str} not found.")
 
         resource_definition["resource_str"] = resource_str
 
         if not "workdir" in resource_definition:
             raise ValueError(f"No workdir specified for resource {resource_str}.")
         else:
-            resource_definition["workdir"] = Path(resource_definition["workdir"])
+            resource_definition["workdir"] = TransformedPath(resource_definition["workdir"])
 
         if not "python_paths" in resource_definition:
             logger.warning(f"No python paths specified for resource {resource_str}.")
         else:
-            resource_definition["python_paths"] = [Path(p) for p in resource_definition["python_paths"]]
+            resource_definition["python_paths"] = [TransformedPath(p) for p in resource_definition["python_paths"]]
 
         if not "ssh_key" in resource_definition:
             logger.warning(f"No ssh key path specified for resource {resource_str}.")
+        else:
+            resource_definition["ssh_key"] = TransformedPath(resource_definition["ssh_key"])
+
         if not "environment_start" in resource_definition:
             logger.warning(f"No environment start command specified for resource {resource_str}.")
         if not "routes" in resource_definition:
             logger.warning(f"No routes specified for resource {resource_str}.")
             resource_definition["routes"] = []
         if not "hostname" in resource_definition:
-            logger.warning(f"No hostname specified for resource {resource_str}.")
+            raise ValueError(f"No hostname specified for resource {resource_str}.")
+        elif resource_definition["hostname"] == "test_hostname":
+            resource_definition["hostname"] = socket.gethostname()
+            logger.info(f"Overriding hostname for tests: {resource_definition['hostname']} ")
 
         return ResourceDefinition.model_validate(resource_definition)
+
+    def get_routes(self, resource_str: str):
+        return self.get(f"routes.{resource_str}", [])
 
     def initialize_path_manager(self):
         paths = self.get("paths", {})
@@ -104,5 +118,5 @@ class TomlReader:
     def build_routes(self):
         route_table.clear_routes()
         for resource_str in allowed_resources.get_resources():
-            resource_def = self.get_resource_definition(resource_str)
-            route_table.add_route_set(resource_str, resource_def.routes)
+            routes = self.get_routes(resource_str)
+            route_table.add_route_set(resource_str, routes)

@@ -280,10 +280,8 @@ class TestIsModuleSubpathOfPathIntegration:
         project_root = find_project_root()
 
         # Test with a long module path that might exist in the project
-        module_path = (
-            "examples.science.electronic_structure.spectra.vibrational_spectra"
-        )
-        path_info_path = os.path.join(project_root, "examples", "science")
+        module_path = "examples.science.electronic_structure.spectra.vibrational_spectra"
+        path_info_path = project_root / "examples" /  "science"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert isinstance(result, bool)

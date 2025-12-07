@@ -8,7 +8,7 @@ class TestDatabaseInformation:
     def test_from_config_with_valid_config(self):
         config = {
             "parameters": {
-                "common": {
+                "db": {
                     "database": "test_db",
                     "connection_string": "mongodb://test_connection_string"
                 }
@@ -38,18 +38,18 @@ class TestDatabaseInformation:
         assert db_info.db_type == DBType.MONGODB
 
     def test_from_config_with_in_memory_db(self):
-        config = {}
+        config = { "parameters" : {"db":  { "database" : "test_db"}}}
         kwargs = {"is_test": True}
         db_info = DatabaseInformation.from_config(config, **kwargs)
 
-        assert db_info.db_name is None
+        assert db_info.db_name == "test_db"
         assert db_info.connection_string is None
         assert db_info.db_type == DBType.IN_MEMORY
 
     def test_from_config_missing_db_name(self):
         config = {
             "parameters": {
-                "common": {}
+                "db": {}
             }
         }
         kwargs = {}
@@ -60,7 +60,7 @@ class TestDatabaseInformation:
     def test_from_config_missing_connection_string(self):
         config = {
             "parameters": {
-                "common": {
+                "db": {
                     "database": "test_db"
                 }
             }

@@ -4,17 +4,16 @@ import importlib
 import inspect
 import json
 import logging
-import os
 from pathlib import Path
 
 from simstack.core.find_simstack_modules import find_simstack_modules
 from simstack.models.models import ModelMapping
 from simstack.models.simstack_model import is_simstack_model
 from simstack.util.import_module import import_module_from_file
+from simstack.util.path_manager import path_manager
 from simstack.util.project_root_finder import find_project_root
 
 logger = logging.getLogger("ModelTable")
-
 
 class CreateModelTable:
     """
@@ -28,7 +27,7 @@ class CreateModelTable:
     def __init__(self, engine):
 
         self.engine = engine
-        self.path_manager = context.path_manager
+
 
     async def make_model_table(self):
         """Entry point to (re)build the model table."""
@@ -46,7 +45,7 @@ class CreateModelTable:
             await self._create_models_from_module(module, drops="")
 
         # Then process all configured paths
-        for path_name in self.path_manager.paths.keys():
+        for path_name in path_manager.paths.keys():
             await self._make_models_for_path(path_name)
 
     async def _create_model_models_from_file(self, file_path: str, drops: str):
@@ -126,13 +125,14 @@ class CreateModelTable:
                 logger.debug(f"SimStack Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}")
                 # open a file in a subdirectory of the current file schema/model.json
                 project_root = find_project_root()
-                json_file_dir = os.path.join(project_root, "schema")
-                os.makedirs(json_file_dir, exist_ok=True)
+                json_file_dir = project_root / "schema"
+                json_file_dir.mkdir(parents=True, exist_ok=True)
+
                 combined_schema = {
                     "json_schema": new_class.json_schema(),
                     "ui_schema": new_class.ui_schema(),
                 }
-                with open(os.path.join(json_file_dir, class_name + ".json"), "w") as f:
+                with open(json_file_dir / f"{class_name}.json", "w") as f:
                     f.write(json.dumps(combined_schema, indent=4))
             else:
                 model_entry = ModelMapping(
@@ -146,13 +146,13 @@ class CreateModelTable:
 
     async def _make_models_for_path(self, path_name: str):
         """Build model mappings for all Python files under a configured path."""
-        path_info = self.path_manager.get_path(path_name)
+        path_info = path_manager.get_path(path_name)
         path = path_info["path"]
-        drops = path_info["drops"]
+        drops = path_info.get("drops", "")
         logger.info(f"Making model_table entries for files in {path}")
 
         # Process each file in this path
-        for file_path in self.path_manager.find_python_files(path_name):
+        for file_path in path_manager.find_python_files(path_name):
             await self._create_model_models_from_file(file_path, drops)
 
 

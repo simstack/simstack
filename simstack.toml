@@ -1,8 +1,18 @@
 [parameters]
-[parameters.common]
+[parameters.general]
 # the package simstack.toml sets no db_name or connection string, the environment decides what is needed
-resources = ["self"]
-
+[parameters.db]
+database="test_db"
+[resources]
+allowed_resources=["self","local"]
+[resources.local]
+workdir="$HOME/simstack"
+python_path=["$PROJECT"]
+ssh_key="$HOME/.ssh/id_rsa"
+hostname="test_hostname"
+[routes]
+self = []
+local = ["self"]
 [paths]
 [paths.tests]
 path = "tests"

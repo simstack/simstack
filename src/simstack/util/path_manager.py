@@ -1,6 +1,5 @@
-import os
 from pathlib import Path
-from typing import List, Dict, Optional, Iterator, Any
+from typing import List, Dict, Optional, Iterator, Any, Union
 
 from simstack.util.directory_iterator import DirectoryPath
 from simstack.util.project_root_finder import find_project_root
@@ -34,7 +33,7 @@ class PathManager:
         self._initialized = True
         self.use_pickle = use_pickle
         self.root_dir = find_project_root()
-        self.paths: Dict[str, Dict[str, str]] = { "project_root": {"path": str(self.root_dir)}}
+        self.paths: Dict[str, Dict[str, Union[Path, str, bool]]] = {}
 
         self._default_excluded_patterns = [
             "__pycache__",
@@ -54,15 +53,11 @@ class PathManager:
             drops: Prefix to drop from module names (for import paths)
             use_pickle: Whether to use pickle for this path
         """
-        # Convert Unix-style path to Windows path if on Windows
-        if os.name == "nt":  # Windows OS
-            path = path.replace("/", "\\")
-
         # Convert relative paths to absolute paths
-        if not os.path.isabs(path):
-            path = os.path.join(self.root_dir, path)
+        if not path.is_absolute():
+            path = self.root_dir / path
 
-        if not os.path.isdir(path):
+        if not path.is_dir():
             raise ValueError(f"'{path}' is not a valid directory")
 
         self.paths[name] = {"path": path, "drops": drops, "use_pickle": use_pickle}
