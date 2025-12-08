@@ -48,7 +48,7 @@ class CreateModelTable:
             await self._create_models_from_module(module, drops="")
 
         # Then process all configured paths
-        for path_name in self.path_manager.paths.keys():
+        for path_name in path_manager.paths.keys():
             await self._make_models_for_path(path_name)
 
     async def _create_model_models_from_file(self, file_path: str, drops: str):

@@ -41,7 +41,7 @@ class DatabaseInformation:
             # the package simstack.toml has no db_name and connections string
             db_name = common_params.get("database")
             if db_name is None:
-                print("You must specify a database name in the config file")
+                print("You must specify a database name in parameters.db in the config file")
                 sys.exit(-1)
 
         connection_string = kwargs.get("connection_string")
