@@ -17,7 +17,7 @@ import queue
 
 
 @pytest_asyncio.fixture(autouse=True, scope="session")
-async def initialized_context(tmp_path_factory):
+async def initialized_context(tmp_path_factory, event_loop):
     # Use environment variable to control the database type for tests
     import os
 
@@ -102,6 +102,7 @@ async def initialized_context(tmp_path_factory):
     # Provide the initialized context
     yield context
 
+    print("XXXTestXXX start teardown")
     # Cleanup after each test
     try:
         if context.initialized:
@@ -127,6 +128,7 @@ async def initialized_context(tmp_path_factory):
             context._initialized = False
             context.path_manager = None
             context.config = None
+            print("Test context cleaned up")
     except Exception as e:
         print(f"Warning: Error during context cleanup: {e}")
 
@@ -136,7 +138,7 @@ def event_loop():
     # This event_loop is required, because the default pytest-asyncio event loop is function scoped
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
-    #loop.close()
+    # loop.close()
 
 
 @pytest.fixture(scope="session")

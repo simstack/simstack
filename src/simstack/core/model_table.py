@@ -6,6 +6,7 @@ import json
 import logging
 from pathlib import Path
 
+from simstack.core.context import context
 from simstack.core.find_simstack_modules import find_simstack_modules
 from simstack.models.models import ModelMapping
 from simstack.models.simstack_model import is_simstack_model
