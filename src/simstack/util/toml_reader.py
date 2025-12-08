@@ -96,7 +96,7 @@ class TomlReader:
             resource_definition["routes"] = []
         if not "hostname" in resource_definition:
             raise ValueError(f"No hostname specified for resource {resource_str}.")
-        elif resource_definition["hostname"] == "test_hostname":
+        elif resource_definition["hostname"] == "test_hostname" or resource_definition["hostname"] == "localhost":
             resource_definition["hostname"] = socket.gethostname()
             logger.info(f"Overriding hostname for tests: {resource_definition['hostname']} ")
 
