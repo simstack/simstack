@@ -120,7 +120,7 @@ class GlobalState:
         else:
             logger.info(f"Database connection in_memory {db_type}")
         # here we have a db, we may or may not have a toml reader
-        resource_str: str | None = kwargs.get("resource", None)
+        resource_str: str | None = kwargs.get("resource", "self")
         if resource_str is None:
             raise ValueError("Resource must be specified in the kwargs of context.initialize")
 

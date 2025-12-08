@@ -187,7 +187,7 @@ def create_model_table_main():
     logging.getLogger("pymongo").setLevel(logging.INFO)
 
     # Run in the same loop
-    loop.run_until_complete(context.initialize(log_level=level))
+    loop.run_until_complete(context.initialize(log_level=level, resource="self"))
     loop.run_until_complete(make_model_table(context.db.engine))
     loop.close()
 
