@@ -38,6 +38,7 @@ def find_simstack_modules():
             logger.error(f"Error walking {package_name}: {e}")
 
     entry_point_list = entry_points(group="simstack.modules")
+    logger.info(f"Entry points for simstack modules: {entry_point_list}.")
     for entry_point in entry_point_list:
         walk_packages(entry_point.value)
     return all_modules

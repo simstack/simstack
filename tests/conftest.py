@@ -105,7 +105,7 @@ async def initialized_context(tmp_path_factory, event_loop):
     # Cleanup after each test
     try:
         if context.initialized:
-            # Close main database connection
+            # Close the main database connection
             if hasattr(context, "db") and context.db:
                 await context.db.close()
                 context.db = None
@@ -134,7 +134,7 @@ async def initialized_context(tmp_path_factory, event_loop):
 
 @pytest.fixture(scope="session")
 def event_loop():
-    # This event_loop is required, because the default pytest-asyncio event loop is function scoped
+    # This event_loop is required because the default pytest-asyncio event loop is function scoped
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     # loop.close()
