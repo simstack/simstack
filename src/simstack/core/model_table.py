@@ -47,12 +47,9 @@ class CreateModelTable:
             module = importlib.import_module(module_name)
             await self._create_models_from_module(module, drops="")
 
-        entry_point_list = entry_points(group="simstack.modules")
-        logger.info(f"Entry points for simstack modules: {entry_point_list}.")
-        for entry_point in entry_point_list:
-            walk_packages(entry_point.value,all_modules)
-        return all_modules
-
+        # Then process all configured paths
+        for path_name in self.path_manager.paths.keys():
+            await self._make_models_for_path(path_name)
 
     async def _create_model_models_from_file(self, file_path: str, drops: str):
         """Create ModelMapping entries for classes in the specified Python file."""
