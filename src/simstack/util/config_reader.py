@@ -1,9 +1,6 @@
 from logging import Logger
 from pathlib import Path
 from typing import List, Dict, Any, TYPE_CHECKING
-
-from mypy.dmypy.client import restart_server
-
 from simstack.core.resources import allowed_resources
 from simstack.models.parameters import Resource
 from simstack.models.resource_definition import ResourceDefinition, GitRepo
