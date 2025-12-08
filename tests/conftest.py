@@ -102,7 +102,6 @@ async def initialized_context(tmp_path_factory, event_loop):
     # Provide the initialized context
     yield context
 
-    print("XXXTestXXX start teardown")
     # Cleanup after each test
     try:
         if context.initialized:
