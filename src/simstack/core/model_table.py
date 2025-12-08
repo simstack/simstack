@@ -5,14 +5,16 @@ import inspect
 import json
 import logging
 from pathlib import Path
+from importlib.metadata import entry_points
 
 from simstack.core.context import context
-from simstack.core.find_simstack_modules import find_simstack_modules
+from simstack.core.find_simstack_modules import find_simstack_modules, walk_packages
 from simstack.models.models import ModelMapping
 from simstack.models.simstack_model import is_simstack_model
 from simstack.util.import_module import import_module_from_file
 from simstack.util.path_manager import path_manager
 from simstack.util.project_root_finder import find_project_root
+
 
 logger = logging.getLogger("ModelTable")
 
@@ -45,9 +47,12 @@ class CreateModelTable:
             module = importlib.import_module(module_name)
             await self._create_models_from_module(module, drops="")
 
-        # Then process all configured paths
-        for path_name in path_manager.paths.keys():
-            await self._make_models_for_path(path_name)
+        entry_point_list = entry_points(group="simstack.modules")
+        logger.info(f"Entry points for simstack modules: {entry_point_list}.")
+        for entry_point in entry_point_list:
+            walk_packages(entry_point.value)
+        return all_modules
+
 
     async def _create_model_models_from_file(self, file_path: str, drops: str):
         """Create ModelMapping entries for classes in the specified Python file."""
