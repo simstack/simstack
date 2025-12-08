@@ -50,7 +50,7 @@ class CreateModelTable:
         entry_point_list = entry_points(group="simstack.modules")
         logger.info(f"Entry points for simstack modules: {entry_point_list}.")
         for entry_point in entry_point_list:
-            walk_packages(entry_point.value)
+            walk_packages(entry_point.value,all_modules)
         return all_modules
 
 
