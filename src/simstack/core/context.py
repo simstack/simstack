@@ -137,8 +137,8 @@ class GlobalState:
             self.log_handler = logging.getLogger()
         else:
             self.log_handler = setup_logging(
-                self.config.connection_string,
-                self.config.database_name,
+                self.db.connection_string,
+                self.db.db_name,
                 log_level,
             )
 
