@@ -6,7 +6,7 @@ from logging import getLogger
 logger = getLogger("find_simstack_modules")
 
 
-def walk_packages(package_name):
+def walk_packages(package_name, all_modules):
     """Walk through all packages and modules."""
     try:
         package = importlib.import_module(package_name)
@@ -37,5 +37,5 @@ def find_simstack_modules():
     entry_point_list = entry_points(group="simstack.modules")
     logger.info(f"Entry points for simstack modules: {entry_point_list}.")
     for entry_point in entry_point_list:
-        walk_packages(entry_point.value)
+        walk_packages(entry_point.value, all_modules)
     return all_modules
