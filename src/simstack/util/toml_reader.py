@@ -17,9 +17,12 @@ from simstack.util.transform_file_name import TransformedPath
 logger = logging.getLogger(__name__)
 
 class TomlReader:
-    def __init__(self, config_path: Path = None, config_file: str = "simstack.toml"):
+    def __init__(self, config_path: Path = None, config_file: Path = Path("simstack.toml")):
         if config_path is None:
-            config_path = find_project_root()
+            if config_file.exists(): # check the current working directory
+                config_path = Path.cwd()
+            else:
+                config_path = find_project_root()
         try:
             toml_file = config_path / config_file
             if toml_file.exists():

@@ -341,8 +341,7 @@ async def make_node_table(engine, log_level=logging.WARNING):
 
     This is a thin wrapper around CreateNodeTable for backward compatibility.
     """
-    if not context.initialized:
-        await context.initialize(log_level=level)
+
 
     creator = CreateNodeTable(engine)
     await creator.make_node_table()
@@ -363,6 +362,20 @@ def create_node_table_main():
         level = logging.INFO
     elif args.verbose >= 2:
         level = logging.DEBUG
+    #
+    # loop = asyncio.new_event_loop()
+    # asyncio.set_event_loop(loop)
+    #
+    # await context.initialize(log_level=level, resource="self")
+    #
+    # # Set pymongo logger level to INFO
+    # logging.getLogger("pymongo").setLevel(logging.INFO)
+    # await make_node_table(context.db.engine, log_level=level)
+    # # try:
+    # #     loop.run_until_complete()
+    # # finally:
+    # #     loop.close()
+
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -370,11 +383,10 @@ def create_node_table_main():
     # Set pymongo logger level to INFO
     logging.getLogger("pymongo").setLevel(logging.INFO)
 
-    try:
-        loop.run_until_complete(make_node_table(context.db.engine, log_level=level))
-    finally:
-        loop.close()
-
+    # Run in the same loop
+    loop.run_until_complete(context.initialize(log_level=level, resource="self"))
+    loop.run_until_complete(make_node_table(context.db.engine))
+    loop.close()
 
 if __name__ == "__main__":
     create_node_table_main()
