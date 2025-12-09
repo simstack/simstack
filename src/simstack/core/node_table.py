@@ -335,12 +335,15 @@ class CreateNodeTable:
 
 
 # Public API preserved for existing callers (e.g. tests)
-async def make_node_table(engine):
+async def make_node_table(engine, log_level=logging.WARNING):
     """
     Rebuild the node table using the given engine.
 
     This is a thin wrapper around CreateNodeTable for backward compatibility.
     """
+    if not context.initialized:
+        await context.initialize(log_level=level)
+
     creator = CreateNodeTable(engine)
     await creator.make_node_table()
 
@@ -364,13 +367,11 @@ def create_node_table_main():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    context.initialize(log_level=level)
-
     # Set pymongo logger level to INFO
     logging.getLogger("pymongo").setLevel(logging.INFO)
 
     try:
-        loop.run_until_complete(make_node_table(context.db.engine))
+        loop.run_until_complete(make_node_table(context.db.engine, log_level=level))
     finally:
         loop.close()
 
