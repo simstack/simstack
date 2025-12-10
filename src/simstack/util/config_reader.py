@@ -30,10 +30,6 @@ class ConfigReader(DatabaseInformation):
 
     def __init__(self, db_info: DatabaseInformation, resource_definition: ResourceDefinition, **kwargs):
         DatabaseInformation.__init__(self, *db_info.get_information())
-        
-        logger.info(f"ConfigReader initialized with workdir: {resource_definition.workdir}")
-        for key, value in resource_definition.__dict__.items():
-            logger.info(f"resource_definition.{key}: {value}")
 
         self._git_list = kwargs.get("_git_list", [])
         self._resource_str = resource_definition.resource_str
@@ -123,6 +119,7 @@ class ConfigReader(DatabaseInformation):
         # override the values in resource definition with those from the keyword arguments
         for key in resource_definition.model_fields.keys():
             if key in config:
+                logger.info(f"Overriding {key} from kwargs to: {config[key]}")
                 resource_definition.__setattr__(key, config[key])
                 del config[key]
                 del required_keys[required_keys.index(key)]
@@ -132,6 +129,10 @@ class ConfigReader(DatabaseInformation):
             del config["git_list"]
         else:
             config["_git_list"] = git_list
+
+        logger.info(f"ConfigReader initialized with workdir: {resource_definition.workdir}")
+        for key, value in resource_definition.__dict__.items():
+            logger.info(f"resource_definition.{key}: {value}")
 
         return cls(db, resource_definition, **config)
 
