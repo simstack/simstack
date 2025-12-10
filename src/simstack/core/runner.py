@@ -101,7 +101,7 @@ def make_git_list() -> List[str]:
 
 
 def run_squeue_for_job(job_id: str) -> subprocess.CompletedProcess:
-    if context.config.docker:
+    if not context.config.docker:
         try:
             result = subprocess.run(
                 f"squeue -j {job_id}",

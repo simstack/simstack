@@ -114,8 +114,8 @@ class GlobalState:
         self.initialize_logging(is_test, kwargs.get("log_level", "INFO"))
 
         logger = logging.getLogger("Context")
-        if connection_string is not None:
-            safe_connection_string = remove_password_from_connection_string(connection_string)
+        if db_info.connection_string is not None:
+            safe_connection_string = remove_password_from_connection_string(db_info.connection_string)
             logger.info(f"Database connection to {db_type} {safe_connection_string}/{db_name}")
         else:
             logger.info(f"Database connection in_memory {db_type}")

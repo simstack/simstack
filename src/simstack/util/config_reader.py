@@ -89,10 +89,20 @@ class ConfigReader(DatabaseInformation):
             if not toml_reader:
                 toml_reader = TomlReader()
             use_db_for_init = toml_reader.use_db()
+            workdir_self = kwargs.get("workdir", None)
+            if workdir_self is None:
+                workdir_self = toml_reader.get("parameters.general.workdir", None)
+                if workdir_self is None:
+                    workdir_self = toml_reader.get("resources.self.workdir", None)
+            if workdir_self is None:
+                raise ValueError("No workdir for self specified in config file or keyword arguments.")
+            else:
+                workdir_self = Path(workdir_self)
+
             logger.info(f"toml-file read, use_db_for_init: {use_db_for_init}")
             if use_db_for_init:  # get all data from the simstack.toml file
                 # this will give python_path, ssh_key, and initialize allowed resources
-                resource_definition = await initialize_resource_from_db(resource_str, db)
+                resource_definition = await initialize_resource_from_db(resource_str, db, workdir_self)
                 await initialize_paths_from_db(db)
             else:
                 allowed_resources_list = toml_reader.get_allowed_resources()
@@ -131,3 +141,7 @@ class ConfigReader(DatabaseInformation):
     @resource.setter
     def resource(self, value: str):
         raise ValueError("ConfigReader: Resource cannot be set directly")
+
+    @property
+    def docker(self) -> bool:
+        return False

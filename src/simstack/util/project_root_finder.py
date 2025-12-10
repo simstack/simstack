@@ -24,7 +24,7 @@ def find_project_root(current_file=None, marker_files=(".git", "simstack.toml", 
     while current_dir != prev_dir:
         # Check if any marker files/directories exist in the current directory
         for marker in marker_files:
-            if (current_dir / marker).exists():
+            if (current_dir / marker).exists() and not (current_dir / "simstack_marker.com").exists():
                 return current_dir
 
         # Move up one directory
