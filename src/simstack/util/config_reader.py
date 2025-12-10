@@ -30,6 +30,11 @@ class ConfigReader(DatabaseInformation):
 
     def __init__(self, db_info: DatabaseInformation, resource_definition: ResourceDefinition, **kwargs):
         DatabaseInformation.__init__(self, *db_info.get_information())
+        
+        logger.info(f"ConfigReader initialized with workdir: {resource_definition.workdir}")
+        for key, value in resource_definition.__dict__.items():
+            logger.info(f"resource_definition.{key}: {value}")
+
         self._git_list = kwargs.get("_git_list", [])
         self._resource_str = resource_definition.resource_str
         self.__dict__ = {**self.__dict__, **kwargs}
@@ -70,7 +75,7 @@ class ConfigReader(DatabaseInformation):
         """
 
         import logging
-        logger = logging.getLogger(__name__)  # do this here because the calling function sets the logger up
+        logger = logging.getLogger("config-reader")  # do this here because the calling function sets the logger up
 
         required_keys = ["resource", "python_path", "ssh_key", "git_list", "allowed_resources",
                          "workdir", "environment_start"]
