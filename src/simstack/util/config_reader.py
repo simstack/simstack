@@ -4,7 +4,7 @@ from typing import List, Dict, Any, TYPE_CHECKING
 from simstack.core.resources import allowed_resources
 from simstack.models.parameters import Resource
 from simstack.models.resource_definition import ResourceDefinition, GitRepo
-from simstack.src.simstack.util.transform_file_name import TransformedPath
+from simstack.util.transform_file_name import TransformedPath
 from simstack.util.init_data_source import initialize_resource_from_db, initialize_paths_from_db
 from simstack.util.toml_reader import TomlReader
 from simstack.util.database_information import DatabaseInformation
