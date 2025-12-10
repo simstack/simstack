@@ -4,6 +4,7 @@ from typing import List, Dict, Any, TYPE_CHECKING
 from simstack.core.resources import allowed_resources
 from simstack.models.parameters import Resource
 from simstack.models.resource_definition import ResourceDefinition, GitRepo
+from simstack.src.simstack.util.transform_file_name import TransformedPath
 from simstack.util.init_data_source import initialize_resource_from_db, initialize_paths_from_db
 from simstack.util.toml_reader import TomlReader
 from simstack.util.database_information import DatabaseInformation
@@ -133,7 +134,8 @@ class ConfigReader(DatabaseInformation):
         logger.info(f"ConfigReader initialized with workdir: {resource_definition.workdir}")
         for key, value in resource_definition.__dict__.items():
             logger.info(f"resource_definition.{key}: {value}")
-
+            resource_definition["_"+key] = value
+            del resource_definition[key]
         return cls(db, resource_definition, **config)
 
     @property
@@ -143,6 +145,26 @@ class ConfigReader(DatabaseInformation):
     @property
     def resource(self) -> Resource:
         return Resource(value=self._resource_str)
+
+    @property
+    def workdir(self) -> str:
+        return TransformedPath(self._workdir)
+
+    @property
+    def environment_start(self) -> str:
+        return self._environment_start
+
+    @property
+    def python_paths(self) -> str:
+        return [ TransformedPath(p) for p in self._python_paths ]
+
+    @property
+    def ssh_key(self) -> str:
+        return TransformedPath(self._ssh_key)
+
+    @property
+    def hostname(self):
+        return self._hostname
 
     @resource.setter
     def resource(self, value: str):
