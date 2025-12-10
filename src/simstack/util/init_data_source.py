@@ -6,7 +6,7 @@ from simstack.util.db import Database
 from simstack.util.toml_reader import TomlReader
 
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("init_resource")
 
 async def initialize_resource_from_db(resource_str: str, db: Database, workdir_self: Path) -> ResourceDefinition:
     resource_records = await db.find_all(ResourceDefinition)
