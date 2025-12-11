@@ -47,7 +47,7 @@ async def submit_node(registry_entry: NodeRegistry):
         slurm_parameters.output = f"{work_dir}/%j.out"
         slurm_parameters.error = f"{work_dir}/%j.err"
         slurm_parameters.job_name = f"{job_name}"
-        slurm_parameters.chdir = work_dir
+        slurm_parameters.chdir = str(work_dir)
 
         slurm_parameters.startup_commands.append("source ~/.bashrc")
         slurm_parameters.startup_commands.append(f"{context.config.environment_start}")
