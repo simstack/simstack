@@ -36,7 +36,3 @@ def transform_file_name(path_str: str | Path) -> Path:
     if not path.exists():
         raise FileNotFoundError(f"Path does not exist: {path}")
     return path
-
-class TransformedPath(Path):
-    def __init__(self, path_str: str):
-        super().__init__(transform_file_name(path_str))

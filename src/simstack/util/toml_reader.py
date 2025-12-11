@@ -12,7 +12,7 @@ from simstack.util.path_manager import path_manager
 from simstack.util.project_root_finder import find_project_root
 import logging
 
-from simstack.util.transform_file_name import TransformedPath
+from simstack.util.transform_file_name import transform_file_name
 
 logger = logging.getLogger(__name__)
 
@@ -80,17 +80,17 @@ class TomlReader:
         if not "workdir" in resource_definition:
             raise ValueError(f"No workdir specified for resource {resource_str}.")
         else:
-            resource_definition["workdir"] = TransformedPath(resource_definition["workdir"])
+            resource_definition["workdir"] = transform_file_name(resource_definition["workdir"])
 
         if not "python_paths" in resource_definition:
             logger.warning(f"No python paths specified for resource {resource_str}.")
         else:
-            resource_definition["python_paths"] = [TransformedPath(p) for p in resource_definition["python_paths"]]
+            resource_definition["python_paths"] = [transform_file_name(p) for p in resource_definition["python_paths"]]
 
         if not "ssh_key" in resource_definition:
             logger.warning(f"No ssh key path specified for resource {resource_str}.")
         else:
-            resource_definition["ssh_key"] = TransformedPath(resource_definition["ssh_key"])
+            resource_definition["ssh_key"] = transform_file_name(resource_definition["ssh_key"])
 
         if not "environment_start" in resource_definition:
             logger.warning(f"No environment start command specified for resource {resource_str}.")
