@@ -1,6 +1,7 @@
 from typing import Optional, List
 import urllib.parse
 import socket
+import re
 from pathlib import Path
 from odmantic import Model, Field, EmbeddedModel
 from pydantic import field_validator
@@ -50,6 +51,31 @@ class ResourceDefinition(Model):
     environment_start: Optional[str] = None
     ssh_key: Optional[Path] = None
     routes: Optional[List[str]] = [] # this is the list of resources that this resource can reach by ssh
+
+    @staticmethod
+    def _convert_backslashes(path_str: str) -> str:
+        return re.sub(r'\\+', '/', path_str)
+
+    @field_validator("workdir", mode="before")
+    @classmethod
+    def convert_workdir(cls, v):
+        if isinstance(v, str):
+            return Path(cls._convert_backslashes(v))
+        return v
+
+    @field_validator("python_paths", mode="before")
+    @classmethod
+    def convert_python_paths(cls, v):
+        if isinstance(v, list):
+            return [Path(cls._convert_backslashes(p)) if isinstance(p, str) else p for p in v]
+        return v
+
+    @field_validator("ssh_key", mode="before")
+    @classmethod
+    def convert_ssh_key(cls, v):
+        if isinstance(v, str):
+            return Path(cls._convert_backslashes(v))
+        return v
 
     def validate_hostname(self):
         current_hostname = socket.gethostname()

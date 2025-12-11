@@ -145,7 +145,7 @@ class ConfigReader(DatabaseInformation):
         return Resource(value=self._resource_str)
 
     @property
-    def workdir(self) -> str:
+    def workdir(self) -> TransformedPath:
         return TransformedPath(self._workdir)
 
     @property
