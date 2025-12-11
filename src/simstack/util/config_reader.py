@@ -35,8 +35,8 @@ class ConfigReader(DatabaseInformation):
         self._git_list = kwargs.get("_git_list", [])
         self._resource_str = resource_definition.resource_str
         self.__dict__ = {**self.__dict__, **kwargs}
-        self.__dict__.update(resource_definition.__dict__)
-
+        for key,value in resource_definition.__dict__.items():
+            self.__dict__["_"+key] = value
 
     @classmethod
     async def create(cls, resource_str, db: "Database", toml_reader: TomlReader, **kwargs):
@@ -134,8 +134,6 @@ class ConfigReader(DatabaseInformation):
         logger.info(f"ConfigReader initialized with workdir: {resource_definition.workdir}")
         for key, value in resource_definition.__dict__.items():
             logger.info(f"resource_definition.{key}: {value}")
-            resource_definition["_"+key] = value
-            del resource_definition[key]
         return cls(db, resource_definition, **config)
 
     @property
@@ -155,11 +153,11 @@ class ConfigReader(DatabaseInformation):
         return self._environment_start
 
     @property
-    def python_paths(self) -> str:
+    def python_paths(self) -> List[TransformedPath]:
         return [ TransformedPath(p) for p in self._python_paths ]
 
     @property
-    def ssh_key(self) -> str:
+    def ssh_key(self) -> TransformedPath:
         return TransformedPath(self._ssh_key)
 
     @property
