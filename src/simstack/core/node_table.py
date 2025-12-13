@@ -357,7 +357,6 @@ def create_node_table_main():
     parser.add_argument("-v", "--verbose", action="count", default=0)
     args = parser.parse_args()
 
-    print("Hello World")
     level = logging.WARNING
     if args.verbose == 1:
         level = logging.INFO

@@ -24,7 +24,7 @@ def import_module_from_file(file_path: Path):
             print(f"File not found: {file_path}")
             return []
 
-        root_dir = find_project_root()
+        root_dir = root_dir if root_dir is not None else find_project_root()
         relative_path = file_path.relative_to(root_dir)
 
         basename = relative_path.stem

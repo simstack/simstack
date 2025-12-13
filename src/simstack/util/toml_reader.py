@@ -31,6 +31,7 @@ class TomlReader:
             else:
                 print(f"Config file {toml_file} does not exist. Aborting.")
                 sys.exit(-1)
+            self._config_path = config_path
         except tomllib.TOMLDecodeError:
             print("There was an error decoding the TOML file.")
             sys.exit(-1)
