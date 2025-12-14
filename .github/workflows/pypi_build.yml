@@ -10,6 +10,7 @@ defaults:
 jobs:
   build_pypi_package:
     runs-on: ubuntu-latest
+    environment: release
     permissions:
       id-token: write
       contents: read
