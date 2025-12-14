@@ -7,6 +7,7 @@ from simstack.util.db import DBType, current_engine_context
 from simstack.util.project_root_finder import find_project_root
 from simstack.util.toml_reader import TomlReader
 from simstack.util.config_reader import ConfigReader
+from simstack.util.setup_logging import setup_logging
 
 if TYPE_CHECKING:
     from simstack.util.db import Database
@@ -138,7 +139,7 @@ class GlobalState:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
         elif db_name is None or connection_string is None or db_type is None:
             # use toml
-            toml_reader = TomlReader(self._project_root)
+            toml_reader = TomlReader(project_root)
             db_info = DatabaseInformation.from_config(toml_reader.config)
         else:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
@@ -155,7 +156,7 @@ class GlobalState:
             logger.info(f"Database connection in_memory {db_type}")
         # here we have a db, we may or may not have a toml reader
         resource_str: str = kwargs.get("resource", "self")
-        self.config = await ConfigReader.create(resource_str, self.db, toml_reader, **kwargs)
+        self.config = await ConfigReader.create(resource_str, self.db, toml_reader, project_root, **kwargs)
 
 
     def initialize_logging(self, is_test: bool, log_level: str = "INFO"):

@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 def find_project_root(current_file=None, marker_files=(".git", "simstack.toml", "setup.py"),
-                      skip_files = ("simstack_marker.com")) -> Path:
+                      skip_files=("simstack_marker.com",)) -> Path:
     """
     Find the project root directory by searching for common marker files
 

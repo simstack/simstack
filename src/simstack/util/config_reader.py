@@ -64,7 +64,7 @@ class ConfigReader(DatabaseInformation):
             use_db_for_init = toml_reader.use_db()
             workdir_self = kwargs.get("workdir", None)
             if workdir_self is None:
-                workdir_self = toml_reader.get("parameters.general.workdir", None)
+                workdir_self = toml_reader.get("parameters.general.workdir_self", None)
                 if workdir_self is None:
                     workdir_self = toml_reader.get("resources.self.workdir", None)
             if workdir_self is None:
