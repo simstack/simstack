@@ -1,6 +1,5 @@
-import os
 from pathlib import Path
-from typing import List, Dict, Optional, Iterator, Any
+from typing import List, Dict, Optional, Iterator, Any, Union
 
 from simstack.util.directory_iterator import DirectoryPath
 from simstack.util.project_root_finder import find_project_root
@@ -9,22 +8,20 @@ from simstack.util.project_root_finder import find_project_root
 class PathManager:
     """
     Manages paths for the SimStack application, providing mechanisms to find Python files
-    and other resources. Uses DirectoryPath for efficient directory traversal.
+    for nodes and models. Will read only .py files.
+    By default travers all directories below the project root.
+    Uses DirectoryPath for efficient directory traversal.
     """
+    _instance = None
 
-    def __init__(self, use_pickle: bool = False):
-        """
-        Initialize the PathManager.
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(PathManager, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
 
-        Args:
-            use_pickle: Boolean flag indicating whether to use pickle for serialization
-        """
-        self.use_pickle = use_pickle
-        self.root_dir = find_project_root()
-        self.paths: Dict[str, Dict[str, str]] = {}
-        self.packages: Dict[str] = {}
-        self.precompiled: Dict[str] = {}
-        self._default_excluded_patterns = [
+    def default_excludes(self):
+        return [
             "__pycache__",
             "*.pyc",
             ".git",
@@ -32,19 +29,46 @@ class PathManager:
             "venv",
         ]
 
-    def add_path(
-        self, name: str, path: str, drops: str = "", use_pickle: bool = False
-    ) -> None:
+    def reset(self):
+        self._initialized = False
+        self.paths.clear()
+        self._excluded_patterns = self.default_excludes()
+
+    def __init__(self, use_pickle: bool = False, include_project_root: bool = False):
+        """
+        Initialize the PathManager.
+
+        Args:
+            use_pickle: Boolean flag indicating whether to use pickle for serialization
+        """
+        if self._initialized:
+            return
+
+        self._initialized = True
+        self.use_pickle = use_pickle
+        self.root_dir = find_project_root()
+        self.paths: Dict[str, Dict[str, Union[Path, str, bool]]] = {}
+
+        if include_project_root:
+            self.add_path("project_root", self.root_dir)
+
+        self._excluded_patterns = self.default_excludes()
+
+    def add_path(self, name: str, path: Path, drops: str = "", use_pickle: bool = False) -> None:
         """
         Add a path to the manager.
 
         Args:
             name: Name identifier for the path
-            path: The directory path
+            path: The directory path relative to the project root
             drops: Prefix to drop from module names (for import paths)
             use_pickle: Whether to use pickle for this path
         """
-        if not os.path.isdir(path):
+        # Convert relative paths to absolute paths
+        if not path.is_absolute():
+            path = self.root_dir / path
+
+        if not path.is_dir():
             raise ValueError(f"'{path}' is not a valid directory")
 
         self.paths[name] = {"path": path, "drops": drops, "use_pickle": use_pickle}
@@ -64,9 +88,7 @@ class PathManager:
 
         return self.paths[name]
 
-    def find_python_files(
-        self, path_name: str, excluded_patterns: Optional[List[str]] = None
-    ) -> List[str]:
+    def find_python_files(self, path_name: str, excluded_patterns: Optional[List[str]] = None) -> List[str]:
         """
         Find Python files in the specified path, excluding __init__.py files.
 
@@ -81,7 +103,7 @@ class PathManager:
         path = path_info["path"]
 
         # Combine default and additional exclusion patterns
-        all_excluded_patterns = self._default_excluded_patterns.copy()
+        all_excluded_patterns = self._excluded_patterns.copy()
         if excluded_patterns:
             all_excluded_patterns.extend(excluded_patterns)
 
@@ -94,9 +116,7 @@ class PathManager:
         # Convert Path objects to strings for compatibility with existing code
         return [str(file_path) for file_path in dir_path.get_files_list()]
 
-    def iterate_python_files(
-        self, path_name: str, excluded_patterns: Optional[List[str]] = None
-    ) -> Iterator[Path]:
+    def iterate_python_files(self, path_name: str, excluded_patterns: Optional[List[str]] = None) -> Iterator[Path]:
         """
         Iterate over Python files in the specified path, excluding __init__.py files.
 
@@ -111,7 +131,7 @@ class PathManager:
         path = path_info["path"]
 
         # Combine default and additional exclusion patterns
-        all_excluded_patterns = self._default_excluded_patterns.copy()
+        all_excluded_patterns = self._excluded_patterns.copy()
         if excluded_patterns:
             all_excluded_patterns.extend(excluded_patterns)
 
@@ -136,7 +156,7 @@ class PathManager:
         return path_info["drops"]
 
     @classmethod
-    def from_config(cls, config: Any) -> "PathManager":
+    def from_config(cls, config: Dict[str, Any]) -> "PathManager":
         """
         Create a PathManager from configuration.
 
@@ -147,47 +167,14 @@ class PathManager:
             Initialized PathManager instance
         """
         # Get use_pickle from config
-        use_pickle = False
-        if hasattr(config, "config"):
-            # If config is a ConfigReader instance
-            use_pickle = (
-                config.config.get("parameters", {})
-                .get("common", {})
-                .get("use_pickle", False)
-            )
-        else:
-            # If config is a dictionary
-            use_pickle = config.get("use_pickle", False)
+
+        use_pickle = config.get("parameters", {}).get("general", {}).get("use_pickle", False)
 
         path_manager = cls(use_pickle=use_pickle)
 
-        # Get paths from config
-        if hasattr(config, "paths"):
-            # If config is a ConfigReader instance
-            paths = config.paths
-        else:
-            # If config is a dictionary
-            paths = config.get("paths", {})
-
-        # Add paths from configuration if available
-        root_dir = find_project_root()
-        for name, path_info in paths.items():
-            if isinstance(path_info, dict) and "path" in path_info:
-                # Get path, drops, and use_pickle from path_info
-                path = path_info["path"]
-                # Convert Unix-style path to Windows path if on Windows
-                if os.name == "nt":  # Windows OS
-                    path = path.replace("/", "\\")
-
-                drops = path_info.get("drops", "")
-                path_use_pickle = path_info.get("use_pickle", False)
-
-                # Convert relative paths to absolute paths
-                if not os.path.isabs(path):
-                    path = os.path.join(root_dir, path)
-
-                # Add path to PathManager
-                path_manager.add_path(name, path, drops, path_use_pickle)
+        config_paths = config.get("paths", {})
+        for path_name, path_info in config_paths.items():
+            path_manager.add_path(path_name, path_info["path"], path_info.get("drops", ""))
 
         return path_manager
 
@@ -232,3 +219,5 @@ class PathManager:
                 continue
 
         return best_match
+
+path_manager = PathManager()

@@ -9,6 +9,7 @@ from simstack.core.definitions import DBType, TaskStatus
 from simstack.core.engine import current_engine_context, AIOEngineProxy
 from simstack.models import NodeModel
 from simstack.models.node_registry import NodeRegistry
+from simstack.util.database_information import DatabaseInformation
 from simstack.util.importer import import_class
 
 logger = logging.getLogger(__name__)
@@ -16,15 +17,14 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=Model)
 
 
-class Database:
+class Database(DatabaseInformation):
     """
     Asynchronous MongoDB database access class using ODMantic ORM.
     Provides a cleaner interface for database operations.
     """
 
-    def __init__(
-        self, db_type: DBType, db_name: str = "simstack", connection_string: str = ""
-    ):
+    def __init__(self, db_type: DBType, db_name: str = "simstack", connection_string: str = ""):
+        super().__init__(db_name, connection_string, db_type)
         """
         Initialize the MongoDB connection
 
@@ -61,7 +61,11 @@ class Database:
         self.engine = AIOEngineProxy(client=self.client, database=db_name)
         # this will set the engine for all functions that are either called from the core package or the server
         current_engine_context.set(self.engine)
-        self.db_name = db_name
+
+
+    @classmethod
+    def from_db_info(cls, db_info: DatabaseInformation):
+        return cls(db_info.db_type, db_info.db_name, db_info.connection_string)
 
     async def list_collections(self):
         """

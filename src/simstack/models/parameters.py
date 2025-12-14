@@ -1,10 +1,19 @@
 from enum import Enum
 from typing import Optional, List, ClassVar, Dict, Any
-
 from odmantic import Field, EmbeddedModel
 from pydantic import field_validator, model_validator
 
 from simstack.core.resources import allowed_resources
+
+
+def _validate_value_on_read(v: str) -> str:
+    """
+    Validate the value against allowed resources when it is read.
+    """
+    if not allowed_resources.has_resource(v):
+        allowed_str = ", ".join(repr(val) for val in allowed_resources.get_resources())
+        raise ValueError(f"Invalid resource value: {v!r}. Allowed values are: {allowed_str}")
+    return v
 
 
 class Resource(EmbeddedModel):
@@ -16,25 +25,6 @@ class Resource(EmbeddedModel):
     # Regular model field, no leading underscore
     value: str
 
-    @classmethod
-    def allowed_values(cls) -> List[str]:
-        """
-        Get the list of allowed resource values.
-        """
-        # Use the AllowedResources singleton
-        return allowed_resources.get_resources()
-
-    def _validate_value_on_read(self, v: str) -> str:
-        """
-        Validate the value against allowed resources when it is read.
-        """
-        if v not in self.allowed_values():
-            allowed_str = ", ".join(repr(val) for val in self.allowed_values())
-            raise ValueError(
-                f"Invalid resource value: {v!r}. Allowed values are: {allowed_str}"
-            )
-        return v
-
     def __getattribute__(self, name: str):
         """
         Intercept reads of `value` and validate at access time.
@@ -43,7 +33,7 @@ class Resource(EmbeddedModel):
         if name == "value":
             # Get raw stored value without triggering this override again
             raw_value = object.__getattribute__(self, "__dict__").get("value")
-            return object.__getattribute__(self, "_validate_value_on_read")(raw_value)
+            return _validate_value_on_read(raw_value)
         return object.__getattribute__(self, name)
 
     def __str__(self) -> str:

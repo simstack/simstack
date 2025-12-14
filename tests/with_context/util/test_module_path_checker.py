@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 import os
 import tempfile
@@ -15,7 +17,7 @@ class TestIsModuleSubpathOfPath:
         """Set up test fixtures."""
         # Create a temporary directory structure for testing
         self.temp_dir = tempfile.mkdtemp()
-        self.project_root = self.temp_dir
+        self.project_root = Path(self.temp_dir)
 
         # Create test directory structure using os.makedirs
         os.makedirs(
@@ -39,7 +41,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "src.simstack.core.artifacts"
-        path_info_path = os.path.join(self.project_root, "src", "simstack")
+        path_info_path = self.project_root / "src" /"simstack"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is True
@@ -50,7 +52,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "src.simstack.core.deep.nested.module"
-        path_info_path = os.path.join(self.project_root, "src")
+        path_info_path = self.project_root / "src"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is True
@@ -61,7 +63,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "tests.unit.test_artifacts"
-        path_info_path = os.path.join(self.project_root, "src", "simstack")
+        path_info_path = self.project_root /"src" /"simstack"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is False
@@ -72,7 +74,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "src.simstack.util.helpers"
-        path_info_path = os.path.join(self.project_root, "src", "simstack", "core")
+        path_info_path = self.project_root / "src" / "simstack" / "core"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is False
@@ -83,7 +85,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "src.simstack"
-        path_info_path = os.path.join(self.project_root, "src", "simstack", "core")
+        path_info_path = self.project_root / "src" / "simstack" / "core"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is False
@@ -94,7 +96,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "src.simstack.core"
-        path_info_path = os.path.join(self.project_root, "src", "simstack", "core")
+        path_info_path = self.project_root / "src" / "simstack" / "core"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is True
@@ -116,7 +118,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = ""
-        path_info_path = os.path.join(self.project_root, "src")
+        path_info_path = self.project_root / "src"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is False
@@ -128,7 +130,7 @@ class TestIsModuleSubpathOfPath:
 
         module_path = "src.simstack.core.artifacts"
         # Create path with forward slashes to test cross-platform handling
-        path_info_path = self.project_root + "/src/simstack"
+        path_info_path = self.project_root / "src/simstack"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is True
@@ -139,7 +141,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "src.simstack.core.artifacts"
-        path_info_path = os.path.join(self.project_root, "src", "simstack") + os.sep
+        path_info_path = self.project_root / "src" / "simstack" / os.sep
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is True
@@ -150,7 +152,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "nonexistent.path.module"
-        path_info_path = os.path.join(self.project_root, "nonexistent", "path")
+        path_info_path = self.project_root / "nonexistent" / "path"
 
         # The function should still work for path comparison even if paths don't exist
         result = is_module_subpath_of_path(module_path, path_info_path)
@@ -162,7 +164,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "src.simstack.core.deep.very.deeply.nested.module"
-        path_info_path = os.path.join(self.project_root, "src", "simstack")
+        path_info_path = self.project_root / "src" / "simstack"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is True
@@ -173,7 +175,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "src.simstack_extended.core.artifacts"
-        path_info_path = os.path.join(self.project_root, "src", "simstack")
+        path_info_path = self.project_root / "src" / "simstack"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is False
@@ -186,7 +188,7 @@ class TestIsModuleSubpathOfPath:
         module_path = (
             "examples.science.electronic_structure.spectra.vibrational_spectra"
         )
-        path_info_path = os.path.join(self.project_root, "examples", "science")
+        path_info_path = self.project_root / "examples" / "science"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is True
@@ -197,7 +199,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "applications.electronic_structure.util.cdx_to_molecule_rdkit"
-        path_info_path = os.path.join(self.project_root, "applications")
+        path_info_path = self.project_root / "applications"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is True
@@ -209,8 +211,8 @@ class TestIsModuleSubpathOfPath:
 
         module_path = "src.simstack.core.artifacts"
         # Test with a completely different root
-        different_root = os.path.join(os.sep, "different", "project", "root")
-        path_info_path = os.path.join(different_root, "src", "simstack")
+        different_root = Path("/different/project/root")
+        path_info_path = different_root / "src" / "simstack"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is False
@@ -221,7 +223,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "src.simstack.core.artifacts"
-        path_info_path = os.path.join(self.project_root, "SRC", "simstack")
+        path_info_path = self.project_root / "SRC" / "simstack"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         # On case-sensitive systems, this should be False
@@ -235,7 +237,7 @@ class TestIsModuleSubpathOfPath:
         ) as mock_find_root:
             mock_find_root.return_value = self.project_root
 
-            path_info_path = os.path.join(self.project_root, "src")
+            path_info_path = self.project_root / "src"
             is_module_subpath_of_path("src.test", path_info_path)
 
             mock_find_root.assert_called_once()
@@ -246,11 +248,11 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         # Create a directory with dots in the name
-        dotted_dir = os.path.join(self.project_root, "src", "my.package.name")
+        dotted_dir = self.project_root / "src" / "my.package.name"
         os.makedirs(dotted_dir, exist_ok=True)
 
         module_path = "src.my.package.name.module"
-        path_info_path = os.path.join(self.project_root, "src")
+        path_info_path = self.project_root / "src"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is True
@@ -280,10 +282,8 @@ class TestIsModuleSubpathOfPathIntegration:
         project_root = find_project_root()
 
         # Test with a long module path that might exist in the project
-        module_path = (
-            "examples.science.electronic_structure.spectra.vibrational_spectra"
-        )
-        path_info_path = os.path.join(project_root, "examples", "science")
+        module_path = "examples.science.electronic_structure.spectra.vibrational_spectra"
+        path_info_path = Path(project_root) / "examples" / "science"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert isinstance(result, bool)

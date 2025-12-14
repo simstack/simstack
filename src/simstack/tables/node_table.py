@@ -1,16 +1,11 @@
-import argparse
-import asyncio
 import inspect
 import logging
 import re
-from pathlib import Path
 from typing import Callable, List, Optional, get_type_hints, Dict, Any
 
-from simstack.core.context import context
-from simstack.core.find_simstack_modules import find_simstack_modules
 from simstack.models import Parameters
 from simstack.models.models import NodeModel, ModelMapping
-from simstack.util.import_module import import_module_from_file
+from simstack.tables.table_builder_base import TableBuilderBase
 
 logger = logging.getLogger("NodeTable")
 
@@ -48,7 +43,7 @@ def parse_docstring(docstring: Optional[str]) -> Dict[str, Any]:
         )
         for match in param_matches:
             param_name = match.group(1)
-            param_type = match.group(2)  # May be None
+            param_type = match.group(2)  # Maybe None
             param_desc = match.group(3).strip()
             params[param_name] = {"type": param_type, "description": param_desc}
 
@@ -62,7 +57,7 @@ def parse_docstring(docstring: Optional[str]) -> Dict[str, Any]:
     return {"description": description, "params": params, "returns": returns}
 
 
-class CreateNodeTable:
+class CreateNodeTable(TableBuilderBase):
     """
     Helper class to build the node table without passing around many parameters.
 
@@ -71,54 +66,11 @@ class CreateNodeTable:
         await creator.make_node_table()
     """
 
-    def __init__(self, engine):
-        # Ensure context is initialized and store frequently used objects
-        if not context.initialized:
-            context.initialize()
+    @property
+    def logger(self) -> logging.Logger:
+        return logger
 
-        self.context = context
-        self.engine = engine
-        self.path_manager = context.path_manager
-
-    async def make_node_table(self):
-        """Entry point to (re)build the node table."""
-        # First, process all simstack modules
-        all_modules = find_simstack_modules()
-        for module_name in all_modules:
-            logger.info(f"Processing node module: {module_name}")
-            try:
-                # We import modules lazily via the path manager where possible,
-                # but for discovered package modules we can use standard import.
-                module = __import__(module_name, fromlist=["*"])
-            except Exception as exc:
-                logger.warning("Failed to import module %s: %s", module_name, exc)
-                continue
-
-            await self._register_nodes_from_module(module, drops="")
-
-        # Then process all configured paths (user/project code)
-        for path_name in self.path_manager.paths.keys():
-            await self._make_nodes_for_path(path_name)
-
-    async def _make_nodes_for_path(self, path_name: str):
-        """Discover/register nodes for all Python files under a configured path."""
-        path_info = self.path_manager.get_path(path_name)
-        base_path = path_info["path"]
-        drops = path_info["drops"]
-
-        logger.info(f"Making node_table entries for files in {base_path}")
-
-        for file_path in self.path_manager.find_python_files(path_name):
-            await self._create_nodes_from_file(file_path, drops)
-
-    async def _create_nodes_from_file(self, file_path: str, drops: str):
-        """Create node entries for function definitions in the specified Python file."""
-        logger.debug(f"Processing nodes from: {file_path}")
-        module = import_module_from_file(Path(file_path))
-        if not module:
-            logger.debug("Skipping %s because module import returned None", file_path)
-            return
-
+    async def _process_module(self, module, drops: str) -> None:
         await self._register_nodes_from_module(module, drops)
 
     async def _register_nodes_from_module(self, module, drops: str):
@@ -144,7 +96,7 @@ class CreateNodeTable:
             if not is_node_function(func):
                 continue
 
-                # Get function signature
+            # Get function signature
             sig = inspect.signature(func)
 
             # Parse docstring
@@ -187,9 +139,7 @@ class CreateNodeTable:
             # Create output information
             outputs = []
             return_type = type_hints.get("return", None)
-            if return_type and return_type != type(
-                None
-            ):  # Check for actual return type
+            if return_type and return_type != type(None):  # Check for actual return type
                 output_info = {
                     "name": "result",
                     "type_str": str(return_type),
@@ -206,7 +156,7 @@ class CreateNodeTable:
 
             # Create default parameters - ensure it's never None
             parameters = Parameters()
-            # First check if the parameters are stored as an attribute
+            # First, check if the parameters are stored as an attribute
             if hasattr(func, "_node_parameters"):
                 parameters = func._node_parameters
             # Otherwise, try to find them in closures
@@ -220,22 +170,6 @@ class CreateNodeTable:
                         if kwargs_node and "parameters" in kwargs_node:
                             parameters = kwargs_node["parameters"]
                             break
-
-            # # Verify parameters is a valid Parameters object
-            # if not isinstance(parameters, Parameters):
-            #     if parameters is None:
-            #         # Use empty Parameters if None
-            #         parameters = Parameters()
-            #     elif hasattr(parameters, '__dict__'):
-            #         # Try to convert to Parameters
-            #         try:
-            #             parameters = Parameters(**parameters.__dict__)
-            #         except Exception as e:
-            #             logger.error(f"Failed to convert parameters to Parameters object: {e}")
-            #             parameters = Parameters()
-            #     else:
-            #         logger.warning(f"Invalid parameters type: {type(parameters)}. Using default.")
-            #         parameters = Parameters()
 
             # Use node-specific metadata if available
             node_name = getattr(func, "_node_name", func_name)
@@ -327,24 +261,20 @@ class CreateNodeTable:
                     f"NodeModel: {node_model.name}, {node_model.function_mapping}, {node_model.input_mappings}"
                 )
                 await self.engine.save(node_model)
-                # node_models.append(node_model)
             except Exception as e:
                 logger.error(f"Error creating/saving NodeModel {node_name}: {e}")
                 import traceback
 
                 traceback.print_exc()
 
-
-# Public API preserved for existing callers (e.g. tests)
-async def make_node_table(engine):
+async def make_node_table(engine, dirs: list[str] = None, drops: str = None, write_schema: bool = False):
     """
     Rebuild the node table using the given engine.
 
     This is a thin wrapper around CreateNodeTable for backward compatibility.
     """
-    creator = CreateNodeTable(engine)
-    await creator.make_node_table()
-
+    creator = CreateNodeTable(engine, write_schema=write_schema)
+    await creator.build(dirs=dirs, drops=drops)
 
 def create_node_table_main():
     """
@@ -352,29 +282,7 @@ def create_node_table_main():
 
     Uses a dedicated event loop, matching the pattern used for model table creation.
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--verbose", action="count", default=0)
-    args = parser.parse_args()
-
-    level = logging.WARNING
-    if args.verbose == 1:
-        level = logging.INFO
-    elif args.verbose >= 2:
-        level = logging.DEBUG
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    context.initialize(log_level=level)
-
-    # Set pymongo logger level to INFO
-    logging.getLogger("pymongo").setLevel(logging.INFO)
-
-    try:
-        loop.run_until_complete(make_node_table(context.db.engine))
-    finally:
-        loop.close()
-
+    TableBuilderBase.cli_main(CreateNodeTable)
 
 if __name__ == "__main__":
     create_node_table_main()

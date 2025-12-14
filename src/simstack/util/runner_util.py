@@ -103,10 +103,10 @@ async def graceful_shutdown(resource_name):
 
 async def restart(resource_name):
     logger.info(
-        f"Restarting node runner for resource: {resource_name} {context.config.python_path}"
+        f"Restarting node runner for resource: {resource_name} {context.config.python_paths}"
     )
 
-    cmd = Path(context.config.python_path[0]) / "scripts" / "check_runner.sh"
+    cmd = Path(context.config.python_paths[0]) / "scripts" / "check_runner.sh"
 
     # Get current user information
     current_uid = os.getuid()

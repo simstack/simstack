@@ -1,16 +1,17 @@
-import logging  # Import logging before using it
-import os
-import sys
+import logging
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse, urlunparse
-
-from simstack.core.definitions import DBType
-from simstack.util.config_reader import ConfigReader
-from simstack.util.path_manager import PathManager
-
-# from simstack.core.model_table import make_models_for_path
-# from simstack.core.node_table import make_nodes_for_path
+from simstack.models.resource_definition import GitRepo
+from simstack.util.database_information import DatabaseInformation
+from simstack.util.db import DBType, current_engine_context
 from simstack.util.project_root_finder import find_project_root
+from simstack.util.toml_reader import TomlReader
+from simstack.util.config_reader import ConfigReader
 from simstack.util.setup_logging import setup_logging
+
+if TYPE_CHECKING:
+    from simstack.util.db import Database
+
 
 
 def remove_password_from_connection_string(connection_string):
@@ -27,6 +28,11 @@ def remove_password_from_connection_string(connection_string):
 
     return urlunparse(clean_url)
 
+async def initialize_git_list(db: "Database", toml_reader: TomlReader | None):
+    git_list = await db.find_all(GitRepo)
+    if git_list is None and toml_reader is not None:
+        git_list = toml_reader.get("parameters.common.git", [])
+    return git_list
 
 class GlobalState:
     _instance = None
@@ -81,87 +87,120 @@ class GlobalState:
     #         await make_models_for_path(parent_path, self.path_manager, context.db.engine)
     #         await make_nodes_for_path(parent_path, self.path_manager, context.db.engine)
 
-    def initialize(self, **kwargs):
-        db_name = kwargs.get("db_name", None)
-        connection_string = kwargs.get("connection_string", None)
-        resource_str: str = kwargs.get("resource", "self")
+    async def initialize(self, **kwargs):
+        """
+        Initializes the global state with the given configuration parameters.
 
-        """Initialize the GlobalState with database settings"""
+        Raises:
+            RuntimeError: If the global state is already initialized.
+
+        Args:
+            **kwargs: Arbitrary keyword arguments for configuration. The following keys are expected:
+                - project_root (str, optional): The project root directory. If not provided, it will be
+                  determined using `find_project_root`.
+                - db_name (str, optional): The name of the database. Required when not using a TOML
+                  configuration.
+                - connection_string (str, optional): The connection string for the database. Required
+                  when not using a TOML configuration.
+                - db_type (DBType, optional): The type of the database. Required when not using a TOML
+                  configuration.
+                - is_test (bool, optional): Indicates whether the initialization is for testing purposes.
+                  Defaults to `False`.
+                - log_level (str, optional): Specifies the logging level. Defaults to `"INFO"`.
+                - resource (str, optional): Specifies the resource identifier for the configuration reader.
+                  Defaults to `"self"`.
+
+        Logic:
+            if all values for the DB are provided in the kwargs, use the provided values
+            otherwise the TOML file in the project root is used
+
+            The project root is determined using `find_project_root`, which by default looks for a
+            set of marker files, starting from the directory of find_project root and traversing up the directory tree.
+            In normal runs, it should skip the project root of the simstack package
+            This fails in the tests of the simstack package. The trick is to determine
+            project_root manually outside the call to initialize and pass it as a kwarg.
+
+            The TOML file decides whether the database or the file is used to set the variables
+            for the specific resource
+
+        """
         if self._initialized:
             raise RuntimeError("GlobalState already initialized")
         self._initialized = True
 
+        project_root = kwargs.get("project_root", find_project_root())
+        kwargs["project_root"] = project_root  # overwrite in case it was not set before
+        db_name : str | None = kwargs.get("db_name", None)
+        connection_string: str | None = kwargs.get("connection_string", None)
+        db_type: DBType | None = kwargs.get("db_type",None)
         is_test = kwargs.get("is_test", False)
-        self.config = ConfigReader(
-            db_name=db_name,
-            connection_string=connection_string,
-            resource=resource_str,
-            is_test=is_test,
-        )
+
+        toml_reader = None
+        if is_test:
+            db_info = DatabaseInformation(db_name, connection_string, db_type)
+        elif db_name is None or connection_string is None or db_type is None:
+            # use toml
+            toml_reader = TomlReader(project_root)
+            db_info = DatabaseInformation.from_config(toml_reader.config)
+        else:
+            db_info = DatabaseInformation(db_name, connection_string, db_type)
 
         # check that the database can be reached and set logging up
-        from simstack.util.db import Database
+        self.initialize_database(db_info, is_test)
+        self.initialize_logging(is_test, kwargs.get("log_level", "INFO"))
 
-        # Use in-memory database for tests
-        db_type = DBType.IN_MEMORY if is_test and db_name is None else DBType.MONGODB
+        logger = logging.getLogger("Context")
+        if db_info.connection_string is not None:
+            safe_connection_string = remove_password_from_connection_string(db_info.connection_string)
+            logger.info(f"Database connection to {db_type} {safe_connection_string}/{db_name}")
+        else:
+            logger.info(f"Database connection in_memory {db_type}")
+        # here we have a db, we may or may not have a toml reader
+        resource_str: str = kwargs.get("resource", "self")
+        self.config = await ConfigReader.create(resource_str, self.db, toml_reader, **kwargs)
 
-        try:
-            self.db = Database(
-                db_type, self.config.database_name, self.config.connection_string
-            )
-            if db_type == DBType.MONGODB:
-                # Only ping real MongoDB connections
-                self.db.client.admin.command("ping")
-        except ConnectionError as e:
-            if not is_test:
-                print(f"Could not connect to the database: {e}")
-                sys.exit(-1)
-            else:
-                # For tests, continue without the database connection failure
-                print(f"Warning: Database connection failed in test mode: {e}")
 
+    def initialize_logging(self, is_test: bool, log_level: str = "INFO"):
         if is_test:
             # For tests, use simple console logging without the database handler
             logging.basicConfig(
-                level=logging.ERROR,
+                level=log_level,
                 format="%(asctime)s - %(name)-15s - %(levelname)-10s - %(filename)-20s:%(lineno)4d - %(message)s",
             )
             self.log_handler = logging.getLogger()
         else:
             self.log_handler = setup_logging(
-                self.config.connection_string,
-                self.config.database_name,
-                kwargs.get("log_level", "INFO"),
+                self.db.connection_string,
+                self.db.db_name,
+                log_level,
             )
 
-        # initialize the rest of the variables in the config, but now we can get the errors in the database
-        self.config.secondary_init(kwargs.get("workdir", None))
+    def initialize_database(self, db_info: DatabaseInformation, is_test: bool):
+        from simstack.util.db import Database
+        try:
+            self.db = Database.from_db_info(db_info)
+            if db_info.db_type == DBType.MONGODB:
+                # Only ping real MongoDB connections
+                self.db.client.admin.command("ping")
+            current_engine_context.set(self.db.engine)
 
-        logger = logging.getLogger("Context")
-        safe_connection_string = remove_password_from_connection_string(
-            self.config.connection_string
-        )
-        logger.info(
-            f"Database connection established to {self.config.database_name} at {safe_connection_string}"
-        )
-
-        # Initialize PathManager from config
-        self.path_manager = PathManager.from_config(self.config)
-
-        # Set any additional parameters
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-        return self
+        except ConnectionError as e:
+            if not is_test:
+                print(f"Could not connect to the database: {e}")
+                sys.exit(-1)
+            else:
+                # For tests, continue ignoring the database connection failure
+                print(f"Warning: Database connection failed in test mode: {e}")
 
     @property
     def initialized(self):
         return self._initialized
 
-
-root_dir = find_project_root()
-path_dir = os.path.join(root_dir, "src")
-if path_dir not in os.sys.path:
-    os.sys.path.append(path_dir)
+# TODO find out if this is still needed
+# root_dir = find_project_root()
+# path_dir = os.path.join(root_dir, "src")
+# if path_dir not in os.sys.path:
+#     os.sys.path.append(path_dir)
 
 # Create the singleton instance, but it's not initialized yet
 context = GlobalState()

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 
-class ConfigFile:
+class SimstackConfig:
     """
     Singleton class that manages the path to a configuration file.
 
@@ -10,13 +10,13 @@ class ConfigFile:
     and provides a centralized way to access the configuration file path.
     """
 
-    _instance: Optional["ConfigFile"] = None
+    _instance: Optional["SimstackConfig"] = None
     _config_file_path: Optional[str] = "simstack.toml"  # Default config file name
 
-    def __new__(cls) -> "ConfigFile":
+    def __new__(cls) -> "SimstackConfig":
         """Create or return the singleton instance."""
         if cls._instance is None:
-            cls._instance = super(ConfigFile, cls).__new__(cls)
+            cls._instance = super(SimstackConfig, cls).__new__(cls)
         return cls._instance
 
     def __init__(self):
@@ -50,11 +50,11 @@ class ConfigFile:
 
 
 # Convenience function to get the singleton instance
-def get_config_file() -> ConfigFile:
+def get_config_file() -> SimstackConfig:
     """
     Get the singleton ConfigManager instance.
 
     Returns:
         The ConfigManager singleton instance
     """
-    return ConfigFile()
+    return SimstackConfig()

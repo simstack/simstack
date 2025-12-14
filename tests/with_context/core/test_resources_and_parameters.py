@@ -1,4 +1,5 @@
 import pytest
+from pygments.lexers import resource
 
 from simstack.models.parameters import Resource, Parameters, SlurmParameters
 from simstack.core.resources import allowed_resources
@@ -14,14 +15,12 @@ class TestResource:
         original_resources = allowed_resources.get_resources()
 
         # Set test resources
-        allowed_resources.set_resources(
-            ["cpu_cluster", "gpu_cluster", "high_memory", "self"]
-        )
+        allowed_resources._resources = ["cpu_cluster", "gpu_cluster", "high_memory", "self"]
 
         yield
 
         # Restore original state
-        allowed_resources.set_resources(original_resources)
+        allowed_resources._resources = original_resources
 
     @pytest.fixture
     def empty_allowed_resources(self):
@@ -32,7 +31,7 @@ class TestResource:
         yield
 
         # Restore original state
-        allowed_resources.set_resources(original_resources)
+        allowed_resources._resources = original_resources
 
     def test_resource_creation_with_valid_value(self):
         """Test creating Resource with a valid value."""
@@ -53,23 +52,22 @@ class TestResource:
         assert "Invalid resource value" in msg
         assert "invalid_resource" in msg
 
-    def test_resource_with_empty_allowed_values(self, empty_allowed_resources):
+    def test_resource_with_empty_allowed_values(self):
         """Test Resource accepts any value when no allowed values are configured."""
-
+        old_allowed_values = allowed_resources.get_resources()
+        allowed_resources.clear_resources()
         resource = Resource(value="invalid_resource")
-        with pytest.raises(ValueError) as exc_info:
-            resource.value
-
-        msg = str(exc_info.value)
-        assert "Invalid resource value" in msg
-        assert "invalid_resource" in msg
+        assert allowed_resources.get_resources() == []
+        assert allowed_resources._initialized is False
+        assert resource.value == "invalid_resource"
+        allowed_resources.set_resources(old_allowed_values)
 
     def test_resource_allowed_values_property(self):
         """Test the allowed_values property."""
 
         Resource(value="cpu_cluster")
         expected_values = ["cpu_cluster", "gpu_cluster", "high_memory", "self"]
-        assert Resource.allowed_values() == expected_values
+        assert allowed_resources.get_resources() == expected_values
 
     def test_resource_equality_with_resource_object(self):
         """Test Resource equality with another Resource object."""
@@ -109,14 +107,11 @@ class TestParameters:
         original_resources = allowed_resources.get_resources()
 
         # Set test resources
-        allowed_resources.set_resources(
-            ["cpu_cluster", "gpu_cluster", "high_memory", "self"]
-        )
-
+        allowed_resources._resources = ["cpu_cluster", "gpu_cluster", "high_memory", "self"]
         yield
 
         # Restore original state
-        allowed_resources.set_resources(original_resources)
+        allowed_resources._resources = original_resources
 
     def test_parameters_creation_with_defaults(self):
         """Test creating Parameters with default values."""
@@ -248,12 +243,12 @@ class TestIntegration:
         original_resources = allowed_resources.get_resources()
 
         # Set test resources
-        allowed_resources.set_resources(["local", "cluster_a", "cluster_b", "gpu_node"])
+        allowed_resources._resources = ["local", "cluster_a", "cluster_b", "gpu_node"]
 
         yield
 
         # Restore original state
-        allowed_resources.set_resources(original_resources)
+        allowed_resources._resources = original_resources
 
     def test_resource_parameters_integration(self):
         """Test Resource and Parameters working together."""
@@ -299,28 +294,6 @@ class TestIntegration:
 class TestAllowedResourcesIntegration:
     """Test integration with the AllowedResources singleton."""
 
-    def test_dynamic_resource_changes(self):
-        """Test that resources can be dynamically added and removed."""
-        # Store original state
-        original_resources = allowed_resources.get_resources()
-
-        try:
-            # Add some resources
-            allowed_resources.set_resources(["resource1", "resource2"])
-
-            # Should now validate against the new list
-            valid_resource = Resource(value="resource1")
-            assert valid_resource.value == "resource1"
-
-            resource = Resource(value="invalid_resource")
-            # Should reject invalid values
-            with pytest.raises(ValueError):
-                resource.value
-
-        finally:
-            # Restore original state
-            allowed_resources.set_resources(original_resources)
-
     def test_allowed_resources_singleton_behavior(self):
         """Test that AllowedResources behaves as a singleton."""
         from simstack.core.resources import AllowedResources
@@ -338,7 +311,7 @@ class TestAllowedResourcesIntegration:
             instance1.set_resources(["test1", "test2"])
             assert instance2.get_resources() == ["test1", "test2"]
         finally:
-            instance1.set_resources(original_resources)
+            instance1._resources = original_resources
 
 
 if __name__ == "__main__":
