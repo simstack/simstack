@@ -12,8 +12,7 @@ logger = logging.getLogger("run node")
 
 async def run_node(node_id: str, resource: Resource, project_root: str = None):
     """Run a single node by its ID from the database"""
-    if project_root is None:
-        project_root = context.config.project_root
+
     await context.initialize(resource=resource, project_root=project_root)
 
     registry_entry = None
