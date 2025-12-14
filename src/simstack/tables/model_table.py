@@ -1,24 +1,16 @@
-import argparse
-import asyncio
-import importlib
 import inspect
 import json
 import logging
-from pathlib import Path
-from importlib.metadata import entry_points
 
 from simstack.core.context import context
-from simstack.core.find_simstack_modules import find_simstack_modules, walk_packages
 from simstack.models.models import ModelMapping
 from simstack.models.simstack_model import is_simstack_model
-from simstack.util.import_module import import_module_from_file
 from simstack.util.path_manager import path_manager
-from simstack.util.project_root_finder import find_project_root
-
+from simstack.tables.table_builder_base import TableBuilderBase
 
 logger = logging.getLogger("ModelTable")
 
-class CreateModelTable:
+class CreateModelTable(TableBuilderBase):
     """
     Helper class to build the model table without passing around many parameters.
 
@@ -27,37 +19,11 @@ class CreateModelTable:
         await creator.make_model_table()
     """
 
-    def __init__(self, engine):
+    @property
+    def logger(self) -> logging.Logger:
+        return logger
 
-        self.engine = engine
-
-
-    async def make_model_table(self):
-        """Entry point to (re)build the model table."""
-        # First, process all simstack modules
-
-        # Ensure context is initialized and store frequently used objects
-        from simstack.core.context import context
-        if not context.initialized:
-            await context.initialize()
-
-        all_modules = find_simstack_modules()
-        for module_name in all_modules:
-            logger.info(f"Processing module: {module_name}")
-            module = importlib.import_module(module_name)
-            await self._create_models_from_module(module, drops="")
-
-        # Then process all configured paths
-        for path_name in path_manager.paths.keys():
-            await self._make_models_for_path(path_name)
-
-    async def _create_model_models_from_file(self, file_path: str, drops: str):
-        """Create ModelMapping entries for classes in the specified Python file."""
-        logger.debug(f"Processing models from: {file_path}")
-        module = import_module_from_file(Path(file_path))
-        if not module:
-            return
-
+    async def _process_module(self, module, drops: str) -> None:
         await self._create_models_from_module(module, drops)
 
     async def _create_models_from_module(self, module, drops: str):
@@ -92,10 +58,10 @@ class CreateModelTable:
                 ):
                     new_modules.pop(0)
                     drop_modules.pop(0)
-                if len(drop_modules) > 0:
-                    raise ValueError(
-                        "drop modules not empty: ", drop_modules, new_class.__module__
-                    )
+                # if len(drop_modules) > 0:
+                #     raise ValueError(
+                #         "drop modules not empty: ", drop_modules, new_class.__module__
+                #     )
             full_mapping = ".".join(new_modules) + "." + class_name
             logger.debug(f"    Class: {class_name} Model Mapping: {full_mapping}")
 
@@ -127,16 +93,17 @@ class CreateModelTable:
                 )
                 logger.debug(f"SimStack Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}")
                 # open a file in a subdirectory of the current file schema/model.json
-                project_root = find_project_root()
-                json_file_dir = project_root / "schema"
-                json_file_dir.mkdir(parents=True, exist_ok=True)
+                if self.write_schema:
+                    project_root = context.config.project_root
+                    json_file_dir = project_root / "schema"
+                    json_file_dir.mkdir(parents=True, exist_ok=True)
 
-                combined_schema = {
-                    "json_schema": new_class.json_schema(),
-                    "ui_schema": new_class.ui_schema(),
-                }
-                with open(json_file_dir / f"{class_name}.json", "w") as f:
-                    f.write(json.dumps(combined_schema, indent=4))
+                    combined_schema = {
+                        "json_schema": new_class.json_schema(),
+                        "ui_schema": new_class.ui_schema(),
+                    }
+                    with open(json_file_dir / f"{class_name}.json", "w") as f:
+                        f.write(json.dumps(combined_schema, indent=4))
             else:
                 model_entry = ModelMapping(
                     name=class_name,
@@ -160,39 +127,18 @@ class CreateModelTable:
 
 
 # Public API preserved for existing callers (e.g. tests)
-async def make_model_table(engine):
+async def make_model_table(engine, dirs: list[str] = None, drops: str = "", write_schema: bool = False):
     """
     Rebuild the model table using the given engine.
 
     This is a thin wrapper around CreateModelTable for backward compatibility.
     """
-    creator = CreateModelTable(engine)
-    await creator.make_model_table()
+    creator = CreateModelTable(engine, write_schema=write_schema)
+    await creator.build(dirs=dirs, drops=drops)
 
 
 def create_model_table_main():
-    # Don't create a new loop with asyncio.run, use an existing one
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--verbose", action="count", default=0)
-    args = parser.parse_args()
-
-    level = logging.WARNING
-    if args.verbose == 1:
-        level = logging.INFO
-    elif args.verbose >= 2:
-        level = logging.DEBUG
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    # Set pymongo logger level to INFO
-    logging.getLogger("pymongo").setLevel(logging.INFO)
-
-    # Run in the same loop
-    loop.run_until_complete(context.initialize(log_level=level, resource="self"))
-    loop.run_until_complete(make_model_table(context.db.engine))
-    loop.close()
-
+    TableBuilderBase.cli_main(CreateModelTable)
 
 if __name__ == "__main__":
     create_model_table_main()

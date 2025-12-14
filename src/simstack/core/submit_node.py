@@ -29,7 +29,7 @@ async def submit_node(registry_entry: NodeRegistry):
     try:
         logger.info(f"Submitting task_id: {task_id} to SLURM queue")
         # Implement SLURM submission logic here
-        base_path = find_project_root()
+        base_path = context.config.project_root
 
         python_path = ":".join(context.config.python_paths)
         work_dir = context.config.workdir / registry_entry.name / str(registry_entry.id)
@@ -56,7 +56,7 @@ async def submit_node(registry_entry: NodeRegistry):
         if context.config.docker:
             external_work_dir = context.config.external_workdir /  registry_entry.name / str(registry_entry.id)
           
-            watcher_file = find_project_root() / "src" / "simstack" / "util" / "queue_watcher.py"
+            watcher_file = context.config.project_root / "src" / "simstack" / "util" / "queue_watcher.py"
             with open(watcher_file, 'r') as f:
                 watcher_content = f.read()
             slurm_parameters.startup_commands.append(f"cat > watcher.py <<'EOF'\n{watcher_content}\nEOF")
@@ -75,7 +75,7 @@ async def submit_node(registry_entry: NodeRegistry):
             )
 
             slurm_parameters.startup_commands.append("trap cleanup EXIT INT TERM")
-            toml_path = find_project_root() / "simstack_docker.toml"
+            toml_path = context.config.project_root / "simstack_docker.toml"
             if not toml_path.exists():
                 logger.error(f"Task task_id: {task_id} has no simstack.toml file -- failing")
                 registry_entry.status = TaskStatus.FAILED

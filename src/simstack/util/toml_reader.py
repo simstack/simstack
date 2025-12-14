@@ -1,15 +1,12 @@
-import os
 import socket
 import sys
 import tomllib
 from pathlib import Path
-from typing import Dict
 
 from simstack.core.resources import allowed_resources
 from simstack.core.route_table import route_table
 from simstack.models.resource_definition import ResourceDefinition
 from simstack.util.path_manager import path_manager
-from simstack.util.project_root_finder import find_project_root
 import logging
 
 from simstack.util.transform_file_name import transform_file_name
@@ -17,12 +14,7 @@ from simstack.util.transform_file_name import transform_file_name
 logger = logging.getLogger(__name__)
 
 class TomlReader:
-    def __init__(self, config_path: Path = None, config_file: Path = Path("simstack.toml")):
-        if config_path is None:
-            if config_file.exists(): # check the current working directory
-                config_path = Path.cwd()
-            else:
-                config_path = find_project_root()
+    def __init__(self, config_path: Path, config_file: Path = Path("simstack.toml")):
         try:
             toml_file = config_path / config_file
             if toml_file.exists():

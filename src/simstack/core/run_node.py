@@ -5,11 +5,12 @@ import logging
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import node_from_database
+from simstack.models.parameters import Resource
 
-logger = logging.getLogger("SlurmRunner")
+logger = logging.getLogger("run node")
 
 
-async def run_node(node_id: str, resource):
+async def run_node(node_id: str, resource: Resource, project_dir:str):
     """Run a single node by its ID from the database"""
     await context.initialize(resource=resource)
 

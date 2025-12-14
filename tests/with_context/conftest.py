@@ -3,8 +3,8 @@ import pytest_asyncio
 
 from simstack.core.context import context
 from simstack.core.definitions import DBType
-from simstack.core.model_table import make_model_table
-from simstack.core.node_table import make_node_table
+from simstack.tables.model_table import make_model_table
+from simstack.tables.node_table import make_node_table
 from simstack.models.files import FileStack
 from simstack.util.project_root_finder import find_project_root
 
@@ -83,8 +83,9 @@ async def initialized_context(tmp_path_factory, event_loop):
         context.db.engine.save_all = patched_save_all
 
     # Initialize model and node tables for both real and mock databases
-    await make_model_table(context.db.engine)
-    await make_node_table(context.db.engine)
+    dirs = ["src/simstack/models", "src/simstack/methods", "tests"]
+    await make_model_table(context.db.engine, dirs=dirs, drops="src")
+    await make_node_table(context.db.engine, dirs=dirs, drops="src")
 
     if use_real_db:
         print("Test context initialized with real MongoDB database")
