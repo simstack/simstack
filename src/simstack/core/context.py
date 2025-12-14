@@ -157,7 +157,7 @@ class GlobalState:
             logger.info(f"Database connection in_memory {db_type}")
         # here we have a db, we may or may not have a toml reader
         resource_str: str = kwargs.get("resource", "self")
-        self.config = await ConfigReader.create(resource_str, self.db, toml_reader, project_root, **kwargs)
+        self.config = await ConfigReader.create(resource_str, self.db, toml_reader, **kwargs)
 
 
     def initialize_logging(self, is_test: bool, log_level: str = "INFO"):
