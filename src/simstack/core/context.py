@@ -1,17 +1,16 @@
-import logging  # Import logging before using it
-import sys
+import logging
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse, urlunparse
-
-from simstack.core.definitions import DBType
-from simstack.core.engine import current_engine_context
 from simstack.models.resource_definition import GitRepo
-from simstack.util.config_reader import ConfigReader
-from simstack.util.toml_reader import TomlReader
 from simstack.util.database_information import DatabaseInformation
+from simstack.util.db import DBType, current_engine_context
+from simstack.util.project_root_finder import find_project_root
+from simstack.util.toml_reader import TomlReader
+from simstack.util.config_reader import ConfigReader
+
 if TYPE_CHECKING:
     from simstack.util.db import Database
-from simstack.util.setup_logging import setup_logging
+
 
 
 def remove_password_from_connection_string(connection_string):
@@ -88,12 +87,47 @@ class GlobalState:
     #         await make_nodes_for_path(parent_path, self.path_manager, context.db.engine)
 
     async def initialize(self, **kwargs):
+        """
+        Initializes the global state with the given configuration parameters.
 
-        """Initialize the GlobalState with database settings"""
+        Raises:
+            RuntimeError: If the global state is already initialized.
+
+        Args:
+            **kwargs: Arbitrary keyword arguments for configuration. The following keys are expected:
+                - project_root (str, optional): The project root directory. If not provided, it will be
+                  determined using `find_project_root`.
+                - db_name (str, optional): The name of the database. Required when not using a TOML
+                  configuration.
+                - connection_string (str, optional): The connection string for the database. Required
+                  when not using a TOML configuration.
+                - db_type (DBType, optional): The type of the database. Required when not using a TOML
+                  configuration.
+                - is_test (bool, optional): Indicates whether the initialization is for testing purposes.
+                  Defaults to `False`.
+                - log_level (str, optional): Specifies the logging level. Defaults to `"INFO"`.
+                - resource (str, optional): Specifies the resource identifier for the configuration reader.
+                  Defaults to `"self"`.
+
+        Logic:
+            if all values for the DB are provided in the kwargs, use the provided values
+            otherwise the TOML file in the project root is used
+
+            The project root is determined using `find_project_root`, which by default looks for a
+            set of marker files, starting from the directory of find_project root and traversing up the directory tree.
+            In normal runs, it should skip the project root of the simstack package
+            This fails in the tests of the simstack package. The trick is to determine
+            project_root manually outside the call to initialize and pass it as a kwarg.
+
+            The TOML file decides whether the database or the file is used to set the variables
+            for the specific resource
+
+        """
         if self._initialized:
             raise RuntimeError("GlobalState already initialized")
         self._initialized = True
 
+        project_root = kwargs.get("project_root", find_project_root())
         db_name : str | None = kwargs.get("db_name", None)
         connection_string: str | None = kwargs.get("connection_string", None)
         db_type: DBType | None = kwargs.get("db_type",None)
@@ -104,7 +138,7 @@ class GlobalState:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
         elif db_name is None or connection_string is None or db_type is None:
             # use toml
-            toml_reader = TomlReader()
+            toml_reader = TomlReader(self._project_root)
             db_info = DatabaseInformation.from_config(toml_reader.config)
         else:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
@@ -120,10 +154,7 @@ class GlobalState:
         else:
             logger.info(f"Database connection in_memory {db_type}")
         # here we have a db, we may or may not have a toml reader
-        resource_str: str | None = kwargs.get("resource", "self")
-        if resource_str is None:
-            raise ValueError("Resource must be specified in the kwargs of context.initialize")
-
+        resource_str: str = kwargs.get("resource", "self")
         self.config = await ConfigReader.create(resource_str, self.db, toml_reader, **kwargs)
 
 

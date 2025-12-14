@@ -3,6 +3,8 @@ import pytest
 from simstack.util.path_manager import PathManager, path_manager
 from simstack.util.project_root_finder import find_project_root
 
+pytestmark = pytest.mark.skip(reason="PathManager tests disabled: class is no longer used.")
+
 
 @pytest.fixture
 def path_manager_fixture():

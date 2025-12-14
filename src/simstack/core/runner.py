@@ -88,7 +88,7 @@ def make_git_list() -> List[str]:
     git_list = []
     for path in context.config.git_list:
         result = get_git_status(path)
-        if result["branch"]:
+        if result["branch"] is not None:
             value = result["branch"] + "[" + result["short_hash"] + "]"
             if result["up_to_date"]:
                 value += " (up-to-date)"

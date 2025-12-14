@@ -8,11 +8,12 @@ from simstack.util.project_root_finder import find_project_root
 logger = logging.getLogger("import_module_from_file")
 
 
-def import_module_from_file(file_path: Path):
+def import_module_from_file(file_path: Path, root_dir: Path):
     """
     Import a Python file as a module.
 
     Args:
+        root_dir:
         file_path: Path object pointing to the Python file to import
 
     Returns:
@@ -24,7 +25,6 @@ def import_module_from_file(file_path: Path):
             print(f"File not found: {file_path}")
             return []
 
-        root_dir = root_dir if root_dir is not None else find_project_root()
         relative_path = file_path.relative_to(root_dir)
 
         basename = relative_path.stem
