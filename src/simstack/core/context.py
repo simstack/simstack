@@ -129,6 +129,8 @@ class GlobalState:
         self._initialized = True
 
         project_root = kwargs.get("project_root", find_project_root())
+        if project_root is None: # maybe None was passed
+            project_root = find_project_root()
         kwargs["project_root"] = project_root  # overwrite in case it was not set before
         db_name : str | None = kwargs.get("db_name", None)
         connection_string: str | None = kwargs.get("connection_string", None)
