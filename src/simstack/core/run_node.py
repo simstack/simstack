@@ -10,9 +10,11 @@ from simstack.models.parameters import Resource
 logger = logging.getLogger("run node")
 
 
-async def run_node(node_id: str, resource: Resource, project_dir:str):
+async def run_node(node_id: str, resource: Resource, project_root: str = None):
     """Run a single node by its ID from the database"""
-    await context.initialize(resource=resource)
+    if project_root is None:
+        project_root = context.config.project_root
+    await context.initialize(resource=resource, project_root=project_root)
 
     registry_entry = None
     try:
@@ -60,12 +62,20 @@ def run_node_main():
         help="resource to load",
     )
 
+    parser.add_argument(
+        "--project-root",
+        default=None,
+        nargs="?",
+        type=str,
+        help="project root directory",
+    )
+
     args = parser.parse_args()
 
 
     if args.node_id:
         # Run a specific node once
-        asyncio.run(run_node(args.node_id, args.resource))
+        asyncio.run(run_node(args.node_id, args.resource, args.project_root))
 
 
 if __name__ == "__main__":
