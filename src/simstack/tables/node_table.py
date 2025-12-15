@@ -4,7 +4,7 @@ import re
 from typing import Callable, List, Optional, get_type_hints, Dict, Any
 
 from simstack.models import Parameters
-from simstack.models.models import NodeModel, ModelMapping
+from simstack.models.models import NodeModel, ModelMapping, DataMapping
 from simstack.tables.table_builder import TableBuilderBase
 
 logger = logging.getLogger("NodeTable")
@@ -18,21 +18,21 @@ def is_node_function(func: Callable) -> bool:
 def parse_docstring(docstring: Optional[str]) -> Dict[str, Any]:
     """Parse docstring to extract description, parameters, and return values."""
     if not docstring:
-        return {"description": "", "params": {}, "returns": {}}
+        return {"description": "", "params": {}, "returns": {}, "simstack_results": {}}
 
     # Clean up docstring
     docstring = inspect.cleandoc(docstring)
 
     # Extract the main description (before any parameters)
     description_match = re.search(
-        r"^(.*?)(?:Args:|Parameters:|Returns:|$)", docstring, re.DOTALL
+        r"^(.*?)(?:Args:|Parameters:|Returns:|SimstackResult:|$)", docstring, re.DOTALL
     )
     description = description_match.group(1).strip() if description_match else ""
 
     # Extract parameters
     params = {}
     param_section = re.search(
-        r"(?:Args:|Parameters:)(.*?)(?:Returns:|$)", docstring, re.DOTALL
+        r"(?:Args:|Parameters:)(.*?)(?:Returns:|SimstackResult:|$)", docstring, re.DOTALL
     )
     if param_section:
         param_text = param_section.group(1)
@@ -49,12 +49,28 @@ def parse_docstring(docstring: Optional[str]) -> Dict[str, Any]:
 
     # Extract return information
     returns = {}
-    return_section = re.search(r"Returns:(.*?)$", docstring, re.DOTALL)
+    return_section = re.search(r"Returns:(.*?)(?:SimstackResult:|$)", docstring, re.DOTALL)
     if return_section:
         return_text = return_section.group(1).strip()
         returns["description"] = return_text
 
-    return {"description": description, "params": params, "returns": returns}
+    # Extract SimstackResult information
+    simstack_results = {}
+    simstack_section = re.search(r"SimstackResult:(.*?)$", docstring, re.DOTALL)
+    if simstack_section:
+        simstack_text = simstack_section.group(1)
+        simstack_matches = re.finditer(
+            r"(\w+)\s*\(([^)]+)\)\s*(.+?)(?=\n\s*\w+\s*\(|$)",
+            simstack_text,
+            re.DOTALL,
+        )
+        for match in simstack_matches:
+            result_name = match.group(1)
+            result_type = match.group(2).strip()
+            result_desc = match.group(3).strip()
+            simstack_results[result_name] = {"type": result_type, "description": result_desc}
+
+    return {"description": description, "params": params, "returns": returns, "simstack_results": simstack_results}
 
 
 class CreateNodeTable(TableBuilderBase):
@@ -231,41 +247,15 @@ class CreateNodeTable(TableBuilderBase):
         if existing_model.pickle_function:
             try:
                 await self.engine.delete(existing_model.pickle_function)
-                logger.debug(f"Deleted FunctionPickle for {node_name}")
+                #logger.debug(f"Deleted FunctionPickle for {node_name}")
             except Exception as e:
                 logger.error(f"Error deleting FunctionPickle for {node_name}: {e}")
 
         await self.engine.delete(existing_model)
-        logger.debug(f"Deleted NodeModel entry for {node_name}")
+        # logger.debug(f"Deleted NodeModel entry for {node_name}")
 
         return False, existing_favorite
 
-    async def _save_node_model(
-        self,
-        *,
-        node_name: str,
-        function_mapping: str,
-        node_description: str,
-        input_mappings: List[str],
-        parameters: Parameters,
-        favorite: bool,
-    ) -> None:
-        function_pickle = None
-
-        node_model = NodeModel(
-            name=node_name,
-            function_mapping=function_mapping,
-            description=node_description,
-            input_mappings=input_mappings,
-            default_parameters=parameters,
-            pickle_function=function_pickle,
-            favorite=favorite,
-        )
-
-        logger.debug(
-            f"NodeModel: {node_model.name}, {node_model.function_mapping}, {node_model.input_mappings}"
-        )
-        await self.engine.save(node_model)
 
     async def _register_nodes_from_module(self, module, drops: str):
         """
@@ -298,7 +288,6 @@ class CreateNodeTable(TableBuilderBase):
 
             input_mappings = await self._resolve_input_mappings(node_name, inputs, drops)
             function_mapping = module.__name__ + "." + func_name
-
             try:
                 should_skip, existing_favorite = await self._delete_existing_node_model_if_needed(
                     node_name, function_mapping
@@ -306,14 +295,38 @@ class CreateNodeTable(TableBuilderBase):
                 if should_skip:
                     continue
 
-                await self._save_node_model(
-                    node_name=node_name,
+                data_mappings = []
+                for data_input, input_mapping in zip(inputs,input_mappings):
+                    if data_input.get("type") and hasattr(data_input["type"], "__name__"):
+                        data_input_mapping = (
+                                data_input["type"].__module__
+                                + "."
+                                + data_input["type"].__name__
+                        )
+                        if data_input_mapping != input_mapping:
+                           self.logger.error(f"Type mismatch for input '{data_input['name']}': expected '{data_input['type'].__name__}', got '{input_mapping}'")
+                    else:
+                        self.logger.error(f"No type specified for input '{data_input['name']}'")
+                    data_mappings.append(DataMapping(name=data_input['name'], mapping=input_mapping))
+
+                
+                node_model = NodeModel(
+                    name=node_name,
                     function_mapping=function_mapping,
-                    node_description=node_description,
-                    input_mappings=input_mappings,
-                    parameters=parameters,
+                    description=node_description,
+                    input_mappings=data_mappings,
+                    result_mappings=[],
+                    called_nodes=[],
+                    default_parameters=parameters,
+                    pickle_function=None,
                     favorite=existing_favorite,
                 )
+
+                logger.info(
+                    f"NodeModel: {node_model.name}, {node_model.function_mapping}, {node_model.input_mappings}"
+                )
+                await self.engine.save(node_model)
+
             except Exception as e:
                 logger.error(f"Error creating/saving NodeModel {node_name}: {e}")
                 import traceback

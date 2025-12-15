@@ -1,8 +1,8 @@
 import base64
 from typing import Optional, List, TypeVar
-from odmantic import Model, Field
+from odmantic import Model, Field, EmbeddedModel
 from simstack.models.parameters import Parameters
-from simstack.models.pickle_models import ClassPickle, FunctionPickle
+from simstack.models.pickle_models import FunctionPickle
 import logging
 
 logger = logging.getLogger("Models")
@@ -22,11 +22,16 @@ class ModelMapping(Model):
     ui_schema: Optional[str] = None
 
 
+class DataMapping(EmbeddedModel):
+    name: str
+    mapping: str
 
 class NodeModel(Model):
     name: str = Field(unique=True)
     function_mapping: str = Field(unique=True)
-    input_mappings: List[str]
+    input_mappings: List[DataMapping]
+    result_mappings: List[DataMapping] = Field(default_factory=list)
+    called_nodes: List[str] = Field(default_factory=list)
     description: Optional[str] = ""
     favorite: bool = False
     default_parameters: Parameters
@@ -34,7 +39,10 @@ class NodeModel(Model):
         FunctionPickle
     ] = None  # Reference to FunctionPickle if available
 
+
     model_config = {
         "collection": "node_model",
         "json_encoders": {bytes: lambda b: base64.b64encode(b).decode("ascii")},
     }
+
+    

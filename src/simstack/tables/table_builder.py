@@ -65,7 +65,7 @@ class TableBuilderBase(ABC):
 
     async def _process_simstack_modules(self, drops: str) -> None:
         for module_name in find_simstack_modules():
-            self.logger.info("Processing module: %s", module_name)
+            self.logger.debug("Processing module: %s", module_name)
             module = self._import_package_module(module_name)
             if module is None:
                 continue
@@ -111,6 +111,7 @@ class TableBuilderBase(ABC):
             ".svn",
             ".venv",
             "venv",
+            "__init__.py"
             "__pycache__",
             ".mypy_cache",
             ".pytest_cache",

@@ -20,7 +20,7 @@ def import_module_from_file(file_path: Path, root_dir: Path):
         Imported module or None if import failed
     """
     try:
-        logger.debug(f"Attempting to import module from: {file_path}")
+        # logger.debug(f"Attempting to import module from: {file_path}")
         if not file_path.exists():
             print(f"File not found: {file_path}")
             return []
