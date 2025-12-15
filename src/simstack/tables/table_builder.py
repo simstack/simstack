@@ -4,7 +4,8 @@ import importlib
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Iterable, Optional, Type
+from typing import Any, Iterable, Optional, Type
+import fnmatch  # <-- added
 
 from simstack.core.context import context
 from simstack.core.engine import AIOEngineProxy
@@ -37,12 +38,18 @@ class TableBuilderBase(ABC):
         *,
         dirs: Optional[list[Path]] = None,
         drops: str = "",
+        exclude: Optional[list[str]] = None,
     ) -> None:
         """
         Build the table.
 
         - If `dirs` is None: use configured `path_manager` paths (existing behavior).
         - If `dirs` is a list: scan those directories for Python files and process them.
+
+        `exclude` entries can match:
+          - path parts (e.g. ".venv", "__pycache__")
+          - glob patterns (e.g. "*.generated.py")
+          - nested relative paths (e.g. "src/simstack/models")
         """
         await self._ensure_context_initialized()
         await self._process_simstack_modules(drops=drops)
@@ -50,7 +57,7 @@ class TableBuilderBase(ABC):
         if dirs is None:
             raise ValueError("dirs must be specified")
         else:
-            await self._process_dirs(dirs, drops=drops)
+            await self._process_dirs(dirs, drops=drops, exclude=exclude or [])
 
     async def _ensure_context_initialized(self) -> None:
         if not context.initialized:
@@ -85,27 +92,20 @@ class TableBuilderBase(ABC):
         for file_path in path_manager.find_python_files(path_name):
             await self._process_file(file_path, drops)
 
-    async def _process_dirs(self, dirs: list[Path], *, drops: str) -> None:
-        """
-        Process CLI-provided paths.
-
-        Includes subdirectories by recursively scanning for *.py under each directory.
-        Accepts both directories and single .py files.
-        """
+    async def _process_dirs(self, dirs: list[Path], *, drops: str, exclude: list[str]) -> None:
         for base_dir in dirs:
-            base_dir_path = Path(base_dir)
+            self.logger.info("Processing CLI dir: %s", base_dir)
 
-            # If relative, treat it as relative to project_root (consistent with how imports are computed)
-            if not base_dir_path.is_absolute():
-                base_dir_path = context.config.project_root / base_dir_path
+            base_dir = Path(base_dir)
 
-            self.logger.info("Processing CLI path: %s", base_dir_path)
+            # Accept either absolute paths or paths relative to project root.
+            base_dir_path = base_dir if base_dir.is_absolute() else (context.config.project_root / base_dir)
 
-            for py_file in self._iter_python_files_under_dir(base_dir_path):
+            for py_file in self._iter_python_files_under_dir(base_dir_path, exclude=exclude):
                 await self._process_file(py_file, drops)
 
-    def _iter_python_files_under_dir(self, base_dir: Path) -> Iterable[Path]:
-        exclude_parts = {
+    def _iter_python_files_under_dir(self, base_dir: Path, *, exclude: list[str]) -> Iterable[Path]:
+        default_exclude_parts = {
             ".git",
             ".hg",
             ".svn",
@@ -116,8 +116,52 @@ class TableBuilderBase(ABC):
             ".pytest_cache",
         }
 
+        def _should_exclude(p: Path) -> bool:
+            # Fast path: ignore common tooling/cache dirs anywhere in the path.
+            if any(part in default_exclude_parts for part in p.parts):
+                return True
+
+            # If caller didn't pass any excludes, we're done.
+            if not exclude:
+                return False
+
+            # Match excludes against path parts and relative path (for nested patterns).
+            try:
+                rel = p.relative_to(base_dir)
+            except ValueError:
+                rel = p
+
+            rel_posix = rel.as_posix()
+
+            for ex in exclude:
+                ex = (ex or "").strip()
+                if not ex:
+                    continue
+
+                # 1) Exact match against any path segment (works for "build", ".tox", etc.)
+                if ex in p.parts or ex in rel.parts:
+                    return True
+
+                # 2) Glob match against the relative posix path (supports nested paths + file globs)
+                #    Examples:
+                #      --exclude "src/simstack/models"
+                #      --exclude "**/generated/**"
+                #      --exclude "*.generated.py"
+                if fnmatch.fnmatch(rel_posix, ex) or fnmatch.fnmatch(rel_posix, ex.rstrip("/") + "/*"):
+                    return True
+
+                # 3) Also allow Windows-ish inputs like "a\\b\\c" by normalizing to posix.
+                ex_posix = ex.replace("\\", "/")
+                if ex_posix != ex and (
+                    fnmatch.fnmatch(rel_posix, ex_posix) or fnmatch.fnmatch(rel_posix, ex_posix.rstrip("/") + "/*")
+                ):
+                    return True
+
+            return False
+
         if base_dir.is_file() and base_dir.suffix == ".py":
-            yield base_dir
+            if not _should_exclude(base_dir):
+                yield base_dir
             return
 
         if not base_dir.exists():
@@ -128,9 +172,8 @@ class TableBuilderBase(ABC):
             self.logger.warning("Skipping non-directory path: %s", base_dir)
             return
 
-        # Recursively include subdirectories
         for p in base_dir.rglob("*.py"):
-            if any(part in exclude_parts for part in p.parts):
+            if _should_exclude(p):
                 continue
             if p.is_file():
                 yield p
@@ -166,7 +209,17 @@ class TableBuilderBase(ABC):
             dest="dirs",
             action="append",
             default=[],
-            help="Relative path to CWD to scan (repeatable). If omitted, CWD is used.",
+            help="Path to scan (repeatable). If omitted, CWD is used.",
+        )
+        parser.add_argument(
+            "--exclude",
+            dest="exclude",
+            action="append",
+            default=[],
+            help=(
+                "Exclude a directory/name/glob from scanning (repeatable). "
+                "Examples: --exclude .venv --exclude __pycache__ --exclude src/simstack/models --exclude '*.generated.py'"
+            ),
         )
         parser.add_argument(
             "--drops",
@@ -203,7 +256,7 @@ class TableBuilderBase(ABC):
         async def _run() -> None:
             await context.initialize(log_level=level, resource="self")
             builder = builder_cls(context.db.engine, write_schema=args.write_schema)
-            await builder.build(dirs=dirs, drops=args.drops)
+            await builder.build(dirs=dirs, drops=args.drops, exclude=args.exclude)
 
         loop.run_until_complete(_run())
         loop.close()
