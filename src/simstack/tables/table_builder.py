@@ -4,13 +4,14 @@ import importlib
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Iterable, Optional, Type
+from typing import Iterable, Optional, Type
 
 from simstack.core.context import context
 from simstack.core.engine import AIOEngineProxy
 from simstack.core.find_simstack_modules import find_simstack_modules
 from simstack.util.import_module import import_module_from_file
 from simstack.util.path_manager import path_manager
+
 
 
 class TableBuilderBase(ABC):
@@ -85,9 +86,21 @@ class TableBuilderBase(ABC):
             await self._process_file(file_path, drops)
 
     async def _process_dirs(self, dirs: list[Path], *, drops: str) -> None:
+        """
+        Process CLI-provided paths.
+
+        Includes subdirectories by recursively scanning for *.py under each directory.
+        Accepts both directories and single .py files.
+        """
         for base_dir in dirs:
-            self.logger.info("Processing CLI dir: %s", base_dir)
-            base_dir_path = context.config.project_root / base_dir
+            base_dir_path = Path(base_dir)
+
+            # If relative, treat it as relative to project_root (consistent with how imports are computed)
+            if not base_dir_path.is_absolute():
+                base_dir_path = context.config.project_root / base_dir_path
+
+            self.logger.info("Processing CLI path: %s", base_dir_path)
+
             for py_file in self._iter_python_files_under_dir(base_dir_path):
                 await self._process_file(py_file, drops)
 
@@ -115,6 +128,7 @@ class TableBuilderBase(ABC):
             self.logger.warning("Skipping non-directory path: %s", base_dir)
             return
 
+        # Recursively include subdirectories
         for p in base_dir.rglob("*.py"):
             if any(part in exclude_parts for part in p.parts):
                 continue
@@ -125,9 +139,7 @@ class TableBuilderBase(ABC):
         self.logger.debug("Processing file: %s", file_path)
         module = import_module_from_file(file_path, context.config.project_root)
         if not module:
-            self.logger.debug(
-                "Skipping %s because module import returned None", file_path
-            )
+            self.logger.debug("Skipping %s because module import returned None", file_path)
             return
         await self._process_module(module, drops)
 

@@ -132,3 +132,8 @@ url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
 explicit = true
 
+
+[tool.uv.sources]
+simstack = { path = "simstack", editable = true }
+
+

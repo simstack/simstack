@@ -6,7 +6,7 @@ from simstack.core.context import context
 from simstack.models.models import ModelMapping
 from simstack.models.simstack_model import is_simstack_model
 from simstack.util.path_manager import path_manager
-from simstack.tables.table_builder_base import TableBuilderBase
+from simstack.tables.table_builder import TableBuilderBase
 
 logger = logging.getLogger("ModelTable")
 
