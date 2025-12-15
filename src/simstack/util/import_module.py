@@ -5,7 +5,7 @@ from pathlib import Path
 
 from simstack.util.project_root_finder import find_project_root
 
-logger = logging.getLogger("import_module_from_file")
+logger = logging.getLogger("import_module")
 
 
 def import_module_from_file(file_path: Path, root_dir: Path):
@@ -32,8 +32,8 @@ def import_module_from_file(file_path: Path, root_dir: Path):
 
         if root_dir not in sys.path:
             sys.path.insert(0, str(root_dir))
-            logger.debug(f"Added {root_dir} to sys.path")
-        # Try simple import first
+            # logger.debug(f"Added {root_dir} to sys.path")
+        # Try a simple import first
         try:
             module = importlib.import_module(module_name)
             return module

@@ -5,7 +5,7 @@ from typing import Callable, List, Optional, get_type_hints, Dict, Any
 
 from simstack.models import Parameters
 from simstack.models.models import NodeModel, ModelMapping
-from simstack.tables.table_builder_base import TableBuilderBase
+from simstack.tables.table_builder import TableBuilderBase
 
 logger = logging.getLogger("NodeTable")
 
