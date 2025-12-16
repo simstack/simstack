@@ -4,7 +4,7 @@ import importlib
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Iterable, Optional, Type
+from typing import Iterable, Optional, Type
 import fnmatch  # <-- added
 
 from simstack.core.context import context
@@ -192,6 +192,10 @@ class TableBuilderBase(ABC):
         """Subclass hook: scan/register whatever you need from `module`."""
         raise NotImplementedError
 
+    async def second_stage(self) -> None:
+        """ an optional hook to run after all modules have been processed"""
+        pass
+
     @classmethod
     def cli_main(cls, builder_cls: Type["TableBuilderBase"], write_schema: bool = False) -> None:
         """
@@ -258,6 +262,6 @@ class TableBuilderBase(ABC):
             await context.initialize(log_level=level, resource="self")
             builder = builder_cls(context.db.engine, write_schema=args.write_schema)
             await builder.build(dirs=dirs, drops=args.drops, exclude=args.exclude)
-
+            await builder.second_stage()
         loop.run_until_complete(_run())
         loop.close()

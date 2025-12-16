@@ -1,11 +1,17 @@
 import inspect
 import logging
-import re
-from typing import Callable, List, Optional, get_type_hints, Dict, Any
+from typing import Callable, List, get_type_hints, Dict, Any, Type
 
+from docutils.nodes import description
+from odmantic.query import desc
+
+from simstack.core.simstack_result import SimstackResult
+from simstack.tables.node_children import update_node_children
 from simstack.models import Parameters
 from simstack.models.models import NodeModel, ModelMapping, DataMapping
 from simstack.tables.table_builder import TableBuilderBase
+from simstack.util.docstring_parser import DocstringParser
+from simstack.util.importer import import_class_by_name
 
 logger = logging.getLogger("NodeTable")
 
@@ -13,64 +19,6 @@ logger = logging.getLogger("NodeTable")
 def is_node_function(func: Callable) -> bool:
     """Check if a function is marked as a node using the @node decorator."""
     return hasattr(func, "_is_node") and getattr(func, "_is_node", False) is True
-
-
-def parse_docstring(docstring: Optional[str]) -> Dict[str, Any]:
-    """Parse docstring to extract description, parameters, and return values."""
-    if not docstring:
-        return {"description": "", "params": {}, "returns": {}, "simstack_results": {}}
-
-    # Clean up docstring
-    docstring = inspect.cleandoc(docstring)
-
-    # Extract the main description (before any parameters)
-    description_match = re.search(
-        r"^(.*?)(?:Args:|Parameters:|Returns:|SimstackResult:|$)", docstring, re.DOTALL
-    )
-    description = description_match.group(1).strip() if description_match else ""
-
-    # Extract parameters
-    params = {}
-    param_section = re.search(
-        r"(?:Args:|Parameters:)(.*?)(?:Returns:|SimstackResult:|$)", docstring, re.DOTALL
-    )
-    if param_section:
-        param_text = param_section.group(1)
-        param_matches = re.finditer(
-            r"(\w+)\s*(?:\(([^)]+)\))?\s*:\s*(.+?)(?=\n\s*\w+\s*:|$)",
-            param_text,
-            re.DOTALL,
-        )
-        for match in param_matches:
-            param_name = match.group(1)
-            param_type = match.group(2)  # Maybe None
-            param_desc = match.group(3).strip()
-            params[param_name] = {"type": param_type, "description": param_desc}
-
-    # Extract return information
-    returns = {}
-    return_section = re.search(r"Returns:(.*?)(?:SimstackResult:|$)", docstring, re.DOTALL)
-    if return_section:
-        return_text = return_section.group(1).strip()
-        returns["description"] = return_text
-
-    # Extract SimstackResult information
-    simstack_results = {}
-    simstack_section = re.search(r"SimstackResult:(.*?)$", docstring, re.DOTALL)
-    if simstack_section:
-        simstack_text = simstack_section.group(1)
-        simstack_matches = re.finditer(
-            r"(\w+)\s*\(([^)]+)\)\s*(.+?)(?=\n\s*\w+\s*\(|$)",
-            simstack_text,
-            re.DOTALL,
-        )
-        for match in simstack_matches:
-            result_name = match.group(1)
-            result_type = match.group(2).strip()
-            result_desc = match.group(3).strip()
-            simstack_results[result_name] = {"type": result_type, "description": result_desc}
-
-    return {"description": description, "params": params, "returns": returns, "simstack_results": simstack_results}
 
 
 class CreateNodeTable(TableBuilderBase):
@@ -105,7 +53,7 @@ class CreateNodeTable(TableBuilderBase):
         self,
         sig: inspect.Signature,
         type_hints: Dict[str, Any],
-        docstring_info: Dict[str, Any],
+        doc_params: Dict[str, Any] | None,
     ) -> List[Dict[str, Any]]:
         inputs: List[Dict[str, Any]] = []
         for param_name, param in sig.parameters.items():
@@ -125,8 +73,8 @@ class CreateNodeTable(TableBuilderBase):
                 ),
             }
 
-            if param_name in docstring_info["params"]:
-                param_info["description"] = docstring_info["params"][param_name]["description"]
+            if doc_params and param_name in doc_params:
+                param_info["description"] = doc_params[param_name].get("description")
 
             if param.default != inspect.Parameter.empty:
                 param_info["default"] = param.default
@@ -135,24 +83,59 @@ class CreateNodeTable(TableBuilderBase):
 
         return inputs
 
-    def _build_outputs(
+    async def _build_outputs(
         self,
+        func_name: str,
         type_hints: Dict[str, Any],
-        docstring_info: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
+        parser: DocstringParser,
+        drops: str
+    ) -> List[DataMapping]:
+
         outputs: List[Dict[str, Any]] = []
         return_type = type_hints.get("return", None)
+        doc_returns = parser.returns()
         if return_type and return_type != type(None):  # Check for actual return type
             output_info: Dict[str, Any] = {
                 "name": "result",
                 "type_str": str(return_type),
                 "type": return_type,
             }
-            if "returns" in docstring_info and docstring_info["returns"]:
-                output_info["description"] = docstring_info["returns"]["description"]
+            if doc_returns:
+                output_info["description"] = doc_returns.get("description")
             outputs.append(output_info)
 
-        return outputs
+        returns_simstack_result = any(output["type"] == SimstackResult for output in outputs)
+        result_mappings = []
+        if returns_simstack_result:
+            if len(outputs) > 1:
+                logger.warning(f"Node {func_name} returns more than one output, one of which is SimstackResult")
+            else:
+                doc_simstack_result = parser.simstack_results()
+                if doc_simstack_result is None:
+                    logger.warning(f"The docstring of {func_name} does not defines its SimstackResult outputs")
+                else:
+                    for name, data in doc_simstack_result.items():
+                        try:
+                            # Check if data["type"] is a mapping (contains periods) or a single class name
+                            if "." in data["type"]:
+                                # It's a full mapping path
+                                output_mapping = data["type"]
+                            else:
+                                # It's a single class name
+                                output_model = await import_class_by_name(data["type"])
+                                output_mapping = self.get_class_mapping(output_model, drops)
+                            result_mappings.append(DataMapping(name=name, mapping=output_mapping, description=data.get("description")))
+                        except (ValueError, LookupError) as e:
+                            logger.error(f"Could not parse '{data['type']}' to mapping: {e}")
+        else:  # not a SimstackResult
+            for output in outputs:
+                try:
+                    output_mapping = self.get_class_mapping(output["type"], drops)
+                    result_mappings.append(DataMapping(name=output["name"], mapping=output_mapping, description=output.get("description")))
+                except ValueError:
+                    logger.error(f"Could not parse '{output['type']}' to mapping")
+        return result_mappings
+
 
     def _extract_default_parameters(self, func: Callable) -> Parameters:
         """
@@ -176,10 +159,10 @@ class CreateNodeTable(TableBuilderBase):
         return parameters
 
     async def _resolve_input_mappings(
-        self,
-        node_name: str,
-        inputs: List[Dict[str, Any]],
-        drops: str,
+            self,
+            node_name: str,
+            inputs: List[Dict[str, Any]],
+            drops: str,
     ) -> List[str]:
         """
         Convert input python types to ModelMapping.mapping strings and validate their existence.
@@ -191,14 +174,14 @@ class CreateNodeTable(TableBuilderBase):
         try:
             for specific_input in inputs:
                 if (
-                    specific_input.get("type")
-                    and hasattr(specific_input["type"], "__module__")
-                    and hasattr(specific_input["type"], "__name__")
+                        specific_input.get("type")
+                        and hasattr(specific_input["type"], "__module__")
+                        and hasattr(specific_input["type"], "__name__")
                 ):
                     input_mapping = (
-                        specific_input["type"].__module__
-                        + "."
-                        + specific_input["type"].__name__
+                            specific_input["type"].__module__
+                            + "."
+                            + specific_input["type"].__name__
                     )
 
                     if drops and input_mapping.startswith(drops + "."):
@@ -219,9 +202,9 @@ class CreateNodeTable(TableBuilderBase):
         return input_mappings
 
     async def _delete_existing_node_model_if_needed(
-        self,
-        node_name: str,
-        function_mapping: str,
+            self,
+            node_name: str,
+            function_mapping: str,
     ) -> tuple[bool, bool]:
         """
         Returns:
@@ -256,6 +239,15 @@ class CreateNodeTable(TableBuilderBase):
 
         return False, existing_favorite
 
+    def get_class_mapping(self, type: Type, drops: str = "") -> str:
+        """Return the class mapping for a given type, optionally dropping a prefix."""
+        if hasattr(type, "__module__") and hasattr(type, "__name__"):
+            mapping = type.__module__ + "." + type.__name__
+            if drops and mapping.startswith(drops + "."):
+                mapping = mapping[len(drops) + 1:]
+            return mapping
+        else:
+            raise ValueError(f"Could not parse '{type}' to mapping")
 
     async def _register_nodes_from_module(self, module, drops: str):
         """
@@ -272,16 +264,19 @@ class CreateNodeTable(TableBuilderBase):
                 continue
 
             sig = inspect.signature(func)
-            docstring_info = parse_docstring(inspect.getdoc(func))
+
+            parser = DocstringParser(inspect.getdoc(func))
+            doc_description = parser.description()
+            doc_params = parser.params()
+            doc_returns = parser.returns()
+
             type_hints = get_type_hints(func)
 
-            inputs = self._build_inputs(sig, type_hints, docstring_info)
-            outputs = self._build_outputs(type_hints, docstring_info)
+            inputs = self._build_inputs(sig, type_hints, doc_params)
 
             parameters = self._extract_default_parameters(func)
-
             node_name = getattr(func, "_node_name", func_name)
-            node_description = getattr(func, "_node_description", docstring_info["description"])
+            node_description = getattr(func, "_node_description", doc_description or "")
 
             if not inputs:
                 logger.warning(f"{node_name} has no inputs -- this means the node will be executed only once.")
@@ -298,25 +293,22 @@ class CreateNodeTable(TableBuilderBase):
                 data_mappings = []
                 for data_input, input_mapping in zip(inputs,input_mappings):
                     if data_input.get("type") and hasattr(data_input["type"], "__name__"):
-                        data_input_mapping = (
-                                data_input["type"].__module__
-                                + "."
-                                + data_input["type"].__name__
-                        )
+                        data_input_mapping = self.get_class_mapping(data_input["type"], drops)
                         if data_input_mapping != input_mapping:
-                           self.logger.error(f"Type mismatch for input '{data_input['name']}': expected '{data_input['type'].__name__}', got '{input_mapping}'")
+                            self.logger.error(f"Type mismatch for input '{data_input['name']}': expected '{data_input['type'].__name__}', got '{input_mapping}'")
                     else:
                         self.logger.error(f"No type specified for input '{data_input['name']}'")
-                    data_mappings.append(DataMapping(name=data_input['name'], mapping=input_mapping))
+                    data_mappings.append(DataMapping(name=data_input['name'], mapping=input_mapping, description=data_input.get("description")))
 
-                
+                result_mappings = await self._build_outputs(func_name, type_hints, parser, drops)
+
                 node_model = NodeModel(
                     name=node_name,
                     function_mapping=function_mapping,
                     description=node_description,
                     input_mappings=data_mappings,
-                    result_mappings=[],
-                    called_nodes=[],
+                    result_mappings=result_mappings,
+                    called_nodes=[], # we need to first build the full list, will be filled in second_stage
                     default_parameters=parameters,
                     pickle_function=None,
                     favorite=existing_favorite,
@@ -333,6 +325,8 @@ class CreateNodeTable(TableBuilderBase):
 
                 traceback.print_exc()
 
+    async def second_stage(self):
+        await update_node_children(self.engine)
 
 async def make_node_table(engine, dirs: list[str] = None, drops: str = None, write_schema: bool = False):
     """

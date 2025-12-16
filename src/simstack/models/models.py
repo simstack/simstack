@@ -25,6 +25,7 @@ class ModelMapping(Model):
 class DataMapping(EmbeddedModel):
     name: str
     mapping: str
+    description: Optional[str] = ""
 
 class NodeModel(Model):
     name: str = Field(unique=True)

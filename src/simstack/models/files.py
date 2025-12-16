@@ -5,8 +5,7 @@ import zlib
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
 
-from odmantic import Model, Field, ObjectId
-
+from odmantic import Model, Field, ObjectId, Reference
 
 from simstack.models import simstack_model
 from simstack.models.file_instance import FileInstance
@@ -14,7 +13,6 @@ from simstack.models.parameters import Resource
 from simstack.util.file_hashing import hash_file
 
 logger = logging.getLogger(__name__)
-
 
 @simstack_model
 class FileStack(Model):
@@ -206,6 +204,10 @@ class FileStack(Model):
     def str(self):
         return f"FileStack(name={self.name}, size={self.size}, is_hashable={self.is_hashable}, in_memory={self.in_memory}, locations={self.locations})"
 
+class FileGetterArgs(Model):
+    file_stack: FileStack = Reference()
+    local_resource: Resource
+    local_dir: Path
 
 async def main():
     from simstack.core.context import context
