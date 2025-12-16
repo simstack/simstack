@@ -1,6 +1,7 @@
 from typing import Optional, Dict, Any
 
 from odmantic import Model, Field
+from pydantic import model_validator
 
 from simstack.models.pickle_models import FunctionPickle
 from simstack.models.simstack_model import simstack_model
@@ -59,10 +60,19 @@ from simstack.models.simstack_model import simstack_model
 
 @simstack_model
 class ArtifactModel(Model):
+    field_name: str = "ArtifactModel"
     name: str
     description: Optional[str] = None
     data: Dict[str, Any] = Field(default_factory=dict)
     path: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
     model_config = {
         "collection": "artifacts"  # All subclasses will use the same collection

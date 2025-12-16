@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
 
 from odmantic import Model, Field, ObjectId, Reference
+from pydantic import model_validator
 
 from simstack.models import simstack_model
 from simstack.models.file_instance import FileInstance
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 @simstack_model
 class FileStack(Model):
+    field_name: str = "FileStack"
     name: Optional[str] = Field(description="Name of the file", default=None)
     size: Optional[int] = Field(description="Size of the file in bytes", default=None)
     is_hashable: bool = Field(
@@ -34,6 +36,14 @@ class FileStack(Model):
     locations: List[FileInstance] = Field(
         default_factory=list, description="List of file locations"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
     def __str__(self):
         return f"FileStack(name={self.name}, size={self.size}, is_hashable={self.is_hashable}, in_memory={self.in_memory}, locations={self.locations})"

@@ -7,6 +7,7 @@ from typing import Dict, Any
 import numpy as np
 import pandas as pd
 from odmantic import Model
+from pydantic import model_validator
 
 from simstack.core.context import context
 from simstack.models import simstack_model
@@ -26,7 +27,16 @@ def _format_datetime_columns(df):
 
 @simstack_model
 class PandasModel(Model):
+    field_name: str = "PandasModel"
     content_: bytes = b""
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
     @classmethod
     def from_data_frame(cls, df):

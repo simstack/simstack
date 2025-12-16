@@ -2,6 +2,7 @@ import re
 from typing import Union, List, Any, Optional
 
 from odmantic import EmbeddedModel, Field, Model
+from pydantic import model_validator
 
 from simstack.models import simstack_model
 from simstack.models.files import FileStack
@@ -301,21 +302,48 @@ class FileListMixin:
 
 @simstack_model
 class FileList(EmbeddedModel, FileListMixin):
+    field_name: str = "FileList"
     file_stacks: List[FileStack] = Field(
         default_factory=list, description="List of file stacks"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
 
 @simstack_model
 class FileListModel(Model, FileListMixin):
+    field_name: str = "FileListModel"
     file_stacks: List[FileStack] = Field(
         default_factory=list, description="List of file stacks"
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
+
 
 @simstack_model
 class FileListIO(Model):
+    field_name: str = "FileListIO"
     file_list: FileList = Field(default_factory=FileList)
     task_status: Optional[str] = None
     error: Optional[str] = None
     message: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data

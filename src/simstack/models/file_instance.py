@@ -17,9 +17,18 @@ logger = logging.getLogger("file_instance")
 class FileInstance(EmbeddedModel):
     """ """
 
+    field_name: str = "FileInstance"
     path: Path = Field(description="Path to the file relative to the host work directory")
     resource: Resource = Field(description="Resource name")
     created_at: datetime = Field(description="Creation timestamp")
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
     @model_validator(mode='before')
     def validate_resource(cls, values):

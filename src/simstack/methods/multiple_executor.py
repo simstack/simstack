@@ -3,6 +3,7 @@ import logging
 from typing import List, Callable, TypeVar, Generic, Dict, Any, AsyncGenerator, Union
 
 from odmantic import Model, Field, ObjectId, Reference
+from pydantic import model_validator
 
 from simstack.core.asnyc_helper import async_helper
 from simstack.core.context import context
@@ -92,11 +93,20 @@ class MultipleExecutorInput(Model, Generic[T]):
     # TODO store the inputs as ids not in memory
     """
 
+    field_name: str = "MultipleExecutorInput"
     function_mapping: str
     input_mappings: List[str]
     result_mapping: str
     timeout: int = 600
     inputs_data: List[List[ObjectId]] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
     @classmethod
     def from_function(cls, func: Callable[[T], R]):
@@ -201,9 +211,18 @@ class MultipleExecutorOutput(Model, Generic[T, R]):
     Represents the output of a MultipleExecutor.
     """
 
+    field_name: str = "MultipleExecutorOutput"
     executor_input: MultipleExecutorInput = Reference()
     result_mapping: str  # there is one result: either a Model or a SimstackResult
     result_ids: List[Union[ObjectId, None]] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
     @classmethod
     def json_schema(cls):

@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Dict, Any, Union, List
 
 from odmantic import Model, EmbeddedModel, Field
+from pydantic import model_validator
 
 from simstack.core.asnyc_helper import async_helper
 from simstack.core.context import context
@@ -50,12 +51,21 @@ class DataSetMetadataTemplate(Model):
 
 @simstack_model
 class DataSetMetadata(EmbeddedModel):
+    field_name: str = "DataSetMetadata"
     dataset_type: str = Field(unique=True)
     data: Dict[str, Union[str, int, float, bool, datetime]] = Field(
         default_factory=dict
     )
     is_validated: bool = False
     structure: Dict[str, List[str]] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
     def get_json_schema(self):
         return _get_json_schema(self.data)

@@ -1,6 +1,7 @@
 from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List
 
 from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
+from pydantic import model_validator
 
 from simstack.core.asnyc_helper import async_helper
 from simstack.core.context import context
@@ -27,6 +28,7 @@ class DataSetSection(EmbeddedModel):
     :type data: List[List[ObjectId]]
     """
 
+    field_name: str = "DataSetSection"
     model_types: List[str] = Field(
         default_factory=list
     )  # Class names of models in each tuple
@@ -35,6 +37,14 @@ class DataSetSection(EmbeddedModel):
     )  # List of tuples (as lists of ObjectIds)
 
     model_config = {"extra": "forbid"}
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
     def add_model_group(self, models: Union[Model, Tuple[Model, ...]]) -> None:
         """
@@ -332,11 +342,20 @@ class DataSetSection(EmbeddedModel):
 
 @simstack_model
 class DataSet(Model):
+    field_name: str = "DataSet"
     name: str = Field(default="dataset")
     metadata: DataSetMetadata = Reference()
     sections: Dict[str, DataSetSection] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
     @property
     def dataset_type(self) -> str:

@@ -6,7 +6,7 @@ from simstack.models import simstack_model
 
 @simstack_model
 class IntData(Model):
-    field_name: str = "int"
+    field_name: str = "IntData"
     value: int
 
     @model_validator(mode="before")
@@ -14,7 +14,7 @@ class IntData(Model):
     def ensure_fieldname(cls, data):
         """Ensure fieldname is set for existing documents"""
         if isinstance(data, dict) and "field_name" not in data:
-            data["field_name"] = "int"
+            data["field_name"] = cls.__name__
         return data
 
     def make_table_entries(
@@ -53,7 +53,7 @@ class IntData(Model):
 
 @simstack_model
 class FloatData(Model):
-    field_name: str = "float"
+    field_name: str = "FloatData"
     value: float
 
     @model_validator(mode="before")
@@ -61,7 +61,7 @@ class FloatData(Model):
     def ensure_fieldname(cls, data):
         """Ensure fieldname is set for existing documents"""
         if isinstance(data, dict) and "field_name" not in data:
-            data["field_name"] = "float"
+            data["field_name"] = cls.__name__
         return data
 
     def make_table_entries(
@@ -100,7 +100,7 @@ class FloatData(Model):
 
 @simstack_model
 class StringData(Model):
-    field_name: str = "text"
+    field_name: str = "StringData"
     value: str
 
     @model_validator(mode="before")
@@ -108,7 +108,7 @@ class StringData(Model):
     def ensure_fieldname(cls, data):
         """Ensure fieldname is set for existing documents"""
         if isinstance(data, dict) and "field_name" not in data:
-            data["field_name"] = "text"
+            data["field_name"] = cls.__name__
         return data
 
     def make_table_entries(
@@ -147,7 +147,7 @@ class StringData(Model):
 
 @simstack_model
 class BooleanData(Model):
-    field_name: str = "boolean"
+    field_name: str = "BooleanData"
     value: bool
 
     @model_validator(mode="before")
@@ -155,7 +155,7 @@ class BooleanData(Model):
     def ensure_fieldname(cls, data):
         """Ensure fieldname is set for existing documents"""
         if isinstance(data, dict) and "field_name" not in data:
-            data["field_name"] = "boolean"
+            data["field_name"] = cls.__name__
         return data
 
     def make_table_entries(
@@ -194,8 +194,17 @@ class BooleanData(Model):
 
 @simstack_model
 class BinaryOperationInput(Model):
+    field_name: str = "BinaryOperationInput"
     arg1: FloatData = Reference()
     arg2: FloatData = Reference()
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
     def __str__(self):
         return f"BinaryOperationInput(arg1={self.arg1}, arg2={self.arg2})"
@@ -203,6 +212,15 @@ class BinaryOperationInput(Model):
 
 @simstack_model
 class IteratorInput(Model):
+    field_name: str = "IteratorInput"
     start: int
     stop: int
     generator: str = "range"
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data

@@ -1,6 +1,7 @@
 from typing import List
 
 from odmantic import Model, Field
+from pydantic import model_validator
 
 from simstack.models import simstack_model
 from simstack.models.array_storage import ArrayStorage
@@ -8,7 +9,16 @@ from simstack.models.array_storage import ArrayStorage
 
 @simstack_model
 class ArrayList(Model):
+    field_name: str = "ArrayList"
     array_list: List[ArrayStorage] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
     def append(self, array_storage: ArrayStorage):
         """Add a new ArrayStorage to the list"""

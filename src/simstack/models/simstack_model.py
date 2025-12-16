@@ -21,6 +21,51 @@ def simstack_model(cls: T) -> T:
     methods for handling operations such as dictionary conversion, schema
     generation, and UI schema generation.
     """
+    #
+    # def _ensure_field_name_model_field(original_cls):
+    #     #
+    #     # raw_namespace: Dict[str, Any] = dict(original_cls.__dict__)
+    #     #
+    #     # keep_dunders = {"__module__", "__doc__", "__qualname__", "__annotations__"}
+    #     # namespace: Dict[str, Any] = {
+    #     #     k: v
+    #     #     for k, v in raw_namespace.items()
+    #     #     if (k in keep_dunders) or (not k.startswith("_"))
+    #     # }
+    #
+    #     namespace = dict(original_cls.__dict__)
+    #     if "_abc_impl" in namespace:
+    #         del namespace["_abc_impl"]
+    #
+    #     # --- ODMantic compatibility ---
+    #     # ODMantic enforces validate_default=True and raises if it is changed.
+    #     model_config = namespace.get("model_config")
+    #     if model_config is not None:
+    #         # model_config can be a dict-like config; normalize to a mutable dict
+    #         try:
+    #             cfg: dict[str, Any] = dict(model_config)
+    #         except TypeError:
+    #             cfg = {"_raw_model_config": model_config}
+    #
+    #         if cfg.get("validate_default") is not None:
+    #             del cfg["validate_default"]
+    #
+    #         if cfg.get("validate_assignment") is not None:
+    #             del cfg["validate_assignment"]
+    #
+    #         namespace["model_config"] = cfg
+    #     # --- end ODMantic compatibility ---
+    #
+    #     # Ensure we don't accidentally reuse internals that should be recomputed.
+    #     # (We keep __module__/__doc__ and all user-defined attrs.)
+    #     namespace.pop("__dict__", None)
+    #     namespace.pop("__weakref__", None)
+    #
+    #
+    #     NewCls = type(original_cls.__name__, original_cls.__bases__, namespace)
+    #     return NewCls
+    #
+    # cls = _ensure_field_name_model_field(cls)
 
     # Function to create a properly typed wrapper that preserves docstrings
     def create_typed_wrapper(func, first_param_name="this_class"):

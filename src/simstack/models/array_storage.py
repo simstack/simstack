@@ -2,16 +2,40 @@ import json
 from typing import Optional
 
 from odmantic import Model
+from pydantic import model_validator
 
 from simstack.models.simstack_model import simstack_model
 from simstack.util.ui_tools import ui_hide_fields
 
 
 @simstack_model
+class TestClass(Model):
+    field_name: str = "TestClass"
+    a: int = 1
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
+
+
+@simstack_model
 class ArrayStorage(Model):
+    field_name: str = "ArrayStorage"
     name: str
     shape: Optional[str] = None  # Store array shape as string like "3,3"
     data_json: Optional[str] = None  # Store flattened array data as JSON
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_fieldname(cls, data):
+        """Ensure fieldname is set for existing documents"""
+        if isinstance(data, dict) and "field_name" not in data:
+            data["field_name"] = cls.__name__
+        return data
 
     def set_array(self, array):
         """Store a numpy array"""
