@@ -265,6 +265,7 @@ class CreateNodeTable(TableBuilderBase):
 
             sig = inspect.signature(func)
 
+
             parser = DocstringParser(inspect.getdoc(func))
             doc_description = parser.description()
             doc_params = parser.params()
@@ -325,8 +326,8 @@ class CreateNodeTable(TableBuilderBase):
 
                 traceback.print_exc()
 
-    async def second_stage(self):
-        await update_node_children(self.engine)
+    async def second_stage(self, drops):
+        await update_node_children(self.engine, drops)
 
 async def make_node_table(engine, dirs: list[str] = None, drops: str = None, write_schema: bool = False):
     """

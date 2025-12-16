@@ -125,7 +125,7 @@ class DocstringParser:
         if "called_nodes" in self._cache:
             return self._cache["called_nodes"]
 
-        called_nodes_text = self._section("CalledNodes:", ("Raises:",))
+        called_nodes_text = self._section("Called Nodes:", ("Raises:","Notes"))
         if not called_nodes_text:
             self._cache["called_nodes"] = None
             return None

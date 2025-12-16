@@ -192,7 +192,7 @@ class TableBuilderBase(ABC):
         """Subclass hook: scan/register whatever you need from `module`."""
         raise NotImplementedError
 
-    async def second_stage(self) -> None:
+    async def second_stage(self, drops: str) -> None:
         """ an optional hook to run after all modules have been processed"""
         pass
 
@@ -262,6 +262,6 @@ class TableBuilderBase(ABC):
             await context.initialize(log_level=level, resource="self")
             builder = builder_cls(context.db.engine, write_schema=args.write_schema)
             await builder.build(dirs=dirs, drops=args.drops, exclude=args.exclude)
-            await builder.second_stage()
+            await builder.second_stage(args.drops)
         loop.run_until_complete(_run())
         loop.close()

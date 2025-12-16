@@ -5,6 +5,7 @@ import os
 from typing import Optional, Callable, List, Dict
 from simstack.models import NodeModel
 from simstack.util.importer import import_function
+from simstack.util.docstring_parser import DocstringParser
 
 import logging
 logger = logging.getLogger("node_children")
@@ -43,6 +44,8 @@ def _extract_called_functions(func: Callable) -> List[str]:
         source = inspect.getsource(func)
         tree = ast.parse(source)
 
+        task_creators = {"create_task", "ensure_future"}
+
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
                 if isinstance(node.func, ast.Name):
@@ -54,12 +57,36 @@ def _extract_called_functions(func: Callable) -> List[str]:
                         called_functions.append(f"{node.func.value.id}.{node.func.attr}")
                     else:
                         called_functions.append(node.func.attr)
+
+                # Detect async task creation: create_task(func()), ensure_future(func()), etc.
+                if isinstance(node.func, ast.Name) and node.func.id in task_creators:
+                    if node.args and isinstance(node.args[0], ast.Call):
+                        task_call = node.args[0]
+                        if isinstance(task_call.func, ast.Name):
+                            called_functions.append(task_call.func.id)
+                        elif isinstance(task_call.func, ast.Attribute):
+                            if isinstance(task_call.func.value, ast.Name):
+                                called_functions.append(f"{task_call.func.value.id}.{task_call.func.attr}")
+                            else:
+                                called_functions.append(task_call.func.attr)
+
+                elif isinstance(node.func, ast.Attribute) and node.func.attr in task_creators:
+                    if node.args and isinstance(node.args[0], ast.Call):
+                        task_call = node.args[0]
+                        if isinstance(task_call.func, ast.Name):
+                            called_functions.append(task_call.func.id)
+                        elif isinstance(task_call.func, ast.Attribute):
+                            if isinstance(task_call.func.value, ast.Name):
+                                called_functions.append(f"{task_call.func.value.id}.{task_call.func.attr}")
+                            else:
+                                called_functions.append(task_call.func.attr)
+
     except Exception as e:
         logger.warning(f"Could not extract called functions from {getattr(func, '__name__', '<unknown>')}: {e}")
 
     return called_functions
 
-async def update_node_children(engine) -> None:
+async def update_node_children(engine, drops: str) -> None:
     """
     1) Read all registered nodes from NodeModel.
     2) For each node, import its function and extract called functions.
@@ -69,17 +96,19 @@ async def update_node_children(engine) -> None:
     node_models: List[NodeModel] = await engine.find(NodeModel)
 
     # Build lookup tables to resolve extracted names -> NodeModel.function_mapping
-    mapping_by_short_name: Dict[str, str] = {}
-    mapping_by_node_name: Dict[str, str] = {}
-    mapping_set: set[str] = set()
+    mapping_by_node_name: Dict[str, str] = { nm.name: nm.function_mapping for nm in node_models}
+    mapping_set: set[str] = set(nm.function_mapping for nm in node_models)
 
     for nm in node_models:
         func = await import_function(nm.function_mapping)
         if func is None:
             continue
 
+        parser = DocstringParser(inspect.getdoc(func))
+
         called = _extract_called_functions(func)
         logger.debug(f"Node {nm.name} called: {called}")
+        called_from_docstring = parser.called_nodes()
         resolved: set[str] = set()
         for called_name in called:
             # If the extractor ever returns a full mapping, accept it directly
@@ -94,8 +123,30 @@ async def update_node_children(engine) -> None:
 
             # Otherwise, resolve by last segment (handles "obj.method" and "module.func")
             short = called_name.split(".")[-1]
-            if short in mapping_by_short_name:
-                resolved.add(mapping_by_short_name[short])
+            if short in mapping_by_node_name:
+                resolved.add(mapping_by_node_name[short])
+                if called_from_docstring is not None and short in called_from_docstring:
+                    del called_from_docstring[short]
+                continue
+
+        # go over the leftovers in the docstring
+        if called_from_docstring is not None:
+            for called_name in called_from_docstring:
+                if called_name in mapping_set:
+                    resolved.add(called_name)
+                    continue
+
+                # If it matches a node name, resolve via node name
+                if called_name in mapping_by_node_name:
+                    resolved.add(mapping_by_node_name[called_name])
+                    continue
+
+                    # Otherwise, resolve by last segment (handles "obj.method" and "module.func")
+                short = called_name.split(".")[-1]
+                if short in mapping_by_node_name:
+                    resolved.add(mapping_by_short_name[short])
+                    continue
+
         if len(resolved) != 0:
             logger.info(f"Resolved children of {nm.name} to {resolved}")
         nm.called_nodes = sorted(resolved)
@@ -106,17 +157,6 @@ async def update_node_children(engine) -> None:
         for nm in node_models:
             mapping_set.add(nm.function_mapping)
             mapping_by_node_name[nm.name] = nm.function_mapping
-
-            short = nm.function_mapping.split(".")[-1]
-            if short not in mapping_by_short_name:
-                mapping_by_short_name[short] = nm.function_mapping
-            elif mapping_by_short_name[short] != nm.function_mapping:
-                # Ambiguous: two different nodes share the same short function name.
-                # We keep the first and warn; feel free to make this stricter if needed.
-                logger.warning(
-                    f"Ambiguous short name '{short}': "
-                    f"'{mapping_by_short_name[short]}' vs '{nm.function_mapping}'."
-                )
 
             # Write formatted NodeModel information
             outfile.write(f"{'=' * 80}\n")
@@ -134,7 +174,7 @@ async def update_node_children(engine) -> None:
             # Write input_mappings in table format
             outfile.write(f"\nInput Mappings:\n")
             if hasattr(nm, 'input_mappings') and nm.input_mappings:
-                outfile.write(f"  {'Arg Name':<20} | {'Model':<30} | {'Field':<20}\n")
+                outfile.write(f"  {'Arg Name':<20} | {'Model':<50} | {'Field':<20}\n")
                 outfile.write(f"  {'-' * 20}-+-{'-' * 50}-+-{'-' * 20}\n")
                 for mapping in nm.input_mappings:
                     arg_name = getattr(mapping, 'name', 'N/A')
@@ -147,7 +187,7 @@ async def update_node_children(engine) -> None:
             # Write result_mappings in table format
             outfile.write(f"\nResult Mappings:\n")
             if hasattr(nm, 'result_mappings') and nm.result_mappings:
-                outfile.write(f"  {'Arg Name':<20} | {'Model':<30} | {'Field':<20}\n")
+                outfile.write(f"  {'Arg Name':<20} | {'Model':<50} | {'Field':<20}\n")
                 outfile.write(f"  {'-' * 20}-+-{'-' * 50}-+-{'-' * 20}\n")
                 for mapping in nm.result_mappings:
                     arg_name = getattr(mapping, 'name', 'N/A')
@@ -157,9 +197,12 @@ async def update_node_children(engine) -> None:
             else:
                 outfile.write(f"  (none)\n")
 
+            # Write called_nodes (node children)
+            outfile.write(f"\nCalled Nodes (Children):\n")
             if hasattr(nm, 'called_nodes') and nm.called_nodes:
-                outfile.write(f"\nCalled Nodes: {', '.join(nm.called_nodes)}\n")
+                for called_node in nm.called_nodes:
+                    outfile.write(f"  - {called_node}\n")
             else:
-                outfile.write(f"\nCalled Nodes: (none)\n")
+                outfile.write(f"  (none)\n")
 
             outfile.write(f"{'-' * 80}\n\n")
