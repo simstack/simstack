@@ -2,6 +2,7 @@ import inspect
 import json
 import logging
 
+from odmantic.exceptions import DocumentParsingError
 from simstack.core.context import context
 from simstack.models.models import ModelMapping
 from simstack.models.simstack_model import is_simstack_model
@@ -66,9 +67,14 @@ class CreateModelTable(TableBuilderBase):
             logger.debug(f"    Class: {class_name} Model Mapping: {full_mapping}")
 
             # Remove any existing ModelMapping entry for this class
-            existing_entry = await self.engine.find_one(
-                ModelMapping, ModelMapping.name == class_name
-            )
+            try:
+                existing_entry = await self.engine.find_one(
+                    ModelMapping, ModelMapping.name == class_name
+                )
+            except DocumentParsingError:
+                logger.warning(f"Could not parse existing ModelMapping entry for {class_name}")
+                existing_entry = None
+
             if existing_entry is not None:
                 await self.engine.delete(existing_entry)
                 logger.debug(f"Deleted ModelMapping entry for {class_name}")
