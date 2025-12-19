@@ -97,7 +97,7 @@ markers = [
     "unit: marks tests as unit tests",
     "local_runner: marks tests that require local runner",
     "database: marks tests that require database",
-    "rdkit: marks tests as RDKit-specific tests",
+    "indigo: marks tests as Indigo-specific tests",
     "edge_case: marks tests as edge case tests",
 ]
 
