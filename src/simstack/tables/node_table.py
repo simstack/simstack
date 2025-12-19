@@ -3,6 +3,7 @@ import logging
 import re
 from typing import Callable, List, Optional, get_type_hints, Dict, Any
 
+from odmantic.exceptions import DocumentNotFoundError, DocumentParsingError
 from simstack.models import Parameters
 from simstack.models.models import NodeModel, ModelMapping
 from simstack.tables.table_builder_base import TableBuilderBase
@@ -212,9 +213,13 @@ class CreateNodeTable(TableBuilderBase):
             function_mapping = module.__name__ + "." + func_name
 
             try:
-                existing_model = await self.engine.find_one(
-                    NodeModel, NodeModel.name == node_name
-                )
+                try:
+                    existing_model = await self.engine.find_one(
+                        NodeModel, NodeModel.name == node_name
+                    )
+                except DocumentParsingError | DocumentNotFoundError:
+                    existing_model = None
+                    logger.error(f"NodeModel {node_name} not found/not readable in database.")
                 existing_favorite = False  # Default value if no existing model
 
                 if existing_model:
