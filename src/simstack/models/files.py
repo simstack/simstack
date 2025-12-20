@@ -164,7 +164,7 @@ class FileStack(Model):
         """
         self.locations.append(file_instance)
 
-    def get(self, local_resource: Resource, local_dir: Path) -> Path:
+    def get(self, local_dir: Path = None) -> Path:
         """
         Copies the file stack to a local directory.
 
@@ -175,6 +175,9 @@ class FileStack(Model):
 
         # select the best instance
         # first search for an instance with "in_memory" set to True
+
+        if local_dir is None:
+            local_dir = Path.cwd()
 
         if self.in_memory:
             local_dir.mkdir(parents=True, exist_ok=True)
@@ -190,6 +193,9 @@ class FileStack(Model):
                 raise ValueError(
                     f"Failed to decompress and write file {self.name}: {e}"
                 )
+
+        from simstack.core.context import context
+        local_resource = context.config.resource
         # If in-memory instance not found or decompression failed, try finding instance on same resource
         if same_resource_instance := next(
             (f for f in self.locations if f.resource == local_resource), None
@@ -218,7 +224,7 @@ async def main():
     print(file_stack)
     await context.db.save(file_stack)
     local_dir = Path(context.config.workdir) / "samira" / str(file_stack.id)
-    retrieved = file_stack.get(context.config.resource, local_dir=local_dir)
+    retrieved = file_stack.get(local_dir=local_dir)
     print("Retrieved file path:", retrieved)
 
 
