@@ -151,7 +151,7 @@ class NodeRunner(SimstackResult):
         """
         if name == "":
             name = "process"
-        with open(f"{name}.log", "w") as process_log:
+        with open(f"{name}.log", "w", encoding="utf-8") as process_log:
             process_log.write(f"Command: {name}\n{command}\n")
             # TODO adapt for docker
             process = subprocess.run(
@@ -159,6 +159,7 @@ class NodeRunner(SimstackResult):
                 shell=True,  # Important: use shell=True for shell operators like &&
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 cwd=cwd if cwd else None,
             )
             self.info(f"run script {name} finished: {process.returncode}")

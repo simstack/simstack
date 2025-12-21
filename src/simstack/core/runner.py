@@ -238,25 +238,49 @@ class GitUvUpdateService(BaseService):
         logger.info("Restart signal sent. Goodbye!")
 
 
-class JobPollingService(BaseService):
-    def __init__(self, resource: Resource, interval, max_concurrent, shutdown_event):
+class NodeExecutionService(BaseService):
+    def __init__(self, resource: Resource, interval, max_concurrent, shutdown_event, detach: bool = False):
         super().__init__("JobPolling", resource, interval, shutdown_event=shutdown_event)
         self._resource_name = str(resource)
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._running_tasks = set()
         self._started = False
+        self._detach = detach
 
     async def run_node(self, registry_entry: NodeRegistry):
         """Run a single node by its ID from the database"""
-     
+
         await self.write_node_event(RunnerEventEnum.NODE_STARTED, registry_entry.id)
         try:
+
             logger.info(f"Running node task_id: {registry_entry.id} on resource {context.config.resource}")
             if (
                     hasattr(registry_entry.parameters, "queue")
                     and registry_entry.parameters.queue == "slurm-queue"
             ):
                 await submit_node(registry_entry)
+            elif self._detach:
+                # Spawn independent process that survives when the runner dies
+                cmd = [
+                    "uv", "run", "run_node", "--node-id",
+                    str(registry_entry.id),
+                    "--resource", str(self._resource_name)
+                ]
+
+                # Use platform specific flags to ensure the process survives if runner is killed
+                creationflags = 0
+                if platform.system() == "Windows":
+                    creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+
+                process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                    creationflags=creationflags,
+                    start_new_session=True if platform.system() != "Windows" else False
+                )
+                logger.info(f"Spawned detached process for task_id: {registry_entry.id} with PID: {process.pid}")
+                return True
             else:
                 return await run_node_from_registry(registry_entry)
 
@@ -282,16 +306,6 @@ class JobPollingService(BaseService):
             except Exception as e:
                 logger.exception(f"Task completed with error: {e}")
             self._running_tasks.remove(task)
-
-        # Check for STOP file
-        for path in [context.config.workdir, context.config.project_root]:
-            stop_file = Path(path) / "STOP"
-            if stop_file.exists():
-                await self.write_resource_event(RunnerEventEnum.SHUTDOWN, message="STOP file found")
-                logger.info(f"STOP file found at {stop_file}, signaling shutdown...")
-                if self._shutdown_event:
-                    self._shutdown_event.set()
-                return
 
         # Load tasks
         registry_entry_list = await context.db.load_waiting_tasks_for_resource(self._resource_name)
@@ -388,6 +402,25 @@ class GitRestartService(BaseService):
     def execute(self):
         raise NotImplementedError("GitRestartService must implement execute()")
 
+
+class StopCheckService(BaseService):
+    """Service that checks for STOP file and triggers shutdown"""
+
+    def __init__(self, resource: Resource, interval: int, shutdown_event: asyncio.Event):
+        super().__init__("StopCheck", resource, interval, shutdown_event=shutdown_event)
+
+    async def execute(self):
+        # Check for STOP file
+        for path in [context.config.workdir, context.config.project_root]:
+            stop_file = Path(path) / "STOP"
+            if stop_file.exists():
+                await self.write_resource_event(RunnerEventEnum.SHUTDOWN, message="STOP file found")
+                logger.info(f"STOP file found at {stop_file}, signaling shutdown...")
+                if self._shutdown_event:
+                    self._shutdown_event.set()
+                return
+
+
 class TimeoutRestartService(BaseService):
     """Service that restarts the runner after a specified timeout"""
 
@@ -429,9 +462,9 @@ class TimeoutRestartService(BaseService):
 
 
 class RunnerManager:
-    def __init__(self, resource: Resource, no_detach: bool = False):
+    def __init__(self, resource: Resource, detach: bool = False):
         self._resource = resource
-        self._no_detach = no_detach
+        self._detach = detach
         self._pid = os.getpid()
         self._services = []
         self._shutdown_event = asyncio.Event()
@@ -448,7 +481,7 @@ class RunnerManager:
                     capture_output=True,
                     text=True
                 )
-                return str(pid) in result.stdout
+                return (str(pid) in result.stdout) if result.stdout  is not None else False
             else:
                 # On Unix, send signal 0 to check if process exists
                 os.kill(pid, 0)
@@ -489,11 +522,13 @@ class RunnerManager:
         self._pid_file.write_text(str(self._pid))
 
         self._services = [
-            JobPollingService(self._resource, polling_interval, max_concurrent, self._shutdown_event),
+            NodeExecutionService(self._resource, polling_interval, max_concurrent, self._shutdown_event,
+                                 detach=self._detach),
             RunnerStatusService(self._resource, interval=60),
             RunnerCleanupService(self._resource, interval=300),
             SlurmStatusService(self._resource, interval=60),
             GitUvUpdateService(self._resource, interval=60),  # Advanced check every hour
+            StopCheckService(self._resource, interval=10, shutdown_event=self._shutdown_event),
         ]
 
         # Add timeout restart service if timeout is specified
@@ -515,56 +550,12 @@ class RunnerManager:
             await self.stop_all_services()
 
 
-    async def run_node(self, registry_entry: NodeRegistry):
-        """Run a single node by its ID from the database"""
-        await self.write_node_event(RunnerEventEnum.NODE_STARTED, registry_entry.id)
-        try:
-            logger.info(f"Running node task_id: {registry_entry.id} on resource {context.config.resource}")
-            if (
-                hasattr(registry_entry.parameters, "queue")
-                and registry_entry.parameters.queue == "slurm-queue"
-            ):
-                await submit_node(registry_entry)
-            elif self._no_detach:
-                return await run_node_from_registry(registry_entry)
-            else:
-                # Spawn independent process
-                cmd = [
-                    "uv", "run", "run_node",
-                    str(registry_entry.id),
-                    "--resource", str(self._resource)
-                ]
-                
-                # Use platform specific flags to ensure the process survives if runner is killed
-                creationflags = 0
-                if platform.system() == "Windows":
-                    creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
-                
-                process = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.DEVNULL,
-                    stderr=asyncio.subprocess.DEVNULL,
-                    creationflags=creationflags,
-                    start_new_session=True if platform.system() != "Windows" else False
-                )
-                logger.info(f"Spawned detached process for task_id: {registry_entry.id} with PID: {process.pid}")
-                return True
-
-        except Exception as e:
-            logger.exception(
-                f"Error running node task_id: {registry_entry.id} on resource {context.config.resource} : {str(e)}"
-            )
-            if registry_entry:
-                registry_entry.status = TaskStatus.FAILED
-                await context.db.save(registry_entry)
-            return False
-
 async def async_main(args):
     """Async entry point"""
     await context.initialize(resource=args.resource, db_name=args.db_name)
     if args.resource:
         logger.info(f"Setting resource for runner to {args.resource}")
-        runner_manager = RunnerManager(context.config.resource, no_detach=args.no_detach)
+        runner_manager = RunnerManager(context.config.resource, detach=args.detach)
         await runner_manager.run_nodes_for_resource(args.polling_interval, 10, timeout=args.timeout)
 
 
@@ -591,9 +582,10 @@ def runner_main():
     )
 
     parser.add_argument(
-        "--no-detach",
-        action="store_true",
-        help="If true, run nodes in the same process as the runner",
+        "--detach",
+        type=lambda x: (str(x).lower() not in ['false', '0', 'no']),
+        default=True,
+        help="If true (default), run nodes in an external process. Set to 'false' to run inline.",
     )
 
     parser.add_argument(
@@ -604,7 +596,6 @@ def runner_main():
     )
 
     args = parser.parse_args()
-
     # Run the async main function
     asyncio.run(async_main(args))
     pid = os.getpid()
