@@ -24,7 +24,7 @@ class ConfigReader(DatabaseInformation):
         resource_definition: ResourceDefinition,
         *,
         project_root: Path,
-        git_list: list[GitRepo] | None = None,
+        git_list: list[Path] | None = None,
     ):
         super().__init__(*db_info.get_information())
 
