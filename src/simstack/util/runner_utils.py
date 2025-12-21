@@ -14,9 +14,11 @@ from simstack.util.submit_to_watchdog import submit_to_watchdog
 import logging
 logger = logging.getLogger("runner_utils")
 
-def make_git_list() -> List[str]:
-    git_list = []
-    for path in context.config.git:
+def make_git_status_list() -> List[str]:
+    git_status_list = []
+    git_path_list = context.config.git_list
+    git_path_list.append(context.config.project_root)
+    for path in git_path_list:
         result = get_git_status(path)
         if result["branch"]:
             value = result["branch"] + "[" + result["short_hash"] + "]"
@@ -24,10 +26,10 @@ def make_git_list() -> List[str]:
                 value += " (up-to-date)"
             else:
                 value += " (behind " + str(result["behind"]) + " commits)"
-            git_list.append(value)
+            git_status_list.append(value)
         else:
-            git_list.append("No branch found")
-    return git_list
+            git_status_list.append("No branch found")
+    return git_status_list
 
 
 def run_squeue_for_job(job_id: str) -> str:
