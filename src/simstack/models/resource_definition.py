@@ -6,6 +6,7 @@ from pathlib import Path
 from odmantic import Model, Field, EmbeddedModel
 from pydantic import field_validator
 
+from simstack.models.parameters import Queue
 from simstack.util.transform_file_name import transform_file_name
 
 
@@ -51,6 +52,14 @@ class ResourceDefinition(Model):
     environment_start: Optional[str] = None
     ssh_key: Optional[Path] = None
     routes: Optional[List[str]] = [] # this is the list of resources that this resource can reach by ssh
+    queue: Optional[Queue] = None
+
+    @field_validator("queue", mode="before")
+    @classmethod
+    def set_default_queue(cls, v):
+        if v is None:
+            return Queue.DEFAULT
+        return v
 
     @staticmethod
     def _convert_backslashes(path_str: str) -> str:
@@ -62,6 +71,8 @@ class ResourceDefinition(Model):
         if isinstance(v, str):
             return Path(cls._convert_backslashes(v))
         return v
+
+    
 
     @field_validator("python_paths", mode="before")
     @classmethod
