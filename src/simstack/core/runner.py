@@ -4,6 +4,7 @@ import logging
 import os
 import socket
 import subprocess
+from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from pathlib import Path
 import hashlib
@@ -53,10 +54,10 @@ def get_file_checksum(filepath: Path) -> str:
             hash_sha256.update(chunk)
     return hash_sha256.hexdigest()
 
-class BaseService:
+class BaseService(ABC):
     """A managed periodic service that can be stopped gracefully"""
 
-    def __init__(self, name: str, resource: str, interval: int, shutdown_event: asyncio.Event = None):
+    def __init__(self, name: str, resource: Resource, interval: int, shutdown_event: asyncio.Event = None):
         self._name = name
         self._resource = resource
         self._interval: int = interval
@@ -141,11 +142,12 @@ class BaseService:
                 # Wait for interval OR until stop event is set
                 await asyncio.wait_for(self._stop_event.wait(), timeout=wait_time)
             except asyncio.TimeoutError:
-                # Normal path: interval passed, loop again
+                # Normal path: the interval passed, loop again
                 pass
 
         logger.info(f"Service {self._name} stopped.")
 
+    @abstractmethod
     async def execute(self):
         raise NotImplementedError("Services must implement execute()")
 
@@ -161,51 +163,14 @@ class BaseService:
             await self._task
 
 
-class GitUvUpdateService(BaseService):
+class RestartService(BaseService, ABC):
     """
-    Advanced service that performs git pull and uv lock upgrades.
-    If changes are detected, it restarts the runner.
+    Intermediate abstract class for services that can trigger a runner restart.
     """
 
-    def __init__(self, resource: Resource, interval):
-        super().__init__("GitUvUpdate", resource, interval)
-        # Resolve project root (assuming we are in src/simstack/core/runner.py)
-        self._project_dir = context.config.project_root.resolve(strict=True)
-        self._uv_lock_path = context.config.project_root / "uv.lock"
+    def __init__(self, name: str, resource: Resource, interval: int):
+        super().__init__(name, resource, interval)
         self._pid_file = context.config.workdir / "runner.pid"
-
-    async def _run_command(self, cmd: list) -> str:
-        """Run a shell command and return output"""
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            cwd=str(self._project_dir),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate()
-        if process.returncode != 0:
-            logger.warning(f"Command {' '.join(cmd)} failed: {stderr.decode()}")
-        return stdout.decode().strip()
-    
-    async def execute(self):
-        logger.info("Checking for updates (Git + UV)...")
-
-        # 1. Git Pull and check for changes
-        # 'git pull' output contains 'Already up to date.' if nothing changed
-        git_output = await self._run_command(["git", "pull"])
-        git_changed = "Already up to date." not in git_output
-
-        # 2. UV Lock upgrade with checksums
-        old_checksum = get_file_checksum(self._uv_lock_path)
-        await self._run_command(["uv", "lock", "--upgrade"])
-        new_checksum = get_file_checksum(self._uv_lock_path)
-        uv_changed = old_checksum != new_checksum
-
-        if git_changed or uv_changed:
-            reason = "Git changes" if git_changed else "UV lock changes"
-            self.write_resource_event(RunnerEventEnum.SHUTDOWN, message=reason)
-            logger.info(f"Update detected ({reason}). Triggering restart...")
-            await self.trigger_restart()
 
     async def trigger_restart(self):
         """Spawns an independent process to kill current PID and start new one"""
@@ -214,6 +179,7 @@ class GitUvUpdateService(BaseService):
         # Write current PID to file so the restarter knows who to kill
         self._pid_file.write_text(str(current_pid))
 
+        
         # Command to restart depends on OS
         # We use sys.executable to ensure we use the same Python interpreter
         # We'll call the runner module again
@@ -236,6 +202,69 @@ class GitUvUpdateService(BaseService):
 
         # The above commands kill us, so this line might not even log
         logger.info("Restart signal sent. Goodbye!")
+
+
+class GitUvUpdateService(RestartService):
+    """
+    Advanced service that performs git pull and uv lock upgrades.
+    If changes are detected, it restarts the runner.
+    """
+
+    def __init__(self, resource: Resource, interval):
+        super().__init__("GitUvUpdate", resource, interval)
+        # Resolve project root (assuming we are in src/simstack/core/runner.py)
+        self._project_dir = context.config.project_root.resolve(strict=True)
+        self._uv_lock_path = context.config.project_root / "uv.lock"
+
+    async def _run_command(self, cmd: list) -> str:
+        """Run a shell command and return output"""
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            cwd=str(self._project_dir),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        if process.returncode != 0:
+            logger.warning(f"Command {' '.join(cmd)} failed: {stderr.decode()}")
+        return stdout.decode().strip()
+    
+    async def execute(self):
+        logger.info("Checking for updates (Git + UV)...")
+
+        # 1. Git Pull
+        # Check checksum before and after pull to see if Git brought a new lockfile
+        old_uv_checksum = get_file_checksum(self._uv_lock_path)
+        git_output = await self._run_command(["git", "pull"])
+        git_changed = "Already up to date." not in git_output
+        
+        # Did Git update our lockfile?
+        post_git_checksum = get_file_checksum(self._uv_lock_path)
+        uv_received_update = old_uv_checksum != post_git_checksum
+
+        # 2. UV Lock upgrade (The "Producer" check)
+        # Even if git didn't change, we check if newer packages exist on PyPI
+        await self._run_command(["uv", "lock", "--upgrade"])
+        new_uv_checksum = get_file_checksum(self._uv_lock_path)
+        uv_locally_upgraded = post_git_checksum != new_uv_checksum
+
+        if uv_locally_upgraded:
+            logger.info("Local uv.lock upgrade detected. Syncing and pushing...")
+            await self._run_command(["uv", "sync"]) # Update local .venv
+            await self._run_command(["git", "add", "uv.lock"])
+            await self._run_command(["git", "commit", "-m", f"chore: automated uv lock upgrade {datetime.now().isoformat()}"])
+            await self._run_command(["git", "push"])
+        
+        elif uv_received_update:
+            logger.info("New uv.lock received from Git. Syncing environment...")
+            # Use --locked because we want to match the committed file exactly
+            await self._run_command(["uv", "sync", "--locked"])
+
+        if git_changed or uv_locally_upgraded:
+            reason = "Git pull" if git_changed else "Local UV upgrade"
+            await self.write_resource_event(RunnerEventEnum.SHUTDOWN, message=reason)
+            logger.info(f"Update detected ({reason}). Triggering restart...")
+            await self.trigger_restart()
 
 
 class NodeExecutionService(BaseService):
@@ -421,13 +450,12 @@ class StopCheckService(BaseService):
                 return
 
 
-class TimeoutRestartService(BaseService):
+class TimeoutRestartService(RestartService):
     """Service that restarts the runner after a specified timeout"""
 
     def __init__(self, resource: Resource, timeout_minutes: int):
         super().__init__("TimeoutRestart", resource, interval=timeout_minutes * 60)
         self._project_dir = context.config.project_root.resolve(strict=True)
-        self._pid_file = context.config.workdir / "runner.pid"
         self._timeout_minutes = timeout_minutes
         self._executed = False
 
@@ -436,29 +464,9 @@ class TimeoutRestartService(BaseService):
         if not self._executed:
             self._executed = True
             logger.info(f"Timeout of {self._timeout_minutes} minutes reached. Triggering restart...")
-            await self.write_resource_event(RunnerEventEnum.RESTART_TRIGGERED,
+            await self.write_resource_event(RunnerEventEnum.SHUTDOWN,
                                             message=f"Timeout restart after {self._timeout_minutes} minutes")
             await self.trigger_restart()
-
-    async def trigger_restart(self):
-        """Spawns an independent process to kill current PID and start new one"""
-        current_pid = os.getpid()
-
-        # Write current PID to file so the restarter knows who to kill
-        self._pid_file.write_text(str(current_pid))
-
-        # Command to restart depends on OS
-        script_path = Path(__file__).resolve()
-        args = [sys.executable, str(script_path)] + sys.argv[1:]
-
-        if platform.system() == "Windows":
-            cmd = f"taskkill /F /PID {current_pid} && ping 127.0.0.1 -n 3 > nul && {' '.join(args)}"
-            subprocess.Popen(cmd, shell=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
-        else:
-            cmd = f"kill -9 {current_pid} && sleep 2 && {' '.join(args)}"
-            subprocess.Popen(["/bin/bash", "-c", cmd], start_new_session=True)
-
-        logger.info("Restart signal sent. Goodbye!")
 
 
 class RunnerManager:
