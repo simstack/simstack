@@ -1,10 +1,10 @@
-from typing import Optional, List
+from typing import Optional, List, Any
 import urllib.parse
 import socket
 import re
 from pathlib import Path
 from odmantic import Model, Field, EmbeddedModel
-from pydantic import field_validator
+from pydantic import field_validator, model_serializer
 
 from simstack.models.parameters import Queue
 from simstack.util.transform_file_name import transform_file_name
@@ -54,6 +54,19 @@ class ResourceDefinition(Model):
     routes: Optional[List[str]] = [] # this is the list of resources that this resource can reach by ssh
     queue: Optional[Queue] = None
 
+
+    @model_serializer(mode="wrap")
+    def serialize_model(self, handler) -> dict[str, Any]:
+        result = handler(self)
+        # Convert path fields to strings for BSON encoding
+        if "workdir" in result and isinstance(result["workdir"], Path):
+            result["workdir"] = str(result["workdir"])
+        if "ssh_key" in result and isinstance(result["ssh_key"], Path):
+            result["ssh_key"] = str(result["ssh_key"])
+        if "python_paths" in result and isinstance(result["python_paths"], list):
+            result["python_paths"] = [str(p) if isinstance(p, Path) else p for p in result["python_paths"]]
+        return result
+
     @field_validator("queue", mode="before")
     @classmethod
     def set_default_queue(cls, v):
@@ -91,13 +104,13 @@ class ResourceDefinition(Model):
     def validate_hostname(self):
         current_hostname = socket.gethostname()
         if self.hostname != current_hostname:
-            raise ValueError(f"Hostname must match current host. Expected: {current_hostname}, got: {v}")
+            raise ValueError(f"Hostname must match current host. Expected: {current_hostname}, got: {self.hostname}")
 
     def validate_ssh_key(self):
         if self.ssh_key is not None:
             file_path = transform_file_name(self.ssh_key)
             if not file_path:
-                raise ValueError(f"SSH key path does not exist: {v}")
+                raise ValueError(f"SSH key path does not exist: {self.ssh_key}")
 
     def get_ssh_key_path(self):
         if self.ssh_key is not None:
