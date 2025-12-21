@@ -328,6 +328,7 @@ class NodeExecutionService(BaseService):
             self._started = True
 
         # Clean up the completed tasks
+        # this is a test
         completed_tasks = {task for task in self._running_tasks if task.done()}
         for task in completed_tasks:
             try:
