@@ -4,11 +4,12 @@ import logging
 import os
 import socket
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import hashlib
 import sys
 import platform
+import signal
 
 from odmantic import ObjectId
 
@@ -55,25 +56,86 @@ def get_file_checksum(filepath: Path) -> str:
 class BaseService:
     """A managed periodic service that can be stopped gracefully"""
 
-    def __init__(self, name: str, interval: int):
-        self.name = name
-        self.interval: int = interval
+    def __init__(self, name: str, resource: str, interval: int, shutdown_event: asyncio.Event = None):
+        self._name = name
+        self._resource = resource
+        self._interval: int = interval
         self._stop_event = asyncio.Event()
+        self._shutdown_event = shutdown_event
         self._task = None
+
+        # Common identity attributes
+        self._pid = os.getpid()
+        self._hostname = socket.gethostname()
+        self._username = os.environ.get("USER", os.environ.get("USERNAME", "unknown"))
+        self._time_started = datetime.now()
+
+    def _get_uptime_string(self) -> str:
+        time_diff = datetime.now() - self._time_started
+        days = time_diff.days
+        hours, remainder = divmod(time_diff.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{days}d {hours}h {minutes}m {seconds}s"
+
+    async def write_node_event(self, event: RunnerEventEnum, node_id: ObjectId, message: str = None):
+        runner_event = RunnerEvent(
+            runner_type=RunnerType.NODE_RUNNER,
+            event=event,
+            pid=self._pid,
+            hostname=self._hostname,
+            user=self._username,
+            resource=self._resource,
+            node_id=node_id,
+            message=message,
+        )
+        await context.db.save(runner_event)
+
+    async def write_resource_event(self, event: RunnerEventEnum, message: str = None):
+        git_list = make_git_status_list()
+        if event == RunnerEventEnum.ALIVE:
+            uptime = self._get_uptime_string()
+            message = f"Uptime: {uptime}"
+
+            runner_event = await context.db.find_one(
+                RunnerEvent,
+                (RunnerEvent.runner_type == RunnerType.RESOURCE_RUNNER)
+                & (RunnerEvent.resource == self._resource)
+                & (RunnerEvent.event == RunnerEventEnum.ALIVE)
+                & (RunnerEvent.pid == self._pid),
+            )
+            if runner_event:
+                runner_event.message = message
+                runner_event.timestamp = datetime.now()
+                runner_event.git_status = git_list
+                await context.db.save(runner_event)
+                return
+
+        runner_event = RunnerEvent(
+            runner_type=RunnerType.RESOURCE_RUNNER,
+            pid=self._pid,
+            hostname=self._hostname,
+            user=self._username,
+            timestamp=datetime.now(),
+            git_status=git_list,
+            event=event,
+            resource=self._resource,
+            message=message,
+        )
+        await context.db.save(runner_event)
 
     async def _run_loop(self):
         """Internal loop that respects the stop event"""
-        logger.info(f"Service {self.name} started.")
+        logger.info(f"Service {self._name} started.")
         while not self._stop_event.is_set():
             start_time = asyncio.get_event_loop().time()
             try:
                 await self.execute()
             except Exception as e:
-                logger.exception(f"Error in service {self.name}: {e}")
+                logger.exception(f"Error in service {self._name}: {e}")
 
             # Calculate wait time to maintain interval regardless of execution duration
             elapsed = asyncio.get_event_loop().time() - start_time
-            wait_time = max(0, int(self.interval - elapsed))
+            wait_time = max(0, int(self._interval - elapsed))
 
             try:
                 # Wait for interval OR until stop event is set
@@ -82,7 +144,7 @@ class BaseService:
                 # Normal path: interval passed, loop again
                 pass
 
-        logger.info(f"Service {self.name} stopped.")
+        logger.info(f"Service {self._name} stopped.")
 
     async def execute(self):
         raise NotImplementedError("Services must implement execute()")
@@ -105,20 +167,18 @@ class GitUvUpdateService(BaseService):
     If changes are detected, it restarts the runner.
     """
 
-    def __init__(self, manager, resource_name,  interval):
-        super().__init__("GitUvUpdate", interval)
-        self.manager = manager
+    def __init__(self, resource: Resource, interval):
+        super().__init__("GitUvUpdate", resource, interval)
         # Resolve project root (assuming we are in src/simstack/core/runner.py)
-        self.project_dir = context.config.project_root.resolve(strict=True)
-        self.uv_lock_path = context.config.project_root / "uv.lock"
-        self.pid_file = context.config.workdir / "runner.pid"
-        self.counter = 2
+        self._project_dir = context.config.project_root.resolve(strict=True)
+        self._uv_lock_path = context.config.project_root / "uv.lock"
+        self._pid_file = context.config.workdir / "runner.pid"
 
     async def _run_command(self, cmd: list) -> str:
         """Run a shell command and return output"""
         process = await asyncio.create_subprocess_exec(
             *cmd,
-            cwd=str(self.project_dir),
+            cwd=str(self._project_dir),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -126,7 +186,7 @@ class GitUvUpdateService(BaseService):
         if process.returncode != 0:
             logger.warning(f"Command {' '.join(cmd)} failed: {stderr.decode()}")
         return stdout.decode().strip()
-
+    
     async def execute(self):
         logger.info("Checking for updates (Git + UV)...")
 
@@ -136,14 +196,14 @@ class GitUvUpdateService(BaseService):
         git_changed = "Already up to date." not in git_output
 
         # 2. UV Lock upgrade with checksums
-        old_checksum = get_file_checksum(self.uv_lock_path)
+        old_checksum = get_file_checksum(self._uv_lock_path)
         await self._run_command(["uv", "lock", "--upgrade"])
-        new_checksum = get_file_checksum(self.uv_lock_path)
+        new_checksum = get_file_checksum(self._uv_lock_path)
         uv_changed = old_checksum != new_checksum
-        self.counter += 1
 
-        if git_changed or uv_changed or self.counter >= 2:
+        if git_changed or uv_changed:
             reason = "Git changes" if git_changed else "UV lock changes"
+            self.write_resource_event(RunnerEventEnum.SHUTDOWN, message=reason)
             logger.info(f"Update detected ({reason}). Triggering restart...")
             await self.trigger_restart()
 
@@ -152,7 +212,7 @@ class GitUvUpdateService(BaseService):
         current_pid = os.getpid()
 
         # Write current PID to file so the restarter knows who to kill
-        self.pid_file.write_text(str(current_pid))
+        self._pid_file.write_text(str(current_pid))
 
         # Command to restart depends on OS
         # We use sys.executable to ensure we use the same Python interpreter
@@ -179,69 +239,122 @@ class GitUvUpdateService(BaseService):
 
 
 class JobPollingService(BaseService):
-    def __init__(self, manager, resource_name, interval, max_concurrent):
-        super().__init__("JobPolling", interval)
-        self.manager = manager
-        self.resource_name = resource_name
-        self.semaphore = asyncio.Semaphore(max_concurrent)
-        self.running_tasks = set()
+    def __init__(self, resource: Resource, interval, max_concurrent, shutdown_event):
+        super().__init__("JobPolling", resource, interval, shutdown_event=shutdown_event)
+        self._resource_name = str(resource)
+        self._semaphore = asyncio.Semaphore(max_concurrent)
+        self._running_tasks = set()
+        self._started = False
+
+    async def run_node(self, registry_entry: NodeRegistry):
+        """Run a single node by its ID from the database"""
+     
+        await self.write_node_event(RunnerEventEnum.NODE_STARTED, registry_entry.id)
+        try:
+            logger.info(f"Running node task_id: {registry_entry.id} on resource {context.config.resource}")
+            if (
+                    hasattr(registry_entry.parameters, "queue")
+                    and registry_entry.parameters.queue == "slurm-queue"
+            ):
+                await submit_node(registry_entry)
+            else:
+                return await run_node_from_registry(registry_entry)
+
+        except Exception as e:
+            logger.exception(
+                f"Error running node task_id: {registry_entry.id} on resource {context.config.resource} : {str(e)}"
+            )
+            if registry_entry:
+                registry_entry.status = TaskStatus.FAILED
+                await context.db.save(registry_entry)
+            return False
 
     async def execute(self):
+        if not self._started:
+            await self.write_resource_event(RunnerEventEnum.RUNNER_STARTED)
+            self._started = True
+
         # Clean up the completed tasks
-        completed_tasks = {task for task in self.running_tasks if task.done()}
+        completed_tasks = {task for task in self._running_tasks if task.done()}
         for task in completed_tasks:
             try:
                 await task
             except Exception as e:
                 logger.exception(f"Task completed with error: {e}")
-            self.running_tasks.remove(task)
+            self._running_tasks.remove(task)
 
         # Check for STOP file
         for path in [context.config.workdir, context.config.project_root]:
             stop_file = Path(path) / "STOP"
             if stop_file.exists():
-                await self.manager.write_resource_event(RunnerEventEnum.SHUTDOWN, message="STOP file found")
+                await self.write_resource_event(RunnerEventEnum.SHUTDOWN, message="STOP file found")
                 logger.info(f"STOP file found at {stop_file}, signaling shutdown...")
-                await self.manager.stop_all_services()
+                if self._shutdown_event:
+                    self._shutdown_event.set()
                 return
 
         # Load tasks
-        registry_entry_list = await context.db.load_waiting_tasks_for_resource(self.resource_name)
+        registry_entry_list = await context.db.load_waiting_tasks_for_resource(self._resource_name)
         if registry_entry_list:
-            logger.info(f"Retrieved {len(registry_entry_list)} tasks for {self.resource_name}")
+            logger.info(f"Retrieved {len(registry_entry_list)} tasks for {self._resource_name}")
             for entry in registry_entry_list:
                 task = asyncio.create_task(self._run_with_semaphore(entry))
-                self.running_tasks.add(task)
+                self._running_tasks.add(task)
 
     async def _run_with_semaphore(self, entry):
-        async with self.semaphore:
-            return await self.manager.run_node(entry)
+        async with self._semaphore:
+            return await self.run_node(entry)
 
 
 class RunnerStatusService(BaseService):
-    def __init__(self, manager, interval):
-        super().__init__("RunnerStatus", interval)
-        self.manager = manager
+    def __init__(self, resource: Resource, interval):
+        super().__init__("RunnerStatus", resource, interval)
 
     async def execute(self):
-        await self.manager.write_resource_event(RunnerEventEnum.ALIVE)
+        await self.write_resource_event(RunnerEventEnum.ALIVE)
+
+
+class RunnerCleanupService(BaseService):
+    """
+    Service that cleans up old RunnerEvent logs for the current resource.
+    Removes RESOURCE_RUNNER events older than 30 minutes.
+    """
+
+    def __init__(self, resource: Resource, interval: int = 300):
+        # Default interval 5 minutes
+        super().__init__("RunnerCleanup", resource, interval)
+
+    async def execute(self):
+        cutoff_time = datetime.now() - timedelta(minutes=30)
+        
+        # Find and delete events matching the criteria
+        old_events = await context.db.find_many(
+            RunnerEvent,
+            (RunnerEvent.runner_type == RunnerType.RESOURCE_RUNNER)
+            & (RunnerEvent.resource == self._resource)
+            & (RunnerEvent.timestamp < cutoff_time)
+        )
+
+        if old_events:
+            logger.info(f"Cleaning up {len(old_events)} old RunnerEvent logs for resource {self._resource}")
+            for event in old_events:
+                await context.db.delete(event)
 
 
 class SlurmStatusService(BaseService):
-    def __init__(self, manager, resource_name, interval):
-        super().__init__("SlurmStatus", interval)
-        self.manager = manager
-        self.resource_name = resource_name
+    def __init__(self, resource: Resource, interval):
+        super().__init__("SlurmStatus", resource, interval)
+        self._resource_name = str(resource)
 
     async def execute(self):
         running_jobs = await context.db.engine.find(
             NodeRegistry,
             (NodeRegistry.status == TaskStatus.RUNNING)
-            & (NodeRegistry.parameters.resource == self.manager.resource),
+            & (NodeRegistry.parameters.resource == self._resource),
         )
         for job in running_jobs:
             if job.job_id is not None:
-                slurm_info = get_job_info(job.job_id, job.id, Resource(value=self.resource_name))
+                slurm_info = get_job_info(job.job_id, job.id, Resource(value=self._resource_name))
                 slurm_entry = await context.db.find_one(SlurmInfo, SlurmInfo.job_id == job.job_id)
 
                 if slurm_info:
@@ -262,91 +375,145 @@ class SlurmStatusService(BaseService):
                         job.status = TaskStatus.TIME_OUT
                         await context.db.save(job)
 
-        await clean_slurm_info(self.manager.username, self.manager.resource)
+        await clean_slurm_info(self._username, self._resource)
 
 
 class GitRestartService(BaseService):
     """Service that runs an external script to check git/restart the runner"""
 
-    def __init__(self, manager, resource_name, interval):
-        super().__init__("GitRestart", interval)
-        self.manager = manager
-        self.resource_name = resource_name
+    def __init__(self, resource: Resource, interval):
+        super().__init__("GitRestart", resource, interval)
+        self._resource_name = str(resource)
 
+    def execute(self):
+        raise NotImplementedError("GitRestartService must implement execute()")
+
+class TimeoutRestartService(BaseService):
+    """Service that restarts the runner after a specified timeout"""
+
+    def __init__(self, resource: Resource, timeout_minutes: int):
+        super().__init__("TimeoutRestart", resource, interval=timeout_minutes * 60)
+        self._project_dir = context.config.project_root.resolve(strict=True)
+        self._pid_file = context.config.workdir / "runner.pid"
+        self._timeout_minutes = timeout_minutes
+        self._executed = False
+
+    async def execute(self):
+        # Only execute once after the timeout interval
+        if not self._executed:
+            self._executed = True
+            logger.info(f"Timeout of {self._timeout_minutes} minutes reached. Triggering restart...")
+            await self.write_resource_event(RunnerEventEnum.RESTART_TRIGGERED,
+                                            message=f"Timeout restart after {self._timeout_minutes} minutes")
+            await self.trigger_restart()
+
+    async def trigger_restart(self):
+        """Spawns an independent process to kill current PID and start new one"""
+        current_pid = os.getpid()
+
+        # Write current PID to file so the restarter knows who to kill
+        self._pid_file.write_text(str(current_pid))
+
+        # Command to restart depends on OS
+        script_path = Path(__file__).resolve()
+        args = [sys.executable, str(script_path)] + sys.argv[1:]
+
+        if platform.system() == "Windows":
+            cmd = f"taskkill /F /PID {current_pid} && ping 127.0.0.1 -n 3 > nul && {' '.join(args)}"
+            subprocess.Popen(cmd, shell=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+        else:
+            cmd = f"kill -9 {current_pid} && sleep 2 && {' '.join(args)}"
+            subprocess.Popen(["/bin/bash", "-c", cmd], start_new_session=True)
+
+        logger.info("Restart signal sent. Goodbye!")
 
 
 class RunnerManager:
-    def __init__(self, resource: Resource):
-        self.resource = resource
-        self.pid = os.getpid()
-        self.username = os.environ.get("USER", os.environ.get("USERNAME", "unknown"))
-        self.hostname = socket.gethostname()
-        self.time_started = datetime.now()
-        self.services = []
+    def __init__(self, resource: Resource, no_detach: bool = False):
+        self._resource = resource
+        self._no_detach = no_detach
+        self._pid = os.getpid()
+        self._services = []
+        self._shutdown_event = asyncio.Event()
+        self._pid_file = context.config.workdir / f"runner_{resource}.pid"
+
+    def _is_process_running(self, pid: int) -> bool:
+        """Check if a process with given PID is running"""
+        try:
+            if platform.system() == "Windows":
+                # On Windows, os.kill with signal 0 doesn't work, use tasklist
+                import subprocess
+                result = subprocess.run(
+                    ["tasklist", "/FI", f"PID eq {pid}"],
+                    capture_output=True,
+                    text=True
+                )
+                return str(pid) in result.stdout
+            else:
+                # On Unix, send signal 0 to check if process exists
+                os.kill(pid, 0)
+                return True
+        except (OSError, ProcessLookupError):
+            return False
+
+    def _check_existing_runner(self):
+        """Check if another runner for this resource is already running on this host"""
+        if self._pid_file.exists():
+            try:
+                existing_pid = int(self._pid_file.read_text().strip())
+                if existing_pid != self._pid and self._is_process_running(existing_pid):
+                    logger.error(
+                        f"Another runner for resource '{self._resource}' is already running "
+                        f"on this host with PID {existing_pid}. Exiting."
+                    )
+                    sys.exit(1)
+                else:
+                    logger.info(
+                        f"Stale PID file found for resource '{self._resource}'. "
+                        f"Overwriting with current PID {self._pid}."
+                    )
+            except (ValueError, OSError) as e:
+                logger.warning(f"Could not read PID file: {e}. Proceeding with startup.")
 
     async def stop_all_services(self):
         """Gracefully stop all registered services"""
         logger.info("Stopping all services...")
-        await asyncio.gather(*(s.stop() for s in self.services), return_exceptions=True)
+        await asyncio.gather(*(s.stop() for s in self._services), return_exceptions=True)
 
-    def _get_uptime_string(self) -> str:
-        time_diff = datetime.now() - self.time_started
-        days = time_diff.days
-        hours, remainder = divmod(time_diff.seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{days}d {hours}h {minutes}m {seconds}s"
+    async def run_nodes_for_resource(self, polling_interval=5, max_concurrent=10, timeout=None):
+        """Orchestrates multiple independent services"""
+        # Check if another runner is already running for this resource
+        self._check_existing_runner()
 
-    async def write_node_event(self, event: RunnerEventEnum, node_id: ObjectId, message: str = None):
-        runner_event = RunnerEvent(
-            runner_type=RunnerType.NODE_RUNNER,
-            event=event,
-            pid=self.pid,
-            hostname=self.hostname,
-            user=self.username,
-            resource=self.resource,
-            node_id=node_id,
-            message=message,
-        )
-        await context.db.save(runner_event)
+        # Save PID on startup
+        self._pid_file.write_text(str(self._pid))
 
-    async def write_resource_event(self, event: RunnerEventEnum, message: str = None):
+        self._services = [
+            JobPollingService(self._resource, polling_interval, max_concurrent, self._shutdown_event),
+            RunnerStatusService(self._resource, interval=60),
+            RunnerCleanupService(self._resource, interval=300),
+            SlurmStatusService(self._resource, interval=60),
+            GitUvUpdateService(self._resource, interval=60),  # Advanced check every hour
+        ]
 
-        git_list = make_git_status_list()
-        if event == RunnerEventEnum.ALIVE:
+        # Add timeout restart service if timeout is specified
+        if timeout is not None:
+            self._services.append(TimeoutRestartService(self._resource, timeout))
 
-            time_diff = datetime.now() - self.time_started
-            days = time_diff.days
-            hours, remainder = divmod(time_diff.seconds, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            uptime = f"{days}d {hours}h {minutes}m {seconds}s"
-            message = f"Uptime: {uptime}"
+        # Start all services
+        service_tasks = [service.start() for service in self._services]
 
-            runner_event = await context.db.find_one(
-                RunnerEvent,
-                (RunnerEvent.runner_type == RunnerType.RESOURCE_RUNNER)
-                & (RunnerEvent.resource == self.resource)
-                & (RunnerEvent.event == RunnerEventEnum.ALIVE)
-                & (RunnerEvent.pid == self.pid),
+        try:
+            # Wait for either a service task to finish or the shutdown event to be set
+            shutdown_task = asyncio.create_task(self._shutdown_event.wait())
+            tasks_to_wait = [*service_tasks, shutdown_task]
+            done, pending = await asyncio.wait(
+                tasks_to_wait,
+                return_when=asyncio.FIRST_COMPLETED
             )
-            if runner_event:
-                runner_event.message = message
-                runner_event.timestamp = datetime.now()
-                runner_event.git_status = git_list
-                await context.db.save(runner_event)
-                return  # updated existing event
+        finally:
+            await self.stop_all_services()
 
-        runner_event = RunnerEvent(
-            runner_type=RunnerType.RESOURCE_RUNNER,
-            pid=self.pid,
-            hostname=self.hostname,
-            user=self.username,
-            timestamp=datetime.now(),
-            git_status=git_list,
-            event=event,
-            resource=self.resource,
-            message=message,
-        )
-        await context.db.save(runner_event)
 
     async def run_node(self, registry_entry: NodeRegistry):
         """Run a single node by its ID from the database"""
@@ -358,8 +525,30 @@ class RunnerManager:
                 and registry_entry.parameters.queue == "slurm-queue"
             ):
                 await submit_node(registry_entry)
-            else:
+            elif self._no_detach:
                 return await run_node_from_registry(registry_entry)
+            else:
+                # Spawn independent process
+                cmd = [
+                    "uv", "run", "run_node",
+                    str(registry_entry.id),
+                    "--resource", str(self._resource)
+                ]
+                
+                # Use platform specific flags to ensure the process survives if runner is killed
+                creationflags = 0
+                if platform.system() == "Windows":
+                    creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+                
+                process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                    creationflags=creationflags,
+                    start_new_session=True if platform.system() != "Windows" else False
+                )
+                logger.info(f"Spawned detached process for task_id: {registry_entry.id} with PID: {process.pid}")
+                return True
 
         except Exception as e:
             logger.exception(
@@ -370,39 +559,14 @@ class RunnerManager:
                 await context.db.save(registry_entry)
             return False
 
-    async def run_nodes_for_resource(self, polling_interval=5, max_concurrent=10):
-        """Orchestrates multiple independent services"""
-        # Save PID on startup
-        project_dir =context.config.workdir
-        (project_dir / "runner.pid").write_text(str(os.getpid()))
-        
-        await self.write_resource_event(RunnerEventEnum.RUNNER_STARTED)
-
-        self.services = [
-            JobPollingService(self, str(self.resource), polling_interval, max_concurrent),
-            RunnerStatusService(self, interval=60),
-            SlurmStatusService(self, str(self.resource), interval=30),
-            GitUvUpdateService(self, str(self.resource), interval=60), # Advanced check every hour
-        ]
-
-        # Start all and wait for them
-        tasks = [service.start() for service in self.services]
-        
-        try:
-            # We use gather to keep the manager alive while services run
-            await asyncio.gather(*tasks)
-        except asyncio.CancelledError:
-            await self.stop_all_services()
-            raise
-
-
 async def async_main(args):
     """Async entry point"""
     await context.initialize(resource=args.resource, db_name=args.db_name)
     if args.resource:
         logger.info(f"Setting resource for runner to {args.resource}")
-        runner_manager = RunnerManager(context.config.resource)
-        await runner_manager.run_nodes_for_resource(args.polling_interval, 10)
+        runner_manager = RunnerManager(context.config.resource, no_detach=args.no_detach)
+        await runner_manager.run_nodes_for_resource(args.polling_interval, 10, timeout=args.timeout)
+
 
 def runner_main():
     parser = argparse.ArgumentParser(description="Run nodes for a specific resource")
@@ -424,6 +588,19 @@ def runner_main():
         type=int,
         default=20,
         help="Interval in seconds between polling for new tasks",
+    )
+
+    parser.add_argument(
+        "--no-detach",
+        action="store_true",
+        help="If true, run nodes in the same process as the runner",
+    )
+
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=None,
+        help="Timeout in minutes after which the runner will terminate",
     )
 
     args = parser.parse_args()
