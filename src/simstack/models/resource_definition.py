@@ -7,8 +7,6 @@ from odmantic import Model, Field, EmbeddedModel
 from pydantic import field_validator
 
 from simstack.util.transform_file_name import transform_file_name
-
-
 class GitRepo(Model):
     """
     Represents a Git repository with relevant attributes such as its URL, branch,
