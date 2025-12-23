@@ -5,39 +5,20 @@ import logging
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import node_from_database
-from simstack.models.parameters import Resource
+from simstack.core.runner import run_node_from_registry
 
-logger = logging.getLogger("run node")
+logger = logging.getLogger("Run Node")
 
-
-async def run_node(node_id: str, resource: Resource, project_root: str = None):
+async def run_node_from_id(node_id: str, resource_str: str):
     """Run a single node by its ID from the database"""
-
-    await context.initialize(resource=resource, project_root=project_root)
-
+    await context.initialize(resource=resource_str)
     registry_entry = None
     try:
         registry_entry = await context.db.load_task_by_id(node_id)
-
         if not registry_entry:
             logger.error(f"Node with ID {node_id} not found in the database")
             return False
-        # Create node from the registry entry
-        node = await node_from_database(registry_entry)
-        if not node:
-            logger.error(
-                f"Failed to create node from registry entry task_id: {registry_entry.id}"
-            )
-            registry_entry.status = TaskStatus.FAILED
-            await context.db.save(registry_entry)
-            return False
-        registry_entry = node.registry_entry # it may have changed
-        # if the node was recovered we do not have to run it again
-        if node.status == TaskStatus.SUBMITTED or node.status == TaskStatus.SLURM_QUEUED or node.status == TaskStatus.SLURM_QUEUED:
-            await node.execute_node_locally()
-        else:
-            logger.info(f"task_id: {registry_entry.id} skipping task: {registry_entry.name} with status {registry_entry.status}")
-        return node.status == TaskStatus.COMPLETED
+        return await run_node_from_registry(registry_entry)
     except Exception as e:
         logger.exception(f"Error running node task_id: {node_id}: {str(e)}")
         if registry_entry:
@@ -74,7 +55,7 @@ def run_node_main():
 
     if args.node_id:
         # Run a specific node once
-        asyncio.run(run_node(args.node_id, args.resource, args.project_root))
+        asyncio.run(run_node_from_id(args.node_id, args.resource))
 
 
 if __name__ == "__main__":
