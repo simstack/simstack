@@ -172,7 +172,7 @@ class FileStack(Model):
         :type local_dir: Path
         """
         from simstack.core.context import context
-        return self.get_raw(context.resource, local_dir)
+        return self.get_raw(context.config.resource, local_dir)
 
     def get_raw(self, local_resource: Resource, local_dir: Path = None) -> Path:
         """
