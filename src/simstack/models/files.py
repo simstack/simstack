@@ -164,9 +164,19 @@ class FileStack(Model):
         """
         self.locations.append(file_instance)
 
-    def get(self, local_resource: Resource, local_dir: Path = None) -> Path:
+    def get(self, local_dir: Path = None) -> Path:
         """
-        Copies the file stack to a local directory.
+        Copies the file stack to a local directory. This is the version to be used in applications
+
+        :param local_dir: The local directory to copy the file stack to.
+        :type local_dir: Path
+        """
+        from simstack.core.context import context
+        return self.get_raw(context.resource, local_dir)
+
+    def get_raw(self, local_resource: Resource, local_dir: Path = None) -> Path:
+        """
+        Copies the file stack to a local directory, assumes no context.
 
         :param local_resource: the local resource to copy the file stack to. Defaults to the current resource.
         :param local_dir: The local directory to copy the file stack to.
