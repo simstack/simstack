@@ -80,57 +80,11 @@ async def register_artifact_mapping(artifact_mapping: ArtifactMapping):
     ):
         try:
             # Import the function to verify it exists
-            module_path, function_name = artifact_mapping.function_mapping.rsplit(
-                ".", 1
-            )
-            module = importlib.import_module(module_path)
-            if module is None:
-                logger.error(f"Module {module_path} could not be imported.")
-                raise ImportError(f"Module {module_path} could not be imported.")
-            # Get the function from the module
-            func = getattr(module, function_name)
-
-            if func:
-                # Function import succeeded, now check if it's in a path with use_pickle=True
-                # Check if the module path is in a non-excluded subdirectory of any path in the path registry
-                for path_name, path_info in context.path_manager.paths.items():
-                    # Check if the path has use_pickle=True
-                    current_module_is_child = is_module_subpath_of_path(
-                        module_path, path_info["path"]
-                    )
-                    if path_info.get("use_pickle", True) and current_module_is_child:
-                        # create a FunctionPickle for the function
-                        try:
-                            from simstack.models.pickle_models import FunctionPickle
-
-                            # Create a FunctionPickle for the function
-                            function_pickle = FunctionPickle(
-                                name=func.__name__, module_path=func.__module__
-                            )
-                            function_pickle.store_function(func)
-
-                            # Save the FunctionPickle to the database
-                            await context.db.save(function_pickle)
-
-                            # Associate the FunctionPickle with the ArtifactMapping
-                            artifact_mapping.pickle_function = function_pickle
-
-                            logger.info(
-                                f"Created FunctionPickle for {artifact_mapping.function_mapping}"
-                            )
-                            break  # We only need to create one FunctionPickle
-                        except Exception as e:
-                            logger.error(
-                                f"Error creating FunctionPickle for {artifact_mapping.function_mapping}: {e}"
-                            )
-            else:
-                logger.warning(
-                    f"Could not import function {artifact_mapping.function_mapping}"
-                )
+            func = await function_from_model(artifact_mapping, task_id=None)
+            if not func:
+                logger.warning("Could not import function {artifact_mapping.function_mapping}")
         except Exception as e:
-            logger.error(
-                f"Error processing function {artifact_mapping.function_mapping}: {e}"
-            )
+            logger.error(f"Error processing function {artifact_mapping.function_mapping}: {e}")
     return await context.db.save(artifact_mapping)
 
 

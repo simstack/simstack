@@ -227,9 +227,9 @@ class CreateNodeTable(TableBuilderBase):
                         logger.error(
                             f"Processing module {module.__name__} NodeModel {node_name} already exists in the database\n"
                             + f"                                           DB  Mapping: {existing_model.function_mapping}\n"
-                            + f"                                           New Mapping: {function_mapping} skipping."
+                            + f"                                           New Mapping: {function_mapping}.\n"
+                            + f"                                           New Mapping will overwrite DB Mapping."
                         )
-                        continue
 
                     # Capture the favorite flag from the existing model
                     existing_favorite = getattr(existing_model, "favorite", False)

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from simstack.util.project_root_finder import find_project_root
@@ -11,7 +12,8 @@ def get_module_path(file_path: str):
     project_root = Path(find_project_root())  # Assumes running from project root
     try:
         relative_path = file_path.relative_to(project_root)
-        module_path = str(relative_path.with_suffix("")).replace("/", ".")
+
+        module_path = str(relative_path.with_suffix("")).replace(os.sep, ".")
         return module_path
     except ValueError:
         return None
