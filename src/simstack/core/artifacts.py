@@ -231,31 +231,23 @@ async def create_artifacts(
 
                 for artifact in artifact_result:
                     if artifact is None:
-                        logger.warning(
-                            f"{log_string_mapping} Artifact is None, skipping."
-                        )
+                        logger.warning("{log_string_mapping} Artifact is None, skipping.")
                         continue
                     if isinstance(artifact, TableArtifactModel):
                         artifact.parent_id = node_registry.id
                         saved_artifact = await engine.save(artifact)
-                        logger.debug(
-                            f"{log_string_mapping} new table: {saved_artifact}"
-                        )
+                        logger.debug(f"{log_string_mapping} new table: {saved_artifact}")
                     elif isinstance(artifact, ChartArtifactModel):
                         artifact.parent_id = node_registry.id
                         saved_artifact = await engine.save(artifact)
-                        logger.debug(
-                            f"{log_string_mapping} new table: {saved_artifact}"
-                        )
+                        logger.debug(f"{log_string_mapping} new table: {saved_artifact}")
                     elif isinstance(artifact, ArtifactModel):
                         artifact.path = call_path
                         saved_artifact = await engine.save(artifact)
                         logger.debug(f"{log_string_mapping} new: {saved_artifact}")
                         artifact_list.append(saved_artifact)
                     else:
-                        raise ValueError(
-                            f"{log_string_mapping} not an ArtifactModel object. Got {artifact} instead."
-                        )
+                        raise ValueError(f"{log_string_mapping} not an ArtifactModel object. Got {artifact} instead.")
         else:
             artifact_list = child_artifacts
             logger.debug(f"{log_string} passing child artifacts")

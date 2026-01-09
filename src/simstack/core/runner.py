@@ -230,8 +230,6 @@ class GitUvUpdateService(RestartService):
         return stdout.decode().strip()
     
     async def execute(self):
-        logger.info("Checking for updates (Git + UV)...")
-
         # 1. Git Pull
         # Check checksum before and after pull to see if Git brought a new lockfile
         old_uv_checksum = get_file_checksum(self._uv_lock_path)

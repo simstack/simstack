@@ -10,7 +10,8 @@ readme = "README.md"
 requires-python = ">= 3.12"
 authors = [
     {name = "Wolfgang Wenzel", email = "wolfgang.wenzel@kit.edu"},
-    {name = "Timo Strunk", email = "timo.strunk@nanomatch.de"}
+    {name = "Timo Strunk", email = "timo.strunk@nanomatch.de"},
+
 ]
 license = { text = "MIT" }
 
