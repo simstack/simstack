@@ -118,6 +118,7 @@ async def clean_slurm_info(user: str, resource: Resource):
                 timeout=30,
             )
 
+        logger.info(f"Slurm Jobs {resource}: {result.stdout}")
         if result.returncode == 0:
             job_ids = [line.split()[0] for line in result.stdout.splitlines()]
             # logger.info(f"Cleaning up slurm info for {resource}: {result.stdout}")

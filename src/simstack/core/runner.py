@@ -399,6 +399,8 @@ class SlurmStatusService(BaseService):
                 slurm_info = get_job_info(job.job_id, job.id, Resource(value=self._resource_name))
                 slurm_entry = await context.db.find_one(SlurmInfo, SlurmInfo.job_id == job.job_id)
 
+                logger.info(f"Slurm status for task_id: {job.task_id}: {job.job_id} {slurm_info}")
+
                 if slurm_info:
                     if slurm_entry:
                         slurm_entry.code = slurm_info.code

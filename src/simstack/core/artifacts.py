@@ -100,7 +100,7 @@ async def find_all_artifacts(node_registry: NodeRegistry) -> List[ArtifactModel]
 
 async def create_artifacts(
     artifact_arguments: ArtifactArguments, node_registry: NodeRegistry
-) -> List[ArtifactModel]:
+) -> List[ObjectId]:
     try:
         call_path = node_registry.call_path
         task_id = node_registry.id
