@@ -233,9 +233,13 @@ class GitUvUpdateService(RestartService):
         # 1. Git Pull
         # Check checksum before and after pull to see if Git brought a new lockfile
         old_uv_checksum = get_file_checksum(self._uv_lock_path)
+        
+        # Ensure we don't have local lockfile changes that block the pull
+        await self._run_command(["git", "checkout", "uv.lock"])
+        
         git_output = await self._run_command(["git", "pull"])
         git_changed = "Already up to date." not in git_output
-        
+    
         # Did Git update our lockfile?
         post_git_checksum = get_file_checksum(self._uv_lock_path)
         uv_received_update = old_uv_checksum != post_git_checksum
