@@ -2,6 +2,7 @@ from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView
 
 from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
 
+from server.routes.user_model_routes import get_model
 from simstack.core.asnyc_helper import async_helper
 from simstack.core.context import context
 from simstack.core.engine import current_engine_context
@@ -60,7 +61,7 @@ class DataSetSection(EmbeddedModel):
 
         self.data.append(model_ids)
 
-    async def make_column_defs(self):
+    async def make_column_defs(self, user):
         """
         Generate ag-grid column definitions for all model types in this section.
 
@@ -71,24 +72,30 @@ class DataSetSection(EmbeddedModel):
             return column_defs
         engine = current_engine_context.get()
         for model_group_id, model_type in zip(self.data[0], self.model_types):
-            model_class = await import_class_by_name(model_type)
-            model_instance = await engine.find_one(
-                model_class, model_class.id == model_group_id
-            )
+            # model_class = await import_class_by_name(model_type)
+            # model_instance = await engine.find_one(
+            #     model_class, model_class.id == model_group_id
+            # )
+            result_dict = await get_model(model_type, str(model_group_id), user)
+
             model_columns = make_column_defs_instance(model_instance)
             column_defs.extend(model_columns)
         return column_defs
 
-    async def make_table_entries(self):
+    async def make_table_entries(self, user):
         all_data = []
         engine = current_engine_context.get()
+
         for model_group_ids in self.data:
             data = []
             for model_group_id, model_type in zip(model_group_ids, self.model_types):
-                model_class = await import_class_by_name(model_type)
-                model_instance = await engine.find_one(
-                    model_class, model_class.id == model_group_id
-                )
+
+
+                #model_class = await import_class_by_name(model_type)
+                #model_instance = await engine.find_one(
+                #    model_class, model_class.id == model_group_id
+                #)
+                result_dict = await get_model(model_type,str(model_group_id), user)
                 model_data = make_table_entries_helper(model_instance)
                 data.append(model_data)
             all_data.append(data)
