@@ -251,7 +251,15 @@ class GitUvUpdateService(RestartService):
             await self._run_command(["uv", "sync"]) # Update local .venv
             await self._run_command(["git", "add", "uv.lock"])
             await self._run_command(["git", "commit", "-m", f"chore: automated uv lock upgrade {datetime.now().isoformat()}"])
-            await self._run_command(["git", "push"])
+            try:
+                # First, pull remote changes to synchronize
+                # Using --rebase to keep history clean and avoid merge commits
+                await self._run_command(["git", "pull", "--rebase"])
+
+                # Now attempt the push
+                await self._run_command(["git", "push"])
+            except Exception as e:
+                logger.warning(f"Failed to synchronize with git: {e}")
         
         elif uv_received_update:
             logger.info("New uv.lock received from Git. Syncing environment...")
