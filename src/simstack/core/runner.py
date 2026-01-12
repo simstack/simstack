@@ -235,8 +235,8 @@ class GitUvUpdateService(RestartService):
         old_uv_checksum = get_file_checksum(self._uv_lock_path)
         
         # Ensure we don't have local lockfile changes that block the pull
-        await self._run_command(["git", "checkout", "uv.lock"])
-        
+        await self._run_command(["git", "stash"])
+
         git_output = await self._run_command(["git", "pull"])
         git_changed = "Already up to date." not in git_output
     
