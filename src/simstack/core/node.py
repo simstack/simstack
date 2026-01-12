@@ -641,9 +641,7 @@ class Node:
             if result.message is not None and result.message != "":
                 logger.info(f"Task task_id: {self.id} message: {result.message}")
             if len(result_ids) == 1:
-                result = result_models[
-                    0
-                ]  # this is a SimstackResult with just one returned model
+                result = result_models[0]  # this is a SimstackResult with just one returned model
         return new_task_status, result
 
     async def set_status(self, status: TaskStatus):

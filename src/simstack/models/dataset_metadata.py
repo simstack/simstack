@@ -95,8 +95,8 @@ class DataSetMetadata(EmbeddedModel):
                     save_template = True
                     self.structure[section] = content
             else:
-                # if there is no content in a section, we can just copy it from the reference metadata
                 new_structure[section] = reference_metadata.structure[section]
+
 
         if save_template:
             reference_metadata.structure = new_structure

@@ -389,17 +389,20 @@ class SlurmStatusService(BaseService):
         self._resource_name = str(resource)
 
     async def execute(self):
-        running_jobs = await context.db.engine.find(
+        running_tasks = await context.db.engine.find(
             NodeRegistry,
             (NodeRegistry.status == TaskStatus.RUNNING)
             & (NodeRegistry.parameters.resource == self._resource),
         )
-        for job in running_jobs:
-            if job.job_id is not None:
-                slurm_info = get_job_info(job.job_id, job.id, Resource(value=self._resource_name))
-                slurm_entry = await context.db.find_one(SlurmInfo, SlurmInfo.job_id == job.job_id)
 
-                logger.info(f"Slurm status for task_id: {job.task_id}: {job.job_id} {slurm_info}")
+        for task in running_tasks:
+            logger.info(f"Checking Slurm status for {task} running jobs")
+            if task.job_id is not None:
+                slurm_info = get_job_info(task.job_id, task.id, Resource(value=self._resource_name))
+                logger.info(f"Slurm status for task_id: {task.task_id}: {task.job_id} {slurm_info}")
+                slurm_entry = await context.db.find_one(SlurmInfo, SlurmInfo.job_id == task.job_id)
+
+                logger.info(f"Slurm status for task_id: {task.task_id}: {task.job_id} {slurm_info}")
 
                 if slurm_info:
                     if slurm_entry:
@@ -411,15 +414,15 @@ class SlurmStatusService(BaseService):
                         await context.db.save(slurm_info)
                 else:
                     # Logic for finished/timed out jobs
-                    check_job = await context.db.engine.find_one(NodeRegistry, NodeRegistry.id == job.id)
+                    check_job = await context.db.engine.find_one(NodeRegistry, NodeRegistry.id == task.id)
                     if slurm_entry:
                         await context.db.delete(slurm_entry)
                     if check_job.status == TaskStatus.RUNNING:
-                        job.job_id = None
-                        job.status = TaskStatus.TIME_OUT
-                        await context.db.save(job)
+                        task.job_id = None
+                        task.status = TaskStatus.TIME_OUT
+                        await context.db.save(task)
 
-        await clean_slurm_info(self._username, self._resource)
+        #await clean_slurm_info(self._username, self._resource)
 
 
 class GitRestartService(BaseService):
