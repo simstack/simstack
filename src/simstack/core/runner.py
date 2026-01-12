@@ -239,7 +239,10 @@ class GitUvUpdateService(RestartService):
 
         git_output = await self._run_command(["git", "pull"])
         git_changed = "Already up to date." not in git_output
-    
+
+        # Clear the stash now that we've pulled
+        await self._run_command(["git", "stash", "drop"])
+
         # Did Git update our lockfile?
         post_git_checksum = get_file_checksum(self._uv_lock_path)
         uv_received_update = old_uv_checksum != post_git_checksum
