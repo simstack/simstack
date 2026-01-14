@@ -298,7 +298,7 @@ class TestDataSet:
         loaded_dataset = await context.db.find_one(DataSet, DataSet.id == dataset_id)
 
         assert loaded_dataset is not None
-        assert loaded_dataset.dataset_type == "test_persistence"
+        assert loaded_dataset.field_name == "test_persistence"
         assert len(loaded_dataset) == 1
         assert "main" in loaded_dataset
 

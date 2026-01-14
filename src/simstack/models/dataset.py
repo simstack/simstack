@@ -1,8 +1,6 @@
-from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List
+from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List, Any
 
 from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
-
-from server.routes.user_model_routes import get_model
 from simstack.core.asnyc_helper import async_helper
 from simstack.core.context import context
 from simstack.core.engine import current_engine_context
@@ -35,6 +33,14 @@ class DataSetSection(EmbeddedModel):
         default_factory=list
     )  # List of tuples (as lists of ObjectIds)
 
+    column_defs: List[Dict[str, Any]] = Field(
+        default_factory=list
+    )
+
+    table_entries: List[List[Any]] = Field(
+        default_factory=list
+    )
+
     model_config = {"extra": "forbid"}
 
     def add_model_group(self, models: Union[Model, Tuple[Model, ...]]) -> None:
@@ -61,7 +67,7 @@ class DataSetSection(EmbeddedModel):
 
         self.data.append(model_ids)
 
-    async def make_column_defs(self, user):
+    async def make_column_defs(self):
         """
         Generate ag-grid column definitions for all model types in this section.
 
@@ -72,30 +78,25 @@ class DataSetSection(EmbeddedModel):
             return column_defs
         engine = current_engine_context.get()
         for model_group_id, model_type in zip(self.data[0], self.model_types):
-            # model_class = await import_class_by_name(model_type)
-            # model_instance = await engine.find_one(
-            #     model_class, model_class.id == model_group_id
-            # )
-            result_dict = await get_model(model_type, str(model_group_id), user)
-
+            model_class = await import_class_by_name(model_type)
+            model_instance = await engine.find_one(
+                model_class, model_class.id == model_group_id
+            )
             model_columns = make_column_defs_instance(model_instance)
             column_defs.extend(model_columns)
         return column_defs
 
-    async def make_table_entries(self, user):
+    async def make_table_entries(self):
         all_data = []
         engine = current_engine_context.get()
 
         for model_group_ids in self.data:
             data = []
             for model_group_id, model_type in zip(model_group_ids, self.model_types):
-
-
-                #model_class = await import_class_by_name(model_type)
-                #model_instance = await engine.find_one(
-                #    model_class, model_class.id == model_group_id
-                #)
-                result_dict = await get_model(model_type,str(model_group_id), user)
+                model_class = await import_class_by_name(model_type)
+                model_instance = await engine.find_one(
+                   model_class, model_class.id == model_group_id
+                )
                 model_data = make_table_entries_helper(model_instance)
                 data.append(model_data)
             all_data.append(data)
@@ -339,7 +340,7 @@ class DataSetSection(EmbeddedModel):
 
 @simstack_model
 class DataSet(Model):
-    name: str = Field(default="dataset")
+    field_name: str = Field(default="dataset")
     metadata: DataSetMetadata = Reference()
     sections: Dict[str, DataSetSection] = Field(default_factory=dict)
 
@@ -347,7 +348,7 @@ class DataSet(Model):
 
     @property
     def dataset_type(self) -> str:
-        return self.metadata.dataset_type
+        return self.metadata.field_name
 
     async def save(self, engine):
         # engine = current_engine_context.get()
@@ -355,6 +356,9 @@ class DataSet(Model):
         ok = await self.metadata.validate_dict(structure)
         if not ok:
             raise ValueError("Metadata validation failed")
+        for section in self.sections.values():
+            section.column_defs = await section.make_column_defs()
+            section.table_entries = await section.make_table_entries()
         await engine.save_unchecked(self)
 
     async def custom_model_dump(self, **kwargs) -> Dict[str, str]:

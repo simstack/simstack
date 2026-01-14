@@ -50,7 +50,7 @@ class DataSetMetadataTemplate(Model):
 
 @simstack_model
 class DataSetMetadata(EmbeddedModel):
-    dataset_type: str = Field(unique=True)
+    field_name: str = Field(unique=True)
     data: Dict[str, Union[str, int, float, bool, datetime]] = Field(
         default_factory=dict
     )
@@ -64,11 +64,11 @@ class DataSetMetadata(EmbeddedModel):
         engine = current_engine_context.get()
         reference_metadata = await engine.find_one(
             DataSetMetadataTemplate,
-            DataSetMetadataTemplate.dataset_type == self.dataset_type,
+            DataSetMetadataTemplate.dataset_type == self.field_name,
         )
         if reference_metadata is None:
             metadata_template = DataSetMetadataTemplate(
-                dataset_type=self.dataset_type,
+                dataset_type=self.field_name,
                 model_json=_get_json_schema(self.data),
                 structure=new_structure,
             )
@@ -109,7 +109,7 @@ class DataSetMetadata(EmbeddedModel):
         engine = current_engine_context.get()
         reference_metadata = await engine.find_one(
             DataSetMetadataTemplate,
-            DataSetMetadataTemplate.dataset_type == self.dataset_type,
+            DataSetMetadataTemplate.dataset_type == self.field_name,
         )
         if not reference_metadata:
             raise ValueError("Metadata does not exist")
@@ -126,7 +126,7 @@ class DataSetMetadata(EmbeddedModel):
     def initialized(self) -> bool:
         """Check if the model has been fully constructed."""
         # A simple heuristic: if we have an ID or if type is set, we're initialized
-        return hasattr(self, "dataset_type") and self.dataset_type is not None
+        return hasattr(self, "dataset_type") and self.field_name is not None
 
     # Dict-like behavior methods
     def __getitem__(self, key: str):
