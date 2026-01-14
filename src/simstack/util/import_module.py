@@ -3,8 +3,6 @@ import logging
 import sys
 from pathlib import Path
 
-from simstack.util.project_root_finder import find_project_root
-
 logger = logging.getLogger("import_module_from_file")
 
 
