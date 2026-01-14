@@ -233,16 +233,23 @@ class GitUvUpdateService(RestartService):
         # 1. Git Pull
         # Check checksum before and after pull to see if Git brought a new lockfile
         old_uv_checksum = get_file_checksum(self._uv_lock_path)
+        
+        # Ensure we don't have local lockfile changes that block the pull
+        await self._run_command(["git", "stash"])
+
         git_output = await self._run_command(["git", "pull"])
         git_changed = "Already up to date." not in git_output
-        
+
+        # Clear the stash now that we've pulled
+        await self._run_command(["git", "stash", "drop"])
+
         # Did Git update our lockfile?
         post_git_checksum = get_file_checksum(self._uv_lock_path)
         uv_received_update = old_uv_checksum != post_git_checksum
 
         # 2. UV Lock upgrade (The "Producer" check)
-        # Even if git didn't change, we check if newer packages exist on PyPI
-        await self._run_command(["uv", "lock", "--upgrade"])
+        # check if the simstack package was updated
+        await self._run_command(["uv", "lock", "--upgrade-package", "simstack"])
         new_uv_checksum = get_file_checksum(self._uv_lock_path)
         uv_locally_upgraded = post_git_checksum != new_uv_checksum
 
@@ -402,9 +409,9 @@ class SlurmStatusService(BaseService):
             (NodeRegistry.status == TaskStatus.RUNNING)
             & (NodeRegistry.parameters.resource == self._resource),
         )
-
+        logger.info(f"Checking Slurm status for {len(running_tasks)} {self._resource} running jobs")
         for task in running_tasks:
-            logger.info(f"Checking Slurm status for {task} running jobs")
+            logger.info(f"Checking Slurm status for {task.task_id} with job_id: {task.job_id} running jobs")
             if task.job_id is not None:
                 slurm_info = get_job_info(task.job_id, task.id, Resource(value=self._resource_name))
                 logger.info(f"Slurm status for task_id: {task.task_id}: {task.job_id} {slurm_info}")
