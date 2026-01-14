@@ -11,7 +11,7 @@ class TestDataSetMetadataBasic:
     def test_empty_initialization(self):
         """Test creating an empty DataSetMetadata."""
         metadata = DataSetMetadata(dataset_type="test_empty")
-        assert metadata.dataset_type == "test_empty"
+        assert metadata.field_name == "test_empty"
         assert metadata.data == {}
         assert metadata.initialized is True
         assert len(metadata) == 0
@@ -26,7 +26,7 @@ class TestDataSetMetadataBasic:
         }
         metadata = DataSetMetadata(dataset_type="experiment_basic", data=initial_data)
 
-        assert metadata.dataset_type == "experiment_basic"
+        assert metadata.field_name == "experiment_basic"
         assert metadata.data == initial_data
         assert metadata.initialized is True
         assert len(metadata) == 4
@@ -389,8 +389,8 @@ class TestDataSetMetadataStructureValidation:
             data={"name": "analysis_2", "count": 200, "active": False},
         )
 
-        assert metadata1.dataset_type == "analysis_type_1"
-        assert metadata2.dataset_type == "analysis_type_2"
+        assert metadata1.field_name == "analysis_type_1"
+        assert metadata2.field_name == "analysis_type_2"
 
     @pytest.mark.asyncio
     @pytest.mark.skip(reason="Not yet implemented")
@@ -462,7 +462,7 @@ class TestDataSetMetadataStructureValidation:
         )
         # This should succeed
 
-        assert metadata2.dataset_type == "valid_same_structure"
+        assert metadata2.field_name == "valid_same_structure"
 
 
 class TestDataSetMetadataEdgeCases:
