@@ -34,6 +34,10 @@ class DataSetSection(EmbeddedModel):
         default_factory=list
     )  # List of tuples (as lists of ObjectIds)
 
+    column_defs: List[Dict] = Field(default_factory=list)
+
+    table_entries: List[List[Dict]] = Field(default_factory=list)
+
     model_config = {"extra": "forbid"}
 
     def add_model_group(self, models: Union[Model, Tuple[Model, ...]]) -> None:
@@ -60,7 +64,7 @@ class DataSetSection(EmbeddedModel):
 
         self.data.append(model_ids)
 
-    async def make_column_defs(self, user):
+    async def make_column_defs(self):
         """
         Generate ag-grid column definitions for all model types in this section.
 
@@ -79,7 +83,7 @@ class DataSetSection(EmbeddedModel):
             column_defs.extend(model_columns)
         return column_defs
 
-    async def make_table_entries(self, user):
+    async def make_table_entries(self):
         all_data = []
         engine = current_engine_context.get()
 
@@ -334,7 +338,7 @@ class DataSetSection(EmbeddedModel):
 
 @simstack_model
 class DataSet(Model):
-    name: str = Field(default="dataset")
+    field_name: str = Field(default="dataset")
     metadata: DataSetMetadata = Reference()
     sections: Dict[str, DataSetSection] = Field(default_factory=dict)
 
@@ -350,6 +354,11 @@ class DataSet(Model):
         ok = await self.metadata.validate_dict(structure)
         if not ok:
             raise ValueError("Metadata validation failed")
+
+        for key, section in self.sections.items():
+            self.sections[key].column_defs = await section.make_column_defs()
+            self.sections[key].table_entries = await section.make_table_entries()
+
         await engine.save_unchecked(self)
 
     async def custom_model_dump(self, **kwargs) -> Dict[str, str]:
