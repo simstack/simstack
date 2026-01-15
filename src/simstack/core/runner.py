@@ -220,7 +220,7 @@ class GitUvUpdateService(RestartService):
         self._project_dir = context.config.project_root.resolve(strict=True)
         self._uv_lock_path = context.config.project_root / "uv.lock"
 
-    async def _run_command(self, cmd: list) -> str:
+    async def _run_command(self, cmd: list, ignore_error=False) -> str:
         """Run a shell command and return output"""
         process = await asyncio.create_subprocess_exec(
             *cmd,
@@ -229,7 +229,7 @@ class GitUvUpdateService(RestartService):
             stderr=asyncio.subprocess.PIPE
         )
         stdout, stderr = await process.communicate()
-        if process.returncode != 0:
+        if process.returncode != 0 and not ignore_error:
             logger.warning(f"Command {' '.join(cmd)} failed: {stderr.decode()}")
         return stdout.decode().strip()
     
@@ -239,7 +239,8 @@ class GitUvUpdateService(RestartService):
         old_uv_checksum = get_file_checksum(self._uv_lock_path)
         
         # Ensure we don't have local lockfile changes that block the pull
-        await self._run_command(["git", "stash"])
+
+        await self._run_command(["git", "stash"], ignore_error=True)
 
         git_output = await self._run_command(["git", "pull"])
         git_changed = "Already up to date." not in git_output
@@ -414,15 +415,15 @@ class SlurmStatusService(BaseService):
                 (NodeRegistry.status == TaskStatus.RUNNING)
                 & (NodeRegistry.parameters.resource == self._resource),
             )
-            logger.info(f"Checking Slurm status for {len(running_tasks)} running jobs on resource {self._resource}")
+            #logger.info(f"Checking Slurm status for {len(running_tasks)} running jobs on resource {self._resource}")
             for task in running_tasks:
-                logger.info(f"Checking Slurm status for task_id: {task.id} with job_id: {task.job_id} running jobs")
+                logger.info(f"Checking Slurm status for task_id: {task.id} with job_id: {task.job_id}")
                 if task.job_id is not None:
                     slurm_info = get_job_info(task.job_id, task.id, Resource(value=self._resource_name))
                     logger.info(f"Slurm status for task_id: {task.id}: {task.job_id} {slurm_info}")
                     slurm_entry = await context.db.find_one(SlurmInfo, SlurmInfo.job_id == task.job_id)
 
-                    logger.info(f"Slurm DB Entry for task_id: {task.id}: {task.job_id} {slurm_info}")
+                    #logger.info(f"Slurm DB Entry for task_id: {task.id}: {task.job_id} {slurm_info}")
 
                     if slurm_info:
                         if slurm_entry:
