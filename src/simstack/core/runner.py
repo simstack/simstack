@@ -411,7 +411,7 @@ class SlurmStatusService(BaseService):
         )
         logger.info(f"Checking Slurm status for {len(running_tasks)} {self._resource} running jobs")
         for task in running_tasks:
-            logger.info(f"Checking Slurm status for {task.id} with job_id: {task.job_id} running jobs")
+            logger.info(f"Checking Slurm status for task_id: {task.id} with job_id: {task.job_id} running jobs")
             if task.job_id is not None:
                 slurm_info = get_job_info(task.job_id, task.id, Resource(value=self._resource_name))
                 logger.info(f"Slurm status for task_id: {task.task_id}: {task.job_id} {slurm_info}")
