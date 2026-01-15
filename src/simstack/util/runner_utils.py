@@ -46,11 +46,12 @@ def get_job_info(job_id: str, task_id: ObjectId, resource: Resource) -> SlurmInf
     """Get job information from SLURM queue using squeue"""
     try:
         result = run_squeue_for_job(job_id)
+        logger.info(f"task_id: {task_id} running squeue for job {job_id}: result: {result}")
         if result.returncode == 0:
             if not result.stdout or result.stdout == "":
                 return None
             lines = result.stdout.splitlines()
-            logger.info(f"slurm info for job {job_id}: {lines}")
+            logger.info(f"task_id: {task_id} slurm info for job {job_id}: {lines}")
             if len(lines) < 2:
                 return None
             # The first line is the header; the second line is the single info line
@@ -60,7 +61,7 @@ def get_job_info(job_id: str, task_id: ObjectId, resource: Resource) -> SlurmInf
                 return None
             # Split the single line into parts separated by whitespace
             parts = re.split(r"\s+", info_line)
-            logger.info(f"slurm info for job {job_id}: {parts}")
+            logger.info(f"task_id: {task_id} slurm info for job {job_id}: {parts}")
             # Expected default squeue columns:
             # JOBID PARTITION NAME USER ST TIME NODES NODELIST(REASON)
             name = parts[2] if len(parts) > 2 else ""
