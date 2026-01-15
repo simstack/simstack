@@ -45,18 +45,19 @@ def run_squeue_for_job(job_id: str) -> str:
 def get_job_info(job_id: str, task_id: ObjectId, resource: Resource) -> SlurmInfo | None:
     """Get job information from SLURM queue using squeue"""
     try:
-        result = run_squeue_for_job(job_id)
-        logger.info(f"task_id: {task_id} running squeue for job {job_id}: result: {result}")
-        if result.returncode == 0:
-            if not result.stdout or result.stdout == "":
-                return None
-            lines = result.stdout.splitlines()
-            logger.info(f"task_id: {task_id} slurm info for job {job_id}: {lines}")
-            if len(lines) < 2:
-                return None
-            # The first line is the header; the second line is the single info line
+        stdout = run_squeue_for_job(job_id)
+        logger.info(f"task_id: {task_id} running squeue for job {job_id}: result: {stdout}")
+        
+        if not stdout or stdout.strip() == "":
+            return None
+        
+        lines = stdout.splitlines()
+        logger.info(f"task_id: {task_id} slurm info for job {job_id}: {lines}")
+        if len(lines) < 2:
+            return None
+        # The first line is the header; the second line is the single info line
 
-            info_line = lines[1].strip()
+        info_line = lines[1].strip()
             if not info_line:
                 return None
             # Split the single line into parts separated by whitespace
