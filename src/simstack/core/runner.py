@@ -184,6 +184,10 @@ class RestartService(BaseService, ABC):
         # We use sys.executable to ensure we use the same Python interpreter
         # We'll call the runner module again
         script_path = Path(__file__).resolve()
+
+
+        log_file = script_path.parent / "runner.out"
+
         args = [sys.executable, str(script_path)] + sys.argv[1:]
 
         # We need a small helper script or a one-liner that:
@@ -192,12 +196,12 @@ class RestartService(BaseService, ABC):
         if platform.system() == "Windows":
             # Windows 'start' command handles detachment well
             # Use ping for a 2-second delay as 'timeout' fails in non-interactive shells
-            cmd = f"taskkill /F /PID {current_pid} && ping 127.0.0.1 -n 3 > nul && {' '.join(args)}"
+            cmd = f"taskkill /F /PID {current_pid} && ping 127.0.0.1 -n 3 > nul && {' '.join(args)} >> \"{log_file}\" 2>&1"
             subprocess.Popen(cmd, shell=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
         else:
             # Linux: use a subshell that nohup/disowns
             # Kill, wait, and start
-            cmd = f"kill -9 {current_pid} && sleep 2 && {' '.join(args)}"
+            cmd = f"kill -9 {current_pid} && sleep 2 && {' '.join(args)} >> \"{log_file}\" 2>&1"
             subprocess.Popen(["/bin/bash", "-c", cmd], start_new_session=True)
 
         # The above commands kill us, so this line might not even log
@@ -404,38 +408,41 @@ class SlurmStatusService(BaseService):
         self._resource_name = str(resource)
 
     async def execute(self):
-        running_tasks = await context.db.engine.find(
-            NodeRegistry,
-            (NodeRegistry.status == TaskStatus.RUNNING)
-            & (NodeRegistry.parameters.resource == self._resource),
-        )
-        logger.info(f"Checking Slurm status for {len(running_tasks)} {self._resource} running jobs")
-        for task in running_tasks:
-            logger.info(f"Checking Slurm status for task_id: {task.id} with job_id: {task.job_id} running jobs")
-            if task.job_id is not None:
-                slurm_info = get_job_info(task.job_id, task.id, Resource(value=self._resource_name))
-                logger.info(f"Slurm status for task_id: {task.id}: {task.job_id} {slurm_info}")
-                slurm_entry = await context.db.find_one(SlurmInfo, SlurmInfo.job_id == task.job_id)
+        try:
+            running_tasks = await context.db.engine.find(
+                NodeRegistry,
+                (NodeRegistry.status == TaskStatus.RUNNING)
+                & (NodeRegistry.parameters.resource == self._resource),
+            )
+            logger.info(f"Checking Slurm status for {len(running_tasks)} running jobs on resource {self._resource}")
+            for task in running_tasks:
+                logger.info(f"Checking Slurm status for task_id: {task.id} with job_id: {task.job_id} running jobs")
+                if task.job_id is not None:
+                    slurm_info = get_job_info(task.job_id, task.id, Resource(value=self._resource_name))
+                    logger.info(f"Slurm status for task_id: {task.id}: {task.job_id} {slurm_info}")
+                    slurm_entry = await context.db.find_one(SlurmInfo, SlurmInfo.job_id == task.job_id)
 
-                logger.info(f"Slurm status for task_id: {task.id}: {task.job_id} {slurm_info}")
+                    logger.info(f"Slurm status for task_id: {task.id}: {task.job_id} {slurm_info}")
 
-                if slurm_info:
-                    if slurm_entry:
-                        slurm_entry.code = slurm_info.code
-                        slurm_entry.time = slurm_info.time
-                        slurm_entry.updated = datetime.now()
-                        await context.db.save(slurm_entry)
+                    if slurm_info:
+                        if slurm_entry:
+                            slurm_entry.code = slurm_info.code
+                            slurm_entry.time = slurm_info.time
+                            slurm_entry.updated = datetime.now()
+                            await context.db.save(slurm_entry)
+                        else:
+                            await context.db.save(slurm_info)
                     else:
-                        await context.db.save(slurm_info)
-                else:
-                    # Logic for finished/timed out jobs
-                    check_job = await context.db.engine.find_one(NodeRegistry, NodeRegistry.id == task.id)
-                    if slurm_entry:
-                        await context.db.delete(slurm_entry)
-                    if check_job.status == TaskStatus.RUNNING:
-                        task.job_id = None
-                        task.status = TaskStatus.TIME_OUT
-                        await context.db.save(task)
+                        # Logic for finished/timed out jobs
+                        check_job = await context.db.engine.find_one(NodeRegistry, NodeRegistry.id == task.id)
+                        if slurm_entry:
+                            await context.db.delete(slurm_entry)
+                        if check_job.status == TaskStatus.RUNNING:
+                            task.job_id = None
+                            task.status = TaskStatus.TIME_OUT
+                            await context.db.save(task)
+        except Exception as e:
+            logger.exception(f"Error checking Slurm status: {e}")
 
         #await clean_slurm_info(self._username, self._resource)
 
