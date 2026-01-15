@@ -32,20 +32,13 @@ def make_git_status_list() -> List[str]:
 
 
 def run_squeue_for_job(job_id: str) -> str:
-    if context.config.docker:
-        result = subprocess.run(
-            f"squeue -j {job_id}",
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-    else:
-        watchdog_id = f"slurm_{uuid.uuid4()}"
-        queue_dir = context.config.workdir / "queue"
-        result = submit_to_watchdog(
-            f"squeue -j {job_id}", watchdog_id, queue_dir=queue_dir
-        )
+    result = subprocess.run(
+        f"squeue -j {job_id}",
+        shell=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
     return result.stdout
 
 
