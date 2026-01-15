@@ -47,10 +47,11 @@ def get_job_info(job_id: str, task_id: ObjectId, resource: Resource) -> SlurmInf
     try:
         stdout = run_squeue_for_job(job_id)
         logger.info(f"task_id: {task_id} running squeue for job {job_id}: result: {stdout}")
-        
+
         if not stdout or stdout.strip() == "":
+            # after a while slurm will stop returning info for jobs that are no longer running
             return None
-        
+
         lines = stdout.splitlines()
         logger.info(f"task_id: {task_id} slurm info for job {job_id}: {lines}")
         if len(lines) < 2:
@@ -58,38 +59,34 @@ def get_job_info(job_id: str, task_id: ObjectId, resource: Resource) -> SlurmInf
         # The first line is the header; the second line is the single info line
 
         info_line = lines[1].strip()
-            if not info_line:
-                return None
-            # Split the single line into parts separated by whitespace
-            parts = re.split(r"\s+", info_line)
-            logger.info(f"task_id: {task_id} slurm info for job {job_id}: {parts}")
-            # Expected default squeue columns:
-            # JOBID PARTITION NAME USER ST TIME NODES NODELIST(REASON)
-            name = parts[2] if len(parts) > 2 else ""
-            user = parts[3] if len(parts) > 3 else ""
-            code = parts[4] if len(parts) > 4 else ""
-            time_str = parts[5] if len(parts) > 5 else ""
-            nodelist_raw = parts[7] if len(parts) > 7 else ""
-            # Split nodelist on commas or whitespace, filter empties
-            nodes = [n for n in re.split(r"[,\s]+", nodelist_raw) if n]
-
-            slurm_info = SlurmInfo(
-                node_registry=task_id,
-                resource=resource,
-                job_id=job_id,
-                updated=datetime.now(),
-                name=name,
-                user=user,
-                code=code,
-                time=time_str,
-                nodes=nodes,
-            )
-
-            return slurm_info
-        else:
-            # after a while slurm will stop returning info for jobs that are no longer running
-            # logger.error(f"Failed to get info for job {job_id}: {result.stderr}")
+        if not info_line:
             return None
+        # Split the single line into parts separated by whitespace
+        parts = re.split(r"\s+", info_line)
+        logger.info(f"task_id: {task_id} slurm info for job {job_id}: {parts}")
+        # Expected default squeue columns:
+        # JOBID PARTITION NAME USER ST TIME NODES NODELIST(REASON)
+        name = parts[2] if len(parts) > 2 else ""
+        user = parts[3] if len(parts) > 3 else ""
+        code = parts[4] if len(parts) > 4 else ""
+        time_str = parts[5] if len(parts) > 5 else ""
+        nodelist_raw = parts[7] if len(parts) > 7 else ""
+        # Split nodelist on commas or whitespace, filter empties
+        nodes = [n for n in re.split(r"[,\s]+", nodelist_raw) if n]
+
+        slurm_info = SlurmInfo(
+            node_registry=task_id,
+            resource=resource,
+            job_id=job_id,
+            updated=datetime.now(),
+            name=name,
+            user=user,
+            code=code,
+            time=time_str,
+            nodes=nodes,
+        )
+
+        return slurm_info
     except Exception as e:
         logger.exception(f"Error getting job info for {job_id}: {str(e)}")
         return None
