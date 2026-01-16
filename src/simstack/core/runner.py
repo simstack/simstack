@@ -259,19 +259,9 @@ class GitUvUpdateService(RestartService):
         uv_locally_upgraded = post_git_checksum != new_uv_checksum
 
         if uv_locally_upgraded:
-            logger.info("Local uv.lock upgrade detected. Syncing and pushing...")
-            await self._run_command(["uv", "sync"]) # Update local .venv
-            await self._run_command(["git", "add", "uv.lock"])
-            await self._run_command(["git", "commit", "-m", f"chore: automated uv lock upgrade {datetime.now().isoformat()}"])
-            try:
-                # First, pull remote changes to synchronize
-                # Using --rebase to keep history clean and avoid merge commits
-                await self._run_command(["git", "pull", "--rebase"])
-
-                # Now attempt the push
-                await self._run_command(["git", "push"])
-            except Exception as e:
-                logger.warning(f"Failed to synchronize with git: {e}")
+            logger.info("Local uv.lock upgrade detected. Syncing environment...")
+            await self._run_command(["uv", "sync", "--locked"]) # Update local .venv
+            # Removed git add/commit/push as main branch is protected
         
         elif uv_received_update:
             logger.info("New uv.lock received from Git. Syncing environment...")
