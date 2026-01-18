@@ -441,3 +441,15 @@ class DataSet(Model):
             "metadata": {"ui:widget": "hidden"},
             "sections": {"ui:widget": "hidden"},
         }
+
+
+class DataSetSelectionField(EmbeddedModel):
+    section_name: str = Field(default="default")
+    indices: List[int] = Field(default_factory=list)
+
+@simstack_model
+class DataSetSelection(Model):
+    dataset: DataSet = Reference()
+    dataset_selection_fields: List[DataSetSelectionField] = Field(default_factory=list)
+
+    
