@@ -76,10 +76,45 @@ class DataSetMetadata(EmbeddedModel):
             return True  # first model of this type
 
         new_data_json = _get_json_schema(self.data)
-        if reference_metadata.model_json != new_data_json:
+
+        # Compare schemas element by element
+        ref_props = reference_metadata.model_json.get("properties", {})
+        new_props = new_data_json.get("properties", {})
+
+        # Check if property keys match
+        if set(ref_props.keys()) != set(new_props.keys()):
             raise ValueError(
-                f"Data schema has changed in the database reference: {reference_metadata.model_json} current: {new_data_json}"
+                f"Data schema properties mismatch. Reference keys: {set(ref_props.keys())}, Current keys: {set(new_props.keys())}"
             )
+
+        # Check each property type, allowing string format differences
+        for key in ref_props.keys():
+            ref_prop = ref_props[key]
+            new_prop = new_props[key]
+
+            ref_type = ref_prop.get("type")
+            new_type = new_prop.get("type")
+
+            if ref_type != new_type:
+                raise ValueError(
+                    f"Property '{key}' type mismatch. Reference: {ref_type}, Current: {new_type}"
+                )
+
+            # For string types, allow the format field to differ or be missing
+            if ref_type == "string":
+                # Compare all fields except 'format'
+                ref_without_format = {k: v for k, v in ref_prop.items() if k != "format"}
+                new_without_format = {k: v for k, v in new_prop.items() if k != "format"}
+                if ref_without_format != new_without_format:
+                    raise ValueError(
+                        f"Property '{key}' schema mismatch (excluding format). Reference: {ref_without_format}, Current: {new_without_format}"
+                    )
+            else:
+                # For non-string types, require exact match
+                if ref_prop != new_prop:
+                    raise ValueError(
+                        f"Property '{key}' schema mismatch. Reference: {ref_prop}, Current: {new_prop}"
+                    )
 
         # Check if lists in existing sections match
         save_template = False

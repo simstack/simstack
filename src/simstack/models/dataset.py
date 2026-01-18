@@ -449,7 +449,7 @@ class DataSetSelectionField(EmbeddedModel):
 
 @simstack_model
 class DataSetSelection(Model):
-    dataset: DataSet = Reference()
+    dataset_id: ObjectId
     dataset_selection_fields: List[DataSetSelectionField] = Field(default_factory=list)
 
     @classmethod
