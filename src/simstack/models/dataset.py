@@ -452,4 +452,8 @@ class DataSetSelection(Model):
     dataset: DataSet = Reference()
     dataset_selection_fields: List[DataSetSelectionField] = Field(default_factory=list)
 
-    
+    @classmethod
+    def ui_schema(cls) -> dict:
+        return {
+            "ui:field": "DataSetSelectionField",
+        }
