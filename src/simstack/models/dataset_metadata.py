@@ -4,7 +4,6 @@ from typing import Dict, Any, Union, List
 from odmantic import Model, EmbeddedModel, Field
 
 from simstack.core.asnyc_helper import async_helper
-from simstack.core.context import context
 from simstack.core.engine import current_engine_context
 from simstack.models import simstack_model
 
@@ -72,8 +71,8 @@ class DataSetMetadata(EmbeddedModel):
                 model_json=_get_json_schema(self.data),
                 structure=new_structure,
             )
-
-            await context.db.save(metadata_template)
+            engine = current_engine_context.get()
+            await engine.save(metadata_template)
             return True  # first model of this type
 
         new_data_json = _get_json_schema(self.data)

@@ -3,7 +3,6 @@ from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView
 from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
 
 from simstack.core.asnyc_helper import async_helper
-from simstack.core.context import context
 from simstack.core.engine import current_engine_context
 from simstack.models import simstack_model
 from simstack.models.dataset_metadata import DataSetMetadata
@@ -118,7 +117,8 @@ class DataSetSection(EmbeddedModel):
 
         for model_type, model_id in zip(self.model_types, model_ids):
             model_class = await import_class_by_name(model_type)
-            model_instance = await context.db.find_one(
+            engine = current_engine_context.get()
+            model_instance = await engine.find_one(
                 model_class, model_class.id == model_id
             )
             if model_instance is None:
