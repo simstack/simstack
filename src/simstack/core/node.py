@@ -861,7 +861,12 @@ def node(
             result = None
             if status == TaskStatus.COMPLETED:
                 result = await execution_node.load_results()
-            elif status == TaskStatus.SUBMITTED:
+            elif status in [
+                TaskStatus.SUBMITTED,
+                TaskStatus.RUNNING,
+                TaskStatus.SLURM_QUEUED,
+                TaskStatus.SLURM_RUNNING,
+            ]:
                 result = await execution_node.run_somewhere()
             if result is None or execution_node.status != TaskStatus.COMPLETED:
                 raise RuntimeError(
@@ -883,7 +888,12 @@ def node(
             result = None
             if status == TaskStatus.COMPLETED:
                 return loop.run_until_complete(execution_node.load_results())
-            elif status == TaskStatus.SUBMITTED:
+            elif status in [
+                TaskStatus.SUBMITTED,
+                TaskStatus.RUNNING,
+                TaskStatus.SLURM_QUEUED,
+                TaskStatus.SLURM_RUNNING,
+            ]:
                 return loop.run_until_complete(execution_node.run_somewhere())
             if result is None or execution_node.status != TaskStatus.COMPLETED:
                 raise RuntimeError(
