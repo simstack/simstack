@@ -49,6 +49,8 @@ class ResourceDefinition(Model):
     environment_start: Optional[str] = None
     ssh_key: Optional[str] = None  # Change Optional[Path] to Optional[str]
     routes: Optional[List[str]] = []
+    is_default: bool = False
+    git_branch: str = "main"
 
     @staticmethod
     def _convert_backslashes(path_str: str) -> str:
