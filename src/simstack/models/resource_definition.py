@@ -81,7 +81,7 @@ class ResourceDefinition(Model):
     def validate_hostname(self):
         current_hostname = socket.gethostname()
         if self.hostname != current_hostname:
-            raise ValueError(f"Hostname must match current host. Expected: {current_hostname}, got: {v}")
+            raise ValueError(f"Hostname must match current host. Expected: {current_hostname}, got: {self.hostname}")
 
     def validate_ssh_key(self):
         if self.ssh_key is not None:
