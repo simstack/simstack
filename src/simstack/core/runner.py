@@ -244,7 +244,7 @@ class GitUvUpdateService(RestartService):
         git_changed = "Already up to date." not in git_output
 
         # Clear the stash now that we've pulled
-        await self._run_command(["git", "stash", "drop"])
+        await self._run_command(["git", "stash", "drop"], ignore_error=True)
 
         # Did Git update our lockfile?
         post_git_checksum = get_file_checksum(self._uv_lock_path)
@@ -266,7 +266,6 @@ class GitUvUpdateService(RestartService):
             logger.info("New uv.lock received from Git. Syncing environment...")
             # Use --locked because we want to match the committed file exactly
             await self._run_command(["uv", "sync", "--locked"])
-
         if git_changed or uv_locally_upgraded:
             reason = "Git pull" if git_changed else "Local UV upgrade"
             await self.write_resource_event(RunnerEventEnum.SHUTDOWN, message=reason)
