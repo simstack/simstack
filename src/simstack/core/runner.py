@@ -10,8 +10,6 @@ from pathlib import Path
 import hashlib
 import sys
 import platform
-import signal
-
 from odmantic import ObjectId
 
 from simstack.core.context import context
@@ -400,13 +398,20 @@ class SlurmStatusService(BaseService):
 
     async def execute(self):
         try:
+
             running_tasks = await context.db.engine.find(
                 NodeRegistry,
                 (NodeRegistry.status == TaskStatus.RUNNING)
                 & (NodeRegistry.parameters.resource == self._resource),
             )
+            queued_tasks = await context.db.engine.find(
+                NodeRegistry,
+                (NodeRegistry.status == TaskStatus.SLURM_QUEUED)
+                & (NodeRegistry.parameters.resource == self._resource),
+            )
             #logger.info(f"Checking Slurm status for {len(running_tasks)} running jobs on resource {self._resource}")
-            for task in running_tasks:
+
+            for task in list(running_tasks) + list(queued_tasks):
                 logger.info(f"Checking Slurm status for task_id: {task.id} with job_id: {task.job_id}")
                 if task.job_id is not None:
                     slurm_info = get_job_info(task.job_id, task.id, Resource(value=self._resource_name))
