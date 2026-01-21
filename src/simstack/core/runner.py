@@ -250,11 +250,12 @@ class GitUvUpdateService(RestartService):
         post_git_checksum = get_file_checksum(self._uv_lock_path)
         uv_received_update = old_uv_checksum != post_git_checksum
 
-        # 2. UV Lock upgrade (The "Producer" check)
-        # check if the simstack package was updated
-        await self._run_command(["uv", "lock", "--upgrade-package", "simstack"])
-        new_uv_checksum = get_file_checksum(self._uv_lock_path)
-        uv_locally_upgraded = post_git_checksum != new_uv_checksum
+        # # 2. UV Lock upgrade (The "Producer" check)
+        # # check if the simstack package was updated
+        # await self._run_command(["uv", "lock", "--upgrade-package", "simstack"])
+        # new_uv_checksum = get_file_checksum(self._uv_lock_path)
+        # uv_locally_upgraded = post_git_checksum != new_uv_checksum
+        uv_locally_upgraded = False # assume that you get the lock always in pyproject.toml
 
         if uv_locally_upgraded:
             logger.info("Local uv.lock upgrade detected. Syncing environment...")
