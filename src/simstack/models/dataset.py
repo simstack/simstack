@@ -452,8 +452,71 @@ class DataSetSelection(Model):
     dataset_id: ObjectId
     dataset_selection_fields: List[DataSetSelectionField] = Field(default_factory=list)
 
+
+    @async_helper
+    async def get_selected_elements(self, section_name: str = None) -> List[Tuple[Model, ...]]:
+        """
+        Retrieve all selected model groups from the dataset.
+
+        :param section_name: Optional section name to filter results. If None, returns all sections.
+        :return: List of tuples of model instances for all selected elements
+        """
+        engine = current_engine_context.get()
+        dataset = await engine.find_one(DataSet, DataSet.id == self.dataset_id)
+
+        if dataset is None:
+            raise ValueError(f"Dataset with id {self.dataset_id} not found")
+
+        selected_elements = []
+        for selection_field in self.dataset_selection_fields:
+            if section_name is not None and selection_field.section_name != section_name:
+                continue
+
+            section = dataset.sections.get(selection_field.section_name)
+            if section is None:
+                raise ValueError(f"Section {selection_field.section_name} not found in dataset")
+
+            for index in selection_field.indices:
+                if index >= len(section):
+                    raise IndexError(
+                        f"Index {index} out of range for section {selection_field.section_name} with {len(section)} elements"
+                    )
+                model_group = section.get_model_group(index)
+                selected_elements.append(model_group)
+
+        return selected_elements
+
+    async def __aiter__(self, section_name: str = None):
+        """
+        Async iterator over all selected model groups.
+
+        :param section_name: Optional section name to filter results. If None, returns all sections.
+        :return: Async iterator yielding tuples of model instances
+        """
+        engine = current_engine_context.get()
+        dataset = await engine.find_one(DataSet, DataSet.id == self.dataset_id)
+
+        if dataset is None:
+            raise ValueError(f"Dataset with id {self.dataset_id} not found")
+
+        for selection_field in self.dataset_selection_fields:
+            if section_name is not None and selection_field.section_name != section_name:
+                continue
+
+            section = dataset.sections.get(selection_field.section_name)
+            if section is None:
+                raise ValueError(f"Section {selection_field.section_name} not found in dataset")
+
+            for index in selection_field.indices:
+                if index >= len(section):
+                    raise IndexError(
+                        f"Index {index} out of range for section {selection_field.section_name} with {len(section)} elements"
+                    )
+                yield section.get_model_group(index)
+
     @classmethod
     def ui_schema(cls) -> dict:
         return {
             "ui:field": "DataSetSelectionField",
         }
+

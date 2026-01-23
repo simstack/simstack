@@ -11,6 +11,10 @@ import hashlib
 import sys
 import platform
 from odmantic import ObjectId
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
@@ -20,9 +24,45 @@ from simstack.models import NodeRegistry
 from simstack.models.parameters import Resource
 from simstack.models.runner_model import RunnerEvent, RunnerType, RunnerEventEnum
 from simstack.models.slurm_info import SlurmInfo
+from simstack.models.resource_definition import ResourceDefinition
+from simstack.tables.node_table import make_node_table
+from simstack.tables.model_table import make_model_table
 from simstack.util.runner_utils import make_git_status_list, get_job_info, clean_slurm_info
 
 logger = logging.getLogger("NodeRunner")
+
+async def initialize_default_resource():
+    """
+    Checks if the current resource is the default one.
+    If so, syncs the node and model tables based on config.toml.
+    """
+    resource_def = await context.db.find_one(
+        ResourceDefinition,
+        ResourceDefinition.resource_str == str(context.config.resource)
+    )
+
+    if resource_def and resource_def.is_default:
+        config_path = context.config.project_root / "config.toml"
+        if not config_path.exists():
+            logger.warning(f"Default resource detected, but {config_path} not found.")
+            return
+
+        try:
+            with open(config_path, "rb") as f:
+                config_data = tomllib.load(f)
+            
+            active_dirs = config_data.get("active_dirs", [])
+            if not active_dirs:
+                logger.info("No active_dirs found in config.toml.")
+                return
+
+            logger.info(f"Default resource: initializing tables for {active_dirs}")
+            await make_node_table(context.db.engine, dirs=active_dirs)
+            await make_model_table(context.db.engine, dirs=active_dirs)
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize default resource tables: {e}")
+
 
 async def run_node_from_registry(registry_entry: NodeRegistry):
     # Create the node from the registry entry
@@ -52,6 +92,7 @@ def get_file_checksum(filepath: Path) -> str:
             hash_sha256.update(chunk)
     return hash_sha256.hexdigest()
 
+
 class BaseService(ABC):
     """A managed periodic service that can be stopped gracefully"""
 
@@ -71,8 +112,9 @@ class BaseService(ABC):
 
     def _get_uptime_string(self) -> str:
         time_diff = datetime.now() - self._time_started
-        days = time_diff.days
-        hours, remainder = divmod(time_diff.seconds, 3600)
+        total_seconds = int(time_diff.total_seconds())
+        days, remainder = divmod(total_seconds, 86400)
+        hours, remainder = divmod(remainder, 3600)
         minutes, seconds = divmod(remainder, 60)
         return f"{days}d {hours}h {minutes}m {seconds}s"
 
@@ -177,14 +219,12 @@ class RestartService(BaseService, ABC):
         # Write current PID to file so the restarter knows who to kill
         self._pid_file.write_text(str(current_pid))
 
-        
         # Command to restart depends on OS
         # We use sys.executable to ensure we use the same Python interpreter
         # We'll call the runner module again
         script_path = Path(__file__).resolve()
 
-
-        log_file = script_path.parent / "runner.out"
+        log_file = context.config.workdir / "runner.out"
 
         args = [sys.executable, str(script_path)] + sys.argv[1:]
 
@@ -247,30 +287,31 @@ class GitUvUpdateService(RestartService):
         await self._run_command(["git", "stash", "drop"], ignore_error=True)
 
         # Did Git update our lockfile?
-        post_git_checksum = get_file_checksum(self._uv_lock_path)
-        uv_received_update = old_uv_checksum != post_git_checksum
+        #post_git_checksum = get_file_checksum(self._uv_lock_path)
+        #uv_received_update = old_uv_checksum != post_git_checksum
 
         # # 2. UV Lock upgrade (The "Producer" check)
         # # check if the simstack package was updated
         # await self._run_command(["uv", "lock", "--upgrade-package", "simstack"])
         # new_uv_checksum = get_file_checksum(self._uv_lock_path)
         # uv_locally_upgraded = post_git_checksum != new_uv_checksum
-        uv_locally_upgraded = False # assume that you get the lock always in pyproject.toml
+        #uv_locally_upgraded = False # assume that you get the lock always in pyproject.toml
 
-        if uv_locally_upgraded:
-            logger.info("Local uv.lock upgrade detected. Syncing environment...")
-            await self._run_command(["uv", "sync", "--locked"]) # Update local .venv
-            # Removed git add/commit/push as main branch is protected
-        
-        elif uv_received_update:
-            logger.info("New uv.lock received from Git. Syncing environment...")
-            # Use --locked because we want to match the committed file exactly
-            await self._run_command(["uv", "sync", "--locked"])
-        if git_changed or uv_locally_upgraded:
+        # if uv_locally_upgraded:
+        #     logger.info("Local uv.lock upgrade detected. Syncing environment...")
+        #     await self._run_command(["uv", "sync", "--locked"]) # Update local .venv
+        #     # Removed git add/commit/push as main branch is protected
+        # elif uv_received_update:
+        #     logger.info("New uv.lock received from Git. Syncing environment...")
+        #     # Use --locked because we want to match the committed file exactly
+        #     await self._run_command(["uv", "sync", "--locked"])
+        if git_changed: # or uv_locally_upgraded:
+            await self._run_command(["uv", "sync", "--locked"])  # Update local .venv
             reason = "Git pull" if git_changed else "Local UV upgrade"
             await self.write_resource_event(RunnerEventEnum.SHUTDOWN, message=reason)
             logger.info(f"Update detected ({reason}). Triggering restart...")
             await self.trigger_restart()
+
 
 
 class NodeExecutionService(BaseService):
@@ -362,6 +403,68 @@ class RunnerStatusService(BaseService):
 
     async def execute(self):
         await self.write_resource_event(RunnerEventEnum.ALIVE)
+
+
+class ResourceBranchMonitorService(RestartService):
+    """
+    Monitors the ResourceDefinition for the current resource.
+    If the git_branch field changes, it stashes, switches branch, syncs, and restarts.
+    """
+
+    def __init__(self, resource: Resource, interval: int):
+        super().__init__("ResourceBranchMonitor", resource, interval)
+        self._project_dir = context.config.project_root.resolve(strict=True)
+
+    async def _run_command(self, cmd: list) -> str:
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            cwd=str(self._project_dir),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        if process.returncode != 0:
+            logger.error(f"Command {' '.join(cmd)} failed: {stderr.decode()}")
+            return ""
+        return stdout.decode().strip()
+
+    async def _get_current_branch(self) -> str:
+        return await self._run_command(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+
+    async def execute(self):
+        resource_def = await context.db.find_one(
+            ResourceDefinition, 
+            ResourceDefinition.resource_str == str(self._resource)
+        )
+        
+        if not resource_def:
+            return
+
+        target_branch = resource_def.git_branch
+        current_branch = await self._get_current_branch()
+
+        if target_branch and current_branch and target_branch != current_branch:
+            logger.info(f"Branch change detected: {current_branch} -> {target_branch}. Updating...")
+            
+            # 1. Stash existing changes
+            await self._run_command(["git", "stash"])
+            
+            # 2. Checkout new branch
+            checkout_res = await self._run_command(["git", "checkout", target_branch])
+            if not checkout_res:
+                logger.error(f"Failed to checkout branch {target_branch}")
+                return
+
+            # 3. UV Sync
+            logger.info("Running uv sync --locked...")
+            await self._run_command(["uv", "sync", "--locked"])
+
+            # 4. Trigger Restart
+            await self.write_resource_event(
+                RunnerEventEnum.SHUTDOWN, 
+                message=f"Branch switched to {target_branch}"
+            )
+            await self.trigger_restart()
 
 
 class RunnerCleanupService(BaseService):
@@ -509,11 +612,11 @@ class RunnerManager:
                 result = subprocess.run(
                     ["tasklist", "/FI", f"PID eq {pid}"],
                     capture_output=True,
-                    text=True
+                    text=False,  # keep bytes; avoid UnicodeDecodeError from console code pages
                 )
-                return (str(pid) in result.stdout) if result.stdout  is not None else False
+                # tasklist output always includes the pid digits when the process exists
+                return str(pid).encode("ascii") in (result.stdout or b"")
             else:
-                # On Unix, send signal 0 to check if process exists
                 os.kill(pid, 0)
                 return True
         except (OSError, ProcessLookupError):
@@ -558,6 +661,7 @@ class RunnerManager:
             RunnerCleanupService(self._resource, interval=300),
             SlurmStatusService(self._resource, interval=60),
             GitUvUpdateService(self._resource, interval=60),  # Advanced check every hour
+            ResourceBranchMonitorService(self._resource, interval=60),
             StopCheckService(self._resource, interval=10, shutdown_event=self._shutdown_event),
         ]
 
@@ -583,6 +687,10 @@ class RunnerManager:
 async def async_main(args):
     """Async entry point"""
     await context.initialize(resource=args.resource, db_name=args.db_name)
+    
+    # Initialize tables if this is the default resource
+    await initialize_default_resource()
+
     if args.resource:
         logger.info(f"Setting resource for runner to {args.resource}")
         runner_manager = RunnerManager(context.config.resource, detach=args.detach)
