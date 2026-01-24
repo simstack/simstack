@@ -381,9 +381,13 @@ class DataSet(Model):
 
     # Dict-like behavior methods
     def __getitem__(self, key: str) -> DataSetSection:
+        if key not in self.sections:
+            self.sections[key] = DataSetSection()
         return self.sections[key]
 
     def __setitem__(self, key: str, value: DataSetSection) -> None:
+        if key in self.sections:
+            raise KeyError(f"Section {key} already exists in dataset")
         self.sections[key] = value
 
     def __delitem__(self, key: str) -> None:
@@ -452,6 +456,8 @@ class DataSetSelection(Model):
     dataset_id: ObjectId
     dataset_selection_fields: List[DataSetSelectionField] = Field(default_factory=list)
 
+    async def get_dataset(self):
+        return await current_engine_context.get().find_one(DataSet, DataSet.id == self.dataset_id)
 
     @async_helper
     async def get_selected_elements(self, section_name: str = None) -> List[Tuple[Model, ...]]:

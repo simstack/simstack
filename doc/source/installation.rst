@@ -1,217 +1,208 @@
+Simstack II Setup
+=================
 
-============
-Installation
-============
+UI Setup
+--------
 
-Install Simstack II — 3-step lightning setup ⚡️
-=================================================
+1. Register at ``simstack.int.kit.edu`` (inside the KIT network). This will create an **inactive** user.
+2. Email the maintainer so your account can be activated and you can receive:
 
-**Goal:** create an isolated ``simstack_ii`` environment, pull the model code, and satisfy every dependency in a single coffee break.
+   * a database name
+   * a database password
 
-+-------------------------------------------+----------------------------------------------------+
-| What you'll do                            | Why it matters                                     |
-+===========================================+====================================================+
-| 1 Create a *conda-style* environment     | Keeps your system Python pristine                 |
-+-------------------------------------------+----------------------------------------------------+
-| 2 Install the exact libraries in         | Reproducible science → zero "works-on-my-machine" |
-|   ``requirements.txt``                   | bugs                                               |
-+-------------------------------------------+----------------------------------------------------+
-| 3 Clone the **files** branch of          | Gives you ready-made tasks, sample data, and      |
-|   **simstack-model**                     | tests                                              |
-+-------------------------------------------+----------------------------------------------------+
+   (This is not automated yet.)
+3. Go to your profile and upload your resources configuration (no substitutions needed in the uploaded file).
 
-Setting up runners 🐍
--------------------
+Example resources configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* Install pixi: https://pixi.sh/latest/installation/
-* Clone the git repository: https://gitlab.kit.edu/kit/ag_wenzel/simstack-model
-* if you are developing: switch to your branch
+.. code-block:: json
+
+   [
+     {
+       "id": "<object-id>",
+       "resource_str": "local-home",
+       "hostname": "localhost",
+       "workdir": "$HOME/simstack",
+       "python_paths": [],
+       "environment_start": "",
+       "ssh_key": "$HOME/.ssh/id_rsa",
+       "routes": [
+         "int-nano"
+       ],
+       "queue": "default"
+     },
+     {
+       "id": "<object-id>",
+       "resource_str": "int-nano",
+       "hostname": "int-nano.int.kit.edu",
+       "workdir": "$HOME/simstack",
+       "python_paths": [],
+       "environment_start": "",
+       "ssh_key": "$HOME/.ssh/id_rsa",
+       "routes": [],
+       "queue": "default"
+     },
+     {
+       "id": "<object-id>",
+       "resource_str": "justus",
+       "hostname": "justus2.uni-ulm.de",
+       "workdir": "$HOME/simstack",
+       "python_paths": [],
+       "environment_start": "",
+       "ssh_key": "$HOME/.ssh/id_rsa",
+       "routes": [
+         "int-nano",
+         "local-home"
+       ],
+       "queue": "slurm-queue"
+     }
+   ]
 
 
-.. note:: **micromamba – single-file binary**
+Installation of Runners
+-----------------------
 
-   .. code-block:: bash
+Prerequisites
+~~~~~~~~~~~~~
 
-      micromamba create -n simstack_ii python=3.12 -y
-      micromamba activate simstack_ii
+* Install ``uv``:
+  https://docs.astral.sh/uv/getting-started/installation/
+* Create directories:
 
-.. note:: **Classic conda**
+  * ``$HOME/simstack``
+  * ``$HOME/projects``
 
-   .. code-block:: bash
+Clone the repository
+~~~~~~~~~~~~~~~~~~~~
 
-      conda create -n simstack_ii python=3.12 -y
-      conda activate simstack_ii
+In ``$HOME/projects`` clone the repository:
 
-.. important::
-   **Heads-up**: Simstack II works with Python ≥ 3.12 (CPython 64-bit).
-   Older versions (<3.12) may miss tomllib support and fail at runtime.
+* SSH (if your SSH key is added to GitLab):
 
-Step 2 — Install dependencies 📦
----------------------------------
+  .. code-block:: bash
+
+     git clone git@gitlab.kit.edu:kit/ag_wenzel/simstack-model.git
+
+* HTTPS (if you have a token):
+
+  .. code-block:: bash
+
+     git clone https://gitlab.kit.edu/kit/ag_wenzel/simstack-model.git
+
+Then:
 
 .. code-block:: bash
 
-   # activate the (simstack_ii) env
-   python -m pip install --upgrade pip
-   pip install -r requirements.txt
+   cd simstack-model
 
-Step 3 — Grab the Simstack-Model repository 🛰️
------------------------------------------------
+
+Host-specific environment notes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On ``int-nano`` you may need to override the C/C++ toolchain because the default compiler is too old.
+Add the following to your ``~/.bashrc``:
 
 .. code-block:: bash
 
-   git clone \
-     --branch main \
-     https://gitlab.kit.edu/kit/ag_wenzel/simstack-model.git
+   export PATH=XXXX/gcc-12.3/bin:$PATH
+   export LD_LIBRARY_PATH=XXXX/gcc-12.3/lib64:$LD_LIBRARY_PATH
+   export CC=XXXX/gcc-12.3/bin/gcc
+   export CXX=XXXX/gcc-12.3/bin/g++
 
-    git checkout my_branch
+Set ``XXXX`` to something like ``/shared/user/ww`` or ``/home/ws/<user>`` (exact value depends on your account).
+It is unclear what you need on other systems.
 
-.. important::
-    * The branch main is the standard branch to be used by the server
-    * Create your own branch to work in because main is protected
-    * Make sure all runners are on the same branch
+On ``justus`` you may need:
 
-Type ``tree`` in the terminal, if the **installation** succeeds, you should
-see a directory structure like the folder tree shown below.
+.. code-block:: bash
 
-.. code-block:: text
-
-   📂 simstack-model
-   ├── 📁 conda-recipe
-   ├── 📁 doc
-   │   └── 📁 source
-   │       └── 📁 resources
-   ├── 📁 projects         # install your personal node and functions here
-   │   └── 📁 my_project
-   📁 applications         # install persistent community contibutions here
-   │   └── 📁 orca_results
-   ├── 📁 scripts
-   ├── 📁 src
-   │   ├── 📁 logs
-   │   └── 📁 simstack
-   │       ├── 📁 core
-   │       ├── 📁 methods
-   │       │   ├── 📁 electronic_structure
-   │       │   │   └── 📁 orca
-   │       │   └── 📁 group
-   │       │       └── 📁 battery_kmc
-   │       ├── 📁 models
-   │       ├── 📁 server
-   │       │   └── 📁 routes
-   │       └── 📁 util
-   └── 📁 tests
-       ├── 📁 core
-       ├── 📁 methods
-       └── 📁 server
+   export LD_LIBRARY_PATH=$HOME/local/lib:$MKLROOT/lib/intel64:$LD_LIBRARY_PATH
 
 
-.. _configuration-file:
+Sync dependencies
+~~~~~~~~~~~~~~~~~
 
-Configure Simstack II with ``simstack.toml`` ⚙️
-================================================
+.. code-block:: bash
 
-Simstack II reads a single **TOML** file (``simstack.toml``) to learn
+   source ~/.bashrc
+   uv sync --locked
 
-* which **resources** (local & remote) exist,
-* how to reach your **MongoDB** backend,
-* and where each host should place logs / artifacts.
 
-.. note::
-   **Where should the file live?**
-   Save it next in the folder simstack-model in both your local and HPC accounts.
-   The CLI searches those paths automatically.
+Create ``simstack.toml``
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-Minimal template
-----------------
+Create a ``simstack.toml`` file (placeholders shown below):
 
 .. code-block:: toml
 
-    #######################################
-    # Global / shared parameters
-    #######################################
-    [parameters]    # these are parameters for one user for all hosts
-    [parameters.common]
-    resources = ["local", "tests", "resource1", "resource2",  "self", "uploads"]
-    database = "user_data"
-    test_database = "user_test"
-    #connection_string="mongodb://user:PASSWORD@SERVER:27017/"
-    # these parameters must be adapted for each host
-    [parameters.self]
-    ssh-key = XXXXX # path to your private key
-    resource = "local" # resource the runner on your computer will use
-    workdir = XXXXX # path to your simstack working directory
-    python_path = [ XXXXX,YYYY ] # python path to all required packages
-    environment_start = XXXX # command to start the environment simstack is
-                             # installed in
-    [parameters.local]
-    .....
-    [parameters.tests]
-    .....
-    [parameters.resource]
-    ssh-key = "C:\\Users\\bj7610\\Documents\\etc\\.ssh\\surface11_openssh"  # path to your private key
-    resource = "self" # resource the runner on your computer will used
-    workdir = "C:\\Users\\bj7610\\simstack" # path to your simstack working directory
-    python_path = [ "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model",
-                   "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model\\src"]
-    [parameters.int-nano]
-    ssh-key = "/home/ws/bj7610/.ssh/id_rsa"  # path to your private key
-    workdir = "/home/ws/bj7610/simstack" # path to your simstack working directory
-    python_path = [ "/home/ws/bj7610/projects/simstack-model",
-                   "/home/ws/bj7610/projects/simstack-model/src"]
-    environment_start = "conda activate simstack-env"
-    # normal users do not have to change anythign below this line
-    # these are the parameters for the database server
-    [server]
-    port = 8000
-    secret_key="61617e60e68230462fa89eef2db43d65fc2341cd281ce4cc6eb7609345bbe42d"
-    upload_dir = "C:\\Users\\bj7610\\simstack\\uploads"
-    # these are the parameters for the overall configurations
-    [hosts]
-    local = "localhost"
-    int-nano="int-nano.int.kit.edu"
-    justus="justus.int.kit.edu"
-    horeka="horeka.int.kit.edu"
+   [parameters]
+   [parameters.general]
+   use_db = true
+   workdir_self = "<PATH_TO_SIMSTACK_DATA_DIR>"
+   # these are parameters for one user for all hosts
 
-    [[routes]]
-    source = "local"
-    target = "int-nano"
-    host = "local"
+   [parameters.db]
+   database = "<NAME>_data"
+   test_database = "<NAME>_test"
+   connection_string = "mongodb://<USER>:<PASSWORD>@<HOST>:27017/"
 
-    [[routes]]
-    source = "int-nano"
-    target = "local"
-    host = "local"
+Where:
 
-    [[routes]]
-    source = "horeka"
-    target = "local"
-    host = "horeka"
+* ``<PATH_TO_SIMSTACK_DATA_DIR>`` is the path to the data directory created above (e.g. ``$HOME/simstack``)
+* ``<NAME>`` is your database name (often your first name in lower case)
+* ``<PASSWORD>`` is the database password
 
-    [[routes]]
-    source = "local"
-    target = "horeka"
-    host = "horeka"
 
-    [[routes]]
-    source = "justus"
-    target = "local"
-    host = "justus"
+Initialize the system
+~~~~~~~~~~~~~~~~~~~~~
 
-    [[routes]]
-    source = "local"
-    target = "justus"
-    host = "justus"
+This will happen automatically when the default runner starts.
 
-    [paths]
-    # Path configuration for the PathManager.
-    # Each path entry should have a path and an optional drops value.
-    # The path is the directory to search for Python files
-    # The "drops" value is a prefix to drop from module names (for import paths)
-    models = { path = "src\\simstack\\models", drops = "src" }
-    methods = { path = "src\\simstack\\methods", drops = "src" }
-    ui_testing = { path = "src\\simstack\\ui_testing", drops = "src" }
-    examples = { path = "examples", drops = "", use_pickle = false }
-    spectra = { path = "examples\\science\\electronic_structure\\spectra", drops = "", use_pickle = false }
-    applications = { path = "applications", drops = "", use_pickle = false }
-    tests = { path = "tests", drops = "", use_pickle = false }
+.. code-block:: bash
 
+   uv run create_model_table --dir examples --dir applications
+   uv run create_node_table --dir examples --dir applications
+
+Note: this may crash if your database is very old.
+
+
+
+
+Configure Git identity (required)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Because the runner performs Git operations, ensure you have:
+
+.. code-block:: bash
+
+   git config --global user.email "<YOUR_EMAIL_ADDRESS>"
+   git config --global user.name "<YOUR_NAME>"
+
+
+Start the runner
+~~~~~~~~~~~~~~~~
+
+From ``$HOME/projects/simstack-model``:
+
+.. code-block:: bash
+
+   nohup uv run simstack_runner --resource <RESOURCE_NAME> &
+
+Where ``<RESOURCE_NAME>`` is one of the resources you defined in the UI.
+
+
+
+Ignore after this line
+----------------------
+
+Notes / scratch commands:
+
+.. code-block:: bash
+
+   git submodule add -b new-init https://git@github.com/simstack/simstack.git simstack
+
+.. code-block:: bash
+
+   uv lock --upgrade-package <package-name>
+```
