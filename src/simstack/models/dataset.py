@@ -210,13 +210,13 @@ class DataSetSection(EmbeddedModel):
             )
         del self.data[index]
 
-    async def append(self, models: Tuple[Model, ...]) -> None:
+    def append(self, models: Tuple[Model, ...]) -> None:
         """
         Append a tuple of models to the section.
 
         :param models: Tuple of model instances to append
         """
-        await self.add_model_group(models)
+        self.add_model_group(models)
 
     def insert(self, index: int, models: Tuple[Model, ...]) -> None:
         """
