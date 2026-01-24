@@ -660,10 +660,12 @@ class RunnerManager:
             RunnerStatusService(self._resource, interval=60),
             RunnerCleanupService(self._resource, interval=300),
             SlurmStatusService(self._resource, interval=60),
-            GitUvUpdateService(self._resource, interval=60),  # Advanced check every hour
-            ResourceBranchMonitorService(self._resource, interval=60),
+           ResourceBranchMonitorService(self._resource, interval=60),
             StopCheckService(self._resource, interval=10, shutdown_event=self._shutdown_event),
         ]
+
+        if self._resource.value == "local":
+            self._services.append(GitUvUpdateService(self._resource, interval=60))
 
         # Add timeout restart service if timeout is specified
         if timeout is not None:

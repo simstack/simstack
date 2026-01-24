@@ -39,7 +39,8 @@ class DataSetSection(EmbeddedModel):
 
     model_config = {"extra": "forbid"}
 
-    def add_model_group(self, models: Union[Model, Tuple[Model, ...]]) -> None:
+    @async_helper
+    async def add_model_group(self, models: Union[Model, Tuple[Model, ...]]) -> None:
         """
         Add a tuple of models to this section.
 
@@ -49,7 +50,18 @@ class DataSetSection(EmbeddedModel):
         if isinstance(models, Model):
             models = (models,)
         model_names = [model.__class__.__name__ for model in models]
-        model_ids = [model.id for model in models]
+
+        # Verify that all the models are already stored, otherwise store them
+        engine = current_engine_context.get()
+        stored_models = []
+        for model in models:
+            if model.id is None:
+                stored_model = await engine.save(model)
+                stored_models.append(stored_model)
+            else:
+                stored_models.append(model)
+
+        model_ids = [model.id for model in stored_models]
 
         # If this is the first tuple, set the model types
         if not self.model_types:
@@ -198,13 +210,13 @@ class DataSetSection(EmbeddedModel):
             )
         del self.data[index]
 
-    def append(self, models: Tuple[Model, ...]) -> None:
+    async def append(self, models: Tuple[Model, ...]) -> None:
         """
         Append a tuple of models to the section.
 
         :param models: Tuple of model instances to append
         """
-        self.add_model_group(models)
+        await self.add_model_group(models)
 
     def insert(self, index: int, models: Tuple[Model, ...]) -> None:
         """
@@ -453,6 +465,7 @@ class DataSetSelectionField(EmbeddedModel):
 
 @simstack_model
 class DataSetSelection(Model):
+    field_name: str = Field(default="dataset_selection")
     dataset_id: ObjectId
     dataset_selection_fields: List[DataSetSelectionField] = Field(default_factory=list)
 
