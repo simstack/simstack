@@ -315,7 +315,7 @@ class GitUvUpdateService(RestartService):
 
 
 class NodeExecutionService(BaseService):
-    def __init__(self, resource: Resource, interval, max_concurrent, shutdown_event, detach: bool = False):
+    def __init__(self, resource: Resource, interval, max_concurrent, shutdown_event, detach: bool = True):
         super().__init__("JobPolling", resource, interval, shutdown_event=shutdown_event)
         self._resource_name = str(resource)
         self._semaphore = asyncio.Semaphore(max_concurrent)
@@ -595,7 +595,7 @@ class TimeoutRestartService(RestartService):
 
 
 class RunnerManager:
-    def __init__(self, resource: Resource, detach: bool = False):
+    def __init__(self, resource: Resource, detach: bool = True):
         self._resource = resource
         self._detach = detach
         self._pid = os.getpid()
