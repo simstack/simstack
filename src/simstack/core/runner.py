@@ -664,7 +664,7 @@ class RunnerManager:
             StopCheckService(self._resource, interval=10, shutdown_event=self._shutdown_event),
         ]
 
-        if self._resource.value == "local":
+        if self._resource.value != "local":
             self._services.append(GitUvUpdateService(self._resource, interval=60))
 
         # Add timeout restart service if timeout is specified
