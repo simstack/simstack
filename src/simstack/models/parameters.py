@@ -95,7 +95,7 @@ class SlurmParameters(EmbeddedModel):
 
     # Queue/Partition Parameters
     partition: Optional[str] = Field(
-        default="short", description="Queue/partition to submit to"
+        default=None, description="Queue/partition to submit to"
     )
     qos: Optional[str] = Field(default=None, description="Quality of Service level")
 
