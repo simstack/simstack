@@ -33,7 +33,7 @@ from simstack.models import NodeModel
 from simstack.models import NodeRegistry
 from simstack.models.file_list import FileListModel
 from simstack.models.files import FileStack
-from simstack.models.parameters import Resource
+from simstack.models.parameters import Resource, Queue
 from simstack.models.simstack_model import is_simstack_model
 from simstack.util.importer import import_function, import_class
 
@@ -374,7 +374,7 @@ class Node:
         )
         if (
             self.parameters.resource == resource_self
-            or context.config.resource == self.parameters.resource
+            or (context.config.resource == self.parameters.resource and self.parameters.queue == Queue.DEFAULT)
         ):
             result = await self.execute_node_locally()
             return result
