@@ -356,6 +356,7 @@ class DataSet(Model):
 
     model_config = {"extra": "forbid"}
 
+    
     @property
     def dataset_type(self) -> str:
         return self.metadata.dataset_type
@@ -390,6 +391,38 @@ class DataSet(Model):
             section_name: section.model_types if len(section) > 0 else None
             for section_name, section in self.sections.items()
         }
+
+    @async_helper
+    async def clone(self, new_field_name: str = None, exclude_sections: List[str] = None) -> "DataSet":
+        """
+        Clone the dataset with optionally a new field name and excluding specified sections.
+
+        :param new_field_name: Optional new field name for the cloned dataset. If None, uses original field_name.
+        :param exclude_sections: Optional list of section names to exclude from the clone. If None, all sections are cloned.
+        :return: A new DataSet instance that is a clone of this dataset
+        """
+        if exclude_sections is None:
+            exclude_sections = []
+
+        # Clone the dataset with new or same field name
+        cloned_dataset = DataSet(
+            field_name=new_field_name if new_field_name is not None else self.field_name,
+            metadata=self.metadata
+        )
+
+        # Clone sections, excluding those in the exclude list
+        for section_name, section in self.sections.items():
+            if section_name not in exclude_sections:
+                # Create a new DataSetSection with copied data
+                cloned_section = DataSetSection(
+                    model_types=section.model_types.copy(),
+                    data=[model_ids.copy() for model_ids in section.data],
+                    column_defs=[col_def.copy() for col_def in section.column_defs],
+                    table_entries=[[entry.copy() for entry in row] for row in section.table_entries]
+                )
+                cloned_dataset.sections[section_name] = cloned_section
+
+        return cloned_dataset
 
     # Dict-like behavior methods
     def __getitem__(self, key: str) -> DataSetSection:

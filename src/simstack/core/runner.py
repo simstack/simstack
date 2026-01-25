@@ -515,8 +515,8 @@ class SlurmStatusService(BaseService):
             #logger.info(f"Checking Slurm status for {len(running_tasks)} running jobs on resource {self._resource}")
 
             for task in list(running_tasks) + list(queued_tasks):
-                logger.info(f"Checking Slurm status for task_id: {task.id} with job_id: {task.job_id}")
                 if task.job_id is not None:
+                    logger.info(f"Checking Slurm status for task_id: {task.id} with job_id: {task.job_id}")
                     slurm_info = get_job_info(task.job_id, task.id, Resource(value=self._resource_name))
                     logger.info(f"Slurm status for task_id: {task.id}: {task.job_id} {slurm_info}")
                     slurm_entry = await context.db.find_one(SlurmInfo, SlurmInfo.job_id == task.job_id)
