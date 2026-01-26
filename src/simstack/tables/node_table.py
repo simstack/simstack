@@ -4,6 +4,8 @@ import re
 from typing import Callable, List, Optional, get_type_hints, Dict, Any
 
 from odmantic.exceptions import DocumentNotFoundError, DocumentParsingError
+from pydantic.v1 import ValidationError
+
 from simstack.models import Parameters
 from simstack.models.models import NodeModel, ModelMapping
 from simstack.tables.table_builder_base import TableBuilderBase
@@ -217,9 +219,12 @@ class CreateNodeTable(TableBuilderBase):
                     existing_model = await self.engine.find_one(
                         NodeModel, NodeModel.name == node_name
                     )
-                except DocumentParsingError | DocumentNotFoundError:
+                # except DocumentParsingError | ValidationError | DocumentNotFoundError:
+                #     existing_model = None
+                #     logger.error(f"NodeModel {node_name} not found/not readable in database.")
+                except Exception as e:
                     existing_model = None
-                    logger.error(f"NodeModel {node_name} not found/not readable in database.")
+                    logger.error(f"Error finding existing NodeModel {node_name}: {e}")
                 existing_favorite = False  # Default value if no existing model
 
                 if existing_model:
