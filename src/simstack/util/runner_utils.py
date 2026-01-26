@@ -116,15 +116,12 @@ async def clean_slurm_info(resource: Resource, user: str = None):
 
         logger.info(f"Slurm Jobs {resource}: {result.stdout}")
         if result.returncode == 0:
-            job_ids = [line.split()[0] for line in result.stdout.splitlines()]
-            # logger.info(f"Cleaning up slurm info for {resource}: {result.stdout}")
-
-            # Get list of running job IDs, skip the header line
-            active_jobs = job_ids[1:] if len(job_ids) > 1 else []
             active_job_ids = set()
-            for line in active_jobs:
-                job_id = line.split()[0]
-                active_job_ids.add(job_id)
+            for line in result.stdout.splitlines():
+                parts = line.split()
+                if not parts or parts[0] == "JOBID":
+                    continue
+                active_job_ids.add(parts[0])
 
             # Find all SLURM info entries for this resource
             if user:

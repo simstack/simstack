@@ -18,6 +18,7 @@ class SlurmStatusService(BaseService):
 
     async def execute(self):
         try:
+            # logger.info(f"Running clean_slurm_info for {self._resource} and user {self._username}")
             await clean_slurm_info(self._resource, user=self._username)
 
             running_tasks = await context.db.engine.find(
