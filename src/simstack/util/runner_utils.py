@@ -92,18 +92,22 @@ def get_job_info(job_id: str, task_id: ObjectId, resource: Resource) -> SlurmInf
         return None
 
 
-async def clean_slurm_info(user: str, resource: Resource):
+async def clean_slurm_info(resource: Resource, user: str = None):
     """Clean up old slurm info entries"""
     try:
+        squeue_cmd = "squeue"
+        if user:
+            squeue_cmd += f" -u {user}"
+
         if context.config.docker:
             watchdog_id = f"slurm_{uuid.uuid4()}"
             queue_dir = context.config.workdir / "queue"
             result = submit_to_watchdog(
-                f"squeue -u {user}", watchdog_id, queue_dir=queue_dir
+                squeue_cmd, watchdog_id, queue_dir=queue_dir
             )
         else:
             result = subprocess.run(
-                f"squeue -u {user}",
+                squeue_cmd,
                 shell=True,
                 capture_output=True,
                 text=True,
@@ -121,10 +125,16 @@ async def clean_slurm_info(user: str, resource: Resource):
             for line in active_jobs:
                 job_id = line.split()[0]
                 active_job_ids.add(job_id)
+
             # Find all SLURM info entries for this resource
-            running_jobs = await context.db.engine.find(
-                SlurmInfo, SlurmInfo.resource == resource
-            )
+            if user:
+                running_jobs = await context.db.engine.find(
+                    SlurmInfo, (SlurmInfo.resource == resource) & (SlurmInfo.user == user)
+                )
+            else:
+                running_jobs = await context.db.engine.find(
+                    SlurmInfo, SlurmInfo.resource == resource
+                )
             # logger.info(f"Found {running_jobs} slurm info entries for {resource}")
             # logger.info(f"Active job IDs: {active_job_ids}")
             # Delete entries for jobs that are no longer running

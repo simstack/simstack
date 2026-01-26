@@ -6,7 +6,7 @@ from simstack.core.definitions import TaskStatus
 from simstack.models import NodeRegistry
 from simstack.models.parameters import Resource
 from simstack.models.slurm_info import SlurmInfo
-from simstack.util.runner_utils import get_job_info
+from simstack.util.runner_utils import get_job_info, clean_slurm_info
 from simstack.core.services.base_service import BaseService
 
 logger = logging.getLogger("NodeRunner")
@@ -18,6 +18,8 @@ class SlurmStatusService(BaseService):
 
     async def execute(self):
         try:
+            await clean_slurm_info(self._resource, user=self._username)
+
             running_tasks = await context.db.engine.find(
                 NodeRegistry,
                 (NodeRegistry.status == TaskStatus.RUNNING)
@@ -54,5 +56,6 @@ class SlurmStatusService(BaseService):
                             task.job_id = None
                             task.status = TaskStatus.TIME_OUT
                             await context.db.save(task)
+
         except Exception as e:
             logger.exception(f"Error checking Slurm status: {e}")
