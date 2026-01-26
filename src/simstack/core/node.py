@@ -370,7 +370,7 @@ class Node:
         resource_self = Resource(value="self")
 
         logger.info(
-            f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource}"
+            f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource} queue: {self.parameters.queue}"
         )
         if (
             self.parameters.resource == resource_self
