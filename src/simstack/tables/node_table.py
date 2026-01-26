@@ -213,6 +213,7 @@ class CreateNodeTable(TableBuilderBase):
         If a NodeModel exists with the same name but different function_mapping,
         logs and signals to skip processing.
         """
+
         existing_model = await self.engine.find_one(NodeModel, NodeModel.name == node_name)
         if not existing_model:
             return False, False
