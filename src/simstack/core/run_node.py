@@ -5,7 +5,7 @@ import logging
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import node_from_database
-from simstack.core.runner import run_node_from_registry
+from simstack.core.services.node_execution_service import run_node_from_registry
 
 logger = logging.getLogger("Run Node")
 

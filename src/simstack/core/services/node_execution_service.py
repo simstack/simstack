@@ -55,8 +55,6 @@ class NodeExecutionService(BaseService):
                 await submit_node(registry_entry)
             elif self._detach:
                 # Spawn independent process that survives when the runner dies
-                registry_entry.status = TaskStatus.RUNNING
-                await context.db.save(registry_entry)
                 cmd = [
                     "uv", "run", "run_node", "--node-id",
                     str(registry_entry.id),
@@ -95,7 +93,6 @@ class NodeExecutionService(BaseService):
             self._started = True
 
         # Clean up the completed tasks
-        # this is a test
         completed_tasks = {task for task in self._running_tasks if task.done()}
         for task in completed_tasks:
             try:
@@ -106,9 +103,11 @@ class NodeExecutionService(BaseService):
 
         # Load tasks
         registry_entry_list = await context.db.load_waiting_tasks_for_resource(self._resource_name)
+
         if registry_entry_list:
             logger.info(f"Retrieved {len(registry_entry_list)} tasks for {self._resource_name}")
             for entry in registry_entry_list:
+
                 task = asyncio.create_task(self._run_with_semaphore(entry))
                 self._running_tasks.add(task)
 
