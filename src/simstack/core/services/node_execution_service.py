@@ -56,7 +56,7 @@ class NodeExecutionService(BaseService):
             elif self._detach:
                 # Spawn independent process that survives when the runner dies
                 cmd = [
-                    "uv", "run", "--directory", context.config.project_root, "run_node", "--node-id",
+                    "uv", "run", "--directory", str(context.config.project_root), "run_node", "--node-id",
                     str(registry_entry.id),
                     "--resource", str(self._resource_name)
                 ]
