@@ -55,6 +55,8 @@ class NodeExecutionService(BaseService):
                 await submit_node(registry_entry)
             elif self._detach:
                 # Spawn independent process that survives when the runner dies
+                registry_entry.status = TaskStatus.RUNNING
+                await context.db.save(registry_entry)
                 cmd = [
                     "uv", "run", "run_node", "--node-id",
                     str(registry_entry.id),
