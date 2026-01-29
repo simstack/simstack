@@ -4,7 +4,6 @@ from typing import Dict, Any, Union, List
 from odmantic import Model, EmbeddedModel, Field
 
 from simstack.core.asnyc_helper import async_helper
-from simstack.core.context import context
 from simstack.core.engine import current_engine_context
 from simstack.models import simstack_model
 
@@ -50,7 +49,7 @@ class DataSetMetadataTemplate(Model):
 
 @simstack_model
 class DataSetMetadata(EmbeddedModel):
-    dataset_type: str = Field(unique=True)
+    field_name: str = Field(unique=True)
     data: Dict[str, Union[str, int, float, bool, datetime]] = Field(
         default_factory=dict
     )
@@ -64,23 +63,58 @@ class DataSetMetadata(EmbeddedModel):
         engine = current_engine_context.get()
         reference_metadata = await engine.find_one(
             DataSetMetadataTemplate,
-            DataSetMetadataTemplate.dataset_type == self.dataset_type,
+            DataSetMetadataTemplate.dataset_type == self.field_name,
         )
         if reference_metadata is None:
             metadata_template = DataSetMetadataTemplate(
-                dataset_type=self.dataset_type,
+                dataset_type=self.field_name,
                 model_json=_get_json_schema(self.data),
                 structure=new_structure,
             )
-
-            await context.db.save(metadata_template)
+            engine = current_engine_context.get()
+            await engine.save(metadata_template)
             return True  # first model of this type
 
         new_data_json = _get_json_schema(self.data)
-        if reference_metadata.model_json != new_data_json:
+
+        # Compare schemas element by element
+        ref_props = reference_metadata.model_json.get("properties", {})
+        new_props = new_data_json.get("properties", {})
+
+        # Check if property keys match
+        if set(ref_props.keys()) != set(new_props.keys()):
             raise ValueError(
-                f"Data schema has changed in the database reference: {reference_metadata.model_json} current: {new_data_json}"
+                f"Data schema properties mismatch. Reference keys: {set(ref_props.keys())}, Current keys: {set(new_props.keys())}"
             )
+
+        # Check each property type, allowing string format differences
+        for key in ref_props.keys():
+            ref_prop = ref_props[key]
+            new_prop = new_props[key]
+
+            ref_type = ref_prop.get("type")
+            new_type = new_prop.get("type")
+
+            if ref_type != new_type:
+                raise ValueError(
+                    f"Property '{key}' type mismatch. Reference: {ref_type}, Current: {new_type}"
+                )
+
+            # For string types, allow the format field to differ or be missing
+            if ref_type == "string":
+                # Compare all fields except 'format'
+                ref_without_format = {k: v for k, v in ref_prop.items() if k != "format"}
+                new_without_format = {k: v for k, v in new_prop.items() if k != "format"}
+                if ref_without_format != new_without_format:
+                    raise ValueError(
+                        f"Property '{key}' schema mismatch (excluding format). Reference: {ref_without_format}, Current: {new_without_format}"
+                    )
+            else:
+                # For non-string types, require exact match
+                if ref_prop != new_prop:
+                    raise ValueError(
+                        f"Property '{key}' schema mismatch. Reference: {ref_prop}, Current: {new_prop}"
+                    )
 
         # Check if lists in existing sections match
         save_template = False
@@ -95,8 +129,8 @@ class DataSetMetadata(EmbeddedModel):
                     save_template = True
                     self.structure[section] = content
             else:
-                # if there is no content in a section, we can just copy it from the reference metadata
                 new_structure[section] = reference_metadata.structure[section]
+
 
         if save_template:
             reference_metadata.structure = new_structure
@@ -109,7 +143,7 @@ class DataSetMetadata(EmbeddedModel):
         engine = current_engine_context.get()
         reference_metadata = await engine.find_one(
             DataSetMetadataTemplate,
-            DataSetMetadataTemplate.dataset_type == self.dataset_type,
+            DataSetMetadataTemplate.dataset_type == self.field_name,
         )
         if not reference_metadata:
             raise ValueError("Metadata does not exist")
@@ -126,7 +160,7 @@ class DataSetMetadata(EmbeddedModel):
     def initialized(self) -> bool:
         """Check if the model has been fully constructed."""
         # A simple heuristic: if we have an ID or if type is set, we're initialized
-        return hasattr(self, "dataset_type") and self.dataset_type is not None
+        return hasattr(self, "dataset_type") and self.field_name is not None
 
     # Dict-like behavior methods
     def __getitem__(self, key: str):

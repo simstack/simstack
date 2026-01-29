@@ -8,32 +8,14 @@ from simstack.models.models import ModelMapping, NodeModel
 
 logger = logging.getLogger("importer")
 
-async def function_from_model(model, task_id: ObjectId) -> Optional[Callable]:
+async def function_from_model(model, task_id: Optional[ObjectId] = None) -> Optional[Callable]:
     function_path = model.function_mapping
     module_path, function_name = function_path.rsplit(".", 1)
 
-    # if model.pickle_function is not None:
-    #     logger.info(f"task_id: {task_id} found pickle_function for {function_path}")
-    #     # The pickle_function is a reference to the FunctionPickle
-    #     function_pickle = model.pickle_function
-    #     logger.info(f"task_id: {task_id} loading function {function_path} from database")
-    #     # Load the function from the FunctionPickle
-    #     func = function_pickle.load_function()
-    #     logger.info(f"task_id: {task_id} Signature: {inspect.signature(func)} _inner: {hasattr(func, "_inner")}")
-    #
-    #     # Safe source code retrieval for pickled functions
-    #     try:
-    #         source_code = inspect.getsource(func)
-    #         logger.info(f"Source: {source_code}")
-    #     except (OSError, TypeError):
-    #         logger.info("Source code not available (function loaded from pickle)")
-    #
-    #     return func
-    # else:
-
-    logger.info(
-        f"task_id: {task_id} loading function {function_path} using regular import"
-    )
+    if task_id:
+        logger.info(
+         f"task_id: {task_id} loading function {function_path} using regular import"
+        )
     # Import the module
     module = importlib.import_module(module_path)
     # Get the function from the module

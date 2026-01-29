@@ -198,11 +198,5 @@ class GlobalState:
     def initialized(self):
         return self._initialized
 
-# TODO find out if this is still needed
-# root_dir = find_project_root()
-# path_dir = os.path.join(root_dir, "src")
-# if path_dir not in os.sys.path:
-#     os.sys.path.append(path_dir)
-
 # Create the singleton instance, but it's not initialized yet
 context = GlobalState()

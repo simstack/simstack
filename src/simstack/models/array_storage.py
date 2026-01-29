@@ -47,7 +47,7 @@ class ArrayStorage(Model):
         visited=None,
         field_prefix="",
     ):
-        return [{"field": self.name, "headerName": "Array"}]
+        return [{"field": "name", "headerName": "Array"}]
 
     @classmethod
     def ui_schema(cls, **kwargs) -> dict:

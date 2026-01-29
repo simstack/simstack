@@ -194,6 +194,7 @@ class BooleanData(Model):
 
 @simstack_model
 class BinaryOperationInput(Model):
+    field_name: str = "binary_operation"
     arg1: FloatData = Reference()
     arg2: FloatData = Reference()
 

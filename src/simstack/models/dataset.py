@@ -3,7 +3,6 @@ from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView
 from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
 
 from simstack.core.asnyc_helper import async_helper
-from simstack.core.context import context
 from simstack.core.engine import current_engine_context
 from simstack.models import simstack_model
 from simstack.models.dataset_metadata import DataSetMetadata
@@ -34,9 +33,14 @@ class DataSetSection(EmbeddedModel):
         default_factory=list
     )  # List of tuples (as lists of ObjectIds)
 
+    column_defs: List[Dict] = Field(default_factory=list)
+
+    table_entries: List[List[Dict]] = Field(default_factory=list)
+
     model_config = {"extra": "forbid"}
 
-    def add_model_group(self, models: Union[Model, Tuple[Model, ...]]) -> None:
+    @async_helper
+    async def add_model_group(self, models: Union[Model, Tuple[Model, ...]]) -> None:
         """
         Add a tuple of models to this section.
 
@@ -46,7 +50,18 @@ class DataSetSection(EmbeddedModel):
         if isinstance(models, Model):
             models = (models,)
         model_names = [model.__class__.__name__ for model in models]
-        model_ids = [model.id for model in models]
+
+        # Verify that all the models are already stored, otherwise store them
+        engine = current_engine_context.get()
+        stored_models = []
+        for model in models:
+            if model.id is None:
+                stored_model = await engine.save(model)
+                stored_models.append(stored_model)
+            else:
+                stored_models.append(model)
+
+        model_ids = [model.id for model in stored_models]
 
         # If this is the first tuple, set the model types
         if not self.model_types:
@@ -82,13 +97,15 @@ class DataSetSection(EmbeddedModel):
     async def make_table_entries(self):
         all_data = []
         engine = current_engine_context.get()
+
         for model_group_ids in self.data:
             data = []
             for model_group_id, model_type in zip(model_group_ids, self.model_types):
                 model_class = await import_class_by_name(model_type)
                 model_instance = await engine.find_one(
-                    model_class, model_class.id == model_group_id
+                   model_class, model_class.id == model_group_id
                 )
+
                 model_data = make_table_entries_helper(model_instance)
                 data.append(model_data)
             all_data.append(data)
@@ -112,7 +129,8 @@ class DataSetSection(EmbeddedModel):
 
         for model_type, model_id in zip(self.model_types, model_ids):
             model_class = await import_class_by_name(model_type)
-            model_instance = await context.db.find_one(
+            engine = current_engine_context.get()
+            model_instance = await engine.find_one(
                 model_class, model_class.id == model_id
             )
             if model_instance is None:
@@ -332,12 +350,13 @@ class DataSetSection(EmbeddedModel):
 
 @simstack_model
 class DataSet(Model):
-    name: str = Field(default="dataset")
+    field_name: str = Field(default="dataset")
     metadata: DataSetMetadata = Reference()
     sections: Dict[str, DataSetSection] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
 
+    
     @property
     def dataset_type(self) -> str:
         return self.metadata.dataset_type
@@ -348,6 +367,11 @@ class DataSet(Model):
         ok = await self.metadata.validate_dict(structure)
         if not ok:
             raise ValueError("Metadata validation failed")
+
+        for key, section in self.sections.items():
+            self.sections[key].column_defs = await section.make_column_defs()
+            self.sections[key].table_entries = await section.make_table_entries()
+
         await engine.save_unchecked(self)
 
     async def custom_model_dump(self, **kwargs) -> Dict[str, str]:
@@ -368,11 +392,47 @@ class DataSet(Model):
             for section_name, section in self.sections.items()
         }
 
+    @async_helper
+    async def clone(self, new_field_name: str = None, exclude_sections: List[str] = None) -> "DataSet":
+        """
+        Clone the dataset with optionally a new field name and excluding specified sections.
+
+        :param new_field_name: Optional new field name for the cloned dataset. If None, uses original field_name.
+        :param exclude_sections: Optional list of section names to exclude from the clone. If None, all sections are cloned.
+        :return: A new DataSet instance that is a clone of this dataset
+        """
+        if exclude_sections is None:
+            exclude_sections = []
+
+        # Clone the dataset with new or same field name
+        cloned_dataset = DataSet(
+            field_name=new_field_name if new_field_name is not None else self.field_name,
+            metadata=self.metadata
+        )
+
+        # Clone sections, excluding those in the exclude list
+        for section_name, section in self.sections.items():
+            if section_name not in exclude_sections:
+                # Create a new DataSetSection with copied data
+                cloned_section = DataSetSection(
+                    model_types=section.model_types.copy(),
+                    data=[model_ids.copy() for model_ids in section.data],
+                    column_defs=[col_def.copy() for col_def in section.column_defs],
+                    table_entries=[[entry.copy() for entry in row] for row in section.table_entries]
+                )
+                cloned_dataset.sections[section_name] = cloned_section
+
+        return cloned_dataset
+
     # Dict-like behavior methods
     def __getitem__(self, key: str) -> DataSetSection:
+        if key not in self.sections:
+            self.sections[key] = DataSetSection()
         return self.sections[key]
 
     def __setitem__(self, key: str, value: DataSetSection) -> None:
+        if key in self.sections:
+            raise KeyError(f"Section {key} already exists in dataset")
         self.sections[key] = value
 
     def __delitem__(self, key: str) -> None:
@@ -430,3 +490,85 @@ class DataSet(Model):
             "metadata": {"ui:widget": "hidden"},
             "sections": {"ui:widget": "hidden"},
         }
+
+
+class DataSetSelectionField(EmbeddedModel):
+    section_name: str = Field(default="default")
+    indices: List[int] = Field(default_factory=list)
+
+@simstack_model
+class DataSetSelection(Model):
+    field_name: str = Field(default="dataset_selection")
+    dataset_id: ObjectId
+    dataset_selection_fields: List[DataSetSelectionField] = Field(default_factory=list)
+
+    async def get_dataset(self):
+        return await current_engine_context.get().find_one(DataSet, DataSet.id == self.dataset_id)
+
+    @async_helper
+    async def get_selected_elements(self, section_name: str = None) -> List[Tuple[Model, ...]]:
+        """
+        Retrieve all selected model groups from the dataset.
+
+        :param section_name: Optional section name to filter results. If None, returns all sections.
+        :return: List of tuples of model instances for all selected elements
+        """
+        engine = current_engine_context.get()
+        dataset = await engine.find_one(DataSet, DataSet.id == self.dataset_id)
+
+        if dataset is None:
+            raise ValueError(f"Dataset with id {self.dataset_id} not found")
+
+        selected_elements = []
+        for selection_field in self.dataset_selection_fields:
+            if section_name is not None and selection_field.section_name != section_name:
+                continue
+
+            section = dataset.sections.get(selection_field.section_name)
+            if section is None:
+                raise ValueError(f"Section {selection_field.section_name} not found in dataset")
+
+            for index in selection_field.indices:
+                if index >= len(section):
+                    raise IndexError(
+                        f"Index {index} out of range for section {selection_field.section_name} with {len(section)} elements"
+                    )
+                model_group = section.get_model_group(index)
+                selected_elements.append(model_group)
+
+        return selected_elements
+
+    async def __aiter__(self, section_name: str = None):
+        """
+        Async iterator over all selected model groups.
+
+        :param section_name: Optional section name to filter results. If None, returns all sections.
+        :return: Async iterator yielding tuples of model instances
+        """
+        engine = current_engine_context.get()
+        dataset = await engine.find_one(DataSet, DataSet.id == self.dataset_id)
+
+        if dataset is None:
+            raise ValueError(f"Dataset with id {self.dataset_id} not found")
+
+        for selection_field in self.dataset_selection_fields:
+            if section_name is not None and selection_field.section_name != section_name:
+                continue
+
+            section = dataset.sections.get(selection_field.section_name)
+            if section is None:
+                raise ValueError(f"Section {selection_field.section_name} not found in dataset")
+
+            for index in selection_field.indices:
+                if index >= len(section):
+                    raise IndexError(
+                        f"Index {index} out of range for section {selection_field.section_name} with {len(section)} elements"
+                    )
+                yield section.get_model_group(index)
+
+    @classmethod
+    def ui_schema(cls) -> dict:
+        return {
+            "ui:field": "DataSetSelectionField",
+        }
+

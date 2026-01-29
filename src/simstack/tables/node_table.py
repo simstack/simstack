@@ -199,32 +199,29 @@ class CreateNodeTable(TableBuilderBase):
         except Exception as e:
             logger.error(f"Error getting input mapping: {e}")
 
-        return input_mappings
+            function_mapping = module.__name__ + "." + func_name
 
-    async def _delete_existing_node_model_if_needed(
-            self,
-            node_name: str,
-            function_mapping: str,
-    ) -> tuple[bool, bool]:
-        """
-        Returns:
-            (should_continue, existing_favorite)
+            try:
+                try:
+                    existing_model = await self.engine.find_one(
+                        NodeModel, NodeModel.name == node_name
+                    )
+                # except DocumentParsingError | ValidationError | DocumentNotFoundError:
+                #     existing_model = None
+                #     logger.error(f"NodeModel {node_name} not found/not readable in database.")
+                except Exception as e:
+                    existing_model = None
+                    logger.error(f"Error finding existing NodeModel {node_name}: {e}")
+                existing_favorite = False  # Default value if no existing model
 
-        If a NodeModel exists with the same name but different function_mapping,
-        logs and signals to skip processing.
-        """
-
-        existing_model = await self.engine.find_one(NodeModel, NodeModel.name == node_name)
-        if not existing_model:
-            return False, False
-
-        if function_mapping != existing_model.function_mapping:
-            logger.error(
-                f"Processing module NodeModel {node_name} already exists in the database\n"
-                + f"                                           DB  Mapping: {existing_model.function_mapping}\n"
-                + f"                                           New Mapping: {function_mapping} skipping."
-            )
-            return True, False
+                if existing_model:
+                    if function_mapping != existing_model.function_mapping:
+                        logger.error(
+                            f"Processing module {module.__name__} NodeModel {node_name} already exists in the database\n"
+                            + f"                                           DB  Mapping: {existing_model.function_mapping}\n"
+                            + f"                                           New Mapping: {function_mapping}.\n"
+                            + f"                                           New Mapping will overwrite DB Mapping."
+                        )
 
         existing_favorite = getattr(existing_model, "favorite", False)
 

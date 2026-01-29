@@ -10,7 +10,8 @@ readme = "README.md"
 requires-python = ">= 3.12"
 authors = [
     {name = "Wolfgang Wenzel", email = "wolfgang.wenzel@kit.edu"},
-    {name = "Timo Strunk", email = "timo.strunk@nanomatch.de"}
+    {name = "Timo Strunk", email = "timo.strunk@nanomatch.de"},
+
 ]
 license = { text = "MIT" }
 
@@ -21,6 +22,7 @@ dependencies = [
     "nest-asyncio>=1.6.0,<2",
     "numpy>=2.3.0",
     "pandas>=2.3.3",
+    "pytest>=8.4.2",
 ]
 
 [project.urls]
@@ -97,7 +99,7 @@ markers = [
     "unit: marks tests as unit tests",
     "local_runner: marks tests that require local runner",
     "database: marks tests that require database",
-    "rdkit: marks tests as RDKit-specific tests",
+    "indigo: marks tests as Indigo-specific tests",
     "edge_case: marks tests as edge case tests",
 ]
 

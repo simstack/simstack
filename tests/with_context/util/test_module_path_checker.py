@@ -198,7 +198,7 @@ class TestIsModuleSubpathOfPath:
         """Test with applications directory structure."""
         mock_find_root.return_value = self.project_root
 
-        module_path = "applications.electronic_structure.util.cdx_to_molecule_rdkit"
+        module_path = "applications.electronic_structure.util.cdx_to_molecule_indigo"
         path_info_path = self.project_root / "applications"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
