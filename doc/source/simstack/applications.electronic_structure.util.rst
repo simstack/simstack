@@ -12,10 +12,10 @@ applications.electronic\_structure.util.add\_hydrogen\_to\_molecule module
    :show-inheritance:
    :undoc-members:
 
-applications.electronic\_structure.util.cdx\_to\_molecule\_rdkit module
+applications.electronic\_structure.util.cdx\_to\_molecule\_indigo module
 -----------------------------------------------------------------------
 
-.. automodule:: applications.electronic_structure.util.cdx_to_molecule_rdkit
+.. automodule:: applications.electronic_structure.util.cdx_to_molecule_indigo
    :members:
    :show-inheritance:
    :undoc-members:

@@ -31,7 +31,7 @@ from simstack.models import NodeModel
 from simstack.models import NodeRegistry
 from simstack.models.file_list import FileListModel
 from simstack.models.files import FileStack
-from simstack.models.parameters import Resource
+from simstack.models.parameters import Resource, Queue
 from simstack.models.simstack_model import is_simstack_model
 from simstack.util.importer import import_function, import_class
 
@@ -368,11 +368,11 @@ class Node:
         resource_self = Resource(value="self")
 
         logger.info(
-            f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource}"
+            f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource} queue: {self.parameters.queue}"
         )
         if (
             self.parameters.resource == resource_self
-            or context.config.resource == self.parameters.resource
+            or (context.config.resource == self.parameters.resource and self.parameters.queue == Queue.DEFAULT)
         ):
             result = await self.execute_node_locally()
             return result
@@ -639,9 +639,7 @@ class Node:
             if result.message is not None and result.message != "":
                 logger.info(f"Task task_id: {self.id} message: {result.message}")
             if len(result_ids) == 1:
-                result = result_models[
-                    0
-                ]  # this is a SimstackResult with just one returned model
+                result = result_models[0]  # this is a SimstackResult with just one returned model
         return new_task_status, result
 
     async def set_status(self, status: TaskStatus):
@@ -861,7 +859,12 @@ def node(
             result = None
             if status == TaskStatus.COMPLETED:
                 result = await execution_node.load_results()
-            elif status == TaskStatus.SUBMITTED:
+            elif status in [
+                TaskStatus.SUBMITTED,
+                TaskStatus.RUNNING,
+                TaskStatus.SLURM_QUEUED,
+                TaskStatus.SLURM_RUNNING,
+            ]:
                 result = await execution_node.run_somewhere()
             if result is None or execution_node.status != TaskStatus.COMPLETED:
                 raise RuntimeError(
@@ -883,7 +886,12 @@ def node(
             result = None
             if status == TaskStatus.COMPLETED:
                 return loop.run_until_complete(execution_node.load_results())
-            elif status == TaskStatus.SUBMITTED:
+            elif status in [
+                TaskStatus.SUBMITTED,
+                TaskStatus.RUNNING,
+                TaskStatus.SLURM_QUEUED,
+                TaskStatus.SLURM_RUNNING,
+            ]:
                 return loop.run_until_complete(execution_node.run_somewhere())
             if result is None or execution_node.status != TaskStatus.COMPLETED:
                 raise RuntimeError(

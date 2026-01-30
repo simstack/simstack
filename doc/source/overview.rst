@@ -1,26 +1,24 @@
 Overview
 ========
 
-Simstack II
+SimStack II
 ~~~~~~~~~~~
 
-Simstack II V0.1 delivers a modern, python based workflow system where
+SimStack II is a modern, Python-based workflow system with a web-based graphical user interface (GUI). The GUI is generated automatically from your Python workflow code and supports interactive inspection of inputs, outputs, tables, and plots.
 
-* workflows are submitted via a :ref:`graphical user interface<using-gui-section>`
-  which is auto-generated from the :ref:`python code <writing-gui-section>`.
-* data is persisted for reuse by automatically storing arguments and
-  results in a (non-sql) database
-* workflows are
-    * dynamically generated at run time,
-    * can be nested,
-    * executed on different remote resources (within the same workflow)* results, including interactive tables and graphs, are visualized in the web
-  based GUI, which is automatically generated in python
-* artifacts, such are tables and graphs can be generated during or after the
-  workflow execution for data analysis
-* :doc:`workflows <workflows>` are written as decorated plain python functions,
+Key features
+^^^^^^^^^^^^
 
+* **GUI-driven execution:** Workflows are submitted via a :ref:`graphical user interface <using-gui-section>`, which is auto-generated from the :ref:`Python code <writing-gui-section>`.
+* **Persistent results:** Inputs and results are stored automatically in a non-SQL database so they can be reused and re-analyzed.
+* **Flexible workflows:** Workflows can be generated dynamically at runtime, nested, and executed across different remote resources.
+* **Artifacts for analysis:** Tables, plots, and other artifacts can be created during or after workflow execution to support data analysis.
+* **Simple authoring model:** :doc:`Workflows <workflows>` are written as decorated plain Python functions.
 
-**Roadmap:** Future versions will (more or less in this order):
+Roadmap
+^^^^^^^
+
+Future versions are planned to (roughly in this order):
 
 * integrate research data management
 * provide tools to wrap other workflow systems
@@ -28,76 +26,67 @@ Simstack II V0.1 delivers a modern, python based workflow system where
 * enable data aggregation via the GUI
 * enable workflow development via the GUI
 
-The ideas that guided the development behind this approach are discussed in the following section, for
-a quick start go to :doc:`installation` and start using Simstack II via the :ref:`graphical user interface<using-gui-section>`.
-
+For a quick start, see :doc:`installation` and start using SimStack II via the :ref:`graphical user interface <using-gui-section>`.
 
 Motivation
 ~~~~~~~~~~
 
-Viewed very broadly scientists generate tables and figures, which they publish in journals.
-Simstack II is a tool to help scientists to orchestrate complex computational
-protocols, in part by using high performance computing or distributed
-resources. In the context of computational science, ,amy workflows environments
-have been developed to help scientists to implement execute and
-maintain these computational protocols.
+Computational scientists produce data that ultimately becomes figures and tables in publications.
+To aid this process many workflow environments already exist:
+`Wikipedia <https://en.wikipedia.org/wiki/Workflow_management_system>`_ lists a wide range of systems
+such as Airflow, Luigi, Nextflow, and Snakemake. Many widely used tools are file-based:
+a workflow is defined in a static configuration file and executed by an engine.
+This approach can be robust and has been very successful,
+but it often becomes limiting when workflows must be assembled dynamically or adapted during execution.
 
-.. TODO:: Add better references
+In parallel, the AI/ML ecosystem has accelerated the development of powerful Python-native workflow
+systems such as
+`covalent <https://github.com/AgnostiqHQ/covalent>`_,
+`prefect <https://github.com/PrefectHQ/prefect>`_, and
+`pyiron <https://github.com/pyiron/pyiron>`_.
+These systems embrace Python directly, enabling more dynamic and expressive computation pipelines.
 
-Presently, scientists have a wide range of workflow environments at their
-disposal, `Wikipedia  <https://en.wikipedia
-.org/wiki/Workflow_management_system>`_ lists many different implementations, ranging from Airflow,
-Luigi, Nextflow, Snakemake, and many more. Many of these systems are
-file-based, i.e. the workflow is defined in a static file, which is then
-interpreted by the workflow engine. These systems are very powerful and have
-been successfully used in many scientific applications, in particular in
-bioinformatics. However, these systems are not very flexible, i.e. the
-workflow is defined in a static file, which is then interpreted by the
-workflow engine. This makes it difficult to implement complex dynamic workflows.
+Our experience with SimStack I suggests there are two only partially overlapping communities:
 
-Driven by the ongoing AI/ML revolution very powerful python-based workflow systems have been developed, for example
-`covalent <https://github.com/AgnostiqHQ/covalent>`_, `prefect <https://github.com/PrefectHQ/prefect>`_ and
-`pyiron <https://github.com/pyiron/pyiron>`_, to name a few. Many of these systems go beyond static, file-based
-protocols and thereby offer the full flexibility of the python ecosystem to enable complex computations.
+* expert workflow developers (in python or otherwise) who struggle to develop user-interfaces
+make these workflows accessible to end-users
+* a larger group of workflow users, but may not have the software engineering background
+to develop the workflows on their own.
 
-SimStack II aims to complement these systems by focusing on the visualization
-and inspection of the generated data via an interactive user interface, an
-aspect  which remains underdeveloped in many python-based workflow systems.
-Our experience with SimStack I has been that there are two overlapping
-communities, one of which is focused on the development of lobar workflows
-by the other, much larger group of scientists would benefit from the use in
-scientific applications, but lacks the software engineering skills, to tackle
-the unavoidable complexities of complicated scientific software running on
-HPC  resources.
+Bridging developers and users
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-SimStack II is meant to bridge the gap between these communities, which gives
-workflow-developers more visibility for their work and which gives
-workflow-users  access to these computational tools. In our experience with
-SimStack I we have realized that most people who can develop real-life
-workflows in a graphical user interface also have the skill to implement
-the same workflow in a python-based workflow environment that provides tools
-for workflow orchestration. For this reason, a graphical user interface for the **developement** of workflows may be
-more of a burden, than a benefit.
+SimStack II aims to bridge this gap by making workflow execution and result exploration accessible
+through a GUI, while keeping workflow implementation in Python. This enables rapid development of
+workflows using the full power of the python ecosystem. We believe this approach is much more
+powerful than attempting to construct complex workflows in a graphical user interface.
 
-On the other hand, many application scientist without a strong computational
-background struggle to use these workflows in a python and or HPC environment. In addition, it seems useful to
-consider that worklows are used in very different contexts: when used in IT environments, e.g. for server or
-database maintenance, workflows are typically very stable and change little over time. The work in an evironment
-EWAT = everything works all the time.
+Developers who can construct workflows via a GUI typically have the ability to
+write them directly in Python. A GUI for *workflow development* thus adds overhead
+without providing much benefit. A GUI for *workflow execution and analysis*,
+however, can substantially lower the barrier for many users.
 
-It is often overlooked that scientific workflows are used in a very different context, NEW = nothing ever works.
-In science workflows are typically in a state of flux, often because the underlying scientific hypothesis for their use
-evolve during the course of a scientific project. The most obvious result of this is that the workflows succeed technically,
-but the results do not support the underlying scientific hypothesis. This complictes workflow development because it calls
-for a re-analysis of the data, often in ways that were not foreseen when the workflow was originally developed.
-SimStack II is intended to support scientist on this journey of discovery,
-where workflows change essentially in every iteration. In the implementation of SimStack II we have have therefore
-focused on the following design criteria:
+In developing a workflow system for scientific applications, we also need to consider another
+issue: Workflows in IT settings (e.g., server or database maintenance) tend to be stable:
+the goal is an environment where everything works all the time.
 
-* Worklows should be started, executed and monitored via a graphical user interface on a variety of resources
-* Results should be persisted and easily accessible for re-analysis, ideally through the graphical user interface
-* Workflow components should be easy to implement in python, but the results should be accessible via a graphical user
-  interface without a detailed knowledge of the frontend architecture. These components are not developed in the GUI.
-* There should be a limited functionality to generate new workflows by combining existing components in the GUI, but this is not the main focus of SimStack II.
+Scientific workflows often operate in a different environment: methods, hypotheses, and
+analysis requirements evolve continuously. A workflow may succeed technically while
+producing results that invalidate the motivating hypothesis—triggering
+new analysis and iteration.
+
+This reality makes persistence, traceability, and interactive re-analysis essential.
+
+Design goals
+^^^^^^^^^^^^
+
+SimStack II is designed with the following priorities:
+
+* Workflows are initialized, monitored, and managed through a GUI on a variety of compute resources.
+* Results are persisted and accessible for re-analysis, ideally through the GUI.
+* Workflow components are implemented in Python, with minimal coding overhead.
+* Workflows expose results in a UI that is (to a large extent)
+automatically generated on the basis of the python code additional frontend development.
 
 .. include:: architecture.rst
+```

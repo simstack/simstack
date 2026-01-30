@@ -1,5 +1,7 @@
 from datetime import datetime
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, List, Optional, Set
+
+from odmantic import Model
 
 
 def make_table_entries_helper(
@@ -441,14 +443,14 @@ def make_column_defs_helper(
 
 
 def make_column_defs_instance(
-    model_instance,
-    table_name=None,
-    max_recursion_level=1,
-    drop_id=True,
-    current_level=0,
-    visited=None,
-    field_prefix="",
-):
+        model_instance: Model,
+        table_name: Optional[str] = None,
+        max_recursion_level: int = 1,
+        drop_id: bool = True,
+        current_level: int = 0,
+        visited: Optional[Set[int]] = None,
+        field_prefix: str = "",
+) -> List[Dict[str, Any]]:
     """
     Create column definitions for AG Grid based on a model instance.
     Uses the same logic as table data generation but works on an actual instance.

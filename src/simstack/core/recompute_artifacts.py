@@ -43,20 +43,21 @@ async def recompute_artifacts(node_registry: NodeRegistry):
         await recompute_artifacts(child_registry)
 
     # Remove current node's artifacts
+    table_artifacts = await engine.find(
+        TableArtifactModel, TableArtifactModel.parent_id == node_registry.id
+    )
+    for table_artifact in table_artifacts:
+        await engine.delete(table_artifact)
+
+    chart_artifacts = await engine.find(
+        ChartArtifactModel, ChartArtifactModel.parent_id == node_registry.id
+    )
+    for chart_artifact in chart_artifacts:
+        await engine.delete(chart_artifact)
+
     if node_registry.artifact_ids:
         logger.info(f"Removing {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}")
 
-        table_artifacts = await engine.find(
-            TableArtifactModel, TableArtifactModel.parent_id == node_registry.id
-        )
-        for table_artifact in table_artifacts:
-            await engine.delete(table_artifact)
-
-        chart_artifacts = await engine.find(
-            ChartArtifactModel, ChartArtifactModel.parent_id == node_registry.id
-        )
-        for chart_artifact in chart_artifacts:
-            await engine.delete(chart_artifact)
         # Delete artifacts from the database
         for artifact_id in node_registry.artifact_ids:
             instance = await engine.find_one(
@@ -105,9 +106,7 @@ async def recompute_artifacts(node_registry: NodeRegistry):
             }
 
             artifact_arguments.add_attributes(func, *args, **node_kwargs)
-            node_registry.artifact_ids = await create_artifacts(
-                artifact_arguments, node_registry
-            )
+            node_registry.artifact_ids = await create_artifacts(artifact_arguments, node_registry)
 
             # Save the updated registry
             await engine.save(node_registry)

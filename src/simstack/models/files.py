@@ -162,9 +162,19 @@ class FileStack(Model):
         """
         self.locations.append(file_instance)
 
-    def get(self, local_resource: Resource, local_dir: Path) -> Path:
+    def get(self, local_dir: Path = None) -> Path:
         """
-        Copies the file stack to a local directory.
+        Copies the file stack to a local directory. This is the version to be used in applications
+
+        :param local_dir: The local directory to copy the file stack to.
+        :type local_dir: Path
+        """
+        from simstack.core.context import context
+        return self.get_raw(context.config.resource, local_dir)
+
+    def get_raw(self, local_resource: Resource, local_dir: Path = None) -> Path:
+        """
+        Copies the file stack to a local directory, assumes no context.
 
         :param local_resource: the local resource to copy the file stack to. Defaults to the current resource.
         :param local_dir: The local directory to copy the file stack to.
@@ -173,6 +183,9 @@ class FileStack(Model):
 
         # select the best instance
         # first search for an instance with "in_memory" set to True
+
+        if local_dir is None:
+            local_dir = Path.cwd()
 
         if self.in_memory:
             local_dir.mkdir(parents=True, exist_ok=True)
@@ -188,6 +201,7 @@ class FileStack(Model):
                 raise ValueError(
                     f"Failed to decompress and write file {self.name}: {e}"
                 )
+
         # If in-memory instance not found or decompression failed, try finding instance on same resource
         if same_resource_instance := next(
             (f for f in self.locations if f.resource == local_resource), None
@@ -220,7 +234,7 @@ async def main():
     print(file_stack)
     await context.db.save(file_stack)
     local_dir = Path(context.config.workdir) / "samira" / str(file_stack.id)
-    retrieved = file_stack.get(context.config.resource, local_dir=local_dir)
+    retrieved = file_stack.get(local_dir=local_dir)
     print("Retrieved file path:", retrieved)
 
 

@@ -1,0 +1,19 @@
+name: Notify simstack-server to refresh uv.lock
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch event to simstack-server
+        env:
+          GH_TOKEN: ${{ secrets.SIMSTACK_SERVER_DISPATCH_TOKEN }}
+        run: |
+          curl -L -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            https://api.github.com/repos/simstack/simstack-server/dispatches \
+            -d '{"event_type":"simstack-main-updated"}'
