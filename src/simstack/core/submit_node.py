@@ -31,7 +31,7 @@ async def submit_node(registry_entry: NodeRegistry):
         # Implement SLURM submission logic here
         base_path = context.config.project_root
 
-        python_path = ":".join(context.config.python_paths)
+        python_path = ":".join(str(path) for path in context.config.python_paths)
         work_dir = context.config.workdir / registry_entry.name / str(registry_entry.id)
         job_name = registry_entry.name + "." + str(registry_entry.id)
 
