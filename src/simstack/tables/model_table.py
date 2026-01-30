@@ -125,16 +125,26 @@ class CreateModelTable(TableBuilderBase):
         for file_path in path_manager.find_python_files(path_name):
             await self._create_model_models_from_file(file_path, drops)
 
+    async def clear_table(self) -> None:
+        self.logger.info("Clearing ModelMapping collection")
+        await self.engine.get_collection(ModelMapping).drop()
+
 
 # Public API preserved for existing callers (e.g. tests)
-async def make_model_table(engine, dirs: list[str] = None, drops: str = "", write_schema: bool = False):
+async def make_model_table(
+    engine,
+    dirs: list[str] = None,
+    drops: str = "",
+    write_schema: bool = False,
+    clear: bool = False,
+):
     """
     Rebuild the model table using the given engine.
 
     This is a thin wrapper around CreateModelTable for backward compatibility.
     """
     creator = CreateModelTable(engine, write_schema=write_schema)
-    await creator.build(dirs=dirs, drops=drops)
+    await creator.build(dirs=dirs, drops=drops, clear=clear)
 
 
 def create_model_table_main():

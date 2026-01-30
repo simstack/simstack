@@ -39,6 +39,7 @@ class TableBuilderBase(ABC):
         dirs: Optional[list[Path]] = None,
         drops: str = "",
         exclude: Optional[list[str]] = None,
+        clear: bool = False,
     ) -> None:
         """
         Build the table.
@@ -52,6 +53,9 @@ class TableBuilderBase(ABC):
           - nested relative paths (e.g. "src/simstack/models")
         """
         await self._ensure_context_initialized()
+        if clear:
+            await self.clear_table()
+
         await self._process_simstack_modules(drops=drops)
 
         if dirs is None:
@@ -196,6 +200,10 @@ class TableBuilderBase(ABC):
         """ an optional hook to run after all modules have been processed"""
         pass
 
+    async def clear_table(self) -> None:
+        """ an optional hook to clear the table before building """
+        pass
+
     @classmethod
     def cli_main(cls, builder_cls: Type["TableBuilderBase"], write_schema: bool = False) -> None:
         """
@@ -238,6 +246,12 @@ class TableBuilderBase(ABC):
             action="store_true",
             help="Enable schema writing.",
         )
+        parser.add_argument(
+            "--clear",
+            dest="clear",
+            action="store_true",
+            help="Clear the table before building.",
+        )
 
         args = parser.parse_args()
 
@@ -261,7 +275,7 @@ class TableBuilderBase(ABC):
         async def _run() -> None:
             await context.initialize(log_level=level, resource="self")
             builder = builder_cls(context.db.engine, write_schema=args.write_schema)
-            await builder.build(dirs=dirs, drops=args.drops, exclude=args.exclude)
+            await builder.build(dirs=dirs, drops=args.drops, exclude=args.exclude, clear=args.clear)
             await builder.second_stage(args.drops)
         loop.run_until_complete(_run())
         loop.close()

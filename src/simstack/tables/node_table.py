@@ -330,14 +330,24 @@ class CreateNodeTable(TableBuilderBase):
     async def second_stage(self, drops):
         await update_node_children(self.engine, drops)
 
-async def make_node_table(engine, dirs: list[str] = None, drops: str = None, write_schema: bool = False):
+    async def clear_table(self) -> None:
+        self.logger.info("Clearing NodeModel collection")
+        await self.engine.get_collection(NodeModel).drop()
+
+async def make_node_table(
+    engine,
+    dirs: list[str] = None,
+    drops: str = None,
+    write_schema: bool = False,
+    clear: bool = False,
+):
     """
     Rebuild the node table using the given engine.
 
     This is a thin wrapper around CreateNodeTable for backward compatibility.
     """
     creator = CreateNodeTable(engine, write_schema=write_schema)
-    await creator.build(dirs=dirs, drops=drops)
+    await creator.build(dirs=dirs, drops=drops, clear=clear)
 
 
 def create_node_table_main():
