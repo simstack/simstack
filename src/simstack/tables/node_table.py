@@ -205,9 +205,6 @@ class CreateNodeTable(TableBuilderBase):
             existing_model = await self.engine.find_one(
                 NodeModel, NodeModel.name == node_name
             )
-        # except DocumentParsingError | ValidationError | DocumentNotFoundError:
-        #     existing_model = None
-        #     logger.error(f"NodeModel {node_name} not found/not readable in database.")
         except Exception as e:
             existing_model = None
             logger.error(f"Error finding existing NodeModel {node_name}: {e}")
