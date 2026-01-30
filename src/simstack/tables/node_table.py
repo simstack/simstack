@@ -201,39 +201,38 @@ class CreateNodeTable(TableBuilderBase):
 
             function_mapping = module.__name__ + "." + func_name
 
-            try:
+        try:
+            existing_model = await self.engine.find_one(
+                NodeModel, NodeModel.name == node_name
+            )
+        # except DocumentParsingError | ValidationError | DocumentNotFoundError:
+        #     existing_model = None
+        #     logger.error(f"NodeModel {node_name} not found/not readable in database.")
+        except Exception as e:
+            existing_model = None
+            logger.error(f"Error finding existing NodeModel {node_name}: {e}")
+        existing_favorite = False  # Default value if no existing model
+
+        if existing_model:
+            if function_mapping != existing_model.function_mapping:
+                logger.error(
+                    f"Processing module {module.__name__} NodeModel {node_name} already exists in the database\n"
+                    + f"                                           DB  Mapping: {existing_model.function_mapping}\n"
+                    + f"                                           New Mapping: {function_mapping}.\n"
+                    + f"                                           New Mapping will overwrite DB Mapping."
+                )
+
+            existing_favorite = getattr(existing_model, "favorite", False)
+
+            if existing_model.pickle_function:
                 try:
-                    existing_model = await self.engine.find_one(
-                        NodeModel, NodeModel.name == node_name
-                    )
-                # except DocumentParsingError | ValidationError | DocumentNotFoundError:
-                #     existing_model = None
-                #     logger.error(f"NodeModel {node_name} not found/not readable in database.")
+                    await self.engine.delete(existing_model.pickle_function)
+                    #logger.debug(f"Deleted FunctionPickle for {node_name}")
                 except Exception as e:
-                    existing_model = None
-                    logger.error(f"Error finding existing NodeModel {node_name}: {e}")
-                existing_favorite = False  # Default value if no existing model
+                    logger.error(f"Error deleting FunctionPickle for {node_name}: {e}")
 
-                if existing_model:
-                    if function_mapping != existing_model.function_mapping:
-                        logger.error(
-                            f"Processing module {module.__name__} NodeModel {node_name} already exists in the database\n"
-                            + f"                                           DB  Mapping: {existing_model.function_mapping}\n"
-                            + f"                                           New Mapping: {function_mapping}.\n"
-                            + f"                                           New Mapping will overwrite DB Mapping."
-                        )
-
-        existing_favorite = getattr(existing_model, "favorite", False)
-
-        if existing_model.pickle_function:
-            try:
-                await self.engine.delete(existing_model.pickle_function)
-                #logger.debug(f"Deleted FunctionPickle for {node_name}")
-            except Exception as e:
-                logger.error(f"Error deleting FunctionPickle for {node_name}: {e}")
-
-        await self.engine.delete(existing_model)
-        # logger.debug(f"Deleted NodeModel entry for {node_name}")
+            await self.engine.delete(existing_model)
+            # logger.debug(f"Deleted NodeModel entry for {node_name}")
 
         return False, existing_favorite
 
