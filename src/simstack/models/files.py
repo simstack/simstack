@@ -10,7 +10,7 @@ from odmantic import Model, Field, ObjectId, Reference
 from simstack.models import simstack_model
 from simstack.models.file_instance import FileInstance
 from simstack.models.parameters import Resource
-from simstack.util.file_hashing import hash_file
+from simstack.util.file_hashing import hash_file, hash_string
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,23 @@ class FileStack(Model):
                 "model": "simstack.models.files.FileStack",
             },
         }
+
+    @classmethod
+    def from_string(cls, data_string: str, file_name: str):
+
+        content = zlib.compress(data_string.encode("utf-8"))
+        file_hash = hash_string(data_string)
+        size = len(content)
+
+        file_stack = cls(
+            name=file_name,
+            in_memory=True,
+            content=content,
+            is_hashable=True,
+            size=size,
+            hash=file_hash,
+        )
+        return file_stack
 
     @classmethod
     def from_local_file(

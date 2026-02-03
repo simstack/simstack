@@ -1,5 +1,6 @@
 import inspect
 import logging
+import re
 from typing import Callable, List, get_type_hints, Dict, Any, Type
 
 from docutils.nodes import description
@@ -83,12 +84,27 @@ class CreateNodeTable(TableBuilderBase):
 
         return inputs
 
+    def _parse_generic_type(self, type_str: str) -> tuple[str, str | None]:
+        """
+        Parse generic types like List[X] or Dict[str,X] and extract the inner type.
+        Returns (wrapper, inner_type) where wrapper is 'List' or 'Dict' and inner_type is the model type.
+        """
+        list_match = re.match(r'List\[(.*?)\]', type_str)
+        if list_match:
+            return 'List', list_match.group(1)
+
+        dict_match = re.match(r'Dict\[str,\s*(.*?)\]', type_str)
+        if dict_match:
+            return 'Dict', dict_match.group(1)
+
+        return None, None
+
     async def _build_outputs(
-        self,
-        func_name: str,
-        type_hints: Dict[str, Any],
-        parser: DocstringParser,
-        drops: str
+            self,
+            func_name: str,
+            type_hints: Dict[str, Any],
+            parser: DocstringParser,
+            drops: str
     ) -> List[DataMapping]:
 
         outputs: List[Dict[str, Any]] = []
@@ -115,16 +131,39 @@ class CreateNodeTable(TableBuilderBase):
                     logger.warning(f"The docstring of {func_name} does not defines its SimstackResult outputs")
                 else:
                     for name, data in doc_simstack_result.items():
+                        output_mapping = None
                         try:
-                            # Check if data["type"] is a mapping (contains periods) or a single class name
-                            if "." in data["type"]:
+                            wrapper, inner_type_str = self._parse_generic_type(data["type"])
+                            if wrapper:
+                                # Handle List[type] or Dict[str,type]
+                                inner_mapping = None
+                                if "." in inner_type_str:
+                                    inner_mapping = inner_type_str
+                                else:
+                                    try:
+                                        inner_model = await import_class_by_name(inner_type_str)
+                                    except (ValueError, LookupError):
+                                        inner_model = None
+                                    if inner_model is not None:
+                                        inner_mapping = self.get_class_mapping(inner_model, drops)
+                                if inner_mapping is not None:
+                                    if wrapper == 'List':
+                                        output_mapping = f"List[{inner_mapping}]"
+                                    else:  # Dict
+                                        output_mapping = f"Dict[str,{inner_mapping}]"
+                            elif "." in data["type"]:
                                 # It's a full mapping path
                                 output_mapping = data["type"]
                             else:
                                 # It's a single class name
-                                output_model = await import_class_by_name(data["type"])
-                                output_mapping = self.get_class_mapping(output_model, drops)
-                            result_mappings.append(DataMapping(name=name, mapping=output_mapping, description=data.get("description")))
+                                try:
+                                    output_model = await import_class_by_name(data["type"])
+                                    output_mapping = self.get_class_mapping(output_model, drops)
+                                except (ValueError, LookupError) as e:
+                                    logger.error(f"Could not parse '{data['type']}' to mapping: {e}")
+                                    output_mapping = None
+                            if output_mapping is not None:
+                                result_mappings.append(DataMapping(name=name, mapping=output_mapping, description=data.get("description")))
                         except (ValueError, LookupError) as e:
                             logger.error(f"Could not parse '{data['type']}' to mapping: {e}")
         else:  # not a SimstackResult
@@ -157,6 +196,51 @@ class CreateNodeTable(TableBuilderBase):
                     return kwargs_node["parameters"]
 
         return parameters
+
+    async def _delete_existing_node_model_if_needed(
+            self,
+            node_name: str,
+            function_mapping: str,
+    ) -> tuple[bool, bool]:
+        """
+        If a NodeModel with the same name exists, delete it (and its pickle if present),
+        but preserve the 'favorite' flag for the new entry.
+
+        Returns:
+            (should_skip, existing_favorite)
+        """
+        try:
+            existing_model = await self.engine.find_one(NodeModel, NodeModel.name == node_name)
+        except Exception as e:
+            logger.error(f"Error finding existing NodeModel {node_name}: {e}")
+            return False, False
+
+        if not existing_model:
+            return False, False
+
+        if function_mapping != existing_model.function_mapping:
+            logger.error(
+                f"NodeModel '{node_name}' already exists in the database\n"
+                f"    DB  Mapping: {existing_model.function_mapping}\n"
+                f"    New Mapping: {function_mapping}\n"
+                f"New Mapping will overwrite DB Mapping."
+            )
+
+        existing_favorite = getattr(existing_model, "favorite", False)
+
+        if getattr(existing_model, "pickle_function", None):
+            try:
+                await self.engine.delete(existing_model.pickle_function)
+            except Exception as e:
+                logger.error(f"Error deleting FunctionPickle for {node_name}: {e}")
+
+        try:
+            await self.engine.delete(existing_model)
+        except Exception as e:
+            logger.error(f"Error deleting existing NodeModel {node_name}: {e}")
+
+        return False, existing_favorite
+
 
     async def _resolve_input_mappings(
             self,
@@ -199,39 +283,7 @@ class CreateNodeTable(TableBuilderBase):
         except Exception as e:
             logger.error(f"Error getting input mapping: {e}")
 
-            function_mapping = module.__name__ + "." + func_name
-
-        try:
-            existing_model = await self.engine.find_one(
-                NodeModel, NodeModel.name == node_name
-            )
-        except Exception as e:
-            existing_model = None
-            logger.error(f"Error finding existing NodeModel {node_name}: {e}")
-        existing_favorite = False  # Default value if no existing model
-
-        if existing_model:
-            if function_mapping != existing_model.function_mapping:
-                logger.error(
-                    f"Processing module {module.__name__} NodeModel {node_name} already exists in the database\n"
-                    + f"                                           DB  Mapping: {existing_model.function_mapping}\n"
-                    + f"                                           New Mapping: {function_mapping}.\n"
-                    + f"                                           New Mapping will overwrite DB Mapping."
-                )
-
-            existing_favorite = getattr(existing_model, "favorite", False)
-
-            if existing_model.pickle_function:
-                try:
-                    await self.engine.delete(existing_model.pickle_function)
-                    #logger.debug(f"Deleted FunctionPickle for {node_name}")
-                except Exception as e:
-                    logger.error(f"Error deleting FunctionPickle for {node_name}: {e}")
-
-            await self.engine.delete(existing_model)
-            # logger.debug(f"Deleted NodeModel entry for {node_name}")
-
-        return False, existing_favorite
+        return input_mappings
 
     def get_class_mapping(self, type: Type, drops: str = "") -> str:
         """Return the class mapping for a given type, optionally dropping a prefix."""
