@@ -18,7 +18,7 @@ def import_module_from_file(file_path: Path, root_dir: Path):
         Imported module or None if import failed
     """
     try:
-        logger.debug(f"Attempting to import module from: {file_path}")
+        # logger.debug(f"Attempting to import module from: {file_path}")
         if not file_path.exists():
             print(f"File not found: {file_path}")
             return []
@@ -30,8 +30,8 @@ def import_module_from_file(file_path: Path, root_dir: Path):
 
         if root_dir not in sys.path:
             sys.path.insert(0, str(root_dir))
-            logger.debug(f"Added {root_dir} to sys.path")
-        # Try simple import first
+            # logger.debug(f"Added {root_dir} to sys.path")
+        # Try a simple import first
         try:
             module = importlib.import_module(module_name)
             return module

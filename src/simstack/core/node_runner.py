@@ -44,6 +44,7 @@ class NodeRunner(SimstackResult):
         self.logger = logger or local_logger
         self.last_stdout = ""
         self.last_stderr = ""
+        self.log_string = ""
         self.info_file_patterns = {"*.in", "*.out", "*.err", "*.log"}
         self.info("started")
 
@@ -65,6 +66,7 @@ class NodeRunner(SimstackResult):
         """
         try:
             files_set: Set[str] = set()
+
 
             # Process args for patterns and files
             for value in args:
@@ -100,6 +102,16 @@ class NodeRunner(SimstackResult):
         Args:
             msg (str): Debug message to log
         """
+        self.logger.debug(f"Task {self.name}: {msg} for task_id: {self.task_id}")
+
+    def log(self, msg: str):
+        """
+        Log a message with a task context.
+
+        Args:
+            msg (str): Message to log
+        """
+        self.log_string += f"{msg}\n"
         self.logger.debug(f"Task {self.name}: {msg} for task_id: {self.task_id}")
 
     def info(self, msg):
@@ -224,6 +236,12 @@ class NodeRunner(SimstackResult):
             self.fail(err_msg)
         return False
 
+    def _make_log_file(self):
+        if len(self.log_string) > 0:
+            log_file = FileStack.from_string(self.log_string, file_name="log.txt")
+            self.info_files.append(log_file)
+            self.info(f"Log string added to info files: {log_file.name}")
+
     def fail(self, msg: str) -> SimstackResult:
         """
         Mark the task as failed with an error message.
@@ -234,6 +252,7 @@ class NodeRunner(SimstackResult):
         Returns:
             SimstackResult: Self reference with status set to FAILED
         """
+        self._make_log_file()
         self.logger.exception(f"Task {self.name}: {msg} task_id: {self.task_id}")
         self.error_message = msg
         self.status = TaskStatus.FAILED
@@ -249,6 +268,7 @@ class NodeRunner(SimstackResult):
         Returns:
             SimstackResult: Self reference with status set to COMPLETED
         """
+        self._make_log_file()
         self.info(f"succeeded {msg}")
         self.message = msg
         self.status = TaskStatus.COMPLETED

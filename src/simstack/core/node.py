@@ -8,8 +8,6 @@ try:
     from multiprocessing.reduction import duplicate
 except ImportError:
     import os
-
-
     def duplicate(handle, target_process=None):
         return os.dup(handle)
 

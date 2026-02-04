@@ -1,7 +1,66 @@
-## 1. Install Simstack II — 3-step lightning setup ⚡️
+## SimStack II Overview ⚡️
 
-> **Goal:** create an isolated **`simstack`** environment, pull the model code, and satisfy every dependency in a single
-> coffee break.
+Simstack II is a workflow orchestration tool that lets you run your workflows on remote 
+resources. 
+
+This repo provides the base package for Simstack II development. To use the graphical user interface,
+you need to install the 
+
+- [simstack-server](https://github.com/simstack/simstack-server) project, a python-based
+fastapi app that connects to the Simstack II database. a
+- [simstack-ui](https://github.com/simstack/simstack-ui) project, a react-js web frontend. 
+
+You can use the [simstack-example](https://github.com/simstack/simstack-example) project 
+to get started. 
+
+
+## Using SimStack II
+
+### Setting Up a MongoDB Instance
+
+SimStack II persists user data via MongoDB, so you need to have a running MongoDB instance.
+
+In a minimal example, you can spin up a MongoDB instance on your local machine with Docker:
+
+```bash
+docker run -d \
+  --name simstack-mongo \
+  -p 27017:27017 \
+  -e MONGO_INITDB_ROOT_USERNAME=admin \
+  -e MONGO_INITDB_ROOT_PASSWORD=yourpassword \
+  mongo:latest
+```
+
+This command:
+
+- Runs MongoDB in detached mode (`-d`)
+- Names the container `simstack-mongo`
+- Maps port 27017 to your localhost
+- Sets up basic authentication with username `admin` and password `yourpassword`
+
+**Important**: Replace `yourpassword` with a secure password and update your `simstack.toml` connection string
+accordingly:
+
+```toml
+connection_string = "mongodb://admin:yourpassword@localhost:27017/"
+```
+You can then create databases and collections in the MongoDB instance with the `mongo` CLI.
+
+### Starting the SimStack II Server
+
+Start the SimStack II server as described in the [simstack-server](https://github.com/simstack/simstack-server) repo.
+Set the `CONNECTION_STRING` environment variable to the connection string for the administration
+database you just created. You can check localhost:8000 to see if the server is running.
+
+### Starting the SimStack II UI
+
+Start the SimStack II UI as described in the [simstack-ui](https://github.com/simstack/simstack-ui) repo.
+You should now be able to access the UI at http://localhost:3000.
+
+
+
+
+
 
 | What you’ll do                          | Why it matters                                     |
 |-----------------------------------------|----------------------------------------------------|
