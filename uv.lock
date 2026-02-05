@@ -1515,6 +1515,7 @@ source = { editable = "." }
 dependencies = [
     { name = "cloudpickle" },
     { name = "coolname" },
+    { name = "docutils" },
     { name = "nest-asyncio" },
     { name = "numpy" },
     { name = "odmantic" },
@@ -1553,6 +1554,7 @@ test = [
 requires-dist = [
     { name = "cloudpickle", specifier = ">=3.1.1,<4" },
     { name = "coolname", specifier = ">=2.2.0,<3" },
+    { name = "docutils", specifier = ">=0.22" },
     { name = "nest-asyncio", specifier = ">=1.6.0,<2" },
     { name = "numpy", specifier = ">=2.3.0" },
     { name = "odmantic", specifier = ">=1.0.2,<2" },
