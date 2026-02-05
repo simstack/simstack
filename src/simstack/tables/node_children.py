@@ -103,7 +103,7 @@ async def update_node_children(engine, drops: str) -> None:
     mapping_set: set[str] = set(nm.function_mapping for nm in node_models)
 
     for nm in node_models:
-        func = await import_function(nm.function_mapping)
+        func = await import_function(nm.function_mapping, None, True)
         if func is None:
             continue
 

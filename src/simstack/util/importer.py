@@ -24,7 +24,7 @@ async def function_from_model(model, task_id: Optional[ObjectId] = None) -> Opti
 
 
 async def import_function(
-    function_path: str, task_id: ObjectId = None
+    function_path: str, task_id: ObjectId = None, tolerate_missing_function: bool = False
 ) -> Optional[Callable]:
     """
     Dynamically import a function from a module using its full path.
@@ -49,8 +49,13 @@ async def import_function(
             f"task_id: {task_id} Function {function_path} not found in the NodeModel Table"
         )
 
-    return await function_from_model(node_model, task_id)
-
+    try:
+        return await function_from_model(node_model, task_id)
+    except Exception as e:
+        if tolerate_missing_function:
+            return None
+        else:
+            raise e
 
 async def import_function_by_name(function_name: str, task_id: ObjectId, engine: AIOEngine = None) -> Optional[Callable]:
     if not engine:
