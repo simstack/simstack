@@ -86,6 +86,9 @@ def _extract_called_functions(func: Callable) -> List[str]:
 
     return called_functions
 
+def normalize_text(s: str) -> str:
+    return s.encode("utf-8", errors="replace").decode("utf-8")
+
 async def update_node_children(engine, drops: str) -> None:
     """
     1) Read all registered nodes from NodeModel.
@@ -141,7 +144,7 @@ async def update_node_children(engine, drops: str) -> None:
                     resolved.add(mapping_by_node_name[called_name])
                     continue
 
-                    # Otherwise, resolve by last segment (handles "obj.method" and "module.func")
+                # Otherwise, resolve by last segment (handles "obj.method" and "module.func")
                 short = called_name.split(".")[-1]
                 if short in mapping_by_node_name:
                     resolved.add(mapping_by_short_name[short])
@@ -166,7 +169,11 @@ async def update_node_children(engine, drops: str) -> None:
                 f"Function Mapping: {nm.function_mapping if nm.function_mapping else 'WARNING: Missing function_mapping'}\n")
 
             if hasattr(nm, 'description') and nm.description:
-                outfile.write(f"Description: {nm.description}\n")
+                try:
+                    cleaned_description = normalize_text(nm.description)
+                    outfile.write(f"Description: {cleaned_description}\n")
+                except Exception as e:
+                    logger.warning(f"Could not normalize description for {nm.name}: {e}")
             else:
 
                 outfile.write(f"Description: WARNING: Missing description\n")

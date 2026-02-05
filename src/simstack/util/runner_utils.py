@@ -114,7 +114,7 @@ async def clean_slurm_info(resource: Resource, user: str = None):
                 timeout=30,
             )
 
-        logger.info(f"Slurm Jobs {resource}: {result.stdout}")
+
         if result.returncode == 0:
             active_job_ids = set()
             for line in result.stdout.splitlines():

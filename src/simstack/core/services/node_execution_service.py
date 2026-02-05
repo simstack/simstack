@@ -6,6 +6,7 @@ import subprocess
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import node_from_database
+from simstack.core.run_docker import run_docker
 from simstack.core.submit_node import submit_node
 from simstack.models import NodeRegistry
 from simstack.models.parameters import Resource
@@ -48,11 +49,15 @@ class NodeExecutionService(BaseService):
         try:
 
             logger.info(f"Running node task_id: {registry_entry.id} on resource {context.config.resource}")
-            if (
-                    hasattr(registry_entry.parameters, "queue")
-                    and registry_entry.parameters.queue == "slurm-queue"
-            ):
-                await submit_node(registry_entry)
+            if hasattr(registry_entry.parameters, "queue"):
+                if registry_entry.parameters.queue == "slurm-queue":
+                    await submit_node(registry_entry)
+                    return True
+                elif registry_entry.parameters.queue == "docker":
+                    await run_docker(registry_entry)
+                else:
+                    logger.error(f"Unsupported queue {registry_entry.parameters.queue} for task_id: {registry_entry.id}")
+                    return False
             elif self._detach:
                 # Spawn independent process that survives when the runner dies
                 cmd = [
