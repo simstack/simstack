@@ -145,10 +145,10 @@ async def update_node_children(engine, drops: str) -> None:
                     continue
 
                 # Otherwise, resolve by last segment (handles "obj.method" and "module.func")
-                short = called_name.split(".")[-1]
-                if short in mapping_by_node_name:
-                    resolved.add(mapping_by_short_name[short])
-                    continue
+                # short = called_name.split(".")[-1]
+                # if short in mapping_by_node_name:
+                #     resolved.add(mapping_by_short_name[short])
+                #     continue
 
         if len(resolved) != 0:
             logger.info(f"Resolved children of {nm.name} to {resolved}")
