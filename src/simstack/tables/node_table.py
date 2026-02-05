@@ -212,70 +212,62 @@ class CreateNodeTable(TableBuilderBase):
                 except Exception as e:
                     logger.error(f"Error getting input mapping: {e}")
 
-            function_mapping = module.__name__ + "." + func_name
+        function_mapping = module.__name__ + "." + func_name
 
+        try:
+            existing_model = await self.engine.find_one(
+                NodeModel, NodeModel.name == node_name
+            )
+        except Exception as e:
+            existing_model = None
+            logger.error(f"Error finding existing NodeModel {node_name}: {e}")
+        existing_favorite = False  # Default value if no existing model
+
+        if existing_model:
+            if function_mapping != existing_model.function_mapping:
+                logger.error(
+                    f"Processing module {module.__name__} NodeModel {node_name} already exists in the database\n"
+                    + f"                                           DB  Mapping: {existing_model.function_mapping}\n"
+                    + f"                                           New Mapping: {function_mapping}.\n"
+                    + f"                                           New Mapping will overwrite DB Mapping."
+                )
+
+
+        existing_favorite = getattr(existing_model, "favorite", False)
+
+        # If it has a pickle_function, delete the corresponding FunctionPickle
+        if existing_model.pickle_function:
             try:
-                try:
-                    existing_model = await self.engine.find_one(
-                        NodeModel, NodeModel.name == node_name
-                    )
-                # except DocumentParsingError | ValidationError | DocumentNotFoundError:
-                #     existing_model = None
-                #     logger.error(f"NodeModel {node_name} not found/not readable in database.")
-                except Exception as e:
-                    existing_model = None
-                    logger.error(f"Error finding existing NodeModel {node_name}: {e}")
-                existing_favorite = False  # Default value if no existing model
-
-                if existing_model:
-                    if function_mapping != existing_model.function_mapping:
-                        logger.error(
-                            f"Processing module {module.__name__} NodeModel {node_name} already exists in the database\n"
-                            + f"                                           DB  Mapping: {existing_model.function_mapping}\n"
-                            + f"                                           New Mapping: {function_mapping}.\n"
-                            + f"                                           New Mapping will overwrite DB Mapping."
-                        )
-
-                    # Capture the favorite flag from the existing model
-                    existing_favorite = getattr(existing_model, "favorite", False)
-
-                    # If it has a pickle_function, delete the corresponding FunctionPickle
-                    if existing_model.pickle_function:
-                        try:
-                            # Delete the FunctionPickle directly using the reference
-                            await self.engine.delete(existing_model.pickle_function)
-                            logger.debug(f"Deleted FunctionPickle for {node_name}")
-                        except Exception as e:
-                            logger.error(
-                                f"Error deleting FunctionPickle for {node_name}: {e}"
-                            )
-
-                    # Delete the NodeModel entry
-                    await self.engine.delete(existing_model)
-                    logger.debug(f"Deleted NodeModel entry for {node_name}")
-
-                function_pickle = None
-
-                # Create and save the node model
-                node_model = NodeModel(
-                    name=node_name,
-                    function_mapping=function_mapping,
-                    description=node_description,
-                    input_mappings=input_mappings,
-                    default_parameters=parameters,
-                    pickle_function=function_pickle,
-                    favorite=existing_favorite,  # Set the favorite flag from the existing model
-                )
-
-                logger.debug(
-                    f"NodeModel: {node_model.name}, {node_model.function_mapping}, {node_model.input_mappings}"
-                )
-                await self.engine.save(node_model)
+                # Delete the FunctionPickle directly using the reference
+                await self.engine.delete(existing_model.pickle_function)
+                logger.debug(f"Deleted FunctionPickle for {node_name}")
             except Exception as e:
-                logger.error(f"Error creating/saving NodeModel {node_name}: {e}")
-                import traceback
+                logger.error(
+                    f"Error deleting FunctionPickle for {node_name}: {e}"
+                )
 
-                traceback.print_exc()
+        # Delete the NodeModel entry
+        await self.engine.delete(existing_model)
+        logger.debug(f"Deleted NodeModel entry for {node_name}")
+
+        function_pickle = None
+
+        # Create and save the node model
+        node_model = NodeModel(
+            name=node_name,
+            function_mapping=function_mapping,
+            description=node_description,
+            input_mappings=input_mappings,
+            default_parameters=parameters,
+            pickle_function=function_pickle,
+            favorite=existing_favorite,  # Set the favorite flag from the existing model
+        )
+
+        logger.debug(
+            f"NodeModel: {node_model.name}, {node_model.function_mapping}, {node_model.input_mappings}"
+        )
+        await self.engine.save(node_model)
+
 
 async def make_node_table(engine, dirs: list[str] = None, drops: str = None, write_schema: bool = False):
     """
