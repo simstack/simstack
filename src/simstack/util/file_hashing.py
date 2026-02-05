@@ -24,6 +24,10 @@ def hash_file(
 
     return hash_obj.hexdigest()
 
+def hash_string(string: str, algorithm: str = "sha256") -> str:
+    hash_obj = hashlib.new(algorithm)
+    hash_obj.update(string.encode())
+    return hash_obj.hexdigest()
 
 def hash_file_object(
     file_obj: BinaryIO, algorithm: str = "sha256", chunk_size: int = 8192

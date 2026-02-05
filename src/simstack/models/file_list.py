@@ -298,12 +298,24 @@ class FileListMixin:
         """
         self.file_stacks.sort(key=lambda fs: fs.size, reverse=reverse)
 
+    def items(self):
+        """
+        Iterator that yields (name, FileStack) tuples for each FileStack in the list.
+        Similar to dict.items() behavior.
+
+        :return: Iterator yielding (name, FileStack) tuples
+        :rtype: Iterator[tuple[str, FileStack]]
+        """
+        for file_stack in self.file_stacks:
+            yield (file_stack.name, file_stack)
+
 
 @simstack_model
 class FileList(EmbeddedModel, FileListMixin):
     file_stacks: List[FileStack] = Field(
         default_factory=list, description="List of file stacks"
     )
+    
 
 
 @simstack_model
