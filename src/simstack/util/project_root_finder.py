@@ -17,8 +17,8 @@ def find_project_root(current_file=None, marker_files=(".git", "simstack.toml", 
     if current_file is None:
         current_file = __file__
 
-    # Get the directory of the current file
-    current_dir = Path(current_file).resolve().parent
+    # Get the directory from where the process was started
+    current_dir = Path.cwd()
 
     # Walk up the directory tree until we find a marker file
     prev_dir = None
