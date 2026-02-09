@@ -3,6 +3,48 @@ from typing import List, Union, Literal, Optional, Dict, Any
 from odmantic import Model, Field, EmbeddedModel, ObjectId
 
 
+# Enterprise-specific series and features
+class AGWaterfallSeriesConfig(EmbeddedModel):
+    """AG-Charts waterfall series configuration (Enterprise)."""
+
+    type: Literal["waterfall"] = "waterfall"
+    xKey: str = Field(..., description="Key for x-axis data")
+    yKey: str = Field(..., description="Key for y-axis data")
+    labelKey: Optional[str] = Field(None, description="Key for data labels")
+    positiveStroke: Optional[str] = Field(None, description="Stroke color for positive values")
+    negativeStroke: Optional[str] = Field(None, description="Stroke color for negative values")
+    visible: Optional[bool] = Field(True)
+
+
+class AGHeatmapSeriesConfig(EmbeddedModel):
+    """AG-Charts heatmap series configuration (Enterprise)."""
+
+    type: Literal["heatmap"] = "heatmap"
+    xKey: str = Field(..., description="Key for x-axis data")
+    yKey: str = Field(..., description="Key for y-axis data")
+    colorKey: str = Field(..., description="Key for color data")
+    visible: Optional[bool] = Field(True)
+
+
+class AGTreemapSeriesConfig(EmbeddedModel):
+    """AG-Charts treemap series configuration (Enterprise)."""
+
+    type: Literal["treemap"] = "treemap"
+    labelKey: str = Field(..., description="Key for labels")
+    sizeKey: Optional[str] = Field(None, description="Key for size")
+    colorKey: Optional[str] = Field(None, description="Key for color")
+    visible: Optional[bool] = Field(True)
+
+
+class AGSunburstSeriesConfig(EmbeddedModel):
+    """AG-Charts sunburst series configuration (Enterprise)."""
+
+    type: Literal["sunburst"] = "sunburst"
+    labelKey: str = Field(..., description="Key for labels")
+    sizeKey: Optional[str] = Field(None, description="Key for size")
+    visible: Optional[bool] = Field(True)
+
+
 # Chart Series Definitions
 class AGChartSeriesBase(EmbeddedModel):
     """Base class for AG-Charts series configuration."""
@@ -140,6 +182,10 @@ AGChartSeries = Union[
     AGScatterSeriesConfig,
     AGPieSeriesConfig,
     AGDonutSeriesConfig,
+    AGWaterfallSeriesConfig,
+    AGHeatmapSeriesConfig,
+    AGTreemapSeriesConfig,
+    AGSunburstSeriesConfig,
 ]
 
 
@@ -171,12 +217,12 @@ class AGChartAxisConfig(EmbeddedModel):
 class AGChartLegendConfig(EmbeddedModel):
     """AG-Charts legend configuration."""
 
-    enabled: bool = Field(default=True, description="Enable legend")
-    position: Literal["top", "right", "bottom", "left"] = Field(
+    enabled: Optional[bool] = Field(default=True, description="Enable legend")
+    position: Optional[Literal["top", "right", "bottom", "left"]] = Field(
         default="right", description="Legend position"
     )
-    spacing: float = Field(default=20, description="Legend spacing")
-    item: Dict[str, Any] = Field(
+    spacing: Optional[float] = Field(default=20, description="Legend spacing")
+    item: Optional[Dict[str, Any]] = Field(
         default_factory=dict, description="Legend item configuration"
     )
 
@@ -186,9 +232,10 @@ class AGChartTitleConfig(EmbeddedModel):
     """AG-Charts title configuration."""
 
     text: str = Field("Chart Title", description="Title text")
-    # fontSize: Optional[int] = Field(default=16, description="Title font size")
-    # fontWeight: Optional[str] = Field(default="bold", description="Title font weight")
-    # color: Optional[str] = Field(default=None, description="Title color")
+    enabled: Optional[bool] = Field(default=True, description="Enable title")
+    fontSize: Optional[int] = Field(default=16, description="Title font size")
+    fontWeight: Optional[str] = Field(default="bold", description="Title font weight")
+    color: Optional[str] = Field(default=None, description="Title color")
 
 
 # Subtitle Configuration
@@ -196,6 +243,7 @@ class AGChartSubtitleConfig(EmbeddedModel):
     """AG-Charts subtitle configuration."""
 
     text: str = Field(..., description="Subtitle text")
+    enabled: Optional[bool] = Field(default=True, description="Enable subtitle")
     fontSize: Optional[int] = Field(default=12, description="Subtitle font size")
     color: Optional[str] = Field(default=None, description="Subtitle color")
 
@@ -204,14 +252,18 @@ class AGChartSubtitleConfig(EmbeddedModel):
 class ChartArtifactModel(Model):
     """AG-Charts configuration model."""
 
-    parent_id: ObjectId = Field(default=None, description="ID of the node registry")
+    parent_id: Optional[ObjectId] = Field(default=None, description="ID of the node registry")
 
     # Chart data
     data: List[Dict[str, Any]] = Field(default_factory=list, description="Chart data")
 
     # Chart configuration
-    title: AGChartTitleConfig = Field(..., description="Chart title configuration")
-    # subtitle: AGChartSubtitleConfig = Field(..., description="Chart subtitle configuration")
+    title: Optional[AGChartTitleConfig] = Field(
+        default=None, description="Chart title configuration"
+    )
+    subtitle: Optional[AGChartSubtitleConfig] = Field(
+        default=None, description="Chart subtitle configuration"
+    )
 
     # Series configuration
     series: List[AGChartSeries] = Field(
@@ -223,14 +275,14 @@ class ChartArtifactModel(Model):
         default_factory=list, description="Chart axes configurations"
     )
 
-    # # Legend configuration
-    legend: AGChartLegendConfig = Field(
-        default=AGChartLegendConfig(), description="Legend configuration"
+    # Legend configuration
+    legend: Optional[AGChartLegendConfig] = Field(
+        default=None, description="Legend configuration"
     )
-    #
+
     # Chart styling and behavior
-    width: int = Field(default=800, description="Chart width in pixels")
-    height: int = Field(default=400, description="Chart height in pixels")
+    width: Optional[int] = Field(default=800, description="Chart width in pixels")
+    height: Optional[int] = Field(default=400, description="Chart height in pixels")
     padding: Optional[Dict[str, int]] = Field(default=None, description="Chart padding")
     background: Optional[Dict[str, Any]] = Field(
         default=None, description="Background configuration"
@@ -253,6 +305,119 @@ class ChartArtifactModel(Model):
     options: Optional[Dict[str, Any]] = Field(
         default_factory=dict, description="Additional chart options"
     )
+
+
+class ChartBuilder:
+    """Chainable API for building ChartArtifactModel."""
+
+    def __init__(self, data: Optional[List[Dict[str, Any]]] = None):
+        self._chart = ChartArtifactModel(
+            data=data or [],
+            title=AGChartTitleConfig(text="Chart Title"),
+        )
+
+    def with_data(self, data: List[Dict[str, Any]]) -> "ChartBuilder":
+        self._chart.data = data
+        return self
+
+    def with_title(self, text: str, **kwargs) -> "ChartBuilder":
+        if self._chart.title:
+            self._chart.title.text = text
+            for k, v in kwargs.items():
+                setattr(self._chart.title, k, v)
+        else:
+            self._chart.title = AGChartTitleConfig(text=text, **kwargs)
+        return self
+
+    def with_subtitle(self, text: str, **kwargs) -> "ChartBuilder":
+        self._chart.subtitle = AGChartSubtitleConfig(text=text, **kwargs)
+        return self
+
+    def add_series(self, series: AGChartSeries) -> "ChartBuilder":
+        self._chart.series.append(series)
+        return self
+
+    def add_line_series(self, xKey: str, yKey: str, title: Optional[str] = None, **kwargs) -> "ChartBuilder":
+        series = AGLineSeriesConfig(xKey=xKey, yKey=yKey, title=title, **kwargs)
+        self._chart.series.append(series)
+        return self
+
+    def add_bar_series(self, xKey: str, yKey: str, title: Optional[str] = None, **kwargs) -> "ChartBuilder":
+        series = AGBarSeriesConfig(xKey=xKey, yKey=yKey, title=title, **kwargs)
+        self._chart.series.append(series)
+        return self
+
+    def add_column_series(self, xKey: str, yKey: str, title: Optional[str] = None, **kwargs) -> "ChartBuilder":
+        series = AGColumnSeriesConfig(xKey=xKey, yKey=yKey, title=title, **kwargs)
+        self._chart.series.append(series)
+        return self
+
+    def add_area_series(self, xKey: str, yKey: str, title: Optional[str] = None, **kwargs) -> "ChartBuilder":
+        series = AGAreaSeriesConfig(xKey=xKey, yKey=yKey, title=title, **kwargs)
+        self._chart.series.append(series)
+        return self
+
+    def add_scatter_series(self, xKey: str, yKey: str, title: Optional[str] = None, **kwargs) -> "ChartBuilder":
+        series = AGScatterSeriesConfig(xKey=xKey, yKey=yKey, title=title, **kwargs)
+        self._chart.series.append(series)
+        return self
+
+    def add_pie_series(self, angleKey: str, labelKey: Optional[str] = None, title: Optional[str] = None, **kwargs) -> "ChartBuilder":
+        series = AGPieSeriesConfig(angleKey=angleKey, labelKey=labelKey, title=title, **kwargs)
+        self._chart.series.append(series)
+        return self
+
+    def add_donut_series(self, angleKey: str, labelKey: Optional[str] = None, title: Optional[str] = None, **kwargs) -> "ChartBuilder":
+        series = AGDonutSeriesConfig(angleKey=angleKey, labelKey=labelKey, title=title, **kwargs)
+        self._chart.series.append(series)
+        return self
+
+    def add_waterfall_series(self, xKey: str, yKey: str, title: Optional[str] = None, **kwargs) -> "ChartBuilder":
+        series = AGWaterfallSeriesConfig(xKey=xKey, yKey=yKey, title=title, **kwargs)
+        self._chart.series.append(series)
+        return self
+
+    def add_heatmap_series(self, xKey: str, yKey: str, colorKey: str, title: Optional[str] = None, **kwargs) -> "ChartBuilder":
+        series = AGHeatmapSeriesConfig(xKey=xKey, yKey=yKey, colorKey=colorKey, title=title, **kwargs)
+        self._chart.series.append(series)
+        return self
+
+    def add_treemap_series(self, labelKey: str, title: Optional[str] = None, **kwargs) -> "ChartBuilder":
+        series = AGTreemapSeriesConfig(labelKey=labelKey, title=title, **kwargs)
+        self._chart.series.append(series)
+        return self
+
+    def add_sunburst_series(self, labelKey: str, title: Optional[str] = None, **kwargs) -> "ChartBuilder":
+        series = AGSunburstSeriesConfig(labelKey=labelKey, title=title, **kwargs)
+        self._chart.series.append(series)
+        return self
+
+    def add_axis(self, type: Literal["category", "number", "time", "log"], position: Literal["top", "right", "bottom", "left"], title: Optional[str] = None, **kwargs) -> "ChartBuilder":
+        axis = AGChartAxisConfig(type=type, position=position, title=title, **kwargs)
+        self._chart.axes.append(axis)
+        return self
+
+    def with_legend(self, enabled: bool = True, position: Literal["top", "right", "bottom", "left"] = "right", **kwargs) -> "ChartBuilder":
+        self._chart.legend = AGChartLegendConfig(enabled=enabled, position=position, **kwargs)
+        return self
+
+    def with_size(self, width: int, height: int) -> "ChartBuilder":
+        self._chart.width = width
+        self._chart.height = height
+        return self
+
+    def with_theme(self, theme: str) -> "ChartBuilder":
+        self._chart.theme = theme
+        return self
+
+    def with_options(self, **kwargs) -> "ChartBuilder":
+        if self._chart.options is None:
+            self._chart.options = {}
+        self._chart.options.update(kwargs)
+        return self
+
+    def build(self) -> ChartArtifactModel:
+        return self._chart
 
 
 # Helper functions for creating specific chart types

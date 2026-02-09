@@ -16,6 +16,21 @@ from .models import (
 )
 from .parameters import Parameters
 from .node_registry import NodeRegistry
+from .charts_artifact import (
+    ChartArtifactModel,
+    ChartBuilder,
+    AGLineSeriesConfig,
+    AGBarSeriesConfig,
+    AGColumnSeriesConfig,
+    AGAreaSeriesConfig,
+    AGScatterSeriesConfig,
+    AGPieSeriesConfig,
+    AGDonutSeriesConfig,
+    AGWaterfallSeriesConfig,
+    AGHeatmapSeriesConfig,
+    AGTreemapSeriesConfig,
+    AGSunburstSeriesConfig,
+)
 from .dataset import DataSet, DataSetSection, DataSetSelection, DataSetSelectionField
 from .dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
 
@@ -42,4 +57,17 @@ __all__ = [
     "DataSetSelectionField",
     "DataSetMetadata",
     "DataSetMetadataTemplate",
+    "ChartArtifactModel",
+    "ChartBuilder",
+    "AGLineSeriesConfig",
+    "AGBarSeriesConfig",
+    "AGColumnSeriesConfig",
+    "AGAreaSeriesConfig",
+    "AGScatterSeriesConfig",
+    "AGPieSeriesConfig",
+    "AGDonutSeriesConfig",
+    "AGWaterfallSeriesConfig",
+    "AGHeatmapSeriesConfig",
+    "AGTreemapSeriesConfig",
+    "AGSunburstSeriesConfig",
 ]
