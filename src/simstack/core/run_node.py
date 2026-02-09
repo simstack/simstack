@@ -20,8 +20,10 @@ async def run_node_from_id(node_id: str, resource_str: str):
             return False
         return await run_node_from_registry(registry_entry)
     except Exception as e:
+        import traceback
         logger.exception(f"Error running node task_id: {node_id}: {str(e)}")
         if registry_entry:
+            registry_entry.error = f"{str(e)}\n{traceback.format_exc()}"
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
         return False

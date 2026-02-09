@@ -471,6 +471,9 @@ class Node:
                 else:
                     result = real_func(*self._args, **node_kwargs)
             except Exception as e:
+                import traceback
+                error_msg = f"{str(e)}\n{traceback.format_exc()}"
+                self.registry_entry.error = error_msg
                 logger.exception(
                     f"Task task_id: {self.id} node function error for node: {self.name} msg: {str(e)}"
                 )
@@ -867,12 +870,11 @@ def node(
             ]:
                 result = await execution_node.run_somewhere()
             if result is None or execution_node.status != TaskStatus.COMPLETED:
-                raise RuntimeError(
-                    f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"
-                )
+                error_msg = f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"
+                if execution_node.registry_entry.error:
+                    error_msg += f"\nError details:\n{execution_node.registry_entry.error}"
+                raise RuntimeError(error_msg)
             return result
-
-        @functools.wraps(func)
         def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             import asyncio
 
@@ -894,9 +896,10 @@ def node(
             ]:
                 return loop.run_until_complete(execution_node.run_somewhere())
             if result is None or execution_node.status != TaskStatus.COMPLETED:
-                raise RuntimeError(
-                    f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"
-                )
+                error_msg = f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"
+                if execution_node.registry_entry.error:
+                    error_msg += f"\nError details:\n{execution_node.registry_entry.error}"
+                raise RuntimeError(error_msg)
             return result
 
         async_wrapper.is_node = True

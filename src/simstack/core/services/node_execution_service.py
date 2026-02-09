@@ -19,8 +19,9 @@ async def run_node_from_registry(registry_entry: NodeRegistry):
     # Create the node from the registry entry
     node = await node_from_database(registry_entry)
     if not node:
-        logger.error(
-            f"Failed to create node from registry entry task_id: {registry_entry.id} on resource {context.config.resource}")
+        msg = f"Failed to create node from registry entry task_id: {registry_entry.id} on resource {context.config.resource}"
+        logger.error(msg)
+        registry_entry.error = msg
         registry_entry.status = TaskStatus.FAILED
         await context.db.save(registry_entry)
         return False
@@ -84,10 +85,12 @@ class NodeExecutionService(BaseService):
                 return await run_node_from_registry(registry_entry)
 
         except Exception as e:
+            import traceback
             logger.exception(
                 f"Error running node task_id: {registry_entry.id} on resource {context.config.resource} : {str(e)}"
             )
             if registry_entry:
+                registry_entry.error = f"{str(e)}\n{traceback.format_exc()}"
                 registry_entry.status = TaskStatus.FAILED
                 await context.db.save(registry_entry)
             return False
