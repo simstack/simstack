@@ -859,13 +859,16 @@ def node(
             result = None
             if status == TaskStatus.COMPLETED:
                 result = await execution_node.load_results()
+            # TODO why do we run somewhere when already running ?
             elif status in [
                 TaskStatus.SUBMITTED,
-                TaskStatus.RUNNING,
+                TaskStatus.RETRIEVED,
                 TaskStatus.SLURM_QUEUED,
-                TaskStatus.SLURM_RUNNING,
             ]:
                 result = await execution_node.run_somewhere()
+            else:
+                logger.warning(f"Task task_id: {execution_node.id} status: {status} was not executed")
+
             if result is None or execution_node.status != TaskStatus.COMPLETED:
                 raise RuntimeError(
                     f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"
