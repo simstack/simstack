@@ -116,7 +116,7 @@ class ConfigReader(DatabaseInformation):
 
     @property
     def workdir(self) -> Path:
-        return transform_file_name(self._resource_definition.workdir)
+        return transform_file_name(self._resource_definition.workdir, self.project_root)
 
     @property
     def environment_start(self) -> str:

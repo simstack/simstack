@@ -49,39 +49,46 @@ class NodeExecutionService(BaseService):
         try:
 
             logger.info(f"Running node task_id: {registry_entry.id} on resource {context.config.resource}")
-            if hasattr(registry_entry.parameters, "queue"):
-                if registry_entry.parameters.queue == "slurm-queue":
-                    await submit_node(registry_entry)
-                    return True
-                elif registry_entry.parameters.queue == "docker":
-                    await run_docker(registry_entry)
-                else:
-                    logger.error(f"Unsupported queue {registry_entry.parameters.queue} for task_id: {registry_entry.id}")
-                    return False
-            elif self._detach:
-                # Spawn independent process that survives when the runner dies
-                cmd = [
-                    "uv", "run", "--directory", str(context.config.project_root), "run_node", "--node-id",
-                    str(registry_entry.id),
-                    "--resource", str(self._resource_name)
-                ]
 
-                # Use platform specific flags to ensure the process survives if runner is killed
-                creationflags = 0
-                if platform.system() == "Windows":
-                    creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+            queue = registry_entry.parameters.queue if hasattr(registry_entry.parameters, "queue") else "default"
+            if queue is None:
+                logger.error(f"Queue parameter not found for task_id: {registry_entry.id}")
+                return False
 
-                process = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.DEVNULL,
-                    stderr=asyncio.subprocess.DEVNULL,
-                    creationflags=creationflags,
-                    start_new_session=True if platform.system() != "Windows" else False
-                )
-                logger.info(f"Spawned detached process for task_id: {registry_entry.id} with PID: {process.pid}")
+            if queue == "slurm-queue":
+                await submit_node(registry_entry)
                 return True
+            elif queue == "docker":
+                await run_docker(registry_entry)
+
+            elif queue == "default":
+                if self._detach:
+                    # Spawn independent process that survives when the runner dies
+                    cmd = [
+                        "uv", "run", "--directory", str(context.config.project_root), "run_node", "--node-id",
+                        str(registry_entry.id),
+                        "--resource", str(self._resource_name)
+                    ]
+
+                    # Use platform specific flags to ensure the process survives if runner is killed
+                    creationflags = 0
+                    if platform.system() == "Windows":
+                        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+
+                    process = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.DEVNULL,
+                        stderr=asyncio.subprocess.DEVNULL,
+                        creationflags=creationflags,
+                        start_new_session=True if platform.system() != "Windows" else False
+                    )
+                    logger.info(f"Spawned detached process for task_id: {registry_entry.id} with PID: {process.pid}")
+                    return True
+                else:
+                    return await run_node_from_registry(registry_entry)
             else:
-                return await run_node_from_registry(registry_entry)
+                logger.error(f"Queue {queue} not supported for task_id: {registry_entry.id}")
+                return False
 
         except Exception as e:
             logger.exception(

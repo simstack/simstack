@@ -4,13 +4,14 @@ from typing import Optional
 
 from simstack.util.project_root_finder import find_project_root
 
-def transform_file_name(path_str: str | Path) -> Path:
+def transform_file_name(path_str: str | Path, project_root: Path | None = None) -> Path:
     """
     Transform a string path by substituting environment variables.
 
     Args:
         path_str: String containing path with optional environment variables
                 ($HOME, $PROJECT, $TEMP)
+        project_root: Optional project root directory. If not provided, it will be automatically detected.
 
     Returns:
         Path object with resolved environment variables
@@ -22,12 +23,14 @@ def transform_file_name(path_str: str | Path) -> Path:
     if isinstance(path_str, Path):
         path_str = str(path_str)
 
+    if project_root is None:
+        project_root = find_project_root()
+
     replacements = {
         "$HOME": os.environ.get("HOME", str(Path.home())),
         "$TEMP": os.environ.get("TEMP", os.environ.get("TMP", "/tmp")),
-        "$PROJECT": os.environ.get("PROJECT", str(find_project_root()))
+        "$PROJECT": os.environ.get("PROJECT", str(project_root))
     }
-
 
     for var, value in replacements.items():
         path_str = path_str.replace(var, value)
