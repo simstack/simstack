@@ -31,7 +31,7 @@ class SimstackResult(BaseModel):
     :type info_files: List[FileStack]
     """
 
-    status: TaskStatus = TaskStatus.COMPLETED
+    status: TaskStatus = TaskStatus.RETRIEVED
     error_message: Optional[str] = None
     message: Optional[str] = None
     files: List[FileStack] = Field(default_factory=list)

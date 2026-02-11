@@ -14,6 +14,10 @@ from simstack.util.file_hashing import hash_file, hash_string
 
 logger = logging.getLogger(__name__)
 
+# MongoDB has a 16MB document size limit
+MONGODB_MAX_DOCUMENT_SIZE = 16 * 1024 * 1024  # 16 MB in bytes
+
+
 @simstack_model
 class FileStack(Model):
     name: Optional[str] = Field(description="Name of the file", default=None)
@@ -62,6 +66,14 @@ class FileStack(Model):
         content = zlib.compress(data_string.encode("utf-8"))
         file_hash = hash_string(data_string)
         size = len(content)
+
+        if len(content) > MONGODB_MAX_DOCUMENT_SIZE:
+            logger.error(
+                f"Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {file_name}"
+            )
+            raise ValueError(
+                f"Compressed content size {len(content)} bytes exceeds MongoDB document size limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes"
+            )
 
         file_stack = cls(
             name=file_name,
@@ -132,8 +144,18 @@ class FileStack(Model):
                 logger.debug(
                     f"Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes"
                 )
+                # Check if compressed content exceeds MongoDB document size limit
+                if len(content) > MONGODB_MAX_DOCUMENT_SIZE:
+                    if task_id == "":
+                        logger.error(f"Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}")
+                        logger.error(f"Setting in_memory to False for file {source_path}")
+                    else:
+                        logger.error(f"task_id: {task_id} Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}")
+                        logger.error(f"task_id: {task_id} Setting in_memory to False for file {source_path}")
+                    in_memory = False
             except Exception as e:
                 logger.warning(f"Failed to compress file {source_path}: {e}")
+                raise
 
         file_stack = cls(
             name=name,

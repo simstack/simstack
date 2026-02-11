@@ -387,7 +387,7 @@ class Node:
                     new_status != TaskStatus.RUNNING
                     and new_status != TaskStatus.SUBMITTED
                     and new_status != TaskStatus.SLURM_QUEUED
-                    and new_status != TaskStatus.SLURM_RUNNING
+                    and new_status != TaskStatus.RETRIEVED
                 ):
                     break
 
@@ -631,6 +631,7 @@ class Node:
             self.registry_entry.result_ids = result_ids
             self.registry_entry.result_tables = result_tables
             self.registry_entry.result_names = result_names
+            self.registry_entry.status = new_task_status
 
             if result.error_message is not None and result.error_message != "":
                 logger.error(
@@ -870,8 +871,9 @@ def node(
                 logger.warning(f"Task task_id: {execution_node.id} status: {status} was not executed")
 
             if result is None or execution_node.status != TaskStatus.COMPLETED:
+                current_registry_entry = await context.db.find_one(NodeRegistry, NodeRegistry.id == execution_node.registry_entry.id)
                 raise RuntimeError(
-                    f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"
+                    f"Task task_id: {current_registry_entry.id} node: {current_registry_entry.name} terminated with status {current_registry_entry.status}"
                 )
             return result
 
