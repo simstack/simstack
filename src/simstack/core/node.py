@@ -550,9 +550,7 @@ class Node:
 
             # check if there are files in the result
             if len(result.files) > 0:
-                file_list_model = (
-                    FileListModel()
-                )  # this goes into the results must be a model
+                file_list_model = FileListModel() # this goes into the results must be a model
                 for file_stack in result.files:
                     if file_stack:
                         if isinstance(file_stack, FileStack):
@@ -563,10 +561,10 @@ class Node:
                             file_list_model.append(saved)
                         else:
                             logger.error(
-                                f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
+                                f"Task task_id: {self.id} cannot save file: FileStack expected but got {file_stack}"
                             )
                             raise ValueError(
-                                f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
+                                f"Task task_id: {self.id} cannot save file: FileStack expected but got {type(file_stack)}"
                             )
                     else:
                         logger.error(f"Task task_id: {self.id} saving file is NONE")
