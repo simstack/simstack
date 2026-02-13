@@ -25,12 +25,11 @@ async def run_node_from_registry(registry_entry: NodeRegistry):
         await context.db.save(registry_entry)
         return False
     registry_entry = node.registry_entry  # it may have changed
-    if node.status == TaskStatus.SUBMITTED or node.status == TaskStatus.SLURM_QUEUED or node.status == TaskStatus.SLURM_QUEUED:
+    if node.status == TaskStatus.RETRIEVED or node.status == TaskStatus.SUBMITTED or node.status == TaskStatus.SLURM_QUEUED or node.status == TaskStatus.SLURM_QUEUED:
         await node.execute_node_locally()
     else:
         logger.info(
             f"task_id: {registry_entry.id} skipping task: {registry_entry.name} with status {registry_entry.status}")
-
     return node.status == TaskStatus.COMPLETED
 
 class NodeExecutionService(BaseService):
@@ -48,8 +47,7 @@ class NodeExecutionService(BaseService):
         await self.write_node_event(RunnerEventEnum.NODE_STARTED, registry_entry.id)
         try:
 
-            logger.info(f"Running node task_id: {registry_entry.id} on resource {context.config.resource}")
-
+            logger.info(f"Running node task_id: {registry_entry.id} on resource {context.config.resource} with status {registry_entry.status}")
             queue = registry_entry.parameters.queue if hasattr(registry_entry.parameters, "queue") else "default"
             if queue is None:
                 logger.error(f"Queue parameter not found for task_id: {registry_entry.id}")
@@ -119,7 +117,8 @@ class NodeExecutionService(BaseService):
         if registry_entry_list:
             logger.info(f"Retrieved {len(registry_entry_list)} tasks for {self._resource_name}")
             for entry in registry_entry_list:
-
+                entry.status = TaskStatus.RETRIEVED
+                await context.db.save(entry)
                 task = asyncio.create_task(self._run_with_semaphore(entry))
                 self._running_tasks.add(task)
 

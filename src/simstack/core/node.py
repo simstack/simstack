@@ -387,7 +387,7 @@ class Node:
                     new_status != TaskStatus.RUNNING
                     and new_status != TaskStatus.SUBMITTED
                     and new_status != TaskStatus.SLURM_QUEUED
-                    and new_status != TaskStatus.SLURM_RUNNING
+                    and new_status != TaskStatus.RETRIEVED
                 ):
                     break
 
@@ -493,14 +493,13 @@ class Node:
                 self.registry_entry.artifact_ids = await create_artifacts(
                     artifact_arguments, self.registry_entry
                 )
-            await self.set_status(
-                new_task_status
-            )  # this will also commit the registry entry
+            await self.set_status(new_task_status)  # this will also commit the registry entry
 
             logger.info(
                 f"Task task_id: {self.id} is finished on resource: {self.parameters.resource} with task status: {new_task_status}"
             )
-            # code in 'finally' will be executed anyway
+            if new_task_status != TaskStatus.COMPLETED:
+                return None
             return result
         except Exception:
             await self.set_status(TaskStatus.FAILED)
@@ -551,9 +550,7 @@ class Node:
 
             # check if there are files in the result
             if len(result.files) > 0:
-                file_list_model = (
-                    FileListModel()
-                )  # this goes into the results must be a model
+                file_list_model = FileListModel() # this goes into the results must be a model
                 for file_stack in result.files:
                     if file_stack:
                         if isinstance(file_stack, FileStack):
@@ -564,10 +561,10 @@ class Node:
                             file_list_model.append(saved)
                         else:
                             logger.error(
-                                f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
+                                f"Task task_id: {self.id} cannot save file: FileStack expected but got {file_stack}"
                             )
                             raise ValueError(
-                                f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
+                                f"Task task_id: {self.id} cannot save file: FileStack expected but got {type(file_stack)}"
                             )
                     else:
                         logger.error(f"Task task_id: {self.id} saving file is NONE")
@@ -631,6 +628,7 @@ class Node:
             self.registry_entry.result_ids = result_ids
             self.registry_entry.result_tables = result_tables
             self.registry_entry.result_names = result_names
+            self.registry_entry.status = new_task_status
 
             if result.error_message is not None and result.error_message != "":
                 logger.error(
@@ -859,16 +857,20 @@ def node(
             result = None
             if status == TaskStatus.COMPLETED:
                 result = await execution_node.load_results()
+            # TODO why do we run somewhere when already running ?
             elif status in [
                 TaskStatus.SUBMITTED,
-                TaskStatus.RUNNING,
+                TaskStatus.RETRIEVED,
                 TaskStatus.SLURM_QUEUED,
-                TaskStatus.SLURM_RUNNING,
             ]:
                 result = await execution_node.run_somewhere()
+            else:
+                logger.warning(f"Task task_id: {execution_node.id} status: {status} was not executed")
+
             if result is None or execution_node.status != TaskStatus.COMPLETED:
+                current_registry_entry = await context.db.find_one(NodeRegistry, NodeRegistry.id == execution_node.registry_entry.id)
                 raise RuntimeError(
-                    f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"
+                    f"Task task_id: {current_registry_entry.id} node: {current_registry_entry.name} terminated with status {current_registry_entry.status}"
                 )
             return result
 
@@ -888,9 +890,8 @@ def node(
                 return loop.run_until_complete(execution_node.load_results())
             elif status in [
                 TaskStatus.SUBMITTED,
-                TaskStatus.RUNNING,
+                TaskStatus.RETRIEVED,
                 TaskStatus.SLURM_QUEUED,
-                TaskStatus.SLURM_RUNNING,
             ]:
                 return loop.run_until_complete(execution_node.run_somewhere())
             if result is None or execution_node.status != TaskStatus.COMPLETED:
