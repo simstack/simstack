@@ -493,14 +493,13 @@ class Node:
                 self.registry_entry.artifact_ids = await create_artifacts(
                     artifact_arguments, self.registry_entry
                 )
-            await self.set_status(
-                new_task_status
-            )  # this will also commit the registry entry
+            await self.set_status(new_task_status)  # this will also commit the registry entry
 
             logger.info(
                 f"Task task_id: {self.id} is finished on resource: {self.parameters.resource} with task status: {new_task_status}"
             )
-            # code in 'finally' will be executed anyway
+            if new_task_status != TaskStatus.COMPLETED:
+                return None
             return result
         except Exception:
             await self.set_status(TaskStatus.FAILED)
@@ -893,9 +892,8 @@ def node(
                 return loop.run_until_complete(execution_node.load_results())
             elif status in [
                 TaskStatus.SUBMITTED,
-                TaskStatus.RUNNING,
+                TaskStatus.RETRIEVED,
                 TaskStatus.SLURM_QUEUED,
-                TaskStatus.SLURM_RUNNING,
             ]:
                 return loop.run_until_complete(execution_node.run_somewhere())
             if result is None or execution_node.status != TaskStatus.COMPLETED:
