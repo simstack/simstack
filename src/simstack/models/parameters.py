@@ -197,10 +197,11 @@ class SlurmParameters(EmbeddedModel):
 
         # Validate memory parameters first
         memory_options = []
-        if self.mem is not None:
-            memory_options.append("mem")
+
         if self.mem_per_cpu is not None:
             memory_options.append("mem_per_cpu")
+        elif self.mem is not None:
+            memory_options.append("mem")
         if hasattr(self, "mem_per_gpu") and getattr(self, "mem_per_gpu") is not None:
             memory_options.append("mem_per_gpu")
 
