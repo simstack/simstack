@@ -97,6 +97,15 @@ class AGPieSeriesConfig(EmbeddedModel):
     labelKey: Optional[str] = Field(
         default=None, description="Key for pie slice labels"
     )
+    legendItemKey: Optional[str] = Field(
+        default=None, description="Key for legend item labels"
+    )
+    calloutLabelKey: Optional[str] = Field(
+        default=None, description="Key for callout labels"
+    )
+    sectorLabelKey: Optional[str] = Field(
+        default=None, description="Key for sector labels"
+    )
     visible: Optional[bool] = Field(
         default=True, description="Whether series is visible"
     )
@@ -105,6 +114,7 @@ class AGPieSeriesConfig(EmbeddedModel):
     tooltip: Optional[Dict[str, Any]] = Field(
         default=None, description="Tooltip configuration"
     )
+    data: List[Dict[str, Any]] = Field(default_factory=list, description="Chart data")
 
 
 class AGDonutSeriesConfig(EmbeddedModel):
@@ -117,6 +127,15 @@ class AGDonutSeriesConfig(EmbeddedModel):
     )
     labelKey: Optional[str] = Field(
         default=None, description="Key for donut slice labels"
+    )
+    legendItemKey: Optional[str] = Field(
+        default=None, description="Key for legend item labels"
+    )
+    calloutLabelKey: Optional[str] = Field(
+        default=None, description="Key for callout labels"
+    )
+    sectorLabelKey: Optional[str] = Field(
+        default=None, description="Key for sector labels"
     )
     innerRadiusRatio: Optional[float] = Field(
         default=0.6, description="Inner radius ratio"
@@ -319,6 +338,9 @@ def create_simple_pie_chart(
     angle_key: str,
     label_key: str,
     title: Optional[str] = None,
+    legend_item_key: Optional[str] = None,
+    callout_label_key: Optional[str] = None,
+    sector_label_key: Optional[str] = None,
     parent_id: Optional[ObjectId] = None,
 ) -> ChartArtifactModel:
     """Create a simple pie chart."""
@@ -326,7 +348,14 @@ def create_simple_pie_chart(
 
     series = [
         AGPieSeriesConfig(
-            type="pie", angleKey=angle_key, labelKey=label_key, title="Distribution"
+            type="pie",
+            angleKey=angle_key,
+            labelKey=label_key,
+            legendItemKey=legend_item_key,
+            calloutLabelKey=callout_label_key,
+            sectorLabelKey=sector_label_key,
+            title="Distribution",
+            data=data,
         )
     ]
 
@@ -390,6 +419,9 @@ def create_simple_donut_chart(
     angle_key: str,
     label_key: str,
     title: Optional[str] = None,
+    legend_item_key: Optional[str] = None,
+    callout_label_key: Optional[str] = None,
+    sector_label_key: Optional[str] = None,
     inner_radius_ratio: float = 0.6,
     parent_id: Optional[ObjectId] = None,
 ) -> ChartArtifactModel:
@@ -401,6 +433,9 @@ def create_simple_donut_chart(
             type="donut",
             angleKey=angle_key,
             labelKey=label_key,
+            legendItemKey=legend_item_key,
+            calloutLabelKey=callout_label_key,
+            sectorLabelKey=sector_label_key,
             innerRadiusRatio=inner_radius_ratio,
             title="Distribution",
         )
