@@ -90,6 +90,8 @@ class DataSetSection(EmbeddedModel):
             model_instance = await engine.find_one(
                 model_class, model_class.id == model_group_id
             )
+            if model_instance is None:
+                raise ValueError(f"DB-Save Model of type {model_type} with id {model_group_id} not found")
             model_columns = make_column_defs_instance(model_instance)
             column_defs.extend(model_columns)
         return column_defs
