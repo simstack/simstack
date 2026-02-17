@@ -44,18 +44,12 @@ def make_table_entries_helper(
     model_class = type(model_instance)
 
     if hasattr(model_instance, "make_table_entries"):
-        field_prefix = f"{field_prefix}." if field_prefix else ""
-        field_prefix = (
-            f"{field_prefix}{model_instance.__class__.__name__}"
-            if field_prefix
-            else model_instance.__class__.__name__
-        )
         return model_instance.make_table_entries(
-            max_recursion_level=1,
-            drop_id=True,
-            current_level=0,
-            visited=None,
-            field_prefix="",
+            max_recursion_level=max_recursion_level,
+            drop_id=drop_id,
+            current_level=current_level,
+            visited=visited,
+            field_prefix=field_prefix,
         )
 
     model_fields = getattr(model_instance, "model_fields", {})
@@ -81,12 +75,12 @@ def make_table_entries_helper(
 
         # If the field value is None, add it to summary
         if field_value is None:
-            summary[field_name] = None
+            summary[field_path] = None
             continue
 
         # Handle datetime objects for AG Grid
         if isinstance(field_value, datetime):
-            summary[field_name] = field_value.isoformat()
+            summary[field_path] = field_value.isoformat()
             continue
 
         # Check if the field is a nested model
@@ -104,14 +98,11 @@ def make_table_entries_helper(
                     max_recursion_level=max_recursion_level,
                     current_level=current_level + 1,
                     visited=visited,
-                    field_prefix=f"{field_path}.",
+                    field_prefix=f"{field_path}",
                 )
 
-                if isinstance(nested_result, dict) and "tableData" in nested_result:
-                    nested_summary = nested_result["tableData"]
-                else:
-                    # If make_table doesn't return expected format
-                    nested_summary = nested_result
+                if isinstance(nested_result, dict):
+                    summary.update(nested_result)
             else:
                 # Process the nested model recursively
                 nested_result = make_table_entries_helper(
@@ -121,14 +112,11 @@ def make_table_entries_helper(
                     drop_id,
                     current_level + 1,
                     visited,
-                    f"{field_path}.",
+                    f"{field_path}",
                 )
-                nested_summary = nested_result
-
-            # Add the nested object as a sub-dictionary
-            summary[field_name] = nested_summary
-
-        elif field_type == "self" and current_level < max_recursion_level:
+                if isinstance(nested_result, dict):
+                    summary.update(nested_result)
+        elif hasattr(field_type, "__name__") and field_type.__name__ == "self" and current_level < max_recursion_level:
             # Handle self-referential field, but only go one level deep to avoid cycles
             raise ValueError(
                 f"Self-referential field '{field_name}' is not supported in make_table_entries."
@@ -188,7 +176,7 @@ def make_table_entries_helper(
                 summary[field_name] = processed_list
             else:
                 # This is a simple field, add it directly
-                summary[field_name] = field_value
+                summary[field_path] = field_value
 
     return summary
 

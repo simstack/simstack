@@ -1,4 +1,4 @@
-from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List
+from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List, Any
 
 from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
 
@@ -35,7 +35,7 @@ class DataSetSection(EmbeddedModel):
 
     column_defs: List[Dict] = Field(default_factory=list)
 
-    table_entries: List[List[Dict]] = Field(default_factory=list)
+    table_entries: List[Dict] = Field(default_factory=list)
 
     model_config = {"extra": "forbid"}
 
@@ -85,14 +85,17 @@ class DataSetSection(EmbeddedModel):
         if len(self.data) == 0:
             return column_defs
         engine = current_engine_context.get()
-        for model_group_id, model_type in zip(self.data[0], self.model_types):
+        for i, (model_group_id, model_type) in enumerate(zip(self.data[0], self.model_types)):
             model_class = await import_class_by_name(model_type)
             model_instance = await engine.find_one(
                 model_class, model_class.id == model_group_id
             )
             if model_instance is None:
                 raise ValueError(f"DB-Save Model of type {model_type} with id {model_group_id} not found")
-            model_columns = make_column_defs_instance(model_instance)
+            
+            # Use index prefix to disambiguate fields when multiple models of the same type exist
+            prefix = f"{i}"
+            model_columns = make_column_defs_instance(model_instance, field_prefix=prefix)
             column_defs.extend(model_columns)
         return column_defs
 
@@ -101,16 +104,19 @@ class DataSetSection(EmbeddedModel):
         engine = current_engine_context.get()
 
         for model_group_ids in self.data:
-            data = []
-            for model_group_id, model_type in zip(model_group_ids, self.model_types):
+            row_data = {}
+            for i, (model_group_id, model_type) in enumerate(zip(model_group_ids, self.model_types)):
                 model_class = await import_class_by_name(model_type)
                 model_instance = await engine.find_one(
                    model_class, model_class.id == model_group_id
                 )
 
-                model_data = make_table_entries_helper(model_instance)
-                data.append(model_data)
-            all_data.append(data)
+                # Use index prefix to match column definitions
+                prefix = f"{i}"
+                model_data = make_table_entries_helper(model_instance, field_prefix=prefix)
+                if isinstance(model_data, dict):
+                    row_data.update(model_data)
+            all_data.append(row_data)
         return all_data
 
     @async_helper
@@ -374,13 +380,25 @@ class DataSet(Model):
             self.sections[key].column_defs = await section.make_column_defs()
             self.sections[key].table_entries = await section.make_table_entries()
 
+        # Update the structure in metadata if needed
+        # self.collect_structure() might be useful here if validate_dict uses it
+        
         await engine.save_unchecked(self)
 
-    async def custom_model_dump(self, **kwargs) -> Dict[str, str]:
+    async def custom_model_dump(self, **kwargs) -> Dict[str, Any]:
         """
-        :return: dict with id
+        Custom dump to format sections as an array of dicts with one key each.
         """
-        return {"id": str(self.id)}
+        sections_list = []
+        for name, section in self.sections.items():
+            sections_list.append({name: section.model_dump()})
+        
+        return {
+            "id": str(self.id),
+            "field_name": self.field_name,
+            "metadata": self.metadata.model_dump() if self.metadata else None,
+            "sections": sections_list
+        }
 
     def collect_structure(self) -> Dict[str, List[str]]:
         """
@@ -420,7 +438,7 @@ class DataSet(Model):
                     model_types=section.model_types.copy(),
                     data=[model_ids.copy() for model_ids in section.data],
                     column_defs=[col_def.copy() for col_def in section.column_defs],
-                    table_entries=[[entry.copy() for entry in row] for row in section.table_entries]
+                    table_entries=[entry.copy() for entry in section.table_entries]
                 )
                 cloned_dataset.sections[section_name] = cloned_section
 

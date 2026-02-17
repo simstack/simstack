@@ -36,7 +36,7 @@ class ArrayStorage(Model):
         visited=None,
         field_prefix="",
     ):
-        return {"name": self.name}
+        return {f"{field_prefix}.name": self.name} if field_prefix else {"name": self.name}
 
     def make_column_defs_instance(
         self,
@@ -47,7 +47,8 @@ class ArrayStorage(Model):
         visited=None,
         field_prefix="",
     ):
-        return [{"field": "name", "headerName": "Array"}]
+        field_path = f"{field_prefix}.name" if field_prefix else "name"
+        return [{"field": field_path, "headerName": "Array"}]
 
     @classmethod
     def ui_schema(cls, **kwargs) -> dict:
