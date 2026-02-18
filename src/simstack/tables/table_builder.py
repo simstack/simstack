@@ -231,6 +231,7 @@ class TableBuilderBase(ABC):
             default=[],
             help=(
                 "Exclude a directory/name/glob from scanning (repeatable). "
+          
                 "Examples: --exclude .venv --exclude __pycache__ --exclude src/simstack/models --exclude '*.generated.py'"
             ),
         )
