@@ -6,6 +6,7 @@ class TaskStatus(str, Enum):
     RUNNING = "running"
     SLURM_QUEUED = "slurm_queued"
     SLURM_RUNNING = "slurm_running"
+    RETRIEVED = "retrieved"
     TIME_OUT = "timeout"
     FAILED = "failed"
     COMPLETED = "completed"

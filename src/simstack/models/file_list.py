@@ -219,7 +219,7 @@ class FileListMixin:
         :rtype: Union[FileStack, None]
         """
         for file_stack in self.file_stacks:
-            if file_stack.name and re.search(pattern, file_stack.name):
+            if file_stack.name and pattern == file_stack.name: # re.search(pattern, file_stack.name):
                 return file_stack
         return None
 

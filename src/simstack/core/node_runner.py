@@ -253,7 +253,7 @@ class NodeRunner(SimstackResult):
             SimstackResult: Self reference with status set to FAILED
         """
         self._make_log_file()
-        self.logger.exception(f"Task {self.name}: {msg} task_id: {self.task_id}")
+        self.logger.error(f"Task {self.name}: {msg} task_id: {self.task_id}")
         self.error_message = msg
         self.status = TaskStatus.FAILED
         return self
