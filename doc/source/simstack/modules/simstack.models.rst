@@ -4,6 +4,22 @@ simstack.models package
 Submodules
 ----------
 
+simstack.models.array\_list module
+----------------------------------
+
+.. automodule:: simstack.models.array_list
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.models.array\_storage module
+-------------------------------------
+
+.. automodule:: simstack.models.array_storage
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.models.artifact\_models module
 ---------------------------------------
 
@@ -12,10 +28,34 @@ simstack.models.artifact\_models module
    :show-inheritance:
    :undoc-members:
 
+simstack.models.base\_types module
+----------------------------------
+
+.. automodule:: simstack.models.base_types
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.models.charts\_artifact module
 ---------------------------------------
 
 .. automodule:: simstack.models.charts_artifact
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.models.dataset module
+------------------------------
+
+.. automodule:: simstack.models.dataset
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.models.dataset\_metadata module
+----------------------------------------
+
+.. automodule:: simstack.models.dataset_metadata
    :members:
    :show-inheritance:
    :undoc-members:
@@ -44,26 +84,10 @@ simstack.models.files module
    :show-inheritance:
    :undoc-members:
 
-simstack.models.input\_template module
---------------------------------------
-
-.. automodule:: simstack.models.input_template
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 simstack.models.log\_entry\_model module
 ----------------------------------------
 
 .. automodule:: simstack.models.log_entry_model
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.models.model\_transformer module
------------------------------------------
-
-.. automodule:: simstack.models.model_transformer
    :members:
    :show-inheritance:
    :undoc-members:
@@ -108,10 +132,26 @@ simstack.models.pickle\_models module
    :show-inheritance:
    :undoc-members:
 
+simstack.models.resource\_definition module
+-------------------------------------------
+
+.. automodule:: simstack.models.resource_definition
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.models.runner\_model module
 ------------------------------------
 
 .. automodule:: simstack.models.runner_model
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.models.simple\_table module
+------------------------------------
+
+.. automodule:: simstack.models.simple_table
    :members:
    :show-inheritance:
    :undoc-members:
@@ -124,10 +164,26 @@ simstack.models.simstack\_model module
    :show-inheritance:
    :undoc-members:
 
+simstack.models.slurm\_info module
+----------------------------------
+
+.. automodule:: simstack.models.slurm_info
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.models.table\_artifact module
 --------------------------------------
 
 .. automodule:: simstack.models.table_artifact
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.models.unused\_test\_file module
+-----------------------------------------
+
+.. automodule:: simstack.models.unused_test_file
    :members:
    :show-inheritance:
    :undoc-members:

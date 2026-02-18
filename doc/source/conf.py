@@ -1,32 +1,37 @@
 # Mock context for Sphinx autodoc
 import sys
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
+import types
 
 # Create a mock context that always returns True for initialized
 class MockContext:
     def __init__(self):
         self._initialized = True
-    
+
     @property
     def initialized(self):
         return True
-    
+
     async def initialize(self):
         pass
 
 # Apply the mock before any problematic imports
 mock_context = MockContext()
-sys.modules['simstack.core.context'] = Mock()
-sys.modules['simstack.core.context'].context = mock_context
+
+# Use a real module object (ModuleType) instead of Mock() to satisfy autodoc expectations
+_context_mod = types.ModuleType("simstack.core.context")
+_context_mod.context = mock_context
+sys.modules["simstack.core.context"] = _context_mod
 
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
 sys.path.insert(0, os.path.abspath('../../src'))
 
+# Mock imports that are optional / not available in the docs env
 autodoc_mock_imports = [
-    'simstack.server.simstack_server',
-    'simstack.server',
+    "motor",
+    "sqlmodel",
 ]
 
 project = 'SimStack II'
@@ -38,40 +43,35 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.napoleon',
+    'sphinx.ext.todo',
 ]
 
 templates_path = ['_templates']
 
 exclude_patterns = [
     '_build',
-    'Thumbs.db', 
+    'Thumbs.db',
     '.DS_Store',
     '.doctrees',
     'logs',
-    'simstack_tree'
+    'simstack_tree',
     '**/.git',
     '**/__pycache__',
     '*.pyc',
-    '*.pyo'
+    '*.pyo',
+
+    # Exclude any API-doc pages (rst) generated for tests
+    'simstack/tests*.rst',
+    'simstack/tests/**',
+    'tests*.rst',
+    'tests/**',
 ]
-
-# Enable autosummary to automatically generate stub files
-#autosummary_generate = True
-
-# Enable recursive generation (Sphinx 3.1+)
-#autosummary_recursive = True
-
-#autoclass_content = "both"
 
 # -- Options for HTML output -------------------------------------------------
 html_theme = 'furo'
 
 html_theme_options = {
     "sidebar_hide_name": True,
-    # Force dark mode
     "dark_css_variables": {
         "color-background-primary": "#132738",
         "color-background-secondary": "#1e3a52",
@@ -82,9 +82,9 @@ html_theme_options = {
     },
 }
 
-
 html_css_files = [
     'cobalt2-theme.css',
 ]
 
+# If you don't have a _static folder, either create it or set this to []
 html_static_path = ['_static']

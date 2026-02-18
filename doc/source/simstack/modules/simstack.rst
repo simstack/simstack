@@ -10,8 +10,7 @@ Subpackages
    simstack.core
    simstack.methods
    simstack.models
-   simstack.server
-   simstack.ui_testing
+   simstack.tables
    simstack.util
 
 Module contents

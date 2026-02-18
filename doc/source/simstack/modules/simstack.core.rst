@@ -1,6 +1,14 @@
 simstack.core package
 =====================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   simstack.core.services
+
 Submodules
 ----------
 
@@ -52,18 +60,26 @@ simstack.core.definitions module
    :show-inheritance:
    :undoc-members:
 
-simstack.core.hash module
--------------------------
+simstack.core.engine module
+---------------------------
 
-.. automodule:: simstack.core.hash
+.. automodule:: simstack.core.engine
    :members:
    :show-inheritance:
    :undoc-members:
 
-simstack.core.model\_table module
----------------------------------
+simstack.core.find\_simstack\_modules module
+--------------------------------------------
 
-.. automodule:: simstack.core.model_table
+.. automodule:: simstack.core.find_simstack_modules
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.core.hash module
+-------------------------
+
+.. automodule:: simstack.core.hash
    :members:
    :show-inheritance:
    :undoc-members:
@@ -80,14 +96,6 @@ simstack.core.node\_runner module
 ---------------------------------
 
 .. automodule:: simstack.core.node_runner
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.core.node\_table module
---------------------------------
-
-.. automodule:: simstack.core.node_table
    :members:
    :show-inheritance:
    :undoc-members:
@@ -116,6 +124,22 @@ simstack.core.resources module
    :show-inheritance:
    :undoc-members:
 
+simstack.core.route\_table module
+---------------------------------
+
+.. automodule:: simstack.core.route_table
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.core.run\_docker module
+--------------------------------
+
+.. automodule:: simstack.core.run_docker
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.core.run\_node module
 ------------------------------
 
@@ -136,6 +160,22 @@ simstack.core.simstack\_result module
 -------------------------------------
 
 .. automodule:: simstack.core.simstack_result
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.core.submit\_node module
+---------------------------------
+
+.. automodule:: simstack.core.submit_node
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.core.task\_id module
+-----------------------------
+
+.. automodule:: simstack.core.task_id
    :members:
    :show-inheritance:
    :undoc-members:

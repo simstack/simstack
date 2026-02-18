@@ -35,7 +35,7 @@ Customizing Simstack Models
 ---------------------------
 
 .. note:: General information about Simstack models
-.. TODO:: document json_schema and ui_schema for models here
+.. todo:: document json_schema and ui_schema for models here
 
 
 

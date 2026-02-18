@@ -4,8 +4,7 @@ Persisting and Visualizing Data
 ===============================
 
 .. note::
-
-This section is intended for node-developers.
+    This section is intended for node-developers.
 
 Simstack persists data using a MongoDB database, which is exposed via the
 fast-api server to a web-frontend. Each user has a dedicated database
