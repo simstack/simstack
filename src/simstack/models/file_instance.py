@@ -83,7 +83,7 @@ class FileInstance(EmbeddedModel):
             else:
                 relative_path = Path(path).resolve().relative_to(context.config.workdir)
 
-
+            logger.debug(f"Relative path is {source_path}  {relative_path}")
             file_instance = FileInstance(
                 path=str(relative_path / source_path.name),
                 resource=context.config.resource,
