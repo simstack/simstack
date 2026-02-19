@@ -81,7 +81,7 @@ class FileInstance(EmbeddedModel):
                 absolute_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy(path, absolute_dir)
             else:
-                relative_path = Path(path).relative_to(context.config.workdir)
+                relative_path = Path(path).resolve().relative_to(context.config.workdir)
 
 
             file_instance = FileInstance(
