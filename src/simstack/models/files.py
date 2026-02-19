@@ -171,6 +171,7 @@ class FileStack(Model):
                 path=path, file_stack_id=file_stack.id, make_copy=not secure_source
             )
             file_stack.locations.append(location)
+
         return file_stack
 
     def complex_hash(self) -> str:

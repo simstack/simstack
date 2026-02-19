@@ -80,12 +80,13 @@ class FileInstance(EmbeddedModel):
                 absolute_dir = Path(context.config.workdir) / relative_path
                 absolute_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy(path, absolute_dir)
+                absolute_path = absolute_dir / source_path.name
             else:
-                relative_path = Path(path).resolve().relative_to(context.config.workdir)
+                absolute_path = Path(path).resolve().relative_to(context.config.workdir)
 
-            logger.debug(f"Relative path is {source_path}  {relative_path}")
+            logger.debug(f"absolute path is {absolute_path} str(absolute_path) is {str(absolute_path)}")
             file_instance = FileInstance(
-                path=str(relative_path / source_path.name),
+                path=str(absolute_path),
                 resource=context.config.resource,
                 created_at=datetime.now(),
             )
