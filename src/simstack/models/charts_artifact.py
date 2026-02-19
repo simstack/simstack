@@ -219,6 +219,17 @@ class AGChartSubtitleConfig(EmbeddedModel):
     color: Optional[str] = Field(default=None, description="Subtitle color")
 
 
+# Frame Configuration
+class AGChartFrameConfig(EmbeddedModel):
+    """AG-Charts frame (border) configuration."""
+
+    enabled: bool = Field(default=True, description="Enable chart frame/border")
+    stroke: str = Field(default="black", description="Frame stroke color")
+    strokeWidth: float = Field(default=1, description="Frame stroke width")
+    cornerRadius: float = Field(default=0, description="Frame corner radius")
+    opacity: float = Field(default=1, description="Frame opacity")
+
+
 # Main Chart Model
 class ChartArtifactModel(Model):
     """AG-Charts configuration model."""
@@ -253,6 +264,9 @@ class ChartArtifactModel(Model):
     padding: Optional[Dict[str, int]] = Field(default=None, description="Chart padding")
     background: Optional[Dict[str, Any]] = Field(
         default=None, description="Background configuration"
+    )
+    frame: AGChartFrameConfig = Field(
+        default=AGChartFrameConfig(enabled=False), description="Frame/border configuration"
     )
 
     # Animation

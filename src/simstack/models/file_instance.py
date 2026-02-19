@@ -15,16 +15,30 @@ logger = logging.getLogger("file_instance")
 
 @simstack_model
 class FileInstance(EmbeddedModel):
-    """ """
+    """
+    Represents an embedded model for a file instance.
 
-    path: Path = Field(description="Path to the file relative to the host work directory")
+    The `FileInstance` class is used to encapsulate details about a file,
+    including its path, associated resource, and creation timestamp.
+    It provides a class method for initializing a `FileInstance` object
+    from a local file path, ensuring proper handling of file-related operations.
+
+    Attributes:
+        path (str): Path to the file relative to the host work directory.
+        resource (Resource): Name of the resource associated with the file.
+        created_at (datetime): Timestamp indicating when the file instance was created.
+    """
+
+    path: str = Field(description="Path to the file relative to the host work directory")
     resource: Resource = Field(description="Resource name")
     created_at: datetime = Field(description="Creation timestamp")
 
     @model_validator(mode='before')
-    def validate_resource(cls, values):
+    def migration(cls, values):
         if isinstance(values.get('resource'), str):
             values['resource'] = Resource(value=values['resource'])
+        if "path" in values and isinstance(values['path'], Path):
+            values['path'] = str(values['path'])
         return values
 
     @classmethod
