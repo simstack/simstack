@@ -74,19 +74,26 @@ class FileInstance(EmbeddedModel):
             if make_copy:
                 # make a local copy
                 import getpass
-
                 username = getpass.getuser()
                 relative_path = Path(username) / str(file_stack_id)
                 absolute_dir = Path(context.config.workdir) / relative_path
                 absolute_dir.mkdir(parents=True, exist_ok=True)
-                shutil.copy(path, absolute_dir)
-                absolute_path = absolute_dir / source_path.name
+                shutil.copy(source_path, absolute_dir)
             else:
-                absolute_path = Path(path).resolve().relative_to(context.config.workdir)
+                resolved_path = Path(path).resolve()
+                # Find 'simstack' in the path and compute relative path from its parent
+                parts = resolved_path.parts
+                if 'simstack' in parts:
+                    simstack_index = parts.index('simstack')
+                    # Get path relative to the parent of simstack
+                    relative_path = Path(*parts[simstack_index:])
+                else:
+                    # Fallback to original behavior if simstack not found
+                    relative_path = resolved_path.relative_to(context.config.workdir)
 
-            logger.debug(f"absolute path is {absolute_path} str(absolute_path) is {str(absolute_path)}")
+                logger.debug(f"absolute path is {resolved_path} relative_path is {str(relative_path)}")
             file_instance = FileInstance(
-                path=str(absolute_path),
+                path=str(relative_path),
                 resource=context.config.resource,
                 created_at=datetime.now(),
             )
