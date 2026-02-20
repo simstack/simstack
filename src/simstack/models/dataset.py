@@ -54,14 +54,18 @@ class DataSetSection(EmbeddedModel):
         # Verify that all the models are already stored, otherwise store them
         engine = current_engine_context.get()
         stored_models = []
+        model_ids = []
         for model in models:
+            if model is None:
+                model_ids.append(None)
+                continue
             if model.id is None:
                 stored_model = await engine.save(model)
                 stored_models.append(stored_model)
             else:
                 stored_models.append(model)
+            model_ids.append(model.id)
 
-        model_ids = [model.id for model in stored_models]
 
         # If this is the first tuple, set the model types
         if not self.model_types:
@@ -132,6 +136,9 @@ class DataSetSection(EmbeddedModel):
         for model_type, model_id in zip(self.model_types, model_ids):
             model_class = await import_class_by_name(model_type)
             engine = current_engine_context.get()
+            if model_id is None:
+                models.append(None)
+                continue
             model_instance = await engine.find_one(
                 model_class, model_class.id == model_id
             )

@@ -182,7 +182,15 @@ def make_table_entries_helper(
                                 visited.copy(),
                                 "",
                             )
-                            processed_list.append(nested_result["tableData"])
+
+                            if (
+                                isinstance(nested_result, dict)
+                                and "tableData" in nested_result
+                            ):
+                                processed_list.append(nested_result["tableData"])
+                            else:
+                                processed_list.append(nested_result)
+
                     else:
                         processed_list.append(item)
                 summary[field_name] = processed_list

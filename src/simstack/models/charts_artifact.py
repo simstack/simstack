@@ -2,6 +2,8 @@ from typing import List, Union, Literal, Optional, Dict, Any
 
 from odmantic import Model, Field, EmbeddedModel, ObjectId
 
+from simstack.models import simstack_model
+
 
 # Chart Series Definitions
 class AGChartSeriesBase(EmbeddedModel):
@@ -231,10 +233,11 @@ class AGChartFrameConfig(EmbeddedModel):
 
 
 # Main Chart Model
+@simstack_model
 class ChartArtifactModel(Model):
     """AG-Charts configuration model."""
 
-    parent_id: ObjectId = Field(default=None, description="ID of the node registry")
+    parent_id: Optional[ObjectId] = None
 
     # Chart data
     data: List[Dict[str, Any]] = Field(default_factory=list, description="Chart data")
@@ -286,6 +289,27 @@ class ChartArtifactModel(Model):
     options: Optional[Dict[str, Any]] = Field(
         default_factory=dict, description="Additional chart options"
     )
+
+    def make_table_entries(
+        self,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return {"title": self.title.text[:10]}
+
+    def make_column_defs_instance(
+        self,
+        table_name=None,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return [{"field": "title", "headerName": "Chart"}]
 
 
 # Helper functions for creating specific chart types
