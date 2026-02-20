@@ -67,39 +67,27 @@ class FileInstance(EmbeddedModel):
         source_path = path if isinstance(path, Path) else Path(path)
 
         # Prepare the content field if in_memory is True
+        resolved_path = Path(path).resolve()
+        # Find 'simstack' in the path and compute the relative path from its parent
+        from simstack.core.context import context
+        workdir = context.config.workdir
+        resolved_workdir = Path(workdir).resolve()
+        logger.debug(f"workdir is {resolved_workdir} path is {resolved_path}")
 
         try:
-            from simstack.core.context import context
+            relative_path = resolved_path.relative_to(resolved_workdir)
+        except ValueError:
+            logger.debug(f"Path {resolved_path} is not under workdir {resolved_workdir}")
+            import getpass
+            username = getpass.getuser()
+            relative_path = Path(username) / str(file_stack_id)
+            absolute_dir = Path(context.config.workdir) / relative_path
+            absolute_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy(source_path, absolute_dir)
 
-            if make_copy:
-                # make a local copy
-                import getpass
-                username = getpass.getuser()
-                relative_path = Path(username) / str(file_stack_id)
-                absolute_dir = Path(context.config.workdir) / relative_path
-                absolute_dir.mkdir(parents=True, exist_ok=True)
-                shutil.copy(source_path, absolute_dir)
-            else:
-                resolved_path = Path(path).resolve()
-                # Find 'simstack' in the path and compute relative path from its parent
-                parts = resolved_path.parts
-                if 'simstack' in parts:
-                    simstack_index = parts.index('simstack')
-                    # Get path relative to the parent of simstack
-                    relative_path = Path(*parts[simstack_index:])
-                else:
-                    # Fallback to original behavior if simstack not found
-                    relative_path = resolved_path.relative_to(context.config.workdir)
-
-                logger.debug(f"absolute path is {resolved_path} relative_path is {str(relative_path)}")
-            file_instance = FileInstance(
-                path=str(relative_path),
-                resource=context.config.resource,
-                created_at=datetime.now(),
-            )
-            return file_instance
-        except Exception as e:
-            logger.error(f"Error creating FileInstance from local file {path}: {e}")
-            raise ValueError(
-                f"Could not create FileInstance from local file {path}: {e}"
-            )
+        file_instance = FileInstance(
+            path=str(relative_path),
+            resource=context.config.resource,
+            created_at=datetime.now(),
+        )
+        return file_instance
