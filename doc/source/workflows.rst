@@ -12,26 +12,25 @@ From Python to Workflows
 
 The following section is intended to guide developers who are familiar with python to transform their code
 into Simstack II. We will introduce the concepts step by step, starting with a simple python "workflow".
-Workflows are comprised of nodes, which are implemented as python functions.  A simple example for a pure python workflow
-is illustrated below and in [examples/binary_operations.py](examples/binary_operations.py):
+Workflows are comprised of nodes, which are implemented as python functions.  
 
 
 .. code-block:: python
 
-    def adder(node_input: BinaryOperationInput) -> FloatData:
-        return FloatData(value=node_input.arg1 + node_input.arg2)
+    def adder(arg1: float. arg2: float) -> float:
+        return arg1 + arg2
 
-    def multiplier(node_input: BinaryOperationInput) -> FloatData:
-        return FloatData(value=node_input.arg1 * node_input.arg2)
+    def multiplier(arg1: float, arg2: float) -> float:
+        return arg1 * arg2
 
-    def add_multiply_python(node_input: AddMultiplyInput) -> FloatData:
-        add_result = adder(BinaryOperationInput(arg1=node_input.a, arg2=node_input.b))
-        multiply_result = multiplier(BinaryOperationInput(arg1=add_result.value, arg2=node_input.c))
-        return FloatData(value=multiply_result)
+    def add_multiply_python(arg1: float, arg2: float, arg2: float) -> float:
+        add_result = adder(arg1, arg2) 
+        multiply_result = multiplier(add_result, arg3)
+        return multiply_result
 
 
 In this code we have three nodes, `adder`, `multiplier`, and `add_multiply_python`. The first two nodes are simple
-functions, the last function nests the 2 simple functions, making this function a workflow.
+functions, the last function nests the 2 simple functions, making this function a template for a workflow.
 
 To transform this code into a Simstack II workflow, we want to introduce minimal changes to the code above to accomplish
 the following:
@@ -51,29 +50,35 @@ For the specific example above the code looks as follows:
 .. code-block:: python
 
     @node(parameters=Parameters(resource="my-remote-host",queue="slurm-queue"))
-    def adder(node_input: BinaryOperationInput) -> FloatData:
-        return FloatData(value=node_input.arg1 + node_input.arg2)
+     def adder(arg1: FloatData. arg2: FloatData, **kwargs) -> FloatData:
+        return FloatData(field_name="adder_result",value=arg1 + arg2)
 
     @node(parameters=Parameters(resource="my-remote-host",queue="default"))
-    def multiplier(node_input: BinaryOperationInput) -> FloatData:
-        return FloatData(value=node_input.arg1 * node_input.arg2)
+    def multiplier(arg1: FloatData. arg2: FloatData, **kwargs) -> float:
+        return FloatData(field_name="adder_result",value=arg1 + arg2)
 
     @node
-    def add_multiply_python(node_input: AddMultiplyInput) -> FloatData:
-        add_result = adder(BinaryOperationInput(arg1=node_input.a, arg2=node_input.b))
-        multiply_result = multiplier(BinaryOperationInput(arg1=add_result.value, arg2=node_input.c))
-        return FloatData(value=multiply_result)
+    def add_multiply_python(arg1: FloatData, arg2: FloatData, arg2: FloatData, **kwargs) -> FloatData:
+        add_result = adder(arg1, arg2, **kwargs)  # note passing the kwargs!!!!
+        multiply_result = multiplier(add_result, arg3, **kwargs)
+        return multiply_result
 
+The first thing you notice is that the datatypes have changed. Since int, floats etc appear a lot, Simstack provides 
+models for these types in its core package (see: :mod:`simstack.models.base_types`).
 
-This would result in a workflow where all nodes are visible in the GUI (:ref:`submitting-workflows`).
+The @node decorator embeds the simple python functions into a complex workflow class
+(see: :func:`simstack.core.node.node` in module: :mod:`simstack.core.node`).
+
+To allow Simstack II with new data models you need to register them once, see :ref:`persisting_models`.
+In order execute nodes via the UI you need to register the nodes. This would result in a workflow where all nodes are
+visible in the GUI (:ref:`submitting-workflows`).
 The nodes `adder` and `multiplier` would be executed on a runner running on "my-remote-host".
 The adder would be submitted to the "slurm-queue" and the multiplier would be executed immediately in the foreground.
-add_multiply_python would be executed on the default resource by a runner called `local`
-
-Because there is an intricate relationship between the class structure in python, the tables in the database
+add_multiply_python would be executed on the default resource by a runner called `local`. You can change these defaults in the UI.
+The relationship between the classes in the code, the tables in the database
 and the representation of this data in the GUI, these models are discussed in :ref:`persisting-results-section`.
 
-Here are the ground rules to write workflows in Simstack II:
+Here are some ground rules to write workflows in Simstack II:
 
 .. important::
   - Node functions must have a **unique name** (across the whole installation).
@@ -86,8 +91,8 @@ Here are the ground rules to write workflows in Simstack II:
 
 Beyond that nodes functions are normal python functions which can use the full flexibility of python.
 The can call other functions or other nodes, but should **avoid "closures"**, such as global variables.
-The @node decorator embeds the simple python functions into a complex workflow class
-(see: :func:`simstack.core.node.node` in module: :mod:`simstack.core.node`).
+For this reason, node function should **not be class members** unless they are class members of an odmantic model.
+
 You can consult the documentation of this class to understand how this works but this is not required to write
 workflows.
 
