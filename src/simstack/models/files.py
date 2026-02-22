@@ -141,18 +141,18 @@ class FileStack(Model):
                     file_content = f.read()
                 # Compress the content using zlib
                 content = zlib.compress(file_content)
-                logger.debug(
-                    f"Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes"
-                )
-                logger.debug(f"File name for {source_path}: {len(content)}")
+                if task_id == "":
+                    logger.debug(f"Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes")
+                else:
+                    logger.debug(f"task_id: {task_id} Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes")
                 # Check if compressed content exceeds MongoDB document size limit
                 if len(content) > 0.9*MONGODB_MAX_DOCUMENT_SIZE:
                     if task_id == "":
                         logger.error(f"Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}")
-                        logger.error(f"Setting in_memory to False for file {source_path}")
+                        logger.error(f"Setting in_memory to False for file {source_path} and clear content")
                     else:
                         logger.error(f"task_id: {task_id} Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}")
-                        logger.error(f"task_id: {task_id} Setting in_memory to False for file {source_path}")
+                        logger.error(f"task_id: {task_id} Setting in_memory to False for file {source_path} and clear content")
                     in_memory = False
                     content = None
             except Exception as e:
@@ -170,7 +170,7 @@ class FileStack(Model):
 
         if not in_memory:
             location = FileInstance.from_local_file(
-                path=path, file_stack_id=file_stack.id, make_copy=not secure_source
+                path=path, file_stack_id=file_stack.id, make_copy=not secure_source and not in_memory
             )
             file_stack.locations.append(location)
 

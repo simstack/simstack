@@ -43,7 +43,7 @@ class FileInstance(EmbeddedModel):
 
     @classmethod
     def from_local_file(
-        cls, path: Union[Path, str], file_stack_id: ObjectId, make_copy: bool = True
+        cls, path: Union[Path, str], file_stack_id: ObjectId, make_copy: bool = True, tasks_id: str = ""
     ):
         """
         Creates a FileInstance object from a local file path.
@@ -72,12 +72,17 @@ class FileInstance(EmbeddedModel):
         from simstack.core.context import context
         workdir = context.config.workdir
         resolved_workdir = Path(workdir).resolve()
-        logger.debug(f"workdir is {resolved_workdir} path is {resolved_path}")
-
+        if tasks_id == "":
+            logger.debug(f"workdir is {resolved_workdir} path is {resolved_path}")
+        else:
+            logger.debug(f"task_id: {tasks_id} workdir is {resolved_workdir} path is {resolved_path}")
         try:
             relative_path = resolved_path.relative_to(resolved_workdir)
         except ValueError:
-            logger.debug(f"Path {resolved_path} is not under workdir {resolved_workdir}")
+            if tasks_id == "":
+                logger.error(f"Path {resolved_path} is not under workdir {resolved_workdir}")
+            else:
+                logger.error(f"Path {resolved_path} is not under workdir {resolved_workdir} for task_id: {tasks_id}")
             import getpass
             username = getpass.getuser()
             relative_path = Path(username) / str(file_stack_id)
