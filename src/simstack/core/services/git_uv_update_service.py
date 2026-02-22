@@ -41,8 +41,11 @@ class GitUvUpdateService(RestartService):
             stderr=asyncio.subprocess.PIPE
         )
         stdout, stderr = await process.communicate()
-        if process.returncode != 0 and not ignore_error:
-            logger.warning(f"Command {' '.join(cmd)} failed: {stderr.decode()}")
+        if process.returncode != 0:
+            if ignore_error:
+                logger.warning(f"Command {' '.join(cmd)} failed: {stderr.decode()}")
+            else:
+                raise RuntimeError(f"Command {' '.join(cmd)} failed: {stderr.decode()}")
         return stdout.decode().strip()
     
     async def execute(self):
