@@ -144,8 +144,9 @@ class FileStack(Model):
                 logger.debug(
                     f"Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes"
                 )
+                logger.debug(f"File name for {source_path}: {len(content)}")
                 # Check if compressed content exceeds MongoDB document size limit
-                if len(content) > MONGODB_MAX_DOCUMENT_SIZE:
+                if len(content) > 0.9*MONGODB_MAX_DOCUMENT_SIZE:
                     if task_id == "":
                         logger.error(f"Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}")
                         logger.error(f"Setting in_memory to False for file {source_path}")
