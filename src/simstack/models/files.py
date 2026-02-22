@@ -154,6 +154,7 @@ class FileStack(Model):
                         logger.error(f"task_id: {task_id} Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}")
                         logger.error(f"task_id: {task_id} Setting in_memory to False for file {source_path}")
                     in_memory = False
+                    content = None
             except Exception as e:
                 logger.warning(f"Failed to compress file {source_path}: {e}")
                 raise
