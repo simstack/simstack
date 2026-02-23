@@ -61,7 +61,7 @@ class GitUvUpdateService(RestartService):
         git_changed = "Already up to date." not in git_output
 
         # Clear the stash now that we've pulled
-        await self._run_command(["git", "stash", "drop"], ignore_error=True)
+        # await self._run_command(["git", "stash", "drop"], ignore_error=True)
 
         if git_changed: # or uv_locally_upgraded:
             await self._run_command(["uv", "sync", "--locked"])  # Update local .venv
