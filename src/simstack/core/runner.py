@@ -58,7 +58,7 @@ async def async_main(args):
 
     if args.resource:
         logger.info(f"Setting resource for runner to {args.resource}")
-        runner_manager = RunnerManager(context.config.resource, detach=args.detach)
+        runner_manager = RunnerManager(context.config.resource, detach=args.detach, no_pull=args.no_pull)
         await runner_manager.run_nodes_for_resource(args.polling_interval, 10, timeout=args.timeout)
 
 
@@ -96,6 +96,13 @@ def runner_main():
         type=int,
         default=None,
         help="Timeout in minutes after which the runner will terminate",
+    )
+
+    parser.add_argument(
+        "--no-pull",
+        action="store_true",
+        default=False,
+        help="If true, do not pull from git (GitUvUpdateService will not be started)",
     )
 
     args = parser.parse_args()
