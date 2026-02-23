@@ -18,7 +18,8 @@ from simstack.core.services.timeout_restart_service import TimeoutRestartService
 logger = logging.getLogger("NodeRunner")
 
 class RunnerManager:
-    def __init__(self, resource: Resource, detach: bool = True, no_pull: bool = False):
+    def __init__(self, resource: Resource, detach: bool = True, no_pull: bool = False,
+                 is_default: bool = False):
         self._resource = resource
         self._detach = detach
         self._no_pull = no_pull
@@ -26,6 +27,7 @@ class RunnerManager:
         self._services = []
         self._shutdown_event = asyncio.Event()
         self._pid_file = context.config.workdir / f"runner_{resource}.pid"
+        self._is_default = is_default
 
     def _is_process_running(self, pid: int) -> bool:
         """Check if a process with given PID is running"""
@@ -80,7 +82,7 @@ class RunnerManager:
 
         self._services = [
             NodeExecutionService(self._resource, polling_interval, max_concurrent, self._shutdown_event,
-                                 detach=self._detach),
+                                 detach=self._detach, is_default=self._is_default),
             RunnerStatusService(self._resource, interval=60),
             RunnerCleanupService(self._resource, interval=300),
             SlurmStatusService(self._resource, interval=60),
@@ -88,7 +90,7 @@ class RunnerManager:
             StopCheckService(self._resource, interval=10, shutdown_event=self._shutdown_event),
         ]
 
-        if str(self._resource) != "local" and not self._no_pull:
+        if not self._no_pull:
             self._services.append(GitUvUpdateService(self._resource, interval=60))
 
         # Add timeout restart service if timeout is specified

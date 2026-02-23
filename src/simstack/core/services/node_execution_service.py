@@ -33,13 +33,15 @@ async def run_node_from_registry(registry_entry: NodeRegistry):
     return node.status == TaskStatus.COMPLETED
 
 class NodeExecutionService(BaseService):
-    def __init__(self, resource: Resource, interval, max_concurrent, shutdown_event, detach: bool = True):
+    def __init__(self, resource: Resource, interval, max_concurrent, shutdown_event, detach: bool = True,
+                 is_default: bool = False):
         super().__init__("JobPolling", resource, interval, shutdown_event=shutdown_event)
         self._resource_name = str(resource)
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._running_tasks = set()
         self._started = False
         self._detach = detach
+        self._is_default = is_default
 
     async def run_node(self, registry_entry: NodeRegistry):
         """Run a single node by its ID from the database"""
