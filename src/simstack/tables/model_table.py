@@ -45,7 +45,7 @@ class CreateModelTable(TableBuilderBase):
 
             is_embedded_model = any(s == "EmbeddedModel" for s in bases)
 
-            if not (is_model or is_ui_model):
+            if not (is_model or is_ui_model or is_embedded_model):
                 continue
             if class_name == "Model":
                 continue
