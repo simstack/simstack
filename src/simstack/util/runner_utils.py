@@ -133,7 +133,7 @@ async def clean_slurm_info(resource: Resource, user: str = None):
                     SlurmInfo, SlurmInfo.resource == resource
                 )
             # logger.info(f"Found {running_jobs} slurm info entries for {resource}")
-            # logger.info(f"Active job IDs: {active_job_ids}")
+            logger.info(f"Active job IDs: {active_job_ids} Slurm info IDs: {[job.job_id for job in running_jobs]}")
             # Delete entries for jobs that are no longer running
             for job in running_jobs:
                 if job.job_id not in active_job_ids:
