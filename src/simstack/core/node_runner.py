@@ -102,7 +102,10 @@ class NodeRunner(SimstackResult):
         Args:
             msg (str): Debug message to log
         """
-        self.logger.debug(f"Task {self.name}: {msg} for task_id: {self.task_id}")
+        self.logger.debug(
+            f"Task {self.name}: {msg} for task_id: {self.task_id}",
+            stacklevel=2,
+        )
 
     def log(self, msg: str):
         """
@@ -112,7 +115,10 @@ class NodeRunner(SimstackResult):
             msg (str): Message to log
         """
         self.log_string += f"{msg}\n"
-        self.logger.debug(f"Task {self.name}: {msg} for task_id: {self.task_id}")
+        self.logger.debug(
+            f"Task {self.name}: {msg} for task_id: {self.task_id}",
+            stacklevel=2,
+        )
 
     def info(self, msg):
         """
@@ -121,7 +127,10 @@ class NodeRunner(SimstackResult):
         Args:
             msg (str): Info message to log
         """
-        self.logger.info(f"Task {self.name}: {msg} task_id: {self.task_id}")
+        self.logger.info(
+            f"Task {self.name}: {msg} task_id: {self.task_id}",
+            stacklevel=2,
+        )
 
     def warning(self, msg):
         """
@@ -130,7 +139,10 @@ class NodeRunner(SimstackResult):
         Args:
             msg (str): Warning message to log
         """
-        self.logger.warning(f"Task {self.name}: {msg} task_id: {self.task_id}")
+        self.logger.warning(
+            f"Task {self.name}: {msg} task_id: {self.task_id}",
+            stacklevel=2,
+        )
 
     def error(self, msg):
         """
@@ -139,7 +151,10 @@ class NodeRunner(SimstackResult):
         Args:
             msg (str): Error message to log
         """
-        self.logger.error(f"Task {self.name}: {msg} task_id: {self.task_id}")
+        self.logger.error(
+            f"Task {self.name}: {msg} task_id: {self.task_id}",
+            stacklevel=2,
+        )
 
     def subprocess(self, name: str, command: str, cwd: str = "") -> bool:
         """
@@ -245,15 +260,12 @@ class NodeRunner(SimstackResult):
     def fail(self, msg: str) -> SimstackResult:
         """
         Mark the task as failed with an error message.
-
-        Args:
-            msg (str): Error message describing the failure reason
-
-        Returns:
-            SimstackResult: Self reference with status set to FAILED
         """
         self._make_log_file()
-        self.logger.error(f"Task {self.name}: {msg} task_id: {self.task_id}")
+        self.logger.error(
+            f"Task {self.name}: {msg} task_id: {self.task_id}",
+            stacklevel=2,
+        )
         self.error_message = msg
         self.status = TaskStatus.FAILED
         return self
@@ -261,12 +273,6 @@ class NodeRunner(SimstackResult):
     def succeed(self, msg: str = "") -> SimstackResult:
         """
         Mark the task as successfully completed.
-
-        Args:
-            msg (str, optional): Success message. Defaults to empty string.
-
-        Returns:
-            SimstackResult: Self reference with status set to COMPLETED
         """
         self._make_log_file()
         self.info(f"succeeded {msg}")
