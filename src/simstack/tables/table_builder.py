@@ -119,6 +119,7 @@ class TableBuilderBase(ABC):
             "__pycache__",
             ".mypy_cache",
             ".pytest_cache",
+            ".ipynb_checkpoints"
         }
 
         def _should_exclude(p: Path) -> bool:
