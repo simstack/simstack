@@ -1,8 +1,8 @@
 import asyncio
-import io
 import json
+import io
 from pprint import pprint
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -10,6 +10,30 @@ from odmantic import Model
 
 from simstack.core.context import context
 from simstack.models import simstack_model
+from simstack.models.files import FileStack
+
+
+def _format_df_for_console(df: pd.DataFrame, precision: int = 2, max_rows: int = 60, max_cols: int = 30) -> str:
+    """
+    Console-safe DataFrame formatting (no optional deps like jinja2 required).
+    """
+    if df is None or df.empty:
+        return "Empty DataFrame"
+
+    df_out = df.copy()
+
+    # Round only numeric columns to avoid touching strings/datetimes
+    numeric_cols = df_out.select_dtypes(include=["number"]).columns
+    if len(numeric_cols) > 0:
+        df_out[numeric_cols] = df_out[numeric_cols].round(precision)
+
+    with pd.option_context(
+        "display.max_rows", max_rows,
+        "display.max_columns", max_cols,
+        "display.width", 0,  # auto-detect width
+        "display.max_colwidth", 200,
+    ):
+        return df_out.to_string(index=False)
 
 
 def _format_datetime_columns(df):
@@ -26,7 +50,11 @@ def _format_datetime_columns(df):
 
 @simstack_model
 class PandasModel(Model):
+    model_config = {"indexes": [("field_name", {"unique": True})]}
+
+    field_name: str = "pandas_model"
     content_: bytes = b""
+    file_stack: Optional[FileStack] = None
 
     @classmethod
     def from_data_frame(cls, df):
@@ -193,7 +221,8 @@ async def main():
 
     # Create the DataFrame
     df = pd.DataFrame(data)
-    print(df.style.format(precision=2))
+    # Replace Styler usage (requires jinja2) with console-safe formatting.
+    print(_format_df_for_console(df, precision=2))
 
     model = PandasModel.from_data_frame(df)
 
