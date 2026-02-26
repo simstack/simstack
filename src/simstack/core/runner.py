@@ -27,6 +27,8 @@ async def initialize_default_resource():
         ResourceDefinition.resource_str == str(context.config.resource)
     )
 
+    print(resource_def)
+
     if resource_def.is_default:
         config_path = context.config.project_root / "config.toml"
         if not config_path.exists():
