@@ -253,6 +253,7 @@ class FileStack(Model):
             if not path.is_absolute():
                 from simstack.core.context import context
                 return context.config.workdir / path
+            logger.info(f"Using existing instance {path} for {self.name}")
             return path
         else:
             local_dir.mkdir(parents=True, exist_ok=True)
