@@ -248,8 +248,12 @@ class FileStack(Model):
         if same_resource_instance := next(
             (f for f in self.locations if f.resource == local_resource), None
         ):
-            # Copy the file from the source path to the destination path
-            return Path(same_resource_instance.path)
+            # Return the absolute path by joining with the resource's workdir if it's relative
+            path = Path(same_resource_instance.path)
+            if not path.is_absolute():
+                from simstack.core.context import context
+                return context.config.workdir / path
+            return path
         else:
             local_dir.mkdir(parents=True, exist_ok=True)
             logger.error("No suitable file instance found for copying.")
