@@ -124,16 +124,17 @@ async def clean_slurm_info(resource: Resource, user: str = None):
                 active_job_ids.add(parts[0])
 
             # Find all SLURM info entries for this resource
-            if user:
-                running_jobs = await context.db.engine.find(
-                    SlurmInfo, (SlurmInfo.resource == resource) & (SlurmInfo.user == user)
-                )
-            else:
-                running_jobs = await context.db.engine.find(
-                    SlurmInfo, SlurmInfo.resource == resource
-                )
+            # the user id is truncated on saving
+            # if user:
+            #     running_jobs = await context.db.engine.find(
+            #         SlurmInfo, (SlurmInfo.resource.value == resource.value) & (SlurmInfo.user == user)
+            #     )
+            # else:
+            running_jobs = await context.db.engine.find(SlurmInfo, SlurmInfo.resource.value == resource.value)
             # logger.info(f"Found {running_jobs} slurm info entries for {resource}")
-            # logger.info(f"Active job IDs: {active_job_ids}")
+            # logger.info(f"Active job IDs: {active_job_ids} Slurm info IDs: {[job.job_id for job in running_jobs]}")
+            # logger.info(f"User: {user} resource: {resource} ")
+
             # Delete entries for jobs that are no longer running
             for job in running_jobs:
                 if job.job_id not in active_job_ids:

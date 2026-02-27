@@ -197,10 +197,11 @@ class SlurmParameters(EmbeddedModel):
 
         # Validate memory parameters first
         memory_options = []
-        if self.mem is not None:
-            memory_options.append("mem")
+
         if self.mem_per_cpu is not None:
             memory_options.append("mem_per_cpu")
+        elif self.mem is not None:
+            memory_options.append("mem")
         if hasattr(self, "mem_per_gpu") and getattr(self, "mem_per_gpu") is not None:
             memory_options.append("mem_per_gpu")
 
@@ -211,9 +212,20 @@ class SlurmParameters(EmbeddedModel):
                 f"Please specify only one of: --mem, --mem-per-cpu, or --mem-per-gpu"
             )
 
+        # Ensure task count options are mutually exclusive
+        # If both total tasks (--ntasks) and tasks per node (--ntasks-per-node)
+        # are provided, prefer --ntasks-per-node and omit --ntasks.
+        tasks_value = self.tasks
+        tasks_per_node_value = self.tasks_per_node
+
+        if tasks_value is not None and tasks_per_node_value is not None:
+            tasks_value = None
+
         # Map field names to SBATCH parameters
         field_mapping = {
             "nodes": "--nodes",
+            # NOTE: tasks and tasks_per_node are handled specially below to enforce
+            # mutual exclusivity when converting to sbatch arguments.
             "tasks": "--ntasks",
             "tasks_per_node": "--ntasks-per-node",
             "cpus_per_task": "--cpus-per-task",
@@ -246,7 +258,14 @@ class SlurmParameters(EmbeddedModel):
 
         # Add parameters with values
         for field_name, sbatch_param in field_mapping.items():
-            value = getattr(self, field_name, None)
+            # Handle mutually exclusive task options
+            if field_name == "tasks":
+                value = tasks_value
+            elif field_name == "tasks_per_node":
+                value = tasks_per_node_value
+            else:
+                value = getattr(self, field_name, None)
+
             if value is not None:
                 args.append(f"{sbatch_param}={value}")
 

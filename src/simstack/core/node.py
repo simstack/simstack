@@ -34,6 +34,7 @@ from simstack.models.files import FileStack
 from simstack.models.parameters import Resource, Queue
 from simstack.models.simstack_model import is_simstack_model
 from simstack.util.importer import import_function, import_class
+from odmantic.model import ModelMetaclass
 
 logger = logging.getLogger("Node")
 
@@ -80,14 +81,15 @@ def compute_arg_hash(args: List[Model]) -> str:
     """
     arg_hashes = []
     for arg in args:
-        if not isinstance(arg, Model):
+        if isinstance(arg, Model):
+            arg_hash = (
+                arg.complex_hash()
+                if hasattr(arg, "complex_hash")
+                else complex_hash_function(hashable_inputs(arg))
+            )
+            arg_hashes.append(arg_hash)
+        else:
             raise TypeError(f"Argument {arg} is not an instance of {Model}")
-        arg_hash = (
-            arg.complex_hash()
-            if hasattr(arg, "complex_hash")
-            else complex_hash_function(hashable_inputs(arg))
-        )
-        arg_hashes.append(arg_hash)
     return complex_hash_function(arg_hashes)
 
 class Node:
@@ -193,7 +195,7 @@ class Node:
                 raise ValueError(
                     f"Could not find table name for {arg.__class__.__name__}"
                 )
-            if not isinstance(arg, Model):
+            if  not isinstance(arg, Model):
                 logger.error(f"{arg.__class__.__name__} is not an odmantic Model")
                 raise ValueError(f"{arg.__class__.__name__} is not an odmantic Model")
 

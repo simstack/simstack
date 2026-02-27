@@ -119,6 +119,7 @@ class TableBuilderBase(ABC):
             "__pycache__",
             ".mypy_cache",
             ".pytest_cache",
+            ".ipynb_checkpoints"
         }
 
         def _should_exclude(p: Path) -> bool:
@@ -231,6 +232,7 @@ class TableBuilderBase(ABC):
             default=[],
             help=(
                 "Exclude a directory/name/glob from scanning (repeatable). "
+          
                 "Examples: --exclude .venv --exclude __pycache__ --exclude src/simstack/models --exclude '*.generated.py'"
             ),
         )

@@ -45,7 +45,7 @@ class CreateModelTable(TableBuilderBase):
 
             is_embedded_model = any(s == "EmbeddedModel" for s in bases)
 
-            if not (is_model or is_ui_model):
+            if not (is_model or is_ui_model or is_embedded_model):
                 continue
             if class_name == "Model":
                 continue
@@ -69,15 +69,29 @@ class CreateModelTable(TableBuilderBase):
             logger.debug(f"    Class: {class_name} Model Mapping: {full_mapping}")
 
             # Remove any existing ModelMapping entry for this class
+            
             try:
-                existing_entry = await self.engine.find_one(
+                existing_entries = await self.engine.find(
                     ModelMapping, ModelMapping.name == class_name
                 )
             except (ValidationError, NameError, DocumentParsingError) as e:
                 logger.error(f"Error finding existing ModelMapping for {class_name}: {e}")
-                existing_entry = None
-            if existing_entry is not None:
-                await self.engine.delete(existing_entry)
+                existing_entries = []
+            
+            if len(existing_entries) > 1:
+                error_msg = f"Fatal error: Found {len(existing_entries)} ModelMapping entries for class_name '{class_name}'. Expected at most one."
+                logger.fatal(error_msg)
+                raise RuntimeError(error_msg)
+            
+            if len(existing_entries) == 1:
+                existing_mapping = existing_entries[0].mapping
+                if existing_mapping != full_mapping:
+                    logger.warning(
+                        f"Replacing ModelMapping entry for {class_name}: "
+                        f"old mapping '{existing_mapping}' -> new mapping '{full_mapping}'"
+                    )
+
+                await self.engine.delete(existing_entries[0])
                 logger.debug(f"Deleted ModelMapping entry for {class_name}")
 
             # EmbeddedModels have no collection by may be simstack_models. They are never saved/retrieved

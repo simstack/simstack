@@ -15,21 +15,35 @@ logger = logging.getLogger("file_instance")
 
 @simstack_model
 class FileInstance(EmbeddedModel):
-    """ """
+    """
+    Represents an embedded model for a file instance.
 
-    path: Path = Field(description="Path to the file relative to the host work directory")
+    The `FileInstance` class is used to encapsulate details about a file,
+    including its path, associated resource, and creation timestamp.
+    It provides a class method for initializing a `FileInstance` object
+    from a local file path, ensuring proper handling of file-related operations.
+
+    Attributes:
+        path (str): Path to the file relative to the host work directory.
+        resource (Resource): Name of the resource associated with the file.
+        created_at (datetime): Timestamp indicating when the file instance was created.
+    """
+
+    path: str = Field(description="Path to the file relative to the host work directory")
     resource: Resource = Field(description="Resource name")
     created_at: datetime = Field(description="Creation timestamp")
 
     @model_validator(mode='before')
-    def validate_resource(cls, values):
+    def migration(cls, values):
         if isinstance(values.get('resource'), str):
             values['resource'] = Resource(value=values['resource'])
+        if "path" in values and isinstance(values['path'], Path):
+            values['path'] = str(values['path'])
         return values
 
     @classmethod
     def from_local_file(
-        cls, path: Union[Path, str], file_stack_id: ObjectId, make_copy: bool = True
+        cls, path: Union[Path, str], file_stack_id: ObjectId, make_copy: bool = True, tasks_id: str = ""
     ):
         """
         Creates a FileInstance object from a local file path.
@@ -53,30 +67,32 @@ class FileInstance(EmbeddedModel):
         source_path = path if isinstance(path, Path) else Path(path)
 
         # Prepare the content field if in_memory is True
-
+        resolved_path = Path(path).resolve()
+        # Find 'simstack' in the path and compute the relative path from its parent
+        from simstack.core.context import context
+        workdir = context.config.workdir
+        resolved_workdir = Path(workdir).resolve()
+        if tasks_id == "":
+            logger.debug(f"workdir is {resolved_workdir} path is {resolved_path}")
+        else:
+            logger.debug(f"task_id: {tasks_id} workdir is {resolved_workdir} path is {resolved_path}")
         try:
-            from simstack.core.context import context
-
-            if make_copy:
-                # make a local copy
-                import getpass
-
-                username = getpass.getuser()
-                relative_path = Path(username) / str(file_stack_id)
-                absolute_dir = Path(context.config.workdir) / relative_path
-                absolute_dir.mkdir(parents=True, exist_ok=True)
-                shutil.copy(path, absolute_dir)
+            relative_path = resolved_path.relative_to(resolved_workdir)
+        except ValueError:
+            if tasks_id == "":
+                logger.error(f"Path {resolved_path} is not under workdir {resolved_workdir}")
             else:
-                relative_path = Path(path).relative_to(context.config.workdir)
+                logger.error(f"Path {resolved_path} is not under workdir {resolved_workdir} for task_id: {tasks_id}")
+            import getpass
+            username = getpass.getuser()
+            relative_path = Path(username) / str(file_stack_id)
+            absolute_dir = Path(context.config.workdir) / relative_path
+            absolute_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy(source_path, absolute_dir)
 
-            file_instance = FileInstance(
-                path=str(relative_path / source_path.name),
-                resource=context.config.resource,
-                created_at=datetime.now(),
-            )
-            return file_instance
-        except Exception as e:
-            logger.error(f"Error creating FileInstance from local file {path}: {e}")
-            raise ValueError(
-                f"Could not create FileInstance from local file {path}: {e}"
-            )
+        file_instance = FileInstance(
+            path=str(relative_path),
+            resource=context.config.resource,
+            created_at=datetime.now(),
+        )
+        return file_instance

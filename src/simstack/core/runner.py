@@ -16,6 +16,7 @@ from simstack.core.services.runner_manager import RunnerManager
 
 logger = logging.getLogger("NodeRunner")
 
+
 async def initialize_default_resource():
     """
     Checks if the current resource is the default one.
@@ -26,7 +27,9 @@ async def initialize_default_resource():
         ResourceDefinition.resource_str == str(context.config.resource)
     )
 
-    if resource_def and resource_def.is_default:
+    print(resource_def)
+
+    if resource_def.is_default:
         config_path = context.config.project_root / "config.toml"
         if not config_path.exists():
             logger.warning(f"Default resource detected, but {config_path} not found.")
@@ -35,7 +38,7 @@ async def initialize_default_resource():
         try:
             with open(config_path, "rb") as f:
                 config_data = tomllib.load(f)
-            
+
             active_dirs = config_data.get("active_dirs", [])
             if not active_dirs:
                 logger.info("No active_dirs found in config.toml.")
@@ -44,21 +47,23 @@ async def initialize_default_resource():
             logger.info(f"Default resource: initializing tables for {active_dirs}")
             await make_node_table(context.db.engine, dirs=active_dirs)
             await make_model_table(context.db.engine, dirs=active_dirs)
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize default resource tables: {e}")
 
+    return resource_def
 
 async def async_main(args):
     """Async entry point"""
     await context.initialize(resource=args.resource, db_name=args.db_name)
     
     # Initialize tables if this is the default resource
-    await initialize_default_resource()
+    resource_def = await initialize_default_resource()
 
     if args.resource:
         logger.info(f"Setting resource for runner to {args.resource}")
-        runner_manager = RunnerManager(context.config.resource, detach=args.detach)
+        runner_manager = RunnerManager(context.config.resource, detach=args.detach, no_pull=args.no_pull,
+                                       is_default=resource_def.is_default)
         await runner_manager.run_nodes_for_resource(args.polling_interval, 10, timeout=args.timeout)
 
 
@@ -96,6 +101,13 @@ def runner_main():
         type=int,
         default=None,
         help="Timeout in minutes after which the runner will terminate",
+    )
+
+    parser.add_argument(
+        "--no-pull",
+        action="store_true",
+        default=False,
+        help="If true, do not pull from git (GitUvUpdateService will not be started)",
     )
 
     args = parser.parse_args()
