@@ -435,7 +435,7 @@ class Node:
         """
         self.registry_entry.started_at = datetime.now()
         await self.set_status(TaskStatus.RUNNING)
-        logger.info(f"Task task_id: {self.id} is started on {self.parameters.resource}")
+        logger.info(f"Task task_id: {self.id} is started on {self.parameters.resource} in Node:execute_node_locally")
         original_dir = Path.cwd()
         try:
             node_runner = NodeRunner(self._func.__name__, None, task_id=self.id)
@@ -697,7 +697,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
         logger.debug(f"Task task_id: {registry_entry.id} computes arg hashes")
         registry_entry.arg_hash = compute_arg_hash(args)
 
-    logger.debug(f"Task task_id: {registry_entry.id} loaded {len(args)} inputs")
+    logger.info(f"Task task_id: {registry_entry.id} {registry_entry.name} loaded {len(args)} inputs in Node:node_from_database status: {registry_entry.status}")
     try:
         wrapped_func = await import_function(
             registry_entry.func_mapping, registry_entry.id
@@ -707,7 +707,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             return None
         # for nodes the mapping points to the wrapped func to we use that
         func = (wrapped_func if not hasattr(wrapped_func, "_inner") else wrapped_func._inner)
-        logger.info(
+        logger.debug(
             f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
         )
         if registry_entry.function_hash == "NOT INITIALIZED":
