@@ -11,7 +11,34 @@ from simstack.core.simstack_result import SimstackResult
 from simstack.models.files import FileStack
 
 local_logger = logging.getLogger("NodeRunner")
+import locale
+import subprocess
 
+def run_command_safely(command: str, *, cwd=None) -> tuple[int, str, str]:
+    """
+    Runs a shell command capturing output robustly on Windows/non-UTF8 environments.
+    Returns (returncode, stdout_text, stderr_text).
+    """
+    proc = subprocess.run(
+        command,
+        shell=True,
+        cwd=cwd,
+        capture_output=True,
+        text=False,  # capture bytes to avoid UnicodeDecodeError in reader threads
+    )
+
+    preferred = locale.getpreferredencoding(False) or "utf-8"
+
+    def decode(data: bytes) -> str:
+        if not data:
+            return ""
+        # Try UTF-8 first (common), then fallback to platform encoding; never crash.
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError:
+            return data.decode(preferred, errors="replace")
+
+    return proc.returncode, decode(proc.stdout), decode(proc.stderr)
 
 class NodeRunner(SimstackResult):
     """
@@ -48,6 +75,42 @@ class NodeRunner(SimstackResult):
         self.info_file_patterns = {"*.in", "*.out", "*.err", "*.log"}
         self.info("started")
 
+    def _collect_files_set(self, *args) -> Set[str]:
+        """
+        Build a set of readable file paths from explicit paths and glob patterns.
+
+        Notes:
+            - Patterns (strings containing '*') are added to self.info_file_patterns.
+            - Only existing, readable files are returned.
+        """
+        files_set: Set[str] = set()
+
+        # Flatten args if it contains lists
+        flattened_args = []
+        for value in args:
+            if isinstance(value, (list, tuple)):
+                flattened_args.extend(value)
+            else:
+                flattened_args.append(value)
+
+        # Process args for patterns and files
+        for value in flattened_args:
+            if isinstance(value, str):
+                if "*" in value:
+                    self.info_file_patterns.add(value)
+                elif os.path.exists(value) and os.access(value, os.R_OK):
+                    files_set.add(value)
+
+        self.info(f"Processing patterns: {self.info_file_patterns}")
+
+        # Add files matching patterns
+        for pattern in self.info_file_patterns:
+            for filepath in glob.glob(pattern):
+                if os.path.exists(filepath) and os.access(filepath, os.R_OK):
+                    files_set.add(filepath)
+
+        return files_set
+
     async def make_info_files(self, *args):
         """
         Collect and process information files based on patterns and explicit file paths.
@@ -65,25 +128,7 @@ class NodeRunner(SimstackResult):
             Only readable files are processed.
         """
         try:
-            files_set: Set[str] = set()
-
-
-            # Process args for patterns and files
-            for value in args:
-                if isinstance(value, str):
-                    if "*" in value:
-                        self.info_file_patterns.add(value)
-                    elif os.path.exists(value) and os.access(value, os.R_OK):
-                        files_set.add(value)
-
-            self.info(f"Processing patterns: {self.info_file_patterns}")
-
-            # Add files matching patterns
-            for pattern in self.info_file_patterns:
-                for filepath in glob.glob(pattern):
-                    if os.path.exists(filepath) and os.access(filepath, os.R_OK):
-                        files_set.add(filepath)
-
+            files_set = self._collect_files_set(*args)
             self.info(f"Found info files: {files_set}")
 
             for file_path in files_set:
@@ -92,6 +137,24 @@ class NodeRunner(SimstackResult):
                         file_path, in_memory=True, is_hashable=True, secure_source=True
                     )
                     self.info_files.append(file_stack)
+        except Exception as finally_error:
+            self.error(f"Error in finally block: {str(finally_error)}")
+
+    async def make_files(self, *args):
+        """
+        Same as make_info_files, but appends to self.files instead of self.info_files.
+        """
+        try:
+            
+            files_set = self._collect_files_set(*args)
+            self.info(f"Found files: {files_set}")
+
+            for file_path in files_set:
+                if os.path.exists(file_path):
+                    file_stack = FileStack.from_local_file(
+                        file_path, in_memory=True, is_hashable=True, secure_source=True
+                    )
+                    self.files.append(file_stack)
         except Exception as finally_error:
             self.error(f"Error in finally block: {str(finally_error)}")
 
@@ -178,28 +241,37 @@ class NodeRunner(SimstackResult):
         """
         if name == "":
             name = "process"
+        
+        script_file = f"{name}.cmd"
+        # Using "with" block ensures the file is closed before executing it.
+        # This is critical on Windows to avoid "The process cannot access the file
+        # because it is being used by another process" or hangs if the child
+        # tries to read the script while it's still open for writing.
+        with open(script_file, "w", encoding="utf-8") as f:
+            f.write(command)
+
         with open(f"{name}.log", "w", encoding="utf-8") as process_log:
             process_log.write(f"Command: {name}\n{command}\n")
             # TODO adapt for docker
-            process = subprocess.run(
-                command,
-                shell=True,  # Important: use shell=True for shell operators like &&
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
+            # On Windows, explicitly calling 'cmd /c' can sometimes help with script termination.
+            # However, subprocess.run(shell=True) already uses 'cmd /c' on Windows.
+            returncode, stdout, stderr= run_command_safely(
+                f'"{os.path.abspath(script_file)}"',
                 cwd=cwd if cwd else None,
             )
-            self.info(f"run script {name} finished: {process.returncode}")
-            self.last_stdout = process.stdout
-            self.last_stderr = process.stderr
-            process_log.write(f"Process return code:\n{process.returncode}\n\n")
-            process_log.write(f"Process output:\n{process.stdout}\n\n")
-            process_log.write(f"Process error:\n{process.stderr}\n\n")
+            self.info(f"run script {name} finished: {returncode}")
+
+            self.last_stdout = stdout if stdout is not None else ""
+            self.last_stderr = stderr if stderr is not None else ""
+
+            process_log.write(f"Process return code:\n{returncode}\n\n")
+            process_log.write(f"Process output:\n{self.last_stdout}\n\n")
+            process_log.write(f"Process error:\n{self.last_stderr}\n\n")
         file_stack = FileStack.from_local_file(
             f"{name}.log", in_memory=True, is_hashable=True, secure_source=True
         )
         self.info_files.append(file_stack)
-        return process.returncode == 0
+        return returncode == 0
 
     def submit_to_watchdog(self, name: str, command: str) -> bool:
         """
@@ -236,11 +308,11 @@ class NodeRunner(SimstackResult):
                 else:
                     err_msg = f"watchdog submission failed: {result.returncode}"
                     self.fail(err_msg)
-                self.last_stdout = result.stdout
-                self.last_stderr = result.stderr
+                self.last_stdout = result.stdout if result.stdout is not None else ""
+                self.last_stderr = result.stderr if result.stderr is not None else ""
                 process_log.write(f"Process return code:\n{result.exit_code}\n\n")
-                process_log.write(f"Process output:\n{result.stdout}\n\n")
-                process_log.write(f"Process error:\n{result.stderr}\n\n")
+                process_log.write(f"Process output:\n{self.last_stdout}\n\n")
+                process_log.write(f"Process error:\n{self.last_stderr}\n\n")
             file_stack = FileStack.from_local_file(
                 f"{name}.log", in_memory=True, is_hashable=True, secure_source=True
             )
