@@ -231,6 +231,8 @@ class FileStack(Model):
 
         if self.in_memory:
             local_dir.mkdir(parents=True, exist_ok=True)
+            if self.content is None:
+                raise ValueError(f"Content is None for in-memory file {self.name}")
             try:
                 # Decompress the content
                 decompressed_content = zlib.decompress(self.content)
