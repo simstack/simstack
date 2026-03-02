@@ -96,7 +96,7 @@ class ConfigReader(DatabaseInformation):
 
         project_root = config.pop("project_root")
         git_list_final = config.pop("git_list", git_list)
-        config.pop("resource")
+
         if config:
             logger.warning(f"Ignoring unused ConfigReader init keys: {sorted(config.keys())}")
 
