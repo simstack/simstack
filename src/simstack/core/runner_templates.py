@@ -4,6 +4,8 @@ from typing import Dict, Any, List, Optional
 import tomllib  # For Python 3.11+
 
 from simstack.models.parameters import Resource
+import logging
+logger = logging.getLogger("templates")
 
 # In this project structure, templates are kept in examples/templates
 # instead of core code.
@@ -176,10 +178,12 @@ class ProgramExecutor(BaseExecutor):
         # Load defaults from config if program_name is provided
 
         config = self.template_manager.config
+        logger.info(f"task_id: {task_id} Program: {program_name} Resource: {self.resource}")
+        logger.info(f"task_id: {task_id} Config: {config}")
         if program_name and config:
             # Try to find program in the resource-specific program dict
             prog_config = config.get(self.resource, {}).get("program", {}).get(program_name)
-            
+            logger.info(f"task_id: {task_id}  Found prog_config:  {prog_config}")
             if not prog_config:
                 # Fallback to top-level program_specifics for backward compatibility if it exists
                 prog_config = config.get("program_specifics", {}).get(program_name)
@@ -195,7 +199,7 @@ class ProgramExecutor(BaseExecutor):
             scripts = scripts or prog_config.get("scripts")
             self.use_tmp = prog_config.get("use_tmp", True) 
         elif program_name:
-            raise ValueError(f"Program '{program_name}' not found in config.")
+            raise ValueError(f"Program '{program_name}' not found in config for resource '{self.resource}'")
 
         self.environment_modules = environment_modules or []
         self.program_env = program_env or {}
