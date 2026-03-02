@@ -36,7 +36,7 @@ class ExecutorTemplateManager:
             return context['os'].lower()
         
         # 2. Check if the resource configuration specifies an OS
-        resource_config = self.config.get("resource_specifics", {}).get(resource, {})
+        resource_config = self.config.get(resource, {})
         if 'os' in resource_config:
             return resource_config['os'].lower()
         
@@ -53,7 +53,7 @@ class ExecutorTemplateManager:
             return context['shell'].lower()
 
         # 2. Check if the resource configuration specifies a shell
-        resource_config = self.config.get("resource_specifics", {}).get(resource, {})
+        resource_config = self.config.get(resource, {})
         if 'shell' in resource_config:
             return resource_config['shell'].lower()
 
@@ -168,6 +168,7 @@ class ProgramExecutor(BaseExecutor):
                  input_files: List[str] = None,
                  output_files: List[str] = None,
                  run_command: str = "",
+                 scripts: List[str] = None,
                  program_name: str = None,
                  task_id: Optional[str] = None):
         super().__init__(resource, task_id=task_id)
@@ -176,24 +177,24 @@ class ProgramExecutor(BaseExecutor):
 
         config = self.template_manager.config
         if program_name and config:
-            # First try to find program in program_specifics
-            prog_config = config.get("program_specifics", {}).get(program_name)
-            
-            # If not found, fall back to old behavior (though we are refactoring, 
-            # some things might still expect the old structure if we didn't migrate everything)
-            if not prog_config:
-                prog_config = config.get(self.resource, {}).get(program_name, config.get(program_name))
+            # Try to find program in the resource-specific program dict
+            prog_config = config.get(self.resource, {}).get("program", {}).get(program_name)
             
             if not prog_config:
-                raise ValueError(f"Program '{program_name}' not found in config.")
+                # Fallback to top-level program_specifics for backward compatibility if it exists
+                prog_config = config.get("program_specifics", {}).get(program_name)
+            
+            if not prog_config:
+                raise ValueError(f"Program '{program_name}' not found for resource '{self.resource}' in config.")
                 
             environment_modules = environment_modules or prog_config.get("environment_modules")
             program_env = program_env or prog_config.get("program_env")
             input_files = input_files or prog_config.get("input_files")
             output_files = output_files or prog_config.get("output_files")
             run_command = run_command or prog_config.get("run_command")
-            self.use_tmp = prog_config.get("use_tmp", True) # Default to True for backward compatibility
-        else:
+            scripts = scripts or prog_config.get("scripts")
+            self.use_tmp = prog_config.get("use_tmp", True) 
+        elif program_name:
             raise ValueError(f"Program '{program_name}' not found in config.")
 
         self.environment_modules = environment_modules or []
@@ -201,6 +202,7 @@ class ProgramExecutor(BaseExecutor):
         self.input_files = input_files or []
         self.output_files = output_files or []
         self.run_command = run_command
+        self.scripts = scripts or []
         # If use_tmp wasn't set from config, default it to True
         if not hasattr(self, 'use_tmp'):
             self.use_tmp = True
@@ -215,7 +217,8 @@ class ProgramExecutor(BaseExecutor):
             "input_files": self.input_files,
             "output_files": self.output_files,
             "run_command": self.run_command,
-            "use_tmp": self.use_tmp
+            "use_tmp": self.use_tmp,
+            "scripts": self.scripts
         }
 
     def run_script(self):
