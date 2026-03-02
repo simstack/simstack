@@ -3,30 +3,30 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import tomllib  # For Python 3.11+
 
+from simstack.core.context import context
 from simstack.models.parameters import Resource
 import logging
 logger = logging.getLogger("templates")
 
-# In this project structure, templates are kept in examples/templates
-# instead of core code.
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
-TEMPLATE_DIR = PROJECT_ROOT / "examples" / "templates"
-CONFIG_FILE = PROJECT_ROOT / "config.toml"
-
 class ExecutorTemplateManager:
     def __init__(self):
+        project_root = context.config.project_root
+        self.config_file = project_root / "config.toml"
+        self.template_dir = project_root / "examples" / "templates"
         self.env = Environment(
-            loader=FileSystemLoader(str(TEMPLATE_DIR)),
+            loader=FileSystemLoader(str(self.template_dir)),
             trim_blocks=True,
             lstrip_blocks=True
         )
         self.config = self._load_config()
 
     def _load_config(self) -> Dict[str, Any]:
-        if CONFIG_FILE.exists():
-            with open(CONFIG_FILE, "rb") as f:
+        if self.config_file.exists():
+            with open(self.config_file, "rb") as f:
                 return tomllib.load(f)
-        return {}
+        else:
+            raise FileNotFoundError(f"Config file not found: {self.config_file}")
+
 
     def _get_os(self, resource: str, context: Dict[str, Any]) -> str:
         """
