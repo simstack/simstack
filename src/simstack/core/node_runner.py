@@ -102,14 +102,6 @@ class NodeRunner(SimstackResult):
                 elif os.path.exists(value) and os.access(value, os.R_OK):
                     files_set.add(value)
 
-        self.info(f"Processing patterns: {self.info_file_patterns}")
-
-        # Add files matching patterns
-        for pattern in self.info_file_patterns:
-            for filepath in glob.glob(pattern):
-                if os.path.exists(filepath) and os.access(filepath, os.R_OK):
-                    files_set.add(filepath)
-
         return files_set
 
     async def make_info_files(self, *args):
@@ -130,6 +122,14 @@ class NodeRunner(SimstackResult):
         """
         try:
             files_set = self._collect_files_set(*args)
+
+            self.info(f"Processing patterns: {self.info_file_patterns}")
+            # Add files matching patterns
+            for pattern in self.info_file_patterns:
+                for filepath in glob.glob(pattern):
+                    if os.path.exists(filepath) and os.access(filepath, os.R_OK) and not filepath in files_set:
+                        files_set.add(filepath)
+
             self.info(f"Found info files: {files_set}")
 
             for file_path in files_set:
