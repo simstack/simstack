@@ -178,12 +178,11 @@ class ProgramExecutor(BaseExecutor):
         # Load defaults from config if program_name is provided
 
         config = self.template_manager.config
-        logger.info(f"task_id: {task_id} Program: {program_name} Resource: {self.resource}")
-        logger.info(f"task_id: {task_id} Config: {config}")
+        logger.debug(f"task_id: {task_id} Program: {program_name} Resource: {self.resource}")
         if program_name and config:
             # Try to find program in the resource-specific program dict
             prog_config = config.get(self.resource, {}).get("program", {}).get(program_name)
-            logger.info(f"task_id: {task_id}  Found prog_config:  {prog_config}")
+
             if not prog_config:
                 # Fallback to top-level program_specifics for backward compatibility if it exists
                 prog_config = config.get("program_specifics", {}).get(program_name)
