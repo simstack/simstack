@@ -96,13 +96,13 @@ class ConfigReader(DatabaseInformation):
 
         project_root = config.pop("project_root")
         git_list_final = config.pop("git_list", git_list)
-
+        config.pop("resource")
         if config:
             logger.warning(f"Ignoring unused ConfigReader init keys: {sorted(config.keys())}")
 
         logger.info(f"ConfigReader initialized with workdir: {resource_definition.workdir}")
         for key, value in resource_definition.__dict__.items():
-            logger.info(f"resource_definition.{key}: {value}")
+            logger.debug(f"resource_definition.{key}: {value}")
 
         return cls(db, resource_definition, project_root=project_root, git_list=git_list_final)
 
