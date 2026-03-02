@@ -1,6 +1,7 @@
 import glob
 import logging
 import os
+import stat
 import subprocess
 import uuid
 from pathlib import Path
@@ -249,6 +250,9 @@ class NodeRunner(SimstackResult):
         # tries to read the script while it's still open for writing.
         with open(script_file, "w", encoding="utf-8") as f:
             f.write(command)
+
+        # Make script executable on Linux/Unix systems
+        os.chmod(script_file, os.stat(script_file).st_mode | stat.S_IEXEC | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
         with open(f"{name}.log", "w", encoding="utf-8") as process_log:
             process_log.write(f"Command: {name}\n{command}\n")
