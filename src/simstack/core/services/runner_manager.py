@@ -29,22 +29,52 @@ class RunnerManager:
         self._pid_file = context.config.workdir / f"runner_{resource}.pid"
         self._is_default = is_default
 
-    def _is_process_running(self, pid: int) -> bool:
-        """Check if a process with given PID is running"""
+    def _is_process_running(self, pid: int, validate_simstack: bool = False) -> bool:
+
+        """Check if a process with given PID is running and optionally validate it's a simstack process"""
         try:
             if platform.system() == "Windows":
                 # On Windows, os.kill with signal 0 doesn't work, use tasklist
                 import subprocess
+
                 result = subprocess.run(
                     ["tasklist", "/FI", f"PID eq {pid}"],
                     capture_output=True,
                     text=False,  # keep bytes; avoid UnicodeDecodeError from console code pages
                 )
                 # tasklist output always includes the pid digits when the process exists
-                return str(pid).encode("ascii") in (result.stdout or b"")
+                if str(pid).encode("ascii") not in (result.stdout or b""):
+                    return False
+
+                if validate_simstack:
+                    # Get process command line to verify it's a simstack runner
+                    try:
+                        import subprocess
+
+                        wmic_result = subprocess.run(
+                            ["wmic", "process", "where", f"ProcessId={pid}", "get", "CommandLine"],
+                            capture_output=True,
+                            text=True,
+                            timeout=5
+                        )
+                        cmdline = wmic_result.stdout.lower()
+                        return "simstack" in cmdline or "runner" in cmdline
+                    except Exception as e:
+                        logger.warning(f"Could not validate process name for PID {pid}: {e}")
+                        return True  # Assume valid if we can't check
+                return True
             else:
                 os.kill(pid, 0)
-                return True
+                if validate_simstack:
+                    # Check if the process command line contains simstack or runner
+                    try:
+                        with open(f"/proc/{pid}/cmdline", "r") as f:
+                            cmdline = f.read().lower()
+                            return "simstack" in cmdline or "runner" in cmdline
+                    except (FileNotFoundError, PermissionError, OSError) as e:
+                        logger.warning(f"Could not validate process name for PID {pid}: {e}")
+                        return True  # Assume valid if we can't check
+                        return True
         except (OSError, ProcessLookupError):
             return False
 
@@ -53,7 +83,7 @@ class RunnerManager:
         if self._pid_file.exists():
             try:
                 existing_pid = int(self._pid_file.read_text().strip())
-                if existing_pid != self._pid and self._is_process_running(existing_pid):
+                if existing_pid != self._pid and self._is_process_running(existing_pid, validate_simstack=True):
                     logger.error(
                         f"Another runner for resource '{self._resource}' is already running "
                         f"on this host with PID {existing_pid}. Exiting."

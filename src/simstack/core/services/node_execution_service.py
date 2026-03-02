@@ -35,7 +35,7 @@ async def run_node_from_registry(registry_entry: NodeRegistry):
 class NodeExecutionService(BaseService):
     def __init__(self, resource: Resource, interval, max_concurrent, shutdown_event, detach: bool = True,
                  is_default: bool = False):
-        super().__init__("JobPolling", resource, interval, shutdown_event=shutdown_event)
+        super().__init__("NodeExecutionService", resource, interval, shutdown_event=shutdown_event)
         self._resource_name = str(resource)
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._running_tasks = set()

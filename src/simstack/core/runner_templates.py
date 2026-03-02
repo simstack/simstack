@@ -174,12 +174,13 @@ class ProgramExecutor(BaseExecutor):
                  program_name: str = None,
                  task_id: Optional[str] = None):
         super().__init__(resource, task_id=task_id)
-        
-        # Load defaults from config if program_name is provided
+
+        if program_name is None:
+            raise ValueError("program_name cannot be None")
 
         config = self.template_manager.config
         logger.debug(f"task_id: {task_id} Program: {program_name} Resource: {self.resource}")
-        if program_name and config:
+        if config:
             # Try to find program in the resource-specific program dict
             prog_config = config.get(self.resource, {}).get("program", {}).get(program_name)
 
