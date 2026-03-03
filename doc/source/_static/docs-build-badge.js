@@ -27,7 +27,20 @@
 
         badge.appendChild(label);
         badge.appendChild(value);
-        document.body.appendChild(badge);
+
+        const bottom = document.querySelector(".bottom-of-page");
+        if (!bottom) {
+            return;
+        }
+
+        let rightDetails = bottom.querySelector(".right-details");
+        if (!rightDetails) {
+            rightDetails = document.createElement("div");
+            rightDetails.className = "right-details";
+            bottom.appendChild(rightDetails);
+        }
+
+        rightDetails.appendChild(badge);
     }
 
     if (document.readyState === "loading") {
