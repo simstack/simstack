@@ -38,6 +38,7 @@ autodoc_mock_imports = [
 project = 'SimStack II'
 copyright = f'{datetime.now(timezone.utc).year}, Wolfgang Wenzel'
 author = 'Wolfgang Wenzel'
+docs_built_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 extensions = [
     'sphinx.ext.autodoc',
@@ -85,6 +86,11 @@ html_theme_options = {
 
 html_css_files = [
     'cobalt2-theme.css',
+    'docs-build-badge.css',
+]
+
+html_js_files = [
+    ('docs-build-badge.js', {'data-docs-built-at': docs_built_at}),
 ]
 
 # If you don't have a _static folder, either create it or set this to []
