@@ -2,6 +2,7 @@
 import sys
 from unittest.mock import Mock
 import types
+from datetime import datetime, timezone
 
 # Create a mock context that always returns True for initialized
 class MockContext:
@@ -37,6 +38,7 @@ autodoc_mock_imports = [
 project = 'SimStack II'
 copyright = '2025, Wolfgang Wenzel'
 author = 'Wolfgang Wenzel'
+_docs_built_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 extensions = [
     'sphinx.ext.autodoc',
@@ -84,6 +86,10 @@ html_theme_options = {
 
 html_css_files = [
     'cobalt2-theme.css',
+]
+
+html_js_files = [
+    ('docs-footer-badge.js', {"data-docs-built-at": _docs_built_at}),
 ]
 
 # If you don't have a _static folder, either create it or set this to []
