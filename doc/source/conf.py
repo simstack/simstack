@@ -25,6 +25,7 @@ sys.modules["simstack.core.context"] = _context_mod
 
 import os
 import sys
+from datetime import datetime, timezone
 sys.path.insert(0, os.path.abspath('../..'))
 sys.path.insert(0, os.path.abspath('../../src'))
 
@@ -35,7 +36,14 @@ autodoc_mock_imports = [
 ]
 
 project = 'SimStack II'
-copyright = '2025, Wolfgang Wenzel'
+_first_doc_year = 2025
+_current_doc_year = datetime.now(timezone.utc).year
+if _current_doc_year > _first_doc_year:
+    _doc_years = f"{_first_doc_year}-{_current_doc_year}"
+else:
+    _doc_years = str(_first_doc_year)
+
+copyright = f'{_doc_years}, Wolfgang Wenzel'
 author = 'Wolfgang Wenzel'
 
 extensions = [
