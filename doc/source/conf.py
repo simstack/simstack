@@ -36,14 +36,7 @@ autodoc_mock_imports = [
 ]
 
 project = 'SimStack II'
-_first_doc_year = 2025
-_current_doc_year = datetime.now(timezone.utc).year
-if _current_doc_year > _first_doc_year:
-    _doc_years = f"{_first_doc_year}-{_current_doc_year}"
-else:
-    _doc_years = str(_first_doc_year)
-
-copyright = f'{_doc_years}, Wolfgang Wenzel'
+copyright = f'{datetime.now(timezone.utc).year}, Wolfgang Wenzel'
 author = 'Wolfgang Wenzel'
 
 extensions = [
