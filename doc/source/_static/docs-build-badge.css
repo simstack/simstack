@@ -1,21 +1,22 @@
-.docs-build-badge {
-    position: fixed;
-    top: 92px;
-    right: 18px;
-    z-index: 1200;
+.bottom-of-page .right-details {
     display: flex;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+}
+
+.docs-build-badge {
+    display: inline-flex;
     flex-direction: column;
     gap: 2px;
     min-width: 220px;
     max-width: 340px;
-    padding: 10px 12px;
+    margin-left: auto;
+    padding: 9px 12px;
     border: 1px solid rgba(34, 213, 255, 0.45);
     border-radius: 12px;
-    background: linear-gradient(145deg, rgba(19, 39, 56, 0.92), rgba(30, 58, 82, 0.92));
+    background: linear-gradient(145deg, rgba(19, 39, 56, 0.88), rgba(30, 58, 82, 0.88));
     color: #e9fbff;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(4px);
-    pointer-events: none;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
 }
 
 .docs-build-badge__label {
@@ -34,12 +35,13 @@
 }
 
 @media (max-width: 900px) {
+    .bottom-of-page .right-details {
+        justify-content: flex-start;
+    }
+
     .docs-build-badge {
-        top: auto;
-        right: 10px;
-        bottom: 10px;
         min-width: 180px;
-        max-width: 72vw;
+        max-width: min(72vw, 320px);
         padding: 8px 10px;
     }
 
