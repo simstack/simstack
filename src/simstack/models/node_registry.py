@@ -8,6 +8,10 @@ from simstack.models.file_list import FileList
 from simstack.models.parameters import Parameters
 from simstack.core.engine import current_engine_context
 
+class Project(Model):
+    name: str = Field(default="default")
+    description: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
 
 class NodeRegistry(Model):
     """
@@ -65,7 +69,7 @@ class NodeRegistry(Model):
     name: str
     status: TaskStatus
     custom_name: Optional[str] = None
-    project: Optional[str] = "default"
+    project: Optional[Project] = Field(default_factory=Project)
     category: Optional[str] = None
     description: Optional[str] = None
     call_path: Optional[str] = None
