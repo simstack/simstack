@@ -1,14 +1,14 @@
 from datetime import datetime
 from typing import Optional, List
 
-from odmantic import Model, Field, ObjectId, Reference
+from odmantic import Model, Field, ObjectId, Reference, EmbeddedModel
 
 from simstack.core.definitions import TaskStatus
 from simstack.models.file_list import FileList
 from simstack.models.parameters import Parameters
 from simstack.core.engine import current_engine_context
 
-class Project(Model):
+class Project(EmbeddedModel):
     field_name: str = Field(default="default")
     description: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
