@@ -9,7 +9,7 @@ from simstack.models.parameters import Parameters
 from simstack.core.engine import current_engine_context
 
 class Project(Model):
-    name: str = Field(default="default")
+    field_name: str = Field(default="default")
     description: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
 
