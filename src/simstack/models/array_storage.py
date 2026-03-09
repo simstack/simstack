@@ -37,7 +37,7 @@ class ArrayStorage(BytesB64Mixin, Model):
         import numpy as np
 
         shape = tuple(int(dim) for dim in self.shape.split(",")) if self.shape else ()
-        if self.field_name:
+        if self.data_json:
             data_str = self._decompress_bytes(self.data_json).decode()
             flat_array = np.array(json.loads(data_str))
         else:
