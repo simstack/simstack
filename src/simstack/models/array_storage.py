@@ -16,6 +16,7 @@ class ArrayStorage(BytesB64Mixin, Model):
     name: Optional[str]
     shape: Optional[str] = None  # Store array shape as string like "3,3"
     field_name: Optional[str] = None  # Store flattened array data as compressed JSON
+    data_json: Optional[str] = None
 
     @model_validator(mode='before')
     @classmethod
@@ -28,7 +29,7 @@ class ArrayStorage(BytesB64Mixin, Model):
         """Store a numpy array"""
         self.shape = ",".join(str(dim) for dim in array.shape)
         data_str = json.dumps(array.flatten().tolist())
-        self.field_name = self._compress_bytes(data_str.encode())
+        self.data_json = self._compress_bytes(data_str.encode())
 
 
     def get_array(self):
@@ -37,7 +38,7 @@ class ArrayStorage(BytesB64Mixin, Model):
 
         shape = tuple(int(dim) for dim in self.shape.split(",")) if self.shape else ()
         if self.field_name:
-            data_str = self._decompress_bytes(self.field_name).decode()
+            data_str = self._decompress_bytes(self.data_json).decode()
             flat_array = np.array(json.loads(data_str))
         else:
             flat_array = np.array([])
