@@ -1,5 +1,4 @@
 import json
-import base64
 import zlib
 from typing import Optional
 
