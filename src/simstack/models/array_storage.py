@@ -37,11 +37,15 @@ class ArrayStorage(BytesB64Mixin, Model):
         import numpy as np
 
         shape = tuple(int(dim) for dim in self.shape.split(",")) if self.shape else ()
+        flat_array = np.array([])
         if self.data_json:
-            data_str = self._decompress_bytes(self.data_json).decode()
+            try:
+                # Try to decompress assuming it's compressed
+                data_str = self._decompress_bytes(self.data_json).decode()
+            except (zlib.error, Exception):
+                # If decompression fails, treat as uncompressed
+                data_str = base64.b64decode(self.data_json).decode()
             flat_array = np.array(json.loads(data_str))
-        else:
-            flat_array = np.array([])
         return flat_array.reshape(shape)
 
     @property
