@@ -44,7 +44,7 @@ class ArrayStorage(BytesB64Mixin, Model):
                 data_str = self._decompress_bytes(self.data_json).decode()
             except (zlib.error, Exception):
                 # If decompression fails, treat as uncompressed
-                data_str = base64.b64decode(self.data_json).decode()
+                data_str = self.data_json
             flat_array = np.array(json.loads(data_str))
         return flat_array.reshape(shape)
 
