@@ -69,7 +69,7 @@ class NodeRegistry(Model):
     name: str
     status: TaskStatus
     custom_name: Optional[str] = None
-    project: Optional[Project] = Field(default_factory=Project)
+    project: Optional[str] = Field(default="default")
     category: Optional[str] = None
     description: Optional[str] = None
     call_path: Optional[str] = None
@@ -102,6 +102,7 @@ class NodeRegistry(Model):
     func_mapping: str
     is_async: bool = False
     parameters: Parameters = Reference()
+
 
 
 async def find_child_nodes(task_id: str) -> List[NodeRegistry]:
