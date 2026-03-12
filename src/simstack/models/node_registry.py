@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 
 from odmantic import Model, Field, ObjectId, Reference, EmbeddedModel
+from pydantic import model_validator
 
 from simstack.core.definitions import TaskStatus
 from simstack.models.file_list import FileList
@@ -70,6 +71,7 @@ class NodeRegistry(Model):
     status: TaskStatus
     custom_name: Optional[str] = None
     project: Optional[str] = Field(default="default")
+    new_project: Optional[Project] = Field(default=None)
     category: Optional[str] = None
     description: Optional[str] = None
     call_path: Optional[str] = None
@@ -103,6 +105,14 @@ class NodeRegistry(Model):
     is_async: bool = False
     parameters: Parameters = Reference()
 
+    @model_validator(mode='before')
+    @classmethod
+    def convert_project_to_new_project(cls, values):
+        if isinstance(values, dict):
+            if 'project' in values and values['project'] is not None and 'new_project' not in values:
+                values['new_project'] = Project(field_name=values['project'])
+                del values['project']
+        return values
 
 
 async def find_child_nodes(task_id: str) -> List[NodeRegistry]:

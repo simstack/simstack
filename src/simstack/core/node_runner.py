@@ -6,6 +6,8 @@ import uuid
 from pathlib import Path
 from typing import Set
 
+from odmantic import ObjectId
+
 from simstack.core.definitions import TaskStatus
 from simstack.core.simstack_result import SimstackResult
 from simstack.models.files import FileStack
@@ -40,6 +42,8 @@ class NodeRunner(SimstackResult):
         """
         super().__init__()
         self.task_id = kwargs.get("task_id", "NA")
+        if isinstance(self.task_id, ObjectId):
+            self.task_id = str(self.task_id)
         self.name = name
         self.logger = logger or local_logger
         self.last_stdout = ""
