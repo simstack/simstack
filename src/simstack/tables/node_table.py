@@ -1,7 +1,8 @@
 import inspect
 import logging
 import re
-from typing import Callable, List, get_type_hints, Dict, Any, Type
+import types
+from typing import Callable, List, get_type_hints, Dict, Any, Type, get_origin, get_args
 
 from docutils.nodes import description
 from odmantic.query import desc
@@ -285,15 +286,42 @@ class CreateNodeTable(TableBuilderBase):
 
         return input_mappings
 
-    def get_class_mapping(self, type: Type, drops: str = "") -> str:
-        """Return the class mapping for a given type, optionally dropping a prefix."""
-        if hasattr(type, "__module__") and hasattr(type, "__name__"):
-            mapping = type.__module__ + "." + type.__name__
+    def get_class_mapping(self, typ: Type, drops: str = "") -> str:
+        """Return the class mapping for a given type, optionally dropping a prefix.
+
+        This is tolerant to Optional / union types such as ``FloatData | None``
+        on Python 3.10+ (PEP 604) by unwrapping the union and resolving the
+        underlying model type.
+        """
+
+        # Handle PEP 604 unions like ``FloatData | None``. In Python 3.12,
+        # ``FloatData | None`` is a ``types.UnionType``.
+        if isinstance(typ, types.UnionType):
+            # ``get_args`` returns the individual union members, e.g.
+            # (FloatData, NoneType). We drop ``NoneType`` and keep the
+            # underlying model type for mapping purposes.
+            args = [t for t in get_args(typ) if t is not type(None)]
+            if len(args) == 1:
+                # Treat Optional[T] as just T for mapping purposes.
+                return self.get_class_mapping(args[0], drops)
+
+        # Handle typing.Optional[T] / typing.Union[T, None]
+        origin = get_origin(typ)
+        if origin is not None:
+            typing_module = __import__("typing")
+            if origin is getattr(typing_module, "Union", None):
+                args = [t for t in get_args(typ) if t is not type(None)]
+                if len(args) == 1:
+                    return self.get_class_mapping(args[0], drops)
+
+        # Default behavior: expect a concrete model class
+        if hasattr(typ, "__module__") and hasattr(typ, "__name__"):
+            mapping = typ.__module__ + "." + typ.__name__
             if drops and mapping.startswith(drops + "."):
                 mapping = mapping[len(drops) + 1:]
             return mapping
-        else:
-            raise ValueError(f"Could not parse '{type}' to mapping")
+
+        raise ValueError(f"Could not parse '{typ}' to mapping")
 
     async def _register_nodes_from_module(self, module, drops: str):
         """
