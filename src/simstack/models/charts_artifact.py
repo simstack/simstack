@@ -116,6 +116,27 @@ class AGScatterSeriesConfig(AGChartSeriesBase):
     )
 
 
+class AGHeatmapSeriesConfig(AGChartSeriesBase):
+    """AG-Charts heatmap series configuration."""
+
+    type: Literal["heatmap"] = "heatmap"
+    colorKey: str = Field(..., description="Key for heatmap color values")
+    xName: Optional[str] = Field(default=None, description="X axis display name")
+    yName: Optional[str] = Field(default=None, description="Y axis display name")
+    colorName: Optional[str] = Field(default=None, description="Color value display name")
+    colorRange: Optional[List[str]] = Field(
+        default=None, description="Color interpolation range"
+    )
+    colorDomain: Optional[List[float]] = Field(
+        default=None, description="Color domain [min, max]"
+    )
+    stroke: Optional[str] = Field(default=None, description="Cell border color")
+    strokeWidth: Optional[float] = Field(default=None, description="Cell border width")
+    tooltip: Optional[Dict[str, Any]] = Field(
+        default=None, description="Tooltip configuration"
+    )
+
+
 class AGPieSeriesConfig(EmbeddedModel):
     """AG-Charts pie series configuration."""
 
@@ -188,6 +209,7 @@ AGChartSeries = Union[
     AGColumnSeriesConfig,
     AGAreaSeriesConfig,
     AGScatterSeriesConfig,
+    AGHeatmapSeriesConfig,
     AGPieSeriesConfig,
     AGDonutSeriesConfig,
 ]
@@ -512,6 +534,42 @@ def create_simple_scatter_chart(
     axes = [
         AGChartAxisConfig(type="number", position="bottom", title=x_key.title()),
         AGChartAxisConfig(type="number", position="left", title=y_key.title()),
+    ]
+
+    return ChartArtifactModel(
+        parent_id=parent_id, data=data, title=chart_title, series=series, axes=axes
+    )
+
+
+def create_simple_heatmap_chart(
+    data: List[Dict[str, Any]],
+    x_key: str,
+    y_key: str,
+    color_key: str,
+    title: Optional[str] = None,
+    parent_id: Optional[ObjectId] = None,
+    x_axis_type: Literal["category", "number", "time", "log"] = "category",
+    y_axis_type: Literal["category", "number", "time", "log"] = "category",
+) -> ChartArtifactModel:
+    """Create a simple heatmap chart."""
+    chart_title = (
+        AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
+    )
+
+    series = [
+        AGHeatmapSeriesConfig(
+            type="heatmap",
+            xKey=x_key,
+            yKey=y_key,
+            colorKey=color_key,
+            title=color_key.title(),
+            data=data,
+        )
+    ]
+
+    axes = [
+        AGChartAxisConfig(type=x_axis_type, position="bottom", title=x_key.title()),
+        AGChartAxisConfig(type=y_axis_type, position="left", title=y_key.title()),
     ]
 
     return ChartArtifactModel(
