@@ -1,4 +1,3 @@
-import base64
 import logging
 import sys
 import types
@@ -6,22 +5,12 @@ from typing import Optional, Type, Any, Callable
 
 import cloudpickle
 from odmantic import Model
+from simstack.util.b64mixin import BytesB64Mixin
 
 logger = logging.getLogger("PickleModels")
 
 
-class _BytesB64Mixin:
-    """
-    Mixin that teaches Pydantic/ODMantic to serialise *bytes* fields as
-    base-64-encoded ASCII strings when exporting to JSON (dict / response).
-    """
-
-    model_config = {
-        "json_encoders": {bytes: lambda b: base64.b64encode(b).decode("ascii")}
-    }
-
-
-class ClassPickle(_BytesB64Mixin, Model):
+class ClassPickle(BytesB64Mixin, Model):
     """
     Persist an *arbitrary Python class* in MongoDB.
 
@@ -55,7 +44,7 @@ class ClassPickle(_BytesB64Mixin, Model):
         return cloudpickle.loads(self.pickle_data)
 
 
-class FunctionPickle(_BytesB64Mixin, Model):
+class FunctionPickle(BytesB64Mixin, Model):
     """
     Persist an *arbitrary Python function* in MongoDB.
 
