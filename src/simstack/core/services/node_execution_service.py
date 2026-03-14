@@ -25,7 +25,10 @@ async def run_node_from_registry(registry_entry: NodeRegistry):
         await context.db.save(registry_entry)
         return False
     registry_entry = node.registry_entry  # it may have changed
-    if node.status == TaskStatus.RETRIEVED or node.status == TaskStatus.SUBMITTED or node.status == TaskStatus.SLURM_QUEUED or node.status == TaskStatus.SLURM_QUEUED:
+    if ((node.status == TaskStatus.RETRIEVED or
+         node.status == TaskStatus.SUBMITTED or
+         node.status == TaskStatus.SLURM_QUEUED)
+        or (node.status == TaskStatus.COMPLETED and registry_entry.parameters.force_rerun)):
         await node.execute_node_locally()
     else:
         logger.info(
