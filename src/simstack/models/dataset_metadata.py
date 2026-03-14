@@ -65,6 +65,11 @@ class DataSetMetadata(EmbeddedModel):
             DataSetMetadataTemplate,
             DataSetMetadataTemplate.dataset_type == self.field_name,
         )
+        # remove empty sections without mutating the dict during iteration
+        new_structure = {
+            key: value for key, value in new_structure.items() if value is not None
+        }
+
         if reference_metadata is None:
             metadata_template = DataSetMetadataTemplate(
                 dataset_type=self.field_name,

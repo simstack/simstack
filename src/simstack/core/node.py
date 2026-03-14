@@ -277,7 +277,7 @@ class Node:
                     self.parent_id = ObjectId(self.parent_id)
                 self.registry_entry.parent_ids.append(self.parent_id)
                 await context.db.save(self.registry_entry)
-            # whenever a task is found in the database we may have to redo all child artifacts because the children
+            # whenever a task is found in the database, we may have to redo all child artifacts because the children
             # will not be loaded
             if self.recompute_artifacts:
                 logger.info(
