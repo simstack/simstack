@@ -50,6 +50,34 @@ class AGBarSeriesConfig(AGChartSeriesBase):
     )
 
 
+class AGRangeBarSeriesConfig(EmbeddedModel):
+    """AG-Charts range-bar series configuration."""
+
+    type: Literal["range-bar"] = "range-bar"
+    xKey: str = Field(..., description="Key for x-axis data")
+    yLowKey: str = Field(..., description="Key for low range value")
+    yHighKey: str = Field(..., description="Key for high range value")
+    xName: Optional[str] = Field(default=None, description="X axis display name")
+    yName: Optional[str] = Field(default=None, description="Y axis display name")
+    yLowName: Optional[str] = Field(default=None, description="Low value display name")
+    yHighName: Optional[str] = Field(default=None, description="High value display name")
+    direction: Optional[Literal["horizontal", "vertical"]] = Field(
+        default=None, description="Bar rendering direction"
+    )
+    visible: Optional[bool] = Field(
+        default=True, description="Whether series is visible"
+    )
+    showInLegend: Optional[bool] = Field(default=True, description="Show in legend")
+    title: Optional[str] = Field(default=None, description="Series title")
+    data: List[Dict[str, Any]] = Field(default_factory=list, description="Chart data")
+    fillOpacity: Optional[float] = Field(default=1, description="Bar fill opacity")
+    strokeWidth: Optional[float] = Field(default=0, description="Bar stroke width")
+    cornerRadius: Optional[float] = Field(default=0, description="Bar corner radius")
+    tooltip: Optional[Dict[str, Any]] = Field(
+        default=None, description="Tooltip configuration"
+    )
+
+
 class AGColumnSeriesConfig(AGChartSeriesBase):
     """AG-Charts column series configuration."""
 
@@ -83,6 +111,27 @@ class AGScatterSeriesConfig(AGChartSeriesBase):
     marker: Optional[Dict[str, Any]] = Field(
         default=None, description="Marker configuration"
     )
+    tooltip: Optional[Dict[str, Any]] = Field(
+        default=None, description="Tooltip configuration"
+    )
+
+
+class AGHeatmapSeriesConfig(AGChartSeriesBase):
+    """AG-Charts heatmap series configuration."""
+
+    type: Literal["heatmap"] = "heatmap"
+    colorKey: str = Field(..., description="Key for heatmap color values")
+    xName: Optional[str] = Field(default=None, description="X axis display name")
+    yName: Optional[str] = Field(default=None, description="Y axis display name")
+    colorName: Optional[str] = Field(default=None, description="Color value display name")
+    colorRange: Optional[List[str]] = Field(
+        default=None, description="Color interpolation range"
+    )
+    colorDomain: Optional[List[float]] = Field(
+        default=None, description="Color domain [min, max]"
+    )
+    stroke: Optional[str] = Field(default=None, description="Cell border color")
+    strokeWidth: Optional[float] = Field(default=None, description="Cell border width")
     tooltip: Optional[Dict[str, Any]] = Field(
         default=None, description="Tooltip configuration"
     )
@@ -156,9 +205,11 @@ class AGDonutSeriesConfig(EmbeddedModel):
 AGChartSeries = Union[
     AGLineSeriesConfig,
     AGBarSeriesConfig,
+    AGRangeBarSeriesConfig,
     AGColumnSeriesConfig,
     AGAreaSeriesConfig,
     AGScatterSeriesConfig,
+    AGHeatmapSeriesConfig,
     AGPieSeriesConfig,
     AGDonutSeriesConfig,
 ]
@@ -402,6 +453,44 @@ def create_simple_pie_chart(
     )
 
 
+def create_simple_range_bar_chart(
+    data: List[Dict[str, Any]],
+    x_key: str,
+    y_low_key: str,
+    y_high_key: str,
+    title: Optional[str] = None,
+    parent_id: Optional[ObjectId] = None,
+    direction: Optional[Literal["horizontal", "vertical"]] = None,
+) -> ChartArtifactModel:
+    """Create a simple range-bar chart."""
+    chart_title = AGChartTitleConfig(text=title) if title else None
+
+    series = [
+        AGRangeBarSeriesConfig(
+            type="range-bar",
+            xKey=x_key,
+            yLowKey=y_low_key,
+            yHighKey=y_high_key,
+            title=f"{y_low_key.title()} - {y_high_key.title()}",
+            direction=direction,
+            data=data,
+        )
+    ]
+
+    axes = [
+        AGChartAxisConfig(type="category", position="bottom", title=x_key.title()),
+        AGChartAxisConfig(
+            type="number",
+            position="left",
+            title=f"{y_low_key.title()} / {y_high_key.title()}",
+        ),
+    ]
+
+    return ChartArtifactModel(
+        parent_id=parent_id, data=data, title=chart_title, series=series, axes=axes
+    )
+
+
 def create_simple_area_chart(
     data: List[Dict[str, Any]],
     x_key: str,
@@ -445,6 +534,42 @@ def create_simple_scatter_chart(
     axes = [
         AGChartAxisConfig(type="number", position="bottom", title=x_key.title()),
         AGChartAxisConfig(type="number", position="left", title=y_key.title()),
+    ]
+
+    return ChartArtifactModel(
+        parent_id=parent_id, data=data, title=chart_title, series=series, axes=axes
+    )
+
+
+def create_simple_heatmap_chart(
+    data: List[Dict[str, Any]],
+    x_key: str,
+    y_key: str,
+    color_key: str,
+    title: Optional[str] = None,
+    parent_id: Optional[ObjectId] = None,
+    x_axis_type: Literal["category", "number", "time", "log"] = "category",
+    y_axis_type: Literal["category", "number", "time", "log"] = "category",
+) -> ChartArtifactModel:
+    """Create a simple heatmap chart."""
+    chart_title = (
+        AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
+    )
+
+    series = [
+        AGHeatmapSeriesConfig(
+            type="heatmap",
+            xKey=x_key,
+            yKey=y_key,
+            colorKey=color_key,
+            title=color_key.title(),
+            data=data,
+        )
+    ]
+
+    axes = [
+        AGChartAxisConfig(type=x_axis_type, position="bottom", title=x_key.title()),
+        AGChartAxisConfig(type=y_axis_type, position="left", title=y_key.title()),
     ]
 
     return ChartArtifactModel(
