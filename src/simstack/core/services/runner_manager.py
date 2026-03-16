@@ -30,21 +30,30 @@ class RunnerManager:
         self._is_default = is_default
 
     def _is_process_running(self, pid: int) -> bool:
-        """Check if a process with given PID is running"""
+        """Check if a process with given PID is running and is a simstack_runner process"""
         try:
             if platform.system() == "Windows":
                 # On Windows, os.kill with signal 0 doesn't work, use tasklist
                 import subprocess
                 result = subprocess.run(
-                    ["tasklist", "/FI", f"PID eq {pid}"],
+                    ["tasklist", "/FI", f"PID eq {pid}", "/V", "/FO", "CSV"],
                     capture_output=True,
                     text=False,  # keep bytes; avoid UnicodeDecodeError from console code pages
                 )
-                # tasklist output always includes the pid digits when the process exists
-                return str(pid).encode("ascii") in (result.stdout or b"")
+                # Check if process exists and command line contains simstack_runner
+                stdout = result.stdout.decode("utf-8", errors="ignore")
+                return str(pid) in stdout and "simstack_runner" in stdout.lower()
             else:
+                # Check if process exists
                 os.kill(pid, 0)
-                return True
+                # Verify it's a simstack_runner process by checking command line
+                try:
+                    with open(f"/proc/{pid}/cmdline", "r") as f:
+                        cmdline = f.read()
+                        return "simstack_runner" in cmdline
+                except (FileNotFoundError, PermissionError):
+                    # If we can't read cmdline, fall back to just checking if process exists
+                    return True
         except (OSError, ProcessLookupError):
             return False
 
@@ -54,11 +63,12 @@ class RunnerManager:
             try:
                 existing_pid = int(self._pid_file.read_text().strip())
                 if existing_pid != self._pid and self._is_process_running(existing_pid):
-                    logger.error(
+                    error_msg = (
                         f"Another runner for resource '{self._resource}' is already running "
                         f"on this host with PID {existing_pid}. Exiting."
                     )
-                    sys.exit(1)
+                    logger.error(error_msg)
+                    raise RuntimeError(error_msg)
                 else:
                     logger.info(
                         f"Stale PID file found for resource '{self._resource}'. "
