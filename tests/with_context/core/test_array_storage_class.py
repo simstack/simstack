@@ -11,16 +11,17 @@ def test_set_array():
 
     assert array_model.name == "test_array", "Name was not correctly set"
     assert array_model.shape == "2,3", "Shape was not correctly stored"
-    assert (
-        array_model.data_json == "[1, 2, 3, 4, 5, 6]"
-    ), "Array data was not correctly stored as JSON"
+    data = array_model.get_array()
+    np.testing.assert_array_equal(
+        data, array, "Retrieved array does not match the original array"
+    )
 
 
 def test_get_array():
     """Test retrieving a numpy array from ArrayStorage"""
-    array_model = ArrayStorage(
-        name="test_array", shape="2,3", data_json="[1, 2, 3, 4, 5, 6]"
-    )
+    array_model = ArrayStorage(name="test_array")
+    data = np.array([[1, 2, 3], [4, 5, 6]])
+    array_model.set_array(data)
     array = array_model.get_array()
 
     expected = np.array([[1, 2, 3], [4, 5, 6]])

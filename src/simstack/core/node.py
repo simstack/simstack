@@ -277,7 +277,7 @@ class Node:
                     self.parent_id = ObjectId(self.parent_id)
                 self.registry_entry.parent_ids.append(self.parent_id)
                 await context.db.save(self.registry_entry)
-            # whenever a task is found in the database we may have to redo all child artifacts because the children
+            # whenever a task is found in the database, we may have to redo all child artifacts because the children
             # will not be loaded
             if self.recompute_artifacts:
                 logger.info(
@@ -728,6 +728,8 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                     logger.error(f"Task task_id: {registry_entry.id} recovered itself. This should not happen")
 
                 if duplicate_entry.id != registry_entry.id:
+                    # the parameters of the new job may be different
+                    duplicate_entry.parameters = registry_entry.parameters
                     await engine.delete(registry_entry)
                     registry_entry = duplicate_entry
 
