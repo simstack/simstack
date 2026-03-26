@@ -34,7 +34,7 @@ def add_multiply_in_tests(args: BinaryOperationInput, **kwargs) -> FloatData:
 @node()
 def iterator_workflow_explicit_in_tests(
     args: IteratorInput, **kwargs
-) -> FloatData | None:
+) -> FloatData:
     def generator(start, stop):
         for i in range(start, stop):
             yield i
@@ -48,13 +48,13 @@ def iterator_workflow_explicit_in_tests(
         for value in generator(args.start, args.stop)
     ]
     if any([result.value is None for result in results_table]):
-        return None
+        raise RuntimeError("Generator yielded None")
     result = sum([result.value for result in results_table])
     return FloatData(value=result)
 
 
 @node()
-def iterator_workflow_in_tests(args: IteratorInput, **kwargs) -> FloatData | None:
+def iterator_workflow_in_tests(args: IteratorInput, **kwargs) -> FloatData:
     try:
         generator_func = eval(args.generator)
     except Exception as e:
@@ -69,7 +69,7 @@ def iterator_workflow_in_tests(args: IteratorInput, **kwargs) -> FloatData | Non
         for value in generator_func(args.start, args.stop)
     ]
     if any([result.value is None for result in results_table]):
-        return None
+        raise RuntimeError("Generator yielded None")
     result = sum([result.value for result in results_table])
     return FloatData(value=result)
 
