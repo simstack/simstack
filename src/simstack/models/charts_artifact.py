@@ -482,3 +482,35 @@ def create_simple_donut_chart(
     return ChartArtifactModel(
         parent_id=parent_id, data=data, title=chart_title, series=series
     )
+
+
+def create_multi_series_line_chart(
+        data: List[Dict[str, Any]],
+        x_key: str,
+        y_keys: List[str],
+        title: Optional[str] = None,
+        parent_id: Optional[ObjectId] = None,
+) -> ChartArtifactModel:
+    """Create a line chart with multiple y-axis series."""
+    chart_title = AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
+
+    series = []
+    for y_key in y_keys:
+        series.append(
+            AGLineSeriesConfig(
+                type="line", xKey=x_key, yKey=y_key, title=y_key.title(), data=data
+            )
+        )
+
+    axes = [
+        AGChartAxisConfig(type="number", position="bottom", title=x_key.title()),
+        AGChartAxisConfig(type="number", position="left", title="Values"),
+    ]
+
+    return ChartArtifactModel(
+        parent_id=parent_id,
+        data=data,
+        title=chart_title,
+        series=series,
+        axes=axes,
+    )
