@@ -27,11 +27,18 @@ async def initialize_default_resource():
         ResourceDefinition.resource_str == str(context.config.resource)
     )
 
+    if resource_def is None:
+        logger.warning(
+            "No ResourceDefinition found for '%s'; skipping default-resource initialization.",
+            str(context.config.resource),
+        )
+        return None
+
     if resource_def.is_default:
         config_path = context.config.project_root / "config.toml"
         if not config_path.exists():
             logger.warning(f"Default resource detected, but {config_path} not found.")
-            return
+            return resource_def
 
         try:
             with open(config_path, "rb") as f:
@@ -40,7 +47,7 @@ async def initialize_default_resource():
             active_dirs = config_data.get("active_dirs", [])
             if not active_dirs:
                 logger.info("No active_dirs found in config.toml.")
-                return
+                return resource_def
 
             logger.info(f"Default resource: initializing tables for {active_dirs}")
             await make_node_table(context.db.engine, dirs=active_dirs)
@@ -57,11 +64,12 @@ async def async_main(args):
     
     # Initialize tables if this is the default resource
     resource_def = await initialize_default_resource()
+    is_default_resource = bool(resource_def and resource_def.is_default)
 
     if args.resource:
         logger.info(f"Setting resource for runner to {args.resource}")
         runner_manager = RunnerManager(context.config.resource, detach=args.detach, no_pull=args.no_pull,
-                                       is_default=resource_def.is_default)
+                                       is_default=is_default_resource)
         await runner_manager.run_nodes_for_resource(args.polling_interval, 10, timeout=args.timeout)
 
 
