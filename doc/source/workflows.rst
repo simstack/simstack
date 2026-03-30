@@ -406,6 +406,17 @@ Most Common Errors & Problems
 
 * remote runners are not on the same branch or not up-to-date (see Health
   Check in the GUI)
+* you can set the branch of the runners in the GUI (in profile). Unless in ver special
+circumstances all runners should be on the same branch.
+* all runners will periodically update from git. when the branch has changed the **default runner** will
+recreate models and nodes. the runners will update --locked, i.e. they need an up-to-date uv.lock
+* model and node creation is incremental. when you move things around the exisiting bindings will be
+overridden, but if you delete models and nodes the database will not know this (which is intended because
+data may still exist in the db)
+* when you not only develop your own package but also the simstack core (you should not), it makes
+sense to clone simstack as a subrepo into you main repo. You then must run ``uv lock --upgrade-package simstack``
+after commits of simstack to keep your pyproject.toml up to date. after that you must run `` uv sync --locked`` and commit again
+your main repo so that the runners can update simstack.
 * node or model not registered in the database (see :ref:`registering`)
 * node or model not imported correctly (see below)
 * forgetting \*\*kwargs in the node function definition. Nodes will crash.
