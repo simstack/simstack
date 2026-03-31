@@ -18,6 +18,7 @@ from .parameters import Parameters
 from .node_registry import NodeRegistry
 from .dataset import DataSet, DataSetSection, DataSetSelection, DataSetSelectionField
 from .dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
+from .images2d import Image2DArtifactModel
 
 
 __all__ = [
@@ -42,4 +43,5 @@ __all__ = [
     "DataSetSelectionField",
     "DataSetMetadata",
     "DataSetMetadataTemplate",
+    "Image2DArtifactModel",
 ]
