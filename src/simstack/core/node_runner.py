@@ -158,6 +158,7 @@ class NodeRunner(SimstackResult):
         self.logger.error(
             f"Task {self.name}: {msg} task_id: {self.task_id}",
             stacklevel=2,
+            exc_info=True,
         )
 
     def subprocess(self, name: str, command: str, cwd: str = "") -> bool:
@@ -269,6 +270,7 @@ class NodeRunner(SimstackResult):
         self.logger.error(
             f"Task {self.name}: {msg} task_id: {self.task_id}",
             stacklevel=2,
+            exc_info=True,
         )
         self.error_message = msg
         self.status = TaskStatus.FAILED
