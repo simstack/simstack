@@ -1,18 +1,12 @@
 from datetime import datetime
 from typing import Optional, List
 
-from odmantic import Model, Field, ObjectId, Reference, EmbeddedModel
-from pydantic import model_validator
+from odmantic import Model, Field, ObjectId, Reference
 
 from simstack.core.definitions import TaskStatus
 from simstack.models.file_list import FileList
 from simstack.models.parameters import Parameters
 from simstack.core.engine import current_engine_context
-
-class Project(Model):
-    field_name: str = Field(default="default")
-    description: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
 
 class NodeRegistry(Model):
     """
@@ -70,8 +64,10 @@ class NodeRegistry(Model):
     name: str
     status: TaskStatus
     custom_name: Optional[str] = None
-    project: Optional[str] = Field(default="default")
-    # new_project: Optional[Project] = Field(default=None)
+    # Keep this as Optional[ObjectId] instead of Reference(Project):
+    # in the ODMantic version used here, nullable references are not supported
+    # as Optional[Project] + Reference() field definitions.
+    project: Optional[ObjectId] = Field(default=None)
     category: Optional[str] = None
     description: Optional[str] = None
     call_path: Optional[str] = None
@@ -107,15 +103,6 @@ class NodeRegistry(Model):
     func_mapping: str
     is_async: bool = False
     parameters: Parameters = Reference()
-
-    @model_validator(mode='before')
-    @classmethod
-    def convert_project_to_new_project(cls, values):
-        if isinstance(values, dict):
-            if 'project' in values and values['project'] is not None and 'new_project' not in values:
-                values['new_project'] = Project(field_name=values['project'])
-                del values['project']
-        return values
 
 
 async def find_child_nodes(task_id: str) -> List[NodeRegistry]:
