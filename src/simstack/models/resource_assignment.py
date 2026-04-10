@@ -73,11 +73,13 @@ class ResourceAssignmentRule(Model):
     @classmethod
     def _validate_regex_pattern(cls, value: str) -> str:
         if not value:
-            raise ValueError("regex_pattern must not be empty")
+            raise ValueError("Path pattern must not be empty")
         try:
-            re.compile(cls.normalize_pattern(value))
+            re.compile(cls.pattern_to_regex(value))
+        except ValueError:
+            raise
         except re.error as exc:
-            raise ValueError(f"Invalid regex_pattern: {exc}") from exc
+            raise ValueError(f"Invalid path pattern: {exc}") from exc
         return value
 
     @model_validator(mode="after")
@@ -93,8 +95,65 @@ class ResourceAssignmentRule(Model):
     def normalize_pattern(pattern: str) -> str:
         normalized = (pattern or "").strip()
         if normalized.startswith("."):
-            return normalized[1:]
+            without_leading_dots = normalized.lstrip(".")
+            if without_leading_dots and "." not in without_leading_dots:
+                return f"*.{without_leading_dots}"
+            return without_leading_dots
         return normalized
+
+    @classmethod
+    def _pattern_segments(cls, pattern: str) -> list[str]:
+        return [
+            segment for segment in cls.normalize_pattern(pattern).split(".") if segment
+        ]
+
+    @staticmethod
+    def _segment_to_regex(segment: str) -> str:
+        return "".join("[^.]*" if char == "*" else re.escape(char) for char in segment)
+
+    @classmethod
+    def pattern_to_regex(cls, pattern: str) -> str:
+        segments = cls._pattern_segments(pattern)
+        if not segments:
+            raise ValueError("Path pattern must not be empty")
+        if segments == ["*"]:
+            return r"[^.]+(?:\.[^.]+)*"
+
+        regex_parts: list[str] = []
+        for index, segment in enumerate(segments):
+            if segment == "*":
+                regex_parts.append(r"(?:[^.]+\.)*" if index == 0 else r"(?:\.[^.]+)*")
+                continue
+
+            segment_regex = cls._segment_to_regex(segment)
+            previous_is_leading_wildcard = index == 1 and segments[0] == "*"
+            if index == 0 or previous_is_leading_wildcard:
+                regex_parts.append(segment_regex)
+            else:
+                regex_parts.append(r"\." + segment_regex)
+
+        return "".join(regex_parts)
+
+    @classmethod
+    def pattern_specificity_score(cls, pattern: str) -> int:
+        segments = cls._pattern_segments(pattern)
+        literal_segment_count = sum(1 for segment in segments if segment != "*")
+        literal_char_count = sum(len(segment.replace("*", "")) for segment in segments)
+        wildcard_count = sum(segment.count("*") for segment in segments)
+        return (
+            literal_segment_count * 10000
+            + literal_char_count * 100
+            + len(segments)
+            - wildcard_count
+        )
+
+    @classmethod
+    def matches_call_path(cls, pattern: str, normalized_call_path: str) -> bool:
+        return (
+            re.fullmatch(cls.pattern_to_regex(pattern), normalized_call_path)
+            is not None
+        )
+
     @field_validator("slurm_parameters_patch", mode="before")
     @classmethod
     def _normalize_slurm_patch(cls, value):
@@ -103,5 +162,9 @@ class ResourceAssignmentRule(Model):
         if isinstance(value, SlurmParametersPatch):
             return value.model_dump(exclude_none=True)
         if isinstance(value, dict):
-            return SlurmParametersPatch.model_validate(value).model_dump(exclude_none=True)
-        raise ValueError("slurm_parameters_patch must be a dictionary or SlurmParametersPatch")
+            return SlurmParametersPatch.model_validate(value).model_dump(
+                exclude_none=True
+            )
+        raise ValueError(
+            "slurm_parameters_patch must be a dictionary or SlurmParametersPatch"
+        )

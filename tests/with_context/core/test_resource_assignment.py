@@ -27,7 +27,9 @@ def _allow_assignment_resources():
 
 
 @pytest.mark.asyncio
-async def test_resolve_resource_assignment_matches_path_and_normalizes_slurm(odmantic_engine):
+async def test_resolve_resource_assignment_matches_path_and_normalizes_slurm(
+    odmantic_engine,
+):
     await _delete_all(odmantic_engine, ResourceAssignmentRule)
 
     await odmantic_engine.save(
@@ -59,22 +61,54 @@ async def test_resolve_resource_assignment_matches_path_and_normalizes_slurm(odm
 
 
 @pytest.mark.asyncio
-async def test_resolve_resource_assignment_rejects_ambiguous_highest_priority(odmantic_engine):
+async def test_resolve_resource_assignment_uses_most_specific_path_pattern(
+    odmantic_engine,
+):
+    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+
+    await odmantic_engine.save(
+        ResourceAssignmentRule(
+            name="generic-gaussian",
+            regex_pattern="*.gaussian",
+            resource_str="cluster-a",
+        )
+    )
+    await odmantic_engine.save(
+        ResourceAssignmentRule(
+            name="master-gaussian",
+            regex_pattern="master.*.gaussian",
+            resource_str="cluster-b",
+        )
+    )
+
+    resolution = await resolve_resource_assignment(
+        odmantic_engine,
+        call_path=".master.step.gaussian",
+        base_parameters=Parameters(),
+    )
+
+    assert resolution.matched_rule is not None
+    assert resolution.matched_rule.name == "master-gaussian"
+    assert resolution.parameters.resource == "cluster-b"
+
+
+@pytest.mark.asyncio
+async def test_resolve_resource_assignment_rejects_equally_specific_matches(
+    odmantic_engine,
+):
     await _delete_all(odmantic_engine, ResourceAssignmentRule)
 
     await odmantic_engine.save(
         ResourceAssignmentRule(
             name="rule-a",
-            regex_pattern="master.*.orca",
-            priority=10,
+            regex_pattern="maste*.step.gaussian",
             resource_str="cluster-a",
         )
     )
     await odmantic_engine.save(
         ResourceAssignmentRule(
             name="rule-b",
-            regex_pattern="master..*.orca",
-            priority=10,
+            regex_pattern="master.ste*.gaussian",
             resource_str="cluster-b",
         )
     )
@@ -82,7 +116,7 @@ async def test_resolve_resource_assignment_rejects_ambiguous_highest_priority(od
     with pytest.raises(ValueError, match="Ambiguous resource assignment"):
         await resolve_resource_assignment(
             odmantic_engine,
-            call_path=".master.step.orca",
+            call_path=".master.step.gaussian",
             base_parameters=Parameters(),
         )
 
@@ -135,7 +169,9 @@ async def test_apply_resource_assignment_sets_trace_fields(odmantic_engine):
         assignment_pattern=None,
     )
 
-    resolution = await apply_resource_assignment_to_node_registry(odmantic_engine, node_registry)
+    resolution = await apply_resource_assignment_to_node_registry(
+        odmantic_engine, node_registry
+    )
 
     assert resolution.matched_rule is not None
     assert node_registry.assignment_rule_id == str(saved_rule.id)

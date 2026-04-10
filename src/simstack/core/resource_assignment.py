@@ -1,11 +1,12 @@
-import copy
 import logging
-import re
 from dataclasses import dataclass
 from typing import Any, Optional
 
 from simstack.models.parameters import Parameters, Resource, SlurmParameters
-from simstack.models.resource_assignment import ResourceAssignmentRule, SlurmParametersPatch
+from simstack.models.resource_assignment import (
+    ResourceAssignmentRule,
+    SlurmParametersPatch,
+)
 
 logger = logging.getLogger("resource_assignment")
 
@@ -39,17 +40,11 @@ def _clone_parameters(parameters: Optional[Parameters]) -> Parameters:
 
 
 def _merge_slurm_patch(
-    base_slurm: Optional[SlurmParameters],
     patch: Optional[SlurmParametersPatch],
 ) -> SlurmParameters:
-    merged = base_slurm.model_copy(deep=True) if isinstance(base_slurm, SlurmParameters) else SlurmParameters()
     if patch is None:
-        return merged
-
-    for field_name, value in patch.model_dump(exclude_none=True).items():
-        setattr(merged, field_name, value)
-
-    return merged
+        return SlurmParameters()
+    return SlurmParameters(**patch.model_dump(exclude_none=True))
 
 
 def _apply_assignment_patch(
@@ -66,7 +61,6 @@ def _apply_assignment_patch(
         effective.queue = _normalize_queue(rule.queue)
     if rule.slurm_parameters_patch:
         effective.slurm_parameters = _merge_slurm_patch(
-            effective.slurm_parameters,
             SlurmParametersPatch.model_validate(rule.slurm_parameters_patch),
         )
 
@@ -91,7 +85,9 @@ def _validate_nested_slurm(
     )
 
 
-def normalize_and_validate_effective_parameters(parameters: Optional[Parameters]) -> None:
+def normalize_and_validate_effective_parameters(
+    parameters: Optional[Parameters],
+) -> None:
     if parameters is None:
         return
 
@@ -117,7 +113,9 @@ def normalize_and_validate_effective_parameters(parameters: Optional[Parameters]
         slurm_parameters.tasks_per_node = None
 
     if has_tasks and has_tasks_per_node:
-        raise ValueError('Slurm parameters conflict: use either "tasks" or "tasks_per_node".')
+        raise ValueError(
+            'Slurm parameters conflict: use either "tasks" or "tasks_per_node".'
+        )
     if not has_nodes and not has_tasks:
         raise ValueError('Slurm requires at least one of "nodes" or "tasks".')
 
@@ -130,18 +128,28 @@ def _select_matching_rule(
     matching_rules = [
         rule
         for rule in enabled_rules
-        if re.fullmatch(ResourceAssignmentRule.normalize_pattern(rule.regex_pattern), normalized_call_path)
+        if ResourceAssignmentRule.matches_call_path(
+            rule.regex_pattern, normalized_call_path
+        )
     ]
     if not matching_rules:
         return None
 
-    highest_priority = max(rule.priority for rule in matching_rules)
-    top_rules = [rule for rule in matching_rules if rule.priority == highest_priority]
+    highest_score = max(
+        ResourceAssignmentRule.pattern_specificity_score(rule.regex_pattern)
+        for rule in matching_rules
+    )
+    top_rules = [
+        rule
+        for rule in matching_rules
+        if ResourceAssignmentRule.pattern_specificity_score(rule.regex_pattern)
+        == highest_score
+    ]
     if len(top_rules) > 1:
         rule_names = ", ".join(sorted(rule.name for rule in top_rules))
         raise ValueError(
             "Ambiguous resource assignment: "
-            f"multiple rules matched call_path '{normalized_call_path}' with priority {highest_priority}: {rule_names}"
+            f"multiple equally specific rules matched call_path '{normalized_call_path}': {rule_names}"
         )
     return top_rules[0]
 
@@ -166,7 +174,9 @@ async def resolve_resource_assignment(
     rules = await engine.find(ResourceAssignmentRule)
     matched_rule = _select_matching_rule(normalized_call_path, list(rules))
     effective_parameters = _apply_assignment_patch(effective_base, matched_rule)
-    _validate_nested_slurm(parent_parameters, effective_parameters, normalized_call_path)
+    _validate_nested_slurm(
+        parent_parameters, effective_parameters, normalized_call_path
+    )
     normalize_and_validate_effective_parameters(effective_parameters)
 
     if matched_rule is not None:
