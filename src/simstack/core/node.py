@@ -24,6 +24,7 @@ from simstack.core.definitions import TaskStatus
 from simstack.core.engine import current_engine_context
 from simstack.core.hash import complex_hash_function
 from simstack.core.node_runner import NodeRunner
+from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.task_id import set_task_id, clear_task_id
 from simstack.models import ModelMapping, Parameters
@@ -213,8 +214,6 @@ class Node:
             input_ids.append(argument_entry.id)
             input_tables.append(input_table_name.mapping)
 
-        new_parameters = Parameters(**self.parameters.__dict__)
-
         self.registry_entry = NodeRegistry(
             name=self.name,
             input_tables=input_tables,
@@ -229,9 +228,15 @@ class Node:
             func_mapping=function_mapping.function_mapping,
             call_path=self.call_path,
         )
+        parent_parameters = self._function_kwargs.get("parent_parameters", None)
+        await apply_resource_assignment_to_node_registry(
+            context.db.engine,
+            self.registry_entry,
+            parent_parameters=parent_parameters if isinstance(parent_parameters, Parameters) else None,
+        )
         await context.db.upsert(self.registry_entry)
         logger.info(
-            f"Task task_id: {self.id} with name {self.name} created for resource: {new_parameters.resource} queue: {new_parameters.queue}"
+            f"Task task_id: {self.id} with name {self.name} created for resource: {self.registry_entry.parameters.resource} queue: {self.registry_entry.parameters.queue}"
         )
         return self.registry_entry
 

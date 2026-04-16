@@ -75,6 +75,9 @@ class NodeRegistry(Model):
     category: Optional[str] = None
     description: Optional[str] = None
     call_path: Optional[str] = None
+    assignment_rule_id: Optional[str] = None
+    assignment_rule_name: Optional[str] = None
+    assignment_pattern: Optional[str] = None
     error: Optional[str] = None
     message: Optional[str] = None
 
