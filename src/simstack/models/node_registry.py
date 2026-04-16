@@ -108,13 +108,16 @@ class NodeRegistry(Model):
     is_async: bool = False
     parameters: Parameters = Reference()
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
-    def convert_project_to_new_project(cls, values):
+    def normalize_project_fields(cls, values):
         if isinstance(values, dict):
-            if 'project' in values and values['project'] is not None and 'new_project' not in values:
-                values['new_project'] = Project(field_name=values['project'])
-                del values['project']
+            legacy_project = values.pop("new_project", None)
+            if values.get("project") is None and legacy_project is not None:
+                if isinstance(legacy_project, Project):
+                    values["project"] = legacy_project.field_name
+                elif isinstance(legacy_project, dict):
+                    values["project"] = legacy_project.get("field_name")
         return values
 
 

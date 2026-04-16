@@ -99,6 +99,22 @@ class CreateNodeTable(TableBuilderBase):
 
         return None, None
 
+    @staticmethod
+    def _normalize_docstring_type(type_str: str) -> str:
+        """Strip top-level docstring qualifiers like ', optional' from a parsed type string."""
+        normalized = (type_str or "").strip()
+        bracket_depth = 0
+
+        for index, char in enumerate(normalized):
+            if char == "[":
+                bracket_depth += 1
+            elif char == "]" and bracket_depth > 0:
+                bracket_depth -= 1
+            elif char == "," and bracket_depth == 0:
+                return normalized[:index].strip()
+
+        return normalized
+
     async def _build_outputs(
             self,
             func_name: str,
@@ -132,8 +148,9 @@ class CreateNodeTable(TableBuilderBase):
                 else:
                     for name, data in doc_simstack_result.items():
                         output_mapping = None
+                        output_type = self._normalize_docstring_type(data["type"])
                         try:
-                            wrapper, inner_type_str = self._parse_generic_type(data["type"])
+                            wrapper, inner_type_str = self._parse_generic_type(output_type)
                             if wrapper:
                                 # Handle List[type] or Dict[str,type]
                                 inner_mapping = None
@@ -151,13 +168,13 @@ class CreateNodeTable(TableBuilderBase):
                                         output_mapping = f"List[{inner_mapping}]"
                                     else:  # Dict
                                         output_mapping = f"Dict[str,{inner_mapping}]"
-                            elif "." in data["type"]:
+                            elif "." in output_type:
                                 # It's a full mapping path
-                                output_mapping = data["type"]
+                                output_mapping = output_type
                             else:
                                 # It's a single class name
                                 try:
-                                    output_model = await import_class_by_name(data["type"])
+                                    output_model = await import_class_by_name(output_type)
                                     output_mapping = self.get_class_mapping(output_model, drops)
                                 except (ValueError, LookupError) as e:
                                     logger.error(f"Could not parse '{data['type']}' to mapping: {e}")
