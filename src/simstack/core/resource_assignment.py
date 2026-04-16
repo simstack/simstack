@@ -2,6 +2,9 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from odmantic import AIOEngine
+
+from simstack.models import NodeRegistry
 from simstack.models.parameters import Parameters, Resource, SlurmParameters
 from simstack.models.resource_assignment import (
     ResourceAssignmentRule,
@@ -155,8 +158,8 @@ def _select_matching_rule(
 
 
 async def resolve_resource_assignment(
-    engine: Any,
-    *,
+        engine: AIOEngine,
+        *,
     call_path: Optional[str],
     base_parameters: Optional[Parameters],
     parent_parameters: Optional[Parameters] = None,
@@ -194,8 +197,8 @@ async def resolve_resource_assignment(
 
 
 async def apply_resource_assignment_to_node_registry(
-    engine: Any,
-    node_registry: Any,
+        engine: AIOEngine,
+        node_registry: NodeRegistry,
     *,
     parent_parameters: Optional[Parameters] = None,
 ) -> ResourceAssignmentResolution:
