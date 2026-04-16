@@ -267,7 +267,7 @@ class Node:
             await self.make_registry_entry(function_hash, arg_hash)
         else:
             if self.parent_id:
-                logger.info(
+                logger.debug(
                     f"Task task_id: {self.id} adding parent_id {self.parent_id} to task: {self.name}"
                 )
                 if isinstance(self.parent_id, str):
@@ -280,7 +280,7 @@ class Node:
             # whenever a task is found in the database, we may have to redo all child artifacts because the children
             # will not be loaded
             if self.recompute_artifacts:
-                logger.info(
+                logger.debug(
                     f"Task task_id: {self.id} recomputing artifacts for task: {self.name}"
                 )
                 from simstack.core.recompute_artifacts import recompute_artifacts
@@ -310,7 +310,7 @@ class Node:
         :return: The retrieved task outputs from the database.
         """
         engine = current_engine_context.get()
-        logger.info(f"Task task_id: {self.id} loading results {self.status}")
+        logger.info(f"Task task_id: {self.id} loading results with task status {self.status}")
         try:
             if self.registry_entry.status != TaskStatus.COMPLETED:
                 return None
@@ -458,7 +458,7 @@ class Node:
             # Create the directory if it doesn't exist
             path.mkdir(parents=True, exist_ok=True)
             os.chdir(path)
-            logger.info(
+            logger.debug(
                 f"Task task_id: {self.id} successfully changed to directory: {path.absolute()}"
             )
 
@@ -652,7 +652,7 @@ class Node:
             self.registry_entry.status = TaskStatus(status)
         engine = current_engine_context.get()
         await engine.save(self.registry_entry)
-        logger.info(f"Task task_id: {self.id} is set to {status}")
+        logger.info(f"Task task_id: {self.id} {self.name} is set to {status}")
 
 
 async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None]:
@@ -697,7 +697,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
         logger.debug(f"Task task_id: {registry_entry.id} computes arg hashes")
         registry_entry.arg_hash = compute_arg_hash(args)
 
-    logger.info(f"Task task_id: {registry_entry.id} {registry_entry.name} loaded {len(args)} inputs in Node:node_from_database status: {registry_entry.status}")
+    logger.debug(f"Task task_id: {registry_entry.id} {registry_entry.name} loaded {len(args)} inputs in Node:node_from_database status: {registry_entry.status}")
     try:
         wrapped_func = await import_function(
             registry_entry.func_mapping, registry_entry.id
@@ -752,7 +752,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
     kwargs["parent_id"] = (
         registry_entry.parent_ids[0] if registry_entry.parent_ids else None
     )
-    logger.info(
+    logger.debug(
         f"Task task_id: {registry_entry.id} is_async: {kwargs['is_async']} parent_id: {kwargs['parent_id']}"
     )
 
