@@ -229,18 +229,14 @@ class Node:
             call_path=self.call_path,
         )
         parent_parameters = self._function_kwargs.get("parent_parameters", None)
-        # await apply_resource_assignment_to_node_registry(
-        #     context.db.engine,
-        #     self.registry_entry,
-        #     parent_parameters=parent_parameters if isinstance(parent_parameters, Parameters) else None,
-        # )
-
-        # Delete project or new_project attributes if they exist
-
-
+        await apply_resource_assignment_to_node_registry(
+            context.db.engine,
+            self.registry_entry,
+            parent_parameters=parent_parameters if isinstance(parent_parameters, Parameters) else None,
+        )
         await context.db.upsert(self.registry_entry)
         logger.info(
-            f"Task task_id: {self.id} with name {self.name} created for resource: {self.registry_entry.parameters.resource} queue: {self.registry_entry.parameters.queue}"
+            f"Task task_id: {self.id} with name {self.name} created for resource: {self.registry_entry.parameters.resource} queue: {self.registry_entry.parameters.queue} with id: {task.id}"
         )
         return self.registry_entry
 
