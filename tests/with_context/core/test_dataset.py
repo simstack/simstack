@@ -95,8 +95,8 @@ class TestDataSetSection:
         assert len(retrieved) == 2
         assert isinstance(retrieved[0], FloatData)
         assert isinstance(retrieved[1], StringData)
-        assert retrieved[0].value == 42.0
-        assert retrieved[1].value == "answer"
+        assert retrieved[0].real_value == 42.0
+        assert retrieved[1].real_value == "answer"
 
     @pytest.mark.asyncio
     async def test_get_model_group_index_error(self):
@@ -309,8 +309,8 @@ class TestDataSet:
         assert len(retrieved_models) == 2
         assert isinstance(retrieved_models[0], FloatData)
         assert isinstance(retrieved_models[1], StringData)
-        assert retrieved_models[0].value == 123.45
-        assert retrieved_models[1].value == "persistence_test"
+        assert retrieved_models[0].real_value == 123.45
+        assert retrieved_models[1].real_value == "persistence_test"
 
     @pytest.mark.asyncio
     async def test_complex_dataset_workflow(self, real_database_context):

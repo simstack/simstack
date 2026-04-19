@@ -236,7 +236,7 @@ class Node:
         )
         await context.db.upsert(self.registry_entry)
         logger.info(
-            f"Task task_id: {self.id} with name {self.name} created for resource: {self.registry_entry.parameters.resource} queue: {self.registry_entry.parameters.queue} with id: {task.id}"
+            f"Task task_id: {self.id} with name {self.name} created for resource: {self.registry_entry.parameters.resource} queue: {self.registry_entry.parameters.queue} with id: {self.id}"
         )
         return self.registry_entry
 

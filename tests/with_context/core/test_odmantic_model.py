@@ -27,4 +27,4 @@ async def test_odmantic_find(odmantic_engine):
     # Find the document
     result = await odmantic_engine.find_one(SampleModel, SampleModel.name == "test2")
     assert result is not None
-    assert result.value == 43
+    assert result.real_value == 43

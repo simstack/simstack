@@ -20,4 +20,4 @@ async def test_call_function_by_name(initialized_context):
     assert func == adder_for_tests
     result = func(inputs)
 
-    assert result.value == 17
+    assert result.real_value == 17
