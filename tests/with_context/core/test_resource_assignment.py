@@ -300,7 +300,10 @@ async def test_node_registry_creation_applies_resource_assignment(odmantic_engin
     assert registry_entry.parameters.slurm_parameters.time == "02:00:00"
     assert registry_entry.parameters.slurm_parameters.tasks is None
     assert registry_entry.assignment_rule_name == "probe-slurm"
-    assert registry_entry.assignment_pattern == "workflow.resource_assignment_probe_in_tests"
+    assert (
+        registry_entry.assignment_pattern
+        == "workflow.resource_assignment_probe_in_tests"
+    )
 
 
 @pytest.mark.asyncio

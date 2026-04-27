@@ -148,8 +148,8 @@ def _select_matching_rule(
 
 
 async def resolve_resource_assignment(
-        engine: AIOEngine,
-        *,
+    engine: AIOEngine,
+    *,
     call_path: Optional[str],
     base_parameters: Optional[Parameters],
     parent_parameters: Optional[Parameters] = None,
@@ -184,8 +184,8 @@ async def resolve_resource_assignment(
 
 
 async def apply_resource_assignment_to_node_registry(
-        engine: AIOEngine,
-        node_registry: NodeRegistry,
+    engine: AIOEngine,
+    node_registry: NodeRegistry,
     *,
     parent_parameters: Optional[Parameters] = None,
 ) -> ResourceAssignmentResolution:
