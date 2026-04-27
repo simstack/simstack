@@ -123,7 +123,7 @@ def test_from_local_file_no_copy(test_file, setup_test_env):
                 path=full_path, file_stack_id=file_stack_id, make_copy=False
             )
 
-        assert instance.path == (rel_path / test_file.name).as_posix()
+        assert Path(instance.path) == rel_path / test_file.name
         assert instance.resource == context.config.resource
     finally:
         # Clean up temporary files
