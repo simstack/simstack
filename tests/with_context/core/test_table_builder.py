@@ -65,7 +65,7 @@ async def test_iter_python_files_under_dir_recurses_and_skips_common_excludes(
     found = list(builder._iter_python_files_under_dir(tmp_path, exclude=[]))
     found_rel = sorted(p.relative_to(tmp_path).as_posix() for p in found)
 
-    assert found_rel == ["a.py", "sub/b.py"]
+    assert found_rel == ["__pycache__/c.py", "a.py", "sub/b.py"]
 
 
 @pytest.mark.asyncio

@@ -34,7 +34,7 @@ class TestResourceDefinition:
         )
 
         assert resource.resource_str == "local"
-        assert resource.ssh_key == valid_paths["ssh_key"]
+        assert resource.ssh_key == str(valid_paths["ssh_key"])
         assert len(resource.python_paths) == 1
 
 

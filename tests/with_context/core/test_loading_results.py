@@ -51,8 +51,8 @@ def test_return_simstack_results(caplog):
         result = node_with_simstack_results(arg)
 
         assert isinstance(result, SimstackResult)
-        assert result.result1.real_value == 579
-        assert result.result2.real_value == 56088
+        assert result.result1.value == 579
+        assert result.result2.value == 56088
         assert result.status == "completed"
 
         # Check if the results are correctly logged
@@ -62,8 +62,8 @@ def test_return_simstack_results(caplog):
 
         result_rerun = node_with_simstack_results(arg)
         assert isinstance(result_rerun, SimstackResult)
-        assert result_rerun.result1.real_value == 579
-        assert result_rerun.result2.real_value == 56088
+        assert result_rerun.result1.value == 579
+        assert result_rerun.result2.value == 56088
 
 
 @pytest.mark.asyncio
@@ -78,8 +78,8 @@ async def test_node_with_files(caplog, test_file_stack):
 
         # Verify the result
         assert isinstance(result, SimstackResult)
-        assert result.result1.real_value == 500
-        assert result.result2.real_value == 60000
+        assert result.result1.value == 500
+        assert result.result2.value == 60000
         assert result.status == "completed"
 
         # Check that files are included in the result
@@ -97,8 +97,8 @@ async def test_node_with_files(caplog, test_file_stack):
         # Test rerun to ensure file handling is consistent
         result_rerun = node_with_files(arg, test_file_stack)
         assert isinstance(result_rerun, SimstackResult)
-        assert result_rerun.result1.real_value == 500
-        assert result_rerun.result2.real_value == 60000
+        assert result_rerun.result1.value == 500
+        assert result_rerun.result2.value == 60000
         assert len(result_rerun.files) == 1
 
 
@@ -111,8 +111,8 @@ async def test_node_with_files_multiple_operations(caplog, test_file_stack):
         result1 = node_with_files(arg, test_file_stack)
 
         assert isinstance(result1, SimstackResult)
-        assert result1.result1.real_value == 15
-        assert result1.result2.real_value == 50
+        assert result1.result1.value == 15
+        assert result1.result2.value == 50
         assert result1.status == "completed"
         assert len(result1.files) == 1
 
@@ -123,7 +123,7 @@ async def test_node_with_files_multiple_operations(caplog, test_file_stack):
         assert "Computed results: 15.0, 50.0" in caplog.text
 
         result2 = node_with_files(arg, test_file_stack)
-        assert result2.result1.real_value == 15
-        assert result2.result2.real_value == 50
+        assert result2.result1.value == 15
+        assert result2.result2.value == 50
         assert result2.status == "completed"
         assert len(result2.files) == 1

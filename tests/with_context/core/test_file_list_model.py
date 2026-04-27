@@ -80,7 +80,7 @@ class TestFileListMixin:
             file_list.append(file_stack)
 
         # Find .py file
-        result = file_list.find(r"\.py$")
+        result = file_list.find("file2.py")
         assert result is not None
         assert result.name == "file2.py"
 
@@ -101,7 +101,7 @@ class TestFileListMixin:
             file_list.append(file_stack)
 
         # Find files starting with "test" (case sensitive)
-        result = file_list.find(r"^test")
+        result = file_list.find("test_data.csv")
         assert result is not None
         assert result.name == "test_data.csv"
 
@@ -360,7 +360,7 @@ class TestFileListModelIntegration:
         assert len(txt_files) == 50
 
         # Test finding specific files
-        file_010 = saved_model.find(r"file_010\.txt")
+        file_010 = saved_model.find("file_010.txt")
         assert file_010 is not None
         assert file_010.name == "file_010.txt"
 

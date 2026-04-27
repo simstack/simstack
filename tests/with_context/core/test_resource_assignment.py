@@ -2,19 +2,45 @@ from types import SimpleNamespace
 
 import pytest
 
+from simstack.core.node import Node
 from simstack.core.resource_assignment import (
     apply_resource_assignment_to_node_registry,
     resolve_resource_assignment,
 )
 from simstack.core.resources import allowed_resources
-from simstack.models import ResourceAssignmentRule, SlurmParametersPatch
+from simstack.models import NodeModel, ResourceAssignmentRule, SlurmParametersPatch
 from simstack.models.parameters import Parameters, SlurmParameters
+
+
+def resource_assignment_probe_in_tests(**kwargs):
+    return None
 
 
 async def _delete_all(engine, model):
     existing = await engine.find(model)
     for item in existing:
         await engine.delete(item)
+
+
+async def _ensure_probe_node_model(engine):
+    existing = await engine.find_one(
+        NodeModel, NodeModel.name == "resource_assignment_probe_in_tests"
+    )
+    if existing is not None:
+        return existing
+
+    return await engine.save(
+        NodeModel(
+            name="resource_assignment_probe_in_tests",
+            function_mapping=(
+                "tests.with_context.core.test_resource_assignment:"
+                "resource_assignment_probe_in_tests"
+            ),
+            input_mappings=[],
+            result_mappings=[],
+            default_parameters=Parameters(),
+        )
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -178,3 +204,74 @@ async def test_apply_resource_assignment_sets_trace_fields(odmantic_engine):
     assert node_registry.assignment_rule_name == "master-orca"
     assert node_registry.assignment_pattern == "master.*.orca"
     assert node_registry.parameters.resource == "cluster-a"
+
+
+@pytest.mark.asyncio
+async def test_node_registry_creation_applies_resource_assignment(odmantic_engine):
+    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+    await _ensure_probe_node_model(odmantic_engine)
+
+    await odmantic_engine.save(
+        ResourceAssignmentRule(
+            name="probe-slurm",
+            regex_pattern="workflow.resource_assignment_probe_in_tests",
+            resource_str="cluster-a",
+            queue="slurm-queue",
+            slurm_parameters_patch=SlurmParametersPatch(nodes=2, time="02:00:00"),
+        )
+    )
+
+    probe_node = Node(
+        func=resource_assignment_probe_in_tests,
+        is_async=False,
+        parameters=Parameters(),
+        call_path=".workflow.resource_assignment_probe_in_tests",
+    )
+
+    registry_entry = await probe_node.make_registry_entry(
+        function_hash="probe-function-hash",
+        arg_hash="probe-arg-hash",
+    )
+
+    assert registry_entry.parameters.resource == "cluster-a"
+    assert registry_entry.parameters.queue == "slurm-queue"
+    assert registry_entry.parameters.slurm_parameters.nodes == 2
+    assert registry_entry.parameters.slurm_parameters.time == "02:00:00"
+    assert registry_entry.parameters.slurm_parameters.tasks is None
+    assert registry_entry.assignment_rule_name == "probe-slurm"
+    assert registry_entry.assignment_pattern == "workflow.resource_assignment_probe_in_tests"
+
+
+@pytest.mark.asyncio
+async def test_node_registry_creation_rejects_nested_slurm_assignment(
+    odmantic_engine,
+):
+    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+    await _ensure_probe_node_model(odmantic_engine)
+
+    await odmantic_engine.save(
+        ResourceAssignmentRule(
+            name="probe-slurm",
+            regex_pattern="workflow.resource_assignment_probe_in_tests",
+            resource_str="cluster-a",
+            queue="slurm-queue",
+            slurm_parameters_patch=SlurmParametersPatch(nodes=2),
+        )
+    )
+
+    probe_node = Node(
+        func=resource_assignment_probe_in_tests,
+        is_async=False,
+        parameters=Parameters(),
+        parent_parameters=Parameters(
+            queue="slurm-queue",
+            slurm_parameters=SlurmParameters(nodes=1),
+        ),
+        call_path=".workflow.resource_assignment_probe_in_tests",
+    )
+
+    with pytest.raises(ValueError, match="Nested Slurm allocation is not allowed"):
+        await probe_node.make_registry_entry(
+            function_hash="nested-probe-function-hash",
+            arg_hash="nested-probe-arg-hash",
+        )
