@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Optional
 
 from odmantic import AIOEngine
 
@@ -70,24 +70,6 @@ def _apply_assignment_patch(
     return effective
 
 
-def _validate_nested_slurm(
-    parent_parameters: Optional[Parameters],
-    effective_parameters: Parameters,
-    normalized_call_path: str,
-) -> None:
-    if parent_parameters is None:
-        return
-    if not _is_slurm_queue(getattr(parent_parameters, "queue", None)):
-        return
-    if not _is_slurm_queue(getattr(effective_parameters, "queue", None)):
-        return
-
-    raise ValueError(
-        "Nested Slurm allocation is not allowed: "
-        f"path '{normalized_call_path}' would submit a slurm-queue node from inside another slurm-queue node."
-    )
-
-
 def normalize_and_validate_effective_parameters(
     parameters: Optional[Parameters],
 ) -> None:
@@ -107,8 +89,16 @@ def normalize_and_validate_effective_parameters(
     has_tasks_per_node = (
         "tasks_per_node" in fields_set and slurm_parameters.tasks_per_node is not None
     )
+    uses_default_nodes = (
+        not has_nodes
+        and not has_tasks
+        and not has_tasks_per_node
+        and slurm_parameters.nodes is not None
+    )
 
-    if not has_nodes:
+    if uses_default_nodes:
+        has_nodes = True
+    elif not has_nodes:
         slurm_parameters.nodes = None
     if not has_tasks:
         slurm_parameters.tasks = None
@@ -177,9 +167,6 @@ async def resolve_resource_assignment(
     rules = await engine.find(ResourceAssignmentRule)
     matched_rule = _select_matching_rule(normalized_call_path, list(rules))
     effective_parameters = _apply_assignment_patch(effective_base, matched_rule)
-    _validate_nested_slurm(
-        parent_parameters, effective_parameters, normalized_call_path
-    )
     normalize_and_validate_effective_parameters(effective_parameters)
 
     if matched_rule is not None:

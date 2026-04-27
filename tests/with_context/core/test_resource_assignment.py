@@ -5,6 +5,7 @@ import pytest
 from simstack.core.node import Node
 from simstack.core.resource_assignment import (
     apply_resource_assignment_to_node_registry,
+    normalize_and_validate_effective_parameters,
     resolve_resource_assignment,
 )
 from simstack.core.resources import allowed_resources
@@ -14,6 +15,29 @@ from simstack.models.parameters import Parameters, SlurmParameters
 
 def resource_assignment_probe_in_tests(**kwargs):
     return None
+
+
+def test_normalize_slurm_allocation_accepts_empty_slurm_parameters_defaults():
+    parameters = Parameters(
+        queue="slurm-queue",
+        slurm_parameters=SlurmParameters(),
+    )
+
+    normalize_and_validate_effective_parameters(parameters)
+
+    assert parameters.slurm_parameters.nodes == 1
+    assert parameters.slurm_parameters.tasks is None
+    assert parameters.slurm_parameters.tasks_per_node is None
+
+
+def test_normalize_slurm_allocation_rejects_tasks_per_node_without_nodes_or_tasks():
+    parameters = Parameters(
+        queue="slurm-queue",
+        slurm_parameters=SlurmParameters(tasks_per_node=4),
+    )
+
+    with pytest.raises(ValueError, match='one of "nodes" or "tasks"'):
+        normalize_and_validate_effective_parameters(parameters)
 
 
 async def _delete_all(engine, model):
@@ -148,7 +172,7 @@ async def test_resolve_resource_assignment_rejects_equally_specific_matches(
 
 
 @pytest.mark.asyncio
-async def test_resolve_resource_assignment_rejects_nested_slurm(odmantic_engine):
+async def test_resolve_resource_assignment_allows_nested_slurm(odmantic_engine):
     await _delete_all(odmantic_engine, ResourceAssignmentRule)
 
     await odmantic_engine.save(
@@ -162,16 +186,53 @@ async def test_resolve_resource_assignment_rejects_nested_slurm(odmantic_engine)
         )
     )
 
-    with pytest.raises(ValueError, match="Nested Slurm allocation is not allowed"):
-        await resolve_resource_assignment(
-            odmantic_engine,
-            call_path=".master.step.orca",
-            base_parameters=Parameters(),
-            parent_parameters=Parameters(
-                queue="slurm-queue",
-                slurm_parameters=SlurmParameters(nodes=1),
-            ),
-        )
+    resolution = await resolve_resource_assignment(
+        odmantic_engine,
+        call_path=".master.step.orca",
+        base_parameters=Parameters(),
+        parent_parameters=Parameters(
+            queue="slurm-queue",
+            slurm_parameters=SlurmParameters(nodes=1),
+        ),
+    )
+
+    assert resolution.parameters.queue == "slurm-queue"
+    assert resolution.parameters.slurm_parameters.nodes == 2
+
+
+@pytest.mark.asyncio
+async def test_resolve_resource_assignment_allows_nested_slurm_from_base_parameters(
+    odmantic_engine,
+):
+    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+
+    resolution = await resolve_resource_assignment(
+        odmantic_engine,
+        call_path=(
+            ".many_orca_master_job_mariana_cluster_and_gather_jinja."
+            "many_orca_jobs_from_single_smiles_cluster_and_gather_jinja"
+        ),
+        base_parameters=Parameters(
+            resource="cluster-a",
+            queue="slurm-queue",
+            slurm_parameters=SlurmParameters(),
+        ),
+        parent_parameters=Parameters(
+            queue="slurm-queue",
+            slurm_parameters=SlurmParameters(nodes=1),
+        ),
+    )
+
+    assert resolution.normalized_call_path == (
+        "many_orca_master_job_mariana_cluster_and_gather_jinja."
+        "many_orca_jobs_from_single_smiles_cluster_and_gather_jinja"
+    )
+    assert resolution.matched_rule is None
+    assert resolution.parameters.resource == "cluster-a"
+    assert resolution.parameters.queue == "slurm-queue"
+    assert resolution.parameters.slurm_parameters.nodes == 1
+    assert resolution.parameters.slurm_parameters.tasks is None
+    assert resolution.parameters.slurm_parameters.tasks_per_node is None
 
 
 @pytest.mark.asyncio
@@ -243,7 +304,7 @@ async def test_node_registry_creation_applies_resource_assignment(odmantic_engin
 
 
 @pytest.mark.asyncio
-async def test_node_registry_creation_rejects_nested_slurm_assignment(
+async def test_node_registry_creation_allows_nested_slurm_assignment(
     odmantic_engine,
 ):
     await _delete_all(odmantic_engine, ResourceAssignmentRule)
@@ -270,8 +331,11 @@ async def test_node_registry_creation_rejects_nested_slurm_assignment(
         call_path=".workflow.resource_assignment_probe_in_tests",
     )
 
-    with pytest.raises(ValueError, match="Nested Slurm allocation is not allowed"):
-        await probe_node.make_registry_entry(
-            function_hash="nested-probe-function-hash",
-            arg_hash="nested-probe-arg-hash",
-        )
+    registry_entry = await probe_node.make_registry_entry(
+        function_hash="nested-probe-function-hash",
+        arg_hash="nested-probe-arg-hash",
+    )
+
+    assert registry_entry.parameters.queue == "slurm-queue"
+    assert registry_entry.parameters.slurm_parameters.nodes == 2
+    assert registry_entry.assignment_rule_name == "probe-slurm"
