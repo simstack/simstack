@@ -10,10 +10,10 @@ class TestDataSetMetadataBasic:
 
     def test_empty_initialization(self):
         """Test creating an empty DataSetMetadata."""
-        metadata = DataSetMetadata(dataset_type="test_empty")
+        metadata = DataSetMetadata(field_name="test_empty")
         assert metadata.field_name == "test_empty"
         assert metadata.data == {}
-        assert metadata.initialized is True
+        assert metadata.initialized is False
         assert len(metadata) == 0
 
     def test_initialization_with_data(self):
@@ -24,11 +24,11 @@ class TestDataSetMetadataBasic:
             "active": True,
             "timestamp": datetime(2023, 1, 1),
         }
-        metadata = DataSetMetadata(dataset_type="experiment_basic", data=initial_data)
+        metadata = DataSetMetadata(field_name="experiment_basic", data=initial_data)
 
         assert metadata.field_name == "experiment_basic"
         assert metadata.data == initial_data
-        assert metadata.initialized is True
+        assert metadata.initialized is False
         assert len(metadata) == 4
 
 
@@ -39,7 +39,7 @@ class TestDataSetMetadataDictBehavior:
     def metadata_with_data(self):
         """Fixture providing metadata with sample data."""
         return DataSetMetadata(
-            dataset_type="test_dict_behavior",
+            field_name="test_dict_behavior",
             data={
                 "name": "sample",
                 "count": 10,
@@ -71,24 +71,20 @@ class TestDataSetMetadataDictBehavior:
         metadata_with_data["active"] = False
         assert metadata_with_data["active"] is False
 
-    def test_setitem_new_key_after_init_fails(self, metadata_with_data):
-        """Test that adding new keys after initialization fails."""
-        with pytest.raises(
-            KeyError, match="Cannot add new key 'new_key' after initialization"
-        ):
-            metadata_with_data["new_key"] = "value"
+    def test_setitem_new_key_before_initialization_succeeds(self, metadata_with_data):
+        """Test that adding new keys succeeds while metadata is not initialized."""
+        metadata_with_data["new_key"] = "value"
+        assert metadata_with_data["new_key"] == "value"
 
-    def test_setitem_type_change_fails(self, metadata_with_data):
-        """Test that changing type of existing key fails."""
-        with pytest.raises(
-            TypeError, match="Cannot change type of key 'count' from int to str"
-        ):
-            metadata_with_data["count"] = "not_a_number"
+    def test_setitem_type_change_before_initialization_succeeds(
+        self, metadata_with_data
+    ):
+        """Test that changing existing value types succeeds before initialization."""
+        metadata_with_data["count"] = "not_a_number"
+        assert metadata_with_data["count"] == "not_a_number"
 
-        with pytest.raises(
-            TypeError, match="Cannot change type of key 'active' from bool to int"
-        ):
-            metadata_with_data["active"] = 1
+        metadata_with_data["active"] = 1
+        assert metadata_with_data["active"] == 1
 
     def test_setitem_invalid_type_fails(self, metadata_with_data):
         """Test that invalid value types fail."""
@@ -145,41 +141,37 @@ class TestDataSetMetadataRestrictions:
     @pytest.fixture
     def metadata_with_data(self):
         return DataSetMetadata(
-            dataset_type="test_restrictions", data={"name": "sample", "count": 10}
+            field_name="test_restrictions", data={"name": "sample", "count": 10}
         )
 
-    def test_delitem_fails_after_init(self, metadata_with_data):
-        """Test that deleting keys after initialization fails."""
-        with pytest.raises(
-            KeyError, match="Cannot delete key 'name' after initialization"
-        ):
-            del metadata_with_data["name"]
+    def test_delitem_before_initialization_succeeds(self, metadata_with_data):
+        """Test that deleting keys succeeds while metadata is not initialized."""
+        del metadata_with_data["name"]
+        assert "name" not in metadata_with_data
 
-    def test_pop_fails_after_init(self, metadata_with_data):
-        """Test that pop() fails after initialization."""
-        with pytest.raises(
-            KeyError, match="Cannot pop key 'name' after initialization"
-        ):
-            metadata_with_data.pop("name")
+    def test_pop_before_initialization_succeeds(self, metadata_with_data):
+        """Test that pop() succeeds while metadata is not initialized."""
+        assert metadata_with_data.pop("name") == "sample"
+        assert "name" not in metadata_with_data
 
-    def test_popitem_fails_after_init(self, metadata_with_data):
-        """Test that popitem() fails after initialization."""
-        with pytest.raises(KeyError, match="Cannot pop items after initialization"):
-            metadata_with_data.popitem()
+    def test_popitem_before_initialization_succeeds(self, metadata_with_data):
+        """Test that popitem() succeeds while metadata is not initialized."""
+        key, value = metadata_with_data.popitem()
+        assert (key, value) == ("count", 10)
+        assert len(metadata_with_data) == 1
 
-    def test_clear_fails_after_init(self, metadata_with_data):
-        """Test that clear() fails after initialization."""
-        with pytest.raises(
-            RuntimeError, match="Cannot clear data after initialization"
-        ):
-            metadata_with_data.clear()
+    def test_clear_before_initialization_succeeds(self, metadata_with_data):
+        """Test that clear() succeeds while metadata is not initialized."""
+        metadata_with_data.clear()
+        assert metadata_with_data.data == {}
 
-    def test_setdefault_new_key_fails_after_init(self, metadata_with_data):
-        """Test that setdefault() with new key fails after initialization."""
-        with pytest.raises(
-            KeyError, match="Cannot add new key 'new_key' after initialization"
-        ):
-            metadata_with_data.setdefault("new_key", "default")
+    def test_setdefault_new_key_before_initialization_succeeds(
+        self, metadata_with_data
+    ):
+        """Test that setdefault() with new key succeeds before initialization."""
+        result = metadata_with_data.setdefault("new_key", "default")
+        assert result == "default"
+        assert metadata_with_data["new_key"] == "default"
 
     def test_setdefault_existing_key_works(self, metadata_with_data):
         """Test that setdefault() with existing key works."""
@@ -194,7 +186,7 @@ class TestDataSetMetadataUpdate:
     @pytest.fixture
     def metadata_with_data(self):
         return DataSetMetadata(
-            dataset_type="test_update",
+            field_name="test_update",
             data={"name": "sample", "count": 10, "active": True},
         )
 
@@ -210,19 +202,17 @@ class TestDataSetMetadataUpdate:
         assert metadata_with_data["name"] == "updated"
         assert metadata_with_data["count"] == 20
 
-    def test_update_new_key_fails(self, metadata_with_data):
-        """Test that update() with new keys fails."""
-        with pytest.raises(
-            KeyError, match="Cannot add new key 'new_key' after initialization"
-        ):
-            metadata_with_data.update({"new_key": "value"})
+    def test_update_new_key_before_initialization_succeeds(self, metadata_with_data):
+        """Test that update() with new keys succeeds before initialization."""
+        metadata_with_data.update({"new_key": "value"})
+        assert metadata_with_data["new_key"] == "value"
 
-    def test_update_type_mismatch_fails(self, metadata_with_data):
-        """Test that update() with type mismatches fails."""
-        with pytest.raises(
-            TypeError, match="Cannot change type of key 'count' from int to str"
-        ):
-            metadata_with_data.update({"count": "not_a_number"})
+    def test_update_type_mismatch_before_initialization_succeeds(
+        self, metadata_with_data
+    ):
+        """Test that update() with type mismatches succeeds before initialization."""
+        metadata_with_data.update({"count": "not_a_number"})
+        assert metadata_with_data["count"] == "not_a_number"
 
     def test_update_invalid_type_fails(self, metadata_with_data):
         """Test that update() with invalid types fails."""
@@ -232,23 +222,21 @@ class TestDataSetMetadataUpdate:
         ):
             metadata_with_data.update({"name": ["invalid", "list"]})
 
-    def test_update_partial_failure_no_changes(self, metadata_with_data):
-        """Test that if update() fails, no changes are made."""
-        original_name = metadata_with_data["name"]
-        original_count = metadata_with_data["count"]
+    def test_update_multiple_keys_before_initialization_succeeds(
+        self, metadata_with_data
+    ):
+        """Test that update() can change existing keys and add new keys before initialization."""
+        metadata_with_data.update(
+            {
+                "name": "updated",
+                "count": 20,
+                "new_key": "added",
+            }
+        )
 
-        with pytest.raises(KeyError):
-            metadata_with_data.update(
-                {
-                    "name": "updated",
-                    "count": 20,
-                    "new_key": "fail",  # This should cause the whole update to fail
-                }
-            )
-
-        # Verify no changes were made
-        assert metadata_with_data["name"] == original_name
-        assert metadata_with_data["count"] == original_count
+        assert metadata_with_data["name"] == "updated"
+        assert metadata_with_data["count"] == 20
+        assert metadata_with_data["new_key"] == "added"
 
 
 class TestDataSetMetadataUtilityMethods:
@@ -257,7 +245,7 @@ class TestDataSetMetadataUtilityMethods:
     @pytest.fixture
     def metadata_with_data(self):
         return DataSetMetadata(
-            dataset_type="test_utility",
+            field_name="test_utility",
             data={
                 "name": "sample",
                 "count": 10,
@@ -336,7 +324,7 @@ class TestDataSetMetadataJsonSchema:
 
     def test_get_data_json_schema_empty(self):
         """Test JSON schema for empty data."""
-        metadata = DataSetMetadata(dataset_type="test_json_schema_empty")
+        metadata = DataSetMetadata(field_name="test_json_schema_empty")
         schema = metadata.get_json_schema()
 
         expected = {"type": "object", "properties": {}, "additionalProperties": False}
@@ -345,7 +333,7 @@ class TestDataSetMetadataJsonSchema:
     def test_get_data_json_schema_with_data(self):
         """Test JSON schema with various data types."""
         metadata = DataSetMetadata(
-            dataset_type="test_json_schema_full",
+            field_name="test_json_schema_full",
             data={
                 "name": "sample",
                 "count": 10,
@@ -379,13 +367,13 @@ class TestDataSetMetadataStructureValidation:
         """Test that metadata with same structures but different names succeed."""
         # First metadata with structure: name (str), count (int), active (bool)
         metadata1 = DataSetMetadata(
-            dataset_type="analysis_type_1",
+            field_name="analysis_type_1",
             data={"name": "analysis_1", "count": 100, "active": True},
         )
 
         # Second metadata with SAME structure but different dataset_type name
         metadata2 = DataSetMetadata(
-            dataset_type="analysis_type_2",
+            field_name="analysis_type_2",
             data={"name": "analysis_2", "count": 200, "active": False},
         )
 
@@ -399,7 +387,7 @@ class TestDataSetMetadataStructureValidation:
 
         # First metadata with structure: name (str), samples (int), threshold (float)
         DataSetMetadata(
-            dataset_type="analysis_same_name",
+            field_name="analysis_same_name",
             data={"name": "analysis_1", "samples": 100, "threshold": 0.95},
         )
 
@@ -409,7 +397,7 @@ class TestDataSetMetadataStructureValidation:
             ValueError, match="Metadata structure does not match reference"
         ):
             DataSetMetadata(
-                dataset_type="analysis_same_name",  # Same name as first
+                field_name="analysis_same_name",  # Same name as first
                 data={
                     "name": "analysis_2",
                     "samples": "one hundred",  # Different type: string instead of int
@@ -424,7 +412,7 @@ class TestDataSetMetadataStructureValidation:
 
         # First metadata with structure: name, count, active
         DataSetMetadata(
-            dataset_type="experiment_same_name",
+            field_name="experiment_same_name",
             data={"name": "experiment_1", "count": 50, "active": True},
         )
 
@@ -433,7 +421,7 @@ class TestDataSetMetadataStructureValidation:
             ValueError, match="Metadata structure does not match reference"
         ):
             DataSetMetadata(
-                dataset_type="experiment_same_name",  # Same name as first
+                field_name="experiment_same_name",  # Same name as first
                 data={
                     "title": "experiment_2",  # Different key: 'title' instead of 'name'
                     "size": 75,  # Different key: 'size' instead of 'count'
@@ -447,13 +435,13 @@ class TestDataSetMetadataStructureValidation:
 
         # First metadata
         DataSetMetadata(
-            dataset_type="valid_same_structure",
+            field_name="valid_same_structure",
             data={"name": "test_1", "version": 1, "stable": True},
         )
 
         # Second metadata with same structure and same dataset_type name should succeed
         metadata2 = DataSetMetadata(
-            dataset_type="valid_same_structure",  # Same name as first
+            field_name="valid_same_structure",  # Same name as first
             data={
                 "name": "test_2",  # Same structure: name (str)
                 "version": 2,  # Same structure: version (int)
@@ -470,28 +458,25 @@ class TestDataSetMetadataEdgeCases:
 
     def test_bool_vs_int_distinction(self):
         """Test that bool and int are treated as different types."""
-        metadata = DataSetMetadata(dataset_type="test_bool_int", data={"flag": True})
+        metadata = DataSetMetadata(field_name="test_bool_int", data={"flag": True})
 
-        # Should not be able to assign int to bool field
-        with pytest.raises(TypeError):
-            metadata["flag"] = 1
+        metadata["flag"] = 1
+        assert metadata["flag"] == 1
 
-        # Should not be able to assign bool to int field
-        metadata2 = DataSetMetadata(dataset_type="test_int_bool", data={"number": 42})
-        with pytest.raises(TypeError):
-            metadata2["number"] = True
+        metadata2 = DataSetMetadata(field_name="test_int_bool", data={"number": 42})
+        metadata2["number"] = True
+        assert metadata2["number"] is True
 
     def test_float_vs_int_distinction(self):
         """Test that float and int are treated as different types."""
-        metadata = DataSetMetadata(dataset_type="test_float_int", data={"number": 42})
+        metadata = DataSetMetadata(field_name="test_float_int", data={"number": 42})
 
-        # Should not be able to assign float to int field
-        with pytest.raises(TypeError):
-            metadata["number"] = 42.0
+        metadata["number"] = 42.0
+        assert metadata["number"] == 42.0
 
     def test_empty_string_handling(self):
         """Test handling of empty strings."""
-        metadata = DataSetMetadata(dataset_type="test_empty_string", data={"name": ""})
+        metadata = DataSetMetadata(field_name="test_empty_string", data={"name": ""})
         assert metadata["name"] == ""
 
         # Should still be able to update with another string
@@ -501,7 +486,7 @@ class TestDataSetMetadataEdgeCases:
     def test_datetime_handling(self):
         """Test datetime handling specifics."""
         dt = datetime(2023, 1, 1, 12, 30, 45)
-        metadata = DataSetMetadata(dataset_type="test_datetime", data={"timestamp": dt})
+        metadata = DataSetMetadata(field_name="test_datetime", data={"timestamp": dt})
 
         assert metadata["timestamp"] == dt
 

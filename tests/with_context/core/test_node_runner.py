@@ -49,7 +49,8 @@ class TestNodeRunner:
         node_runner.debug("test debug message")
 
         mock_logger.debug.assert_called_once_with(
-            "Task test_node: test debug message for task_id: test_123"
+            "Task test_node: test debug message for task_id: test_123",
+            stacklevel=2,
         )
 
     def test_info_logging(self, node_runner, mock_logger):
@@ -59,7 +60,8 @@ class TestNodeRunner:
         # Should be called twice - once in __init__ and once in our test
         assert mock_logger.info.call_count == 2
         mock_logger.info.assert_called_with(
-            "Task test_node: test info message task_id: test_123"
+            "Task test_node: test info message task_id: test_123",
+            stacklevel=2,
         )
 
     def test_warning_logging(self, node_runner, mock_logger):
@@ -67,7 +69,8 @@ class TestNodeRunner:
         node_runner.warning("test warning message")
 
         mock_logger.warning.assert_called_once_with(
-            "Task test_node: test warning message task_id: test_123"
+            "Task test_node: test warning message task_id: test_123",
+            stacklevel=2,
         )
 
     def test_error_logging(self, node_runner, mock_logger):
@@ -75,7 +78,9 @@ class TestNodeRunner:
         node_runner.error("test error message")
 
         mock_logger.error.assert_called_once_with(
-            "Task test_node: test error message task_id: test_123"
+            "Task test_node: test error message task_id: test_123",
+            stacklevel=2,
+            exc_info=True,
         )
 
     @patch("subprocess.run")
@@ -100,11 +105,16 @@ class TestNodeRunner:
 
         assert result is True
         mock_subprocess.assert_called_once_with(
-            "echo 'hello'", shell=True, capture_output=True, text=True, cwd=None
+            "echo 'hello'",
+            shell=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            cwd=None,
         )
 
         # Check that log file was created and FileStack was added
-        mock_file.assert_called_with("test_command.log", "w")
+        mock_file.assert_called_with("test_command.log", "w", encoding="utf-8")
         mock_file_stack.assert_called_once_with(
             "test_command.log", in_memory=True, is_hashable=True, secure_source=True
         )
@@ -149,7 +159,7 @@ class TestNodeRunner:
 
         node_runner.subprocess("", "echo 'test'")
 
-        mock_file.assert_called_with("process.log", "w")
+        mock_file.assert_called_with("process.log", "w", encoding="utf-8")
         mock_file_stack.assert_called_once_with(
             "process.log", in_memory=True, is_hashable=True, secure_source=True
         )
@@ -164,8 +174,10 @@ class TestNodeRunner:
         assert isinstance(result, SimstackResult)
 
         # Check that error was logged
-        mock_logger.exception.assert_called_with(
-            "Task test_node: Something went wrong task_id: test_123"
+        mock_logger.error.assert_called_with(
+            "Task test_node: Something went wrong task_id: test_123",
+            stacklevel=2,
+            exc_info=True,
         )
 
         # Check that status and error_message were set
@@ -184,10 +196,11 @@ class TestNodeRunner:
         # Check that success was logged
         expected_calls = [
             # First call from __init__
-            call("Task test_node: started task_id: test_123"),
+            call("Task test_node: started task_id: test_123", stacklevel=2),
             # Second call from succeed
             call(
-                "Task test_node: succeeded Task completed successfully task_id: test_123"
+                "Task test_node: succeeded Task completed successfully task_id: test_123",
+                stacklevel=2,
             ),
         ]
         mock_logger.info.assert_has_calls(expected_calls)

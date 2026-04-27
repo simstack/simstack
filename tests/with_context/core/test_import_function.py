@@ -90,7 +90,7 @@ async def test_import_function_from_node_model(setup_node_model):
 
     # Call the function and verify it works
     result = func(StringData(value="test"))
-    assert result.real_value == "test"
+    assert result.value == "test"
 
 
 @pytest.mark.skip(reason="pickle function tests must be fixed")
@@ -107,7 +107,7 @@ async def test_import_function_from_pickle(setup_pickled_function):
 
     # Call the function and verify it works
     result = func(StringData(value="test"))
-    assert result.real_value == "test"
+    assert result.value == "test"
 
 
 @pytest.mark.asyncio

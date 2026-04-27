@@ -13,6 +13,6 @@ async def test_load_float_data():
     assert len(float_list) == 10
     float_id = float_list[-1].id
     float_data = await context.db.engine.find_one(FloatData, FloatData.id == float_id)
-    assert float_data.real_value == pytest.approx(float_value.value)
+    assert float_data.value == pytest.approx(float_value.value)
     float_data = await context.db.find_one_by_model_name("FloatData", float_id)
     print("FloatData: ", float_data)
