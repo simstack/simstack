@@ -83,7 +83,7 @@ def normalize_and_validate_effective_parameters(
     if slurm_parameters is None:
         raise ValueError('Slurm queue requires "slurm_parameters".')
 
-    fields_set = getattr(slurm_parameters, "model_fields_set", set())
+    fields_set: set[str] = getattr(slurm_parameters, "model_fields_set", set())
     has_nodes = "nodes" in fields_set and slurm_parameters.nodes is not None
     has_tasks = "tasks" in fields_set and slurm_parameters.tasks is not None
     has_tasks_per_node = (
