@@ -50,6 +50,16 @@ def _merge_slurm_patch(
     return SlurmParameters(**patch.model_dump(exclude_none=True))
 
 
+def empty_slurm_parameters() -> SlurmParameters:
+    cleared_values: dict[str, object] = {}
+    for field_name, field_info in SlurmParameters.model_fields.items():
+        if field_info.default_factory is not None:
+            cleared_values[field_name] = field_info.default_factory()
+        else:
+            cleared_values[field_name] = None
+    return SlurmParameters.model_validate(cleared_values)
+
+
 def _apply_assignment_patch(
     base_parameters: Parameters,
     rule: Optional[ResourceAssignmentRule],
@@ -77,6 +87,7 @@ def normalize_and_validate_effective_parameters(
         return
 
     if not _is_slurm_queue(getattr(parameters, "queue", None)):
+        parameters.slurm_parameters = empty_slurm_parameters()
         return
 
     slurm_parameters = getattr(parameters, "slurm_parameters", None)
@@ -158,6 +169,7 @@ async def resolve_resource_assignment(
     effective_base = _clone_parameters(base_parameters)
 
     if not normalized_call_path:
+        normalize_and_validate_effective_parameters(effective_base)
         return ResourceAssignmentResolution(
             parameters=effective_base,
             normalized_call_path=normalized_call_path,

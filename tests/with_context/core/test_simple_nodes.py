@@ -3,6 +3,7 @@ import pytest
 from simstack.core.context import context
 from simstack.models import FloatData, BinaryOperationInput, IteratorInput
 from simstack.core.node import node
+from simstack.models.parameters import SlurmParameters
 
 
 @node()
@@ -32,9 +33,7 @@ def add_multiply_in_tests(args: BinaryOperationInput, **kwargs) -> FloatData:
 
 
 @node()
-def iterator_workflow_explicit_in_tests(
-    args: IteratorInput, **kwargs
-) -> FloatData:
+def iterator_workflow_explicit_in_tests(args: IteratorInput, **kwargs) -> FloatData:
     def generator(start, stop):
         for i in range(start, stop):
             yield i
@@ -72,6 +71,26 @@ def iterator_workflow_in_tests(args: IteratorInput, **kwargs) -> FloatData:
         raise RuntimeError("Generator yielded None")
     result = sum([result.value for result in results_table])
     return FloatData(value=result)
+
+
+@node(
+    resource="local",
+    queue="slurm-queue",
+    slurm_parameters=SlurmParameters(
+        nodes=3,
+        tasks=None,
+        tasks_per_node=2,
+        cpus_per_task=4,
+        mem="9G",
+        time="03:00:00",
+    ),
+    force_rerun=True,
+    recompute_artifacts=True,
+)
+def legacy_decorator_parameters_in_tests(
+    args: BinaryOperationInput, **kwargs
+) -> FloatData:
+    return FloatData(value=args.arg1.value)
 
 
 def test_adder():
@@ -114,3 +133,18 @@ def test_call_path():
         )
     )
     assert result.value == 135335, f"Expected 135335, got {result}"
+
+
+def test_legacy_decorator_parameter_kwargs_are_applied_to_parameters():
+    parameters = legacy_decorator_parameters_in_tests._node_parameters
+
+    assert parameters.resource == "local"
+    assert parameters.queue == "slurm-queue"
+    assert parameters.force_rerun is True
+    assert parameters.recompute_artifacts is True
+    assert parameters.slurm_parameters.nodes == 3
+    assert parameters.slurm_parameters.tasks is None
+    assert parameters.slurm_parameters.tasks_per_node == 2
+    assert parameters.slurm_parameters.cpus_per_task == 4
+    assert parameters.slurm_parameters.mem == "9G"
+    assert parameters.slurm_parameters.time == "03:00:00"
