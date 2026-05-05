@@ -20,6 +20,7 @@ from typing import (
 import coolname  # type: ignore[import-untyped]
 import nest_asyncio  # type: ignore[import-untyped]
 from odmantic import Model, ObjectId
+from pydantic import BaseModel
 
 from simstack.core.artifacts import create_artifacts, ArtifactArguments
 from simstack.core.context import context
@@ -51,6 +52,18 @@ def default_name_generator() -> str:
     return str("-".join(coolname.generate(2)))
 
 
+def hashable_value(value: Any) -> Any:
+    if isinstance(value, BaseModel):
+        return hashable_inputs(value)
+    if isinstance(value, list):
+        return [hashable_value(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(hashable_value(item) for item in value)
+    if isinstance(value, dict):
+        return {key: hashable_value(item) for key, item in value.items()}
+    return value
+
+
 def hashable_inputs(arg: Any) -> dict[str, Any]:
     """
     Get the hashable inputs for the node. This allows exclusion of some fields from the hash.
@@ -58,7 +71,11 @@ def hashable_inputs(arg: Any) -> dict[str, Any]:
     Returns:
         dict: The hashable inputs.
     """
-    return {key: value for key, value in arg.__dict__.items() if key not in ["id"]}
+    return {
+        key: hashable_value(value)
+        for key, value in arg.__dict__.items()
+        if key not in ["id"]
+    }
 
 
 def compute_arg_hash(args: List[Model]) -> str:
@@ -296,7 +313,7 @@ class Node:
             raise ValueError("Database is not connected")
 
         arg_hash = compute_arg_hash(self._args)
-        function_hash = complex_hash_function(self._func)
+        function_hash = cast(str, complex_hash_function(self._func))
 
         self.registry_entry = (
             await context.db.load_task(self.name, arg_hash, function_hash)
@@ -793,7 +810,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
         )
         if registry_entry.function_hash == "NOT INITIALIZED":
-            registry_entry.function_hash = complex_hash_function(func)
+            registry_entry.function_hash = cast(str, complex_hash_function(func))
             registry_entry.is_async = asyncio.iscoroutinefunction(func)
             duplicate_entry = await engine.find_one(
                 NodeRegistry,

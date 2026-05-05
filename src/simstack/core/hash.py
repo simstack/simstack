@@ -1,5 +1,7 @@
 import hashlib
 import inspect
+from collections.abc import Callable, Iterable, Mapping
+from typing import Any, cast
 
 from odmantic import ObjectId
 
@@ -19,7 +21,10 @@ hash_exclusions = [
 ]
 
 
-def is_iterable(obj):
+HashResult = str | int
+
+
+def is_iterable(obj: Any) -> bool:
     try:
         iter(obj)
         return True
@@ -27,15 +32,15 @@ def is_iterable(obj):
         return False
 
 
-def is_primitive_type(obj):
+def is_primitive_type(obj: Any) -> bool:
     return isinstance(obj, (int, float, bytes, bool, bytearray, type(None)))
 
 
-def hash_value(value):
+def hash_value(value: Any) -> str:
     return hashlib.sha256(str(value).encode()).hexdigest()
 
 
-def hash_class_def(cls):
+def hash_class_def(cls: type[Any]) -> str:
     try:
         source_code = inspect.getsource(cls)
         source_hash = hashlib.sha256(source_code.encode("utf-8")).hexdigest()
@@ -52,16 +57,16 @@ def hash_class_def(cls):
         return "no source code"
 
 
-def hash_iterable(iterable):
-    hash_value = b""
+def hash_iterable(iterable: Iterable[Any]) -> str:
+    hash_text = ""
     for count, item in enumerate(iterable):
-        hash_value += complex_hash_function(item)
+        hash_text += str(complex_hash_function(item))
         if count > max_iterable_hash_count:
             break
-    return hashlib.sha256(hash_value.encode("utf-8")).hexdigest()
+    return hashlib.sha256(hash_text.encode("utf-8")).hexdigest()
 
 
-def hash_function_body(func):
+def hash_function_body(func: Callable[..., Any]) -> str:
     # Get the source code of the function
     source_code = inspect.getsource(func)
     # Compute the hash of the source code
@@ -70,8 +75,8 @@ def hash_function_body(func):
     return hash_digest
 
 
-def hash_non_callable_members(instance):
-    hashed_values = {}
+def hash_non_callable_members(instance: Any) -> dict[str, str]:
+    hashed_values: dict[str, str] = {}
     for attr_name, attr_value in vars(instance).items():
         if not callable(attr_value):
             hashed_values[attr_name] = hashlib.sha256(
@@ -81,17 +86,17 @@ def hash_non_callable_members(instance):
 
 
 class ComplexHash:
-    def __init__(self, obj):
-        self.hash_history = []
+    def __init__(self, obj: Any) -> None:
+        self.hash_history: list[Any] = []
 
-    def hash_dict(self, obj):
-        hashed_values = {}
+    def hash_dict(self, obj: Mapping[Any, Any]) -> str:
+        hashed_values: dict[Any, HashResult] = {}
         for k, v in obj.items():
             hashed_values[k] = self.complex_hash(v)
         combined_hash = "".join(f"{k}:{v}" for k, v in sorted(hashed_values.items()))
         return hashlib.sha256(combined_hash.encode("utf-8")).hexdigest()
 
-    def hash_class(self, cls_obj):
+    def hash_class(self, cls_obj: Any) -> str:
         # check is the class name starts with a name in the hash_exclusions list
         class_type = cls_obj.__class__
         class_name = class_type.__module__ + "." + class_type.__name__
@@ -116,12 +121,10 @@ class ComplexHash:
         dict_hash = self.hash_dict(obj_dict)
         if hasattr(cls_obj, "model_extra") and cls_obj.model_extra is not None:
             dict_hash = dict_hash + self.hash_dict(cls_obj.model_extra)
-        if hasattr(cls_obj, "model_fields") and cls_obj.model_fields is not None:
-            dict_hash = dict_hash + self.hash_dict(cls_obj.model_fields)
         combined_hash = class_hash + dict_hash
         return hashlib.sha256(combined_hash.encode("utf-8")).hexdigest()
 
-    def complex_hash(self, obj):
+    def complex_hash(self, obj: Any) -> HashResult:
         # TODO: are the functions of a class hashed correctly?
 
         if isinstance(obj, type):
@@ -142,7 +145,7 @@ class ComplexHash:
                     return "recursive"
                 self.hash_history.append(obj)
                 if hasattr(obj, "complex_hash"):
-                    return obj.complex_hash()
+                    return cast(HashResult, obj.complex_hash())
                 return self.hash_class(obj.__self__)
             else:
                 return hash_function_body(obj)
@@ -152,12 +155,12 @@ class ComplexHash:
                 return "recursive"
             self.hash_history.append(obj)
             if hasattr(obj, "complex_hash"):
-                return obj.complex_hash()
+                return cast(HashResult, obj.complex_hash())
             return self.hash_class(obj)
         elif isinstance(obj, dict):
             return self.hash_dict(obj)
         elif is_iterable(obj):
-            hashed_values = {}
+            hashed_values: dict[int, HashResult] = {}
             count = 0
             for i, item in enumerate(obj):
                 hashed_values[i] = self.complex_hash(item)
@@ -172,5 +175,5 @@ class ComplexHash:
             return hash_value(obj)
 
 
-def complex_hash_function(obj):
+def complex_hash_function(obj: Any) -> HashResult:
     return ComplexHash(obj).complex_hash(obj)
