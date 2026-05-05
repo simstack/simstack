@@ -40,6 +40,39 @@ def test_normalize_slurm_allocation_rejects_tasks_per_node_without_nodes_or_task
         normalize_and_validate_effective_parameters(parameters)
 
 
+def test_normalize_non_slurm_queue_clears_stale_slurm_submission_fields():
+    parameters = Parameters(
+        queue="default",
+        slurm_parameters=SlurmParameters(
+            nodes=4,
+            tasks=8,
+            tasks_per_node=2,
+            mem="16G",
+            time="04:00:00",
+            partition="batch",
+            job_name="previous-slurm-job",
+            output="/old/%j.out",
+            error="/old/%j.err",
+            startup_commands=["run previous node"],
+            chdir="/old/workdir",
+        ),
+    )
+
+    normalize_and_validate_effective_parameters(parameters)
+
+    assert parameters.slurm_parameters.nodes is None
+    assert parameters.slurm_parameters.tasks is None
+    assert parameters.slurm_parameters.tasks_per_node is None
+    assert parameters.slurm_parameters.mem is None
+    assert parameters.slurm_parameters.time is None
+    assert parameters.slurm_parameters.partition is None
+    assert parameters.slurm_parameters.job_name is None
+    assert parameters.slurm_parameters.output is None
+    assert parameters.slurm_parameters.error is None
+    assert parameters.slurm_parameters.startup_commands == []
+    assert parameters.slurm_parameters.chdir is None
+
+
 async def _delete_all(engine, model):
     existing = await engine.find(model)
     for item in existing:
@@ -236,6 +269,35 @@ async def test_resolve_resource_assignment_allows_nested_slurm_from_base_paramet
 
 
 @pytest.mark.asyncio
+async def test_resolve_resource_assignment_without_call_path_clears_stale_slurm(
+    odmantic_engine,
+):
+    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+
+    resolution = await resolve_resource_assignment(
+        odmantic_engine,
+        call_path="",
+        base_parameters=Parameters(
+            queue="default",
+            slurm_parameters=SlurmParameters(
+                nodes=2,
+                time="02:00:00",
+                output="/old/%j.out",
+                startup_commands=["run old node"],
+            ),
+        ),
+    )
+
+    assert resolution.normalized_call_path == ""
+    assert resolution.matched_rule is None
+    assert resolution.parameters.queue == "default"
+    assert resolution.parameters.slurm_parameters.nodes is None
+    assert resolution.parameters.slurm_parameters.time is None
+    assert resolution.parameters.slurm_parameters.output is None
+    assert resolution.parameters.slurm_parameters.startup_commands == []
+
+
+@pytest.mark.asyncio
 async def test_apply_resource_assignment_sets_trace_fields(odmantic_engine):
     await _delete_all(odmantic_engine, ResourceAssignmentRule)
 
@@ -304,6 +366,45 @@ async def test_node_registry_creation_applies_resource_assignment(odmantic_engin
         registry_entry.assignment_pattern
         == "workflow.resource_assignment_probe_in_tests"
     )
+
+
+@pytest.mark.asyncio
+async def test_direct_node_creation_uses_default_call_path_and_syncs_assignment(
+    odmantic_engine,
+):
+    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+    await _ensure_probe_node_model(odmantic_engine)
+
+    await odmantic_engine.save(
+        ResourceAssignmentRule(
+            name="direct-probe-slurm",
+            regex_pattern="resource_assignment_probe_in_tests",
+            resource_str="cluster-a",
+            queue="slurm-queue",
+            slurm_parameters_patch=SlurmParametersPatch(nodes=3, time="03:00:00"),
+        )
+    )
+
+    probe_node = Node(
+        func=resource_assignment_probe_in_tests,
+        is_async=False,
+        parameters=Parameters(),
+    )
+
+    registry_entry = await probe_node.make_registry_entry(
+        function_hash="direct-probe-function-hash",
+        arg_hash="direct-probe-arg-hash",
+    )
+
+    assert registry_entry.call_path == ".resource_assignment_probe_in_tests"
+    assert registry_entry.assignment_rule_name == "direct-probe-slurm"
+    assert registry_entry.parameters.resource == "cluster-a"
+    assert registry_entry.parameters.queue == "slurm-queue"
+    assert registry_entry.parameters.slurm_parameters.nodes == 3
+    assert registry_entry.parameters.slurm_parameters.time == "03:00:00"
+    assert probe_node.parameters.resource == "cluster-a"
+    assert probe_node.parameters.queue == "slurm-queue"
+    assert probe_node.parameters.slurm_parameters.nodes == 3
 
 
 @pytest.mark.asyncio

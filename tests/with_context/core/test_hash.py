@@ -1,13 +1,15 @@
-from simstack.core.context import context
-from simstack.core.hash import hash_value, complex_hash_function
 import hashlib
-
-from simstack.models import FloatData
-
-from pathlib import Path
-from simstack.models.files import FileStack
-import uuid
 import shutil
+import uuid
+from pathlib import Path
+
+from odmantic import EmbeddedModel, Model
+
+from simstack.core.context import context
+from simstack.core.hash import complex_hash_function, hash_value
+from simstack.core.node import compute_arg_hash
+from simstack.models import FloatData
+from simstack.models.files import FileStack
 
 
 def test_hash_value_with_string():
@@ -51,6 +53,41 @@ def test_basic_hashing():
     float_data1 = FloatData(value=1.0)
     float_data2 = FloatData(value=1.0)
     assert complex_hash_function(float_data1) == complex_hash_function(float_data2)
+
+
+def test_model_hash_uses_values_without_model_fields_metadata():
+    class ModelFieldsSentinel:
+        def __init__(self, value):
+            self.value = value
+
+        @property
+        def model_fields(self):
+            raise AssertionError("model_fields should not be part of instance hashing")
+
+    assert complex_hash_function(ModelFieldsSentinel(1)) == complex_hash_function(
+        ModelFieldsSentinel(1)
+    )
+    assert complex_hash_function(ModelFieldsSentinel(1)) != complex_hash_function(
+        ModelFieldsSentinel(2)
+    )
+
+
+def test_compute_arg_hash_serializes_nested_models_by_value():
+    class SlowNestedModel(EmbeddedModel):
+        value: int
+
+        def complex_hash(self):
+            raise AssertionError("nested custom hashes should not be called")
+
+    class ParentModel(Model):
+        child: SlowNestedModel
+
+    hash_1 = compute_arg_hash([ParentModel(child=SlowNestedModel(value=1))])
+    hash_1_again = compute_arg_hash([ParentModel(child=SlowNestedModel(value=1))])
+    hash_2 = compute_arg_hash([ParentModel(child=SlowNestedModel(value=2))])
+
+    assert hash_1 == hash_1_again
+    assert hash_1 != hash_2
 
 
 def test_filestack_in_memory_hash():
