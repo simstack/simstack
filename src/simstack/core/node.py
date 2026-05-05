@@ -26,6 +26,7 @@ from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.engine import current_engine_context
 from simstack.core.hash import complex_hash_function
+from simstack.core.node_claim import claim_submitted_node
 from simstack.core.node_runner import NodeRunner
 from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
 from simstack.core.simstack_result import SimstackResult
@@ -423,6 +424,12 @@ class Node:
             result = await self.execute_node_locally()
             return result
         else:
+            if await self._submit_slurm_child_from_current_resource():
+                logger.info(
+                    "Task task_id: %s submitted nested Slurm child directly from resource %s",
+                    self.id,
+                    context.config.resource,
+                )
             # the task will be executed somewhere else
             # wait for the database status to change
             while True:
@@ -446,6 +453,21 @@ class Node:
                 return await self.load_results()
             else:
                 return None
+
+    async def _submit_slurm_child_from_current_resource(self) -> bool:
+        if self.registry_entry is None:
+            return False
+        if self.parameters.queue != Queue.SLURM_QUEUE:
+            return False
+        if self.parameters.resource != context.config.resource:
+            return False
+        if not await claim_submitted_node(self.registry_entry):
+            return False
+
+        from simstack.core.submit_node import submit_node
+
+        await submit_node(self.registry_entry)
+        return True
 
     async def execute_node_locally(self) -> Union[Model, SimstackResult, None]:
         """
