@@ -1,18 +1,7 @@
 import inspect
 import logging
 import re
-import types
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Type,
-    Union,
-    get_args,
-    get_origin,
-    get_type_hints,
-)
+from typing import Callable, List, get_type_hints, Dict, Any, Type
 
 
 from simstack.core.simstack_result import SimstackResult
@@ -74,17 +63,17 @@ class CreateNodeTable(TableBuilderBase):
             if param_name == "self":  # Skip self parameter for methods
                 continue
 
-            param_type = type_hints.get(param_name)
-            if param_type is None:
-                param_type = (
-                    param.annotation
-                    if param.annotation != inspect.Parameter.empty
-                    else "Any"
-                )
             param_info: Dict[str, Any] = {
                 "name": param_name,
-                "type": param_type,
-                "type_str": str(param_type),
+                "type": type_hints.get(param_name, param.annotation.__name__),
+                "type_str": str(
+                    type_hints.get(
+                        param_name,
+                        param.annotation.__name__
+                        if param.annotation != inspect.Parameter.empty
+                        else "Any",
+                    )
+                ),
             }
 
             if doc_params and param_name in doc_params:
@@ -322,10 +311,19 @@ class CreateNodeTable(TableBuilderBase):
 
         try:
             for specific_input in inputs:
-                if specific_input.get("type"):
-                    input_mapping = self.get_class_mapping(
-                        specific_input["type"], drops
+                if (
+                    specific_input.get("type")
+                    and hasattr(specific_input["type"], "__module__")
+                    and hasattr(specific_input["type"], "__name__")
+                ):
+                    input_mapping = (
+                        specific_input["type"].__module__
+                        + "."
+                        + specific_input["type"].__name__
                     )
+
+                    if drops and input_mapping.startswith(drops + "."):
+                        input_mapping = input_mapping[len(drops) + 1 :]
 
                     input_mapping_found = await self.engine.find_one(
                         ModelMapping, ModelMapping.mapping == input_mapping
@@ -341,35 +339,15 @@ class CreateNodeTable(TableBuilderBase):
 
         return input_mappings
 
-    @staticmethod
-    def _unwrap_optional_type(typ: Any) -> Any:
-        origin = get_origin(typ)
-        is_union = isinstance(typ, types.UnionType) or origin in (
-            Union,
-            types.UnionType,
-        )
-        if not is_union:
-            return typ
-
-        args = [arg for arg in get_args(typ) if arg is not type(None)]
-        if len(args) == 1:
-            return args[0]
-        return typ
-
-    def get_class_mapping(self, typ: Type, drops: str = "") -> str:
-        """Return the class mapping for a given type, optionally dropping a prefix.
-
-        Optional model annotations are mapped to their concrete model type, so
-        both ``FloatData | None`` and ``typing.Optional[FloatData]`` resolve to
-        the same mapping as ``FloatData``.
-        """
-        typ = self._unwrap_optional_type(typ)
-        if hasattr(typ, "__module__") and hasattr(typ, "__name__"):
-            mapping = typ.__module__ + "." + typ.__name__
+    def get_class_mapping(self, type: Type, drops: str = "") -> str:
+        """Return the class mapping for a given type, optionally dropping a prefix."""
+        if hasattr(type, "__module__") and hasattr(type, "__name__"):
+            mapping = type.__module__ + "." + type.__name__
             if drops and mapping.startswith(drops + "."):
                 mapping = mapping[len(drops) + 1 :]
             return mapping
-        raise ValueError(f"Could not parse '{typ}' to mapping")
+        else:
+            raise ValueError(f"Could not parse '{type}' to mapping")
 
     async def _register_nodes_from_module(self, module: Any, drops: str) -> None:
         """
@@ -420,13 +398,15 @@ class CreateNodeTable(TableBuilderBase):
 
                 data_mappings = []
                 for data_input, input_mapping in zip(inputs, input_mappings):
-                    if data_input.get("type"):
+                    if data_input.get("type") and hasattr(
+                        data_input["type"], "__name__"
+                    ):
                         data_input_mapping = self.get_class_mapping(
                             data_input["type"], drops
                         )
                         if data_input_mapping != input_mapping:
                             self.logger.error(
-                                f"Type mismatch for input '{data_input['name']}': expected '{data_input_mapping}', got '{input_mapping}'"
+                                f"Type mismatch for input '{data_input['name']}': expected '{data_input['type'].__name__}', got '{input_mapping}'"
                             )
                     else:
                         self.logger.error(
