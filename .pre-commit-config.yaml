@@ -21,16 +21,10 @@ repos:
         exclude: ^(applications|examples|doc|docs)/
   - repo: local
     hooks:
-      - id: pixi-install
-        name: pixi-install
-        entry: pixi install -e mypy
-        language: system
-        always_run: true
-        require_serial: true
-        pass_filenames: false
       - id: mypy
         name: mypy
-        entry: "pixi run -e mypy mypy"
+        entry: uv run mypy --follow-imports=skip
         language: system
-        pass_filenames: false
+        types: [python]
+        exclude: ^(tests|applications|examples|doc|docs)/
         require_serial: true

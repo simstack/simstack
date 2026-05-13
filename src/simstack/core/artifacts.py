@@ -185,7 +185,7 @@ async def create_artifacts(
 
                 for artifact in artifact_result:
                     if artifact is None:
-                        logger.warning("{log_string_mapping} Artifact is None, skipping.")
+                        logger.warning(f"{log_string_mapping} Artifact is None, skipping.")
                         continue
                     if isinstance(artifact, TableArtifactModel):
                         artifact.parent_id = node_registry.id

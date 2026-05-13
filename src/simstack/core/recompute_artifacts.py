@@ -73,7 +73,7 @@ async def recompute_artifacts(node_registry: NodeRegistry):
 
     # Recompute artifacts for this node
     if node_registry.status == TaskStatus.COMPLETED:
-        logger.info(f"Recomputing artifacts for node {node_registry.id}")
+        logger.info(f"Recomputing artifacts for node {node_registry.id} {node_registry.name}")
 
         # Load the result to create new artifacts
         result = await node.load_results()

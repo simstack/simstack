@@ -3,8 +3,6 @@ import logging
 import re
 from typing import Callable, List, get_type_hints, Dict, Any, Type
 
-from docutils.nodes import description
-from odmantic.query import desc
 
 from simstack.core.simstack_result import SimstackResult
 from simstack.tables.node_children import update_node_children
@@ -17,7 +15,7 @@ from simstack.util.importer import import_class_by_name
 logger = logging.getLogger("NodeTable")
 
 
-def is_node_function(func: Callable) -> bool:
+def is_node_function(func: Callable[..., Any]) -> bool:
     """Check if a function is marked as a node using the @node decorator."""
     return hasattr(func, "_is_node") and getattr(func, "_is_node", False) is True
 
@@ -35,14 +33,18 @@ class CreateNodeTable(TableBuilderBase):
     def logger(self) -> logging.Logger:
         return logger
 
-    async def _process_module(self, module, drops: str) -> None:
+    async def _process_module(self, module: Any, drops: str) -> None:
         await self._register_nodes_from_module(module, drops)
 
-    def _discover_module_functions(self, module) -> List[tuple[str, Callable]]:
+    def _discover_module_functions(
+        self, module: Any
+    ) -> List[tuple[str, Callable[..., Any]]]:
         """
         Return (name, func) for functions that are defined in `module` (not imported).
         """
-        functions: List[tuple[str, Callable]] = inspect.getmembers(module, inspect.isfunction)
+        functions: List[tuple[str, Callable[..., Any]]] = inspect.getmembers(
+            module, inspect.isfunction
+        )
         module_name = module.__name__
         return [
             (func_name, func)
@@ -84,29 +86,44 @@ class CreateNodeTable(TableBuilderBase):
 
         return inputs
 
-    def _parse_generic_type(self, type_str: str) -> tuple[str, str | None]:
+    def _parse_generic_type(self, type_str: str) -> tuple[str | None, str | None]:
         """
         Parse generic types like List[X] or Dict[str,X] and extract the inner type.
         Returns (wrapper, inner_type) where wrapper is 'List' or 'Dict' and inner_type is the model type.
         """
-        list_match = re.match(r'List\[(.*?)\]', type_str)
+        list_match = re.match(r"List\[(.*?)\]", type_str)
         if list_match:
-            return 'List', list_match.group(1)
+            return "List", list_match.group(1)
 
-        dict_match = re.match(r'Dict\[str,\s*(.*?)\]', type_str)
+        dict_match = re.match(r"Dict\[str,\s*(.*?)\]", type_str)
         if dict_match:
-            return 'Dict', dict_match.group(1)
+            return "Dict", dict_match.group(1)
 
         return None, None
 
-    async def _build_outputs(
-            self,
-            func_name: str,
-            type_hints: Dict[str, Any],
-            parser: DocstringParser,
-            drops: str
-    ) -> List[DataMapping]:
+    @staticmethod
+    def _normalize_docstring_type(type_str: str) -> str:
+        """Strip top-level docstring qualifiers like ', optional' from a parsed type string."""
+        normalized = (type_str or "").strip()
+        bracket_depth = 0
 
+        for index, char in enumerate(normalized):
+            if char == "[":
+                bracket_depth += 1
+            elif char == "]" and bracket_depth > 0:
+                bracket_depth -= 1
+            elif char == "," and bracket_depth == 0:
+                return normalized[:index].strip()
+
+        return normalized
+
+    async def _build_outputs(
+        self,
+        func_name: str,
+        type_hints: Dict[str, Any],
+        parser: DocstringParser,
+        drops: str,
+    ) -> List[DataMapping]:
         outputs: List[Dict[str, Any]] = []
         return_type = type_hints.get("return", None)
         doc_returns = parser.returns()
@@ -120,63 +137,99 @@ class CreateNodeTable(TableBuilderBase):
                 output_info["description"] = doc_returns.get("description")
             outputs.append(output_info)
 
-        returns_simstack_result = any(output["type"] == SimstackResult for output in outputs)
+        returns_simstack_result = any(
+            output["type"] == SimstackResult for output in outputs
+        )
         result_mappings = []
         if returns_simstack_result:
             if len(outputs) > 1:
-                logger.warning(f"Node {func_name} returns more than one output, one of which is SimstackResult")
+                logger.warning(
+                    f"Node {func_name} returns more than one output, one of which is SimstackResult"
+                )
             else:
                 doc_simstack_result = parser.simstack_results()
                 if doc_simstack_result is None:
-                    logger.warning(f"The docstring of {func_name} does not defines its SimstackResult outputs")
+                    logger.warning(
+                        f"The docstring of {func_name} does not defines its SimstackResult outputs"
+                    )
                 else:
                     for name, data in doc_simstack_result.items():
                         output_mapping = None
+                        output_type = self._normalize_docstring_type(data["type"])
                         try:
-                            wrapper, inner_type_str = self._parse_generic_type(data["type"])
+                            wrapper, inner_type_str = self._parse_generic_type(
+                                output_type
+                            )
                             if wrapper:
+                                if inner_type_str is None:
+                                    raise ValueError(
+                                        f"Could not parse inner type for '{output_type}'"
+                                    )
                                 # Handle List[type] or Dict[str,type]
                                 inner_mapping = None
                                 if "." in inner_type_str:
                                     inner_mapping = inner_type_str
                                 else:
                                     try:
-                                        inner_model = await import_class_by_name(inner_type_str)
+                                        inner_model = await import_class_by_name(
+                                            inner_type_str
+                                        )
                                     except (ValueError, LookupError):
                                         inner_model = None
                                     if inner_model is not None:
-                                        inner_mapping = self.get_class_mapping(inner_model, drops)
+                                        inner_mapping = self.get_class_mapping(
+                                            inner_model, drops
+                                        )
                                 if inner_mapping is not None:
-                                    if wrapper == 'List':
+                                    if wrapper == "List":
                                         output_mapping = f"List[{inner_mapping}]"
                                     else:  # Dict
                                         output_mapping = f"Dict[str,{inner_mapping}]"
-                            elif "." in data["type"]:
+                            elif "." in output_type:
                                 # It's a full mapping path
-                                output_mapping = data["type"]
+                                output_mapping = output_type
                             else:
                                 # It's a single class name
                                 try:
-                                    output_model = await import_class_by_name(data["type"])
-                                    output_mapping = self.get_class_mapping(output_model, drops)
+                                    output_model = await import_class_by_name(
+                                        output_type
+                                    )
+                                    output_mapping = self.get_class_mapping(
+                                        output_model, drops
+                                    )
                                 except (ValueError, LookupError) as e:
-                                    logger.error(f"Could not parse '{data['type']}' to mapping: {e}")
+                                    logger.error(
+                                        f"Could not parse '{data['type']}' to mapping: {e}"
+                                    )
                                     output_mapping = None
                             if output_mapping is not None:
-                                result_mappings.append(DataMapping(name=name, mapping=output_mapping, description=data.get("description")))
+                                result_mappings.append(
+                                    DataMapping(
+                                        name=name,
+                                        mapping=output_mapping,
+                                        description=data.get("description"),
+                                    )
+                                )
                         except (ValueError, LookupError) as e:
-                            logger.error(f"Could not parse '{data['type']}' to mapping: {e}")
+                            logger.error(
+                                f"Could not parse '{data['type']}' to mapping: {e}"
+                            )
         else:  # not a SimstackResult
             for output in outputs:
                 try:
                     output_mapping = self.get_class_mapping(output["type"], drops)
-                    result_mappings.append(DataMapping(name=output["name"], mapping=output_mapping, description=output.get("description")))
+                    result_mappings.append(
+                        DataMapping(
+                            name=output["name"],
+                            mapping=output_mapping,
+                            description=output.get("description"),
+                        )
+                    )
                 except ValueError:
                     logger.error(f"Could not parse '{output['type']}' to mapping")
         return result_mappings
 
-
-    def _extract_default_parameters(self, func: Callable) -> Parameters:
+    def _extract_default_parameters(self, func: Callable[..., Any]) -> Parameters:
         """
         Best-effort extraction of node Parameters from either a direct attribute
         or from closure variables. Always returns a non-None Parameters().
@@ -198,9 +251,9 @@ class CreateNodeTable(TableBuilderBase):
         return parameters
 
     async def _delete_existing_node_model_if_needed(
-            self,
-            node_name: str,
-            function_mapping: str,
+        self,
+        node_name: str,
+        function_mapping: str,
     ) -> tuple[bool, bool]:
         """
         If a NodeModel with the same name exists, delete it (and its pickle if present),
@@ -210,7 +263,9 @@ class CreateNodeTable(TableBuilderBase):
             (should_skip, existing_favorite)
         """
         try:
-            existing_model = await self.engine.find_one(NodeModel, NodeModel.name == node_name)
+            existing_model = await self.engine.find_one(
+                NodeModel, NodeModel.name == node_name
+            )
         except Exception as e:
             logger.error(f"Error finding existing NodeModel {node_name}: {e}")
             return False, False
@@ -241,12 +296,11 @@ class CreateNodeTable(TableBuilderBase):
 
         return False, existing_favorite
 
-
     async def _resolve_input_mappings(
-            self,
-            node_name: str,
-            inputs: List[Dict[str, Any]],
-            drops: str,
+        self,
+        node_name: str,
+        inputs: List[Dict[str, Any]],
+        drops: str,
     ) -> List[str]:
         """
         Convert input python types to ModelMapping.mapping strings and validate their existence.
@@ -258,14 +312,14 @@ class CreateNodeTable(TableBuilderBase):
         try:
             for specific_input in inputs:
                 if (
-                        specific_input.get("type")
-                        and hasattr(specific_input["type"], "__module__")
-                        and hasattr(specific_input["type"], "__name__")
+                    specific_input.get("type")
+                    and hasattr(specific_input["type"], "__module__")
+                    and hasattr(specific_input["type"], "__name__")
                 ):
                     input_mapping = (
-                            specific_input["type"].__module__
-                            + "."
-                            + specific_input["type"].__name__
+                        specific_input["type"].__module__
+                        + "."
+                        + specific_input["type"].__name__
                     )
 
                     if drops and input_mapping.startswith(drops + "."):
@@ -290,12 +344,12 @@ class CreateNodeTable(TableBuilderBase):
         if hasattr(type, "__module__") and hasattr(type, "__name__"):
             mapping = type.__module__ + "." + type.__name__
             if drops and mapping.startswith(drops + "."):
-                mapping = mapping[len(drops) + 1:]
+                mapping = mapping[len(drops) + 1 :]
             return mapping
         else:
             raise ValueError(f"Could not parse '{type}' to mapping")
 
-    async def _register_nodes_from_module(self, module, drops: str):
+    async def _register_nodes_from_module(self, module: Any, drops: str) -> None:
         """
         Core logic to discover node functions in a module and (re)create NodeModel entries.
 
@@ -311,11 +365,9 @@ class CreateNodeTable(TableBuilderBase):
 
             sig = inspect.signature(func)
 
-
             parser = DocstringParser(inspect.getdoc(func))
             doc_description = parser.description()
             doc_params = parser.params()
-            doc_returns = parser.returns()
 
             type_hints = get_type_hints(func)
 
@@ -326,28 +378,51 @@ class CreateNodeTable(TableBuilderBase):
             node_description = getattr(func, "_node_description", doc_description or "")
 
             if not inputs:
-                logger.warning(f"{node_name} has no inputs -- this means the node will be executed only once.")
+                logger.warning(
+                    f"{node_name} has no inputs -- this means the node will be executed only once."
+                )
 
-            input_mappings = await self._resolve_input_mappings(node_name, inputs, drops)
+            input_mappings = await self._resolve_input_mappings(
+                node_name, inputs, drops
+            )
             function_mapping = module.__name__ + "." + func_name
             try:
-                should_skip, existing_favorite = await self._delete_existing_node_model_if_needed(
+                (
+                    should_skip,
+                    existing_favorite,
+                ) = await self._delete_existing_node_model_if_needed(
                     node_name, function_mapping
                 )
                 if should_skip:
                     continue
 
                 data_mappings = []
-                for data_input, input_mapping in zip(inputs,input_mappings):
-                    if data_input.get("type") and hasattr(data_input["type"], "__name__"):
-                        data_input_mapping = self.get_class_mapping(data_input["type"], drops)
+                for data_input, input_mapping in zip(inputs, input_mappings):
+                    if data_input.get("type") and hasattr(
+                        data_input["type"], "__name__"
+                    ):
+                        data_input_mapping = self.get_class_mapping(
+                            data_input["type"], drops
+                        )
                         if data_input_mapping != input_mapping:
-                            self.logger.error(f"Type mismatch for input '{data_input['name']}': expected '{data_input['type'].__name__}', got '{input_mapping}'")
+                            self.logger.error(
+                                f"Type mismatch for input '{data_input['name']}': expected '{data_input['type'].__name__}', got '{input_mapping}'"
+                            )
                     else:
-                        self.logger.error(f"No type specified for input '{data_input['name']}'")
-                    data_mappings.append(DataMapping(name=data_input['name'], mapping=input_mapping, description=data_input.get("description")))
+                        self.logger.error(
+                            f"No type specified for input '{data_input['name']}'"
+                        )
+                    data_mappings.append(
+                        DataMapping(
+                            name=data_input["name"],
+                            mapping=input_mapping,
+                            description=data_input.get("description"),
+                        )
+                    )
 
-                result_mappings = await self._build_outputs(func_name, type_hints, parser, drops)
+                result_mappings = await self._build_outputs(
+                    func_name, type_hints, parser, drops
+                )
 
                 node_model = NodeModel(
                     name=node_name,
@@ -355,7 +430,7 @@ class CreateNodeTable(TableBuilderBase):
                     description=node_description,
                     input_mappings=data_mappings,
                     result_mappings=result_mappings,
-                    called_nodes=[], # we need to first build the full list, will be filled in second_stage
+                    called_nodes=[],  # we need to first build the full list, will be filled in second_stage
                     default_parameters=parameters,
                     pickle_function=None,
                     favorite=existing_favorite,
@@ -372,20 +447,21 @@ class CreateNodeTable(TableBuilderBase):
 
                 traceback.print_exc()
 
-    async def second_stage(self, drops):
+    async def second_stage(self, drops: str) -> None:
         await update_node_children(self.engine, drops)
 
     async def clear_table(self) -> None:
         self.logger.info("Clearing NodeModel collection")
         await self.engine.get_collection(NodeModel).drop()
 
+
 async def make_node_table(
-    engine,
-    dirs: list[str] = None,
-    drops: str = None,
+    engine: Any,
+    dirs: list[str] | None = None,
+    drops: str | None = None,
     write_schema: bool = False,
     clear: bool = False,
-):
+) -> None:
     """
     Rebuild the node table using the given engine.
 
@@ -395,7 +471,7 @@ async def make_node_table(
     await creator.build(dirs=dirs, drops=drops, clear=clear)
 
 
-def create_node_table_main():
+def create_node_table_main() -> None:
     """
     CLI-style entry point to (re)build the node table.
 

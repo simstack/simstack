@@ -175,7 +175,7 @@ class TestDataSet:
     async def test_empty_dataset_initialization(self, real_database_context):
         """Test creating an empty DataSet."""
         metadata = DataSetMetadata(
-            dataset_type="test_empty_with_description",
+            field_name="test_empty_with_description",
             data={"description": "Empty test dataset"},
         )
 
@@ -183,7 +183,7 @@ class TestDataSet:
         engine = current_engine_context.get()
         await dataset.save(engine)
 
-        assert dataset.dataset_type == "test_empty_with_description"
+        assert dataset.metadata.field_name == "test_empty_with_description"
         assert len(dataset) == 0
         assert len(dataset.sections) == 0
 
@@ -192,7 +192,7 @@ class TestDataSet:
         """Test DataSet with multiple sections."""
         # Create metadata
         metadata = DataSetMetadata(
-            dataset_type="test_multi_section",
+            field_name="test_multi_section",
             data={"description": "Multi-section test dataset"},
         )
 
@@ -227,7 +227,7 @@ class TestDataSet:
     async def test_dict_like_operations(self, real_database_context):
         """Test dictionary-like operations on DataSet."""
         metadata = DataSetMetadata(
-            dataset_type="test_dict_ops",
+            field_name="test_dict_ops",
             data={"description": "Dictionary operations test"},
         )
 
@@ -272,7 +272,7 @@ class TestDataSet:
         """Test saving and loading DataSet from the database."""
         # Create metadata
         metadata = DataSetMetadata(
-            dataset_type="test_persistence",
+            field_name="test_persistence",
             data={"version": "1.0", "created": datetime.now()},
         )
 
@@ -298,7 +298,7 @@ class TestDataSet:
         loaded_dataset = await context.db.find_one(DataSet, DataSet.id == dataset_id)
 
         assert loaded_dataset is not None
-        assert loaded_dataset.field_name == "test_persistence"
+        assert loaded_dataset.metadata.field_name == "test_persistence"
         assert len(loaded_dataset) == 1
         assert "main" in loaded_dataset
 
@@ -317,7 +317,7 @@ class TestDataSet:
         """Test a complex workflow with multiple model types and sections."""
         # Create metadata
         metadata = DataSetMetadata(
-            dataset_type="test_complex_workflow",
+            field_name="test_complex_workflow",
             data={"experiment": "ML_Pipeline", "version": "2.1", "samples": 1000},
         )
 
@@ -410,7 +410,7 @@ class TestDataSet:
         await context.db.save(s)
 
         # First dataset defines the structure under dataset_type "ds_struct_v1"
-        meta1 = DataSetMetadata(dataset_type="ds_struct_v1", data={"desc": "v1"})
+        meta1 = DataSetMetadata(field_name="ds_struct_v1", data={"desc": "v1"})
         ds1 = DataSet(metadata=meta1)
 
         sec_a = DataSetSection()
@@ -425,7 +425,7 @@ class TestDataSet:
         await ds1.save(engine)
 
         # Second dataset with SAME dataset_type but DIFFERENT section names, same structure
-        meta2 = DataSetMetadata(dataset_type="ds_struct_v1", data={"desc": "v1 second"})
+        meta2 = DataSetMetadata(field_name="ds_struct_v1", data={"desc": "v1 second"})
         ds2 = DataSet(metadata=meta2)
 
         sec_train = DataSetSection()
@@ -460,7 +460,7 @@ class TestDataSet:
         await context.db.save(s1)
 
         # First dataset establishes structure: {"pair": ["FloatData", "StringData"], "nodes": ["NodeRegistry"]}
-        meta1 = DataSetMetadata(dataset_type="ds_struct_v2", data={"desc": "baseline"})
+        meta1 = DataSetMetadata(field_name="ds_struct_v2", data={"desc": "baseline"})
         ds1 = DataSet(metadata=meta1)
 
         sec_pair = DataSetSection()
@@ -480,7 +480,7 @@ class TestDataSet:
         await context.db.save(f2)
 
         meta2 = DataSetMetadata(
-            dataset_type="ds_struct_v2", data={"desc": "should fail"}
+            field_name="ds_struct_v2", data={"desc": "should fail"}
         )
         ds2 = DataSet(metadata=meta2)
 

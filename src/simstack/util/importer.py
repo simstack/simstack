@@ -13,9 +13,7 @@ async def function_from_model(model, task_id: Optional[ObjectId] = None) -> Opti
     module_path, function_name = function_path.rsplit(".", 1)
 
     if task_id:
-        logger.info(
-         f"task_id: {task_id} loading function {function_path} using regular import"
-        )
+        logger.debug(f"task_id: {task_id} loading function {function_path} using regular import")
     # Import the module
     module = importlib.import_module(module_path)
     # Get the function from the module

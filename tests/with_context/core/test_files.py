@@ -70,7 +70,7 @@ def test_file_instance_creation():
         created_at=datetime(2023, 1, 1, 12, 0, 0),
     )
 
-    assert instance.path == Path("test/path/file.txt")
+    assert instance.path == "test/path/file.txt"
     assert instance.resource.value == "local"
     assert instance.created_at == datetime(2023, 1, 1, 12, 0, 0)
 
@@ -118,12 +118,12 @@ def test_from_local_file_no_copy(test_file, setup_test_env):
         shutil.copy(test_file, full_path)
 
         # Mock the relative_to function
-        with patch.object(Path, "relative_to", return_value=rel_path):
+        with patch.object(Path, "relative_to", return_value=rel_path / test_file.name):
             instance = FileInstance.from_local_file(
                 path=full_path, file_stack_id=file_stack_id, make_copy=False
             )
 
-        assert instance.path == rel_path / test_file.name
+        assert Path(instance.path) == rel_path / test_file.name
         assert instance.resource == context.config.resource
     finally:
         # Clean up temporary files
@@ -135,7 +135,7 @@ def test_from_local_file_error(tmp_path):
     """Test error handling in from_local_file"""
     non_existent_file = tmp_path / "non_existent.txt"
 
-    with pytest.raises(ValueError):
+    with pytest.raises(FileNotFoundError):
         FileInstance.from_local_file(path=non_existent_file, file_stack_id="any_id")
 
 
@@ -270,7 +270,7 @@ def test_get_in_memory(file_stack, setup_test_env):
         os.makedirs(user_dir, exist_ok=True)
 
         # Test
-        result_path = file_stack.get(context.config.resource, user_dir / file_stack.name)
+        result_path = file_stack.get(user_dir)
 
         # Verify
         assert os.path.exists(result_path)
@@ -296,10 +296,10 @@ def test_get_same_resource(file_stack, file_instance, setup_test_env):
         os.makedirs(user_dir, exist_ok=True)
 
 
-        result_path = file_stack.get(context.config.resource, user_dir / file_stack.name)
+        result_path = file_stack.get(user_dir)
 
         # Verify
-        assert result_path == Path(file_instance.path)
+        assert result_path == Path(context.config.workdir) / file_instance.path
 
 
 def test_get_no_suitable_instance(file_stack, setup_test_env):
@@ -317,7 +317,7 @@ def test_get_no_suitable_instance(file_stack, setup_test_env):
 
     # Test
         with pytest.raises(ValueError):
-            file_stack.get(context.config.resource, user_dir / file_stack.name)
+            file_stack.get(user_dir)
 
 
 def test_str_representation(file_stack):
