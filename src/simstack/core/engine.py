@@ -1,7 +1,10 @@
 import asyncio
+import logging
 from contextvars import ContextVar
 from typing import Optional, Any, Iterable
 from odmantic import AIOEngine
+
+logger = logging.getLogger(__name__)
 
 
 class AIOEngineProxy(AIOEngine):
@@ -53,21 +56,32 @@ class AIOEngineProxy(AIOEngine):
         # 3) If neither the model nor any part handled saving, fallback to AIOEngine
         if not parts_saved:
             try:
+                # Motor/Odmantic engine is bound to a specific client, which is bound to a loop.
+                # If the loop changed, we need to ensure we use the current loop's client.
+                # However, super().save uses self.client which might be from a different loop.
                 return await super().save(model, *args, **kwargs)
             except RuntimeError as e:
                 if "attached to a different loop" in str(e):
-                    # Fallback for loop mismatch in tests or edge cases
-                    # Motor/Odmantic sometimes cache the loop.
-                    # Try to use the current loop's motor client if possible,
-                    # but AIOEngine is bound to a specific client.
-                    # If this happens, it's usually because the engine was created in a different loop.
-                    # We can't easily fix the engine here, but we can re-raise with more info
-                    # or try a desperate measure.
-                    # For now, let's just re-raise but ensure we've done our best to avoid it.
+                    # Log the mismatch for debugging
+                    engine_loop = self.client.get_io_loop()
+                    try:
+                        current_loop = asyncio.get_running_loop()
+                    except RuntimeError:
+                        current_loop = None
+                    
+                    logger.error(
+                        f"Loop mismatch detected in AIOEngineProxy.save for {model}. "
+                        f"Engine loop: {id(engine_loop)}, "
+                        f"Current loop: {id(current_loop) if current_loop else 'None'}"
+                    )
+                    
+                    # Try a desperate measure: if we are in a different loop, we might need to 
+                    # use a different engine/client that is bound to the current loop.
+                    # This is tricky because AIOEngine doesn't easily allow changing the client.
                     raise RuntimeError(
                         f"Loop mismatch detected in AIOEngineProxy.save for {model}. "
-                        f"Engine loop: {id(self.client.get_io_loop())}, "
-                        f"Current loop: {id(asyncio.get_running_loop())}"
+                        f"Engine loop: {id(engine_loop)}, "
+                        f"Current loop: {id(current_loop) if current_loop else 'None'}"
                     ) from e
                 raise e
         return None

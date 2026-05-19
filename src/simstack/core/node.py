@@ -254,11 +254,23 @@ class Node:
         if context.db is None:
             raise ValueError("Database is not connected")
 
+        # In tests, the engine can become bound to a different event loop.
+        # Ensure it is using the current loop's engine if possible.
+        from simstack.core.engine import current_engine_context
+        engine = current_engine_context.get()
+        if engine is None:
+            engine = context.db.engine
+
         arg_hash = compute_arg_hash(self._args)
         function_hash = complex_hash_function(self._func)
 
         self.registry_entry = (
-            await context.db.load_task(self.name, arg_hash, function_hash)
+            await engine.find_one(
+                NodeRegistry,
+                (NodeRegistry.name == self.name)
+                & (NodeRegistry.arg_hash == arg_hash)
+                & (NodeRegistry.function_hash == function_hash),
+            )
             if not self.parameters.force_rerun
             else None
         )
