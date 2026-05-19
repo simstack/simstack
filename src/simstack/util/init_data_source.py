@@ -10,6 +10,7 @@ logger = logging.getLogger("init_resource")
 
 async def initialize_resource_from_db(resource_str: str, db: Database, workdir_self: Path) -> ResourceDefinition:
     resource_records = await db.find_all(ResourceDefinition)
+    print("resource_records:",resource_records)
     if resource_records is not None:
         # this is the sign that we can initialize from the database
         allowed_resources_list = [r.resource_str for r in resource_records]
