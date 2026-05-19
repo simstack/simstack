@@ -100,7 +100,7 @@ jobs:
         env:
           SIMSTACK_TEST_USE_REAL_DB: "true"
         run: |
-          uv run python -m pytest tests/with_context/test_create_array_storage --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+          uv run python -m pytest tests/with_context/test_create_array_storage.py --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
           # Verify simstack_runner can be invoked
           #uv run simstack_runner --help
           # Start a real simstack_runner in background for testing if needed
