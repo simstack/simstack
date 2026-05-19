@@ -68,20 +68,18 @@ class AIOEngineProxy(AIOEngine):
                         current_loop = asyncio.get_running_loop()
                     except RuntimeError:
                         current_loop = None
-                    
+
                     logger.error(
                         f"Loop mismatch detected in AIOEngineProxy.save for {model}. "
                         f"Engine loop: {id(engine_loop)}, "
-                        f"Current loop: {id(current_loop) if current_loop else 'None'}"
+                        f"Current loop: {id(current_loop) if current_loop else 'None'}. "
+                        "Try to use the engine from current_engine_context instead of context.db.engine."
                     )
-                    
-                    # Try a desperate measure: if we are in a different loop, we might need to 
-                    # use a different engine/client that is bound to the current loop.
-                    # This is tricky because AIOEngine doesn't easily allow changing the client.
                     raise RuntimeError(
                         f"Loop mismatch detected in AIOEngineProxy.save for {model}. "
                         f"Engine loop: {id(engine_loop)}, "
-                        f"Current loop: {id(current_loop) if current_loop else 'None'}"
+                        f"Current loop: {id(current_loop) if current_loop else 'None'}. "
+                        "Try to use the engine from current_engine_context instead of context.db.engine."
                     ) from e
                 raise e
         return None

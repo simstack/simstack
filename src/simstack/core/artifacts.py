@@ -116,6 +116,10 @@ async def create_artifacts(
         )
         # Concatenate artifacts from all child nodes
         child_artifacts = []
+        engine = current_engine_context.get()
+        if engine is None:
+            engine = context.db.engine
+
         for child_node in child_nodes:
             loaded_artifacts = await find_all_artifacts(child_node)
             if len(loaded_artifacts) == 1:
@@ -129,7 +133,7 @@ async def create_artifacts(
                         node_registry.name: loaded_artifacts
                     },  # Store all artifacts in a single field
                 )
-                await context.db.save(consolidated_artifact)
+                await engine.save(consolidated_artifact)
                 child_artifacts.append(consolidated_artifact)
 
         # child_artifacts = consolidate_artifacts(child_artifacts, call_path, task_id)
@@ -137,7 +141,6 @@ async def create_artifacts(
         artifact_arguments.call_path = call_path
 
         artifact_list = []
-        engine = current_engine_context.get()
 
         if len(artifact_mappings_list) > 0:
             for artifact_mapping in artifact_mappings_list:

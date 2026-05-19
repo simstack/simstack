@@ -177,8 +177,11 @@ class Node:
 
         :rtype: NodeRegistry
         """
+        engine = current_engine_context.get()
+        if engine is None:
+            engine = context.db.engine
 
-        function_mapping = await context.db.find_one(NodeModel, NodeModel.name == self.name)
+        function_mapping = await engine.find_one(NodeModel, NodeModel.name == self.name)
         if function_mapping is None:
             logger.error(f"Could not find function mapping for name: {self.name}")
             raise ValueError(f"Could not find function mapping for name: {self.name}")
@@ -187,7 +190,7 @@ class Node:
         input_tables = []
         for arg in self._args:
             # if there is no table for an arg raise an error
-            input_table_name = await context.db.find_one(
+            input_table_name = await engine.find_one(
                 ModelMapping, ModelMapping.name == arg.__class__.__name__
             )
             if input_table_name is None:
@@ -195,11 +198,11 @@ class Node:
                 raise ValueError(
                     f"Could not find table name for {arg.__class__.__name__}"
                 )
-            if  not isinstance(arg, Model):
+            if not isinstance(arg, Model):
                 logger.error(f"{arg.__class__.__name__} is not an odmantic Model")
                 raise ValueError(f"{arg.__class__.__name__} is not an odmantic Model")
 
-            argument_entry = await context.db.upsert(arg)
+            argument_entry = await engine.save(arg)
 
             # Check if the upsert operation was successful and returned a valid ID
             if argument_entry is None or argument_entry.id is None:
@@ -229,7 +232,7 @@ class Node:
             func_mapping=function_mapping.function_mapping,
             call_path=self.call_path,
         )
-        await context.db.upsert(self.registry_entry)
+        await engine.save(self.registry_entry)
         logger.info(
             f"Task task_id: {self.id} with name {self.name} created for resource: {new_parameters.resource} queue: {new_parameters.queue}"
         )
@@ -288,7 +291,7 @@ class Node:
                     )
                     self.parent_id = ObjectId(self.parent_id)
                 self.registry_entry.parent_ids.append(self.parent_id)
-                await context.db.save(self.registry_entry)
+                await engine.save(self.registry_entry)
             # whenever a task is found in the database, we may have to redo all child artifacts because the children
             # will not be loaded
             if self.recompute_artifacts:
@@ -393,8 +396,12 @@ class Node:
         else:
             # the task will be executed somewhere else
             # wait for the database status to change
+            engine = current_engine_context.get()
+            if engine is None:
+                engine = context.db.engine
+
             while True:
-                new_registry_entry = await context.db.load_task_by_id(self.id)
+                new_registry_entry = await engine.find_one(NodeRegistry, NodeRegistry.id == self.id)
                 # TODO add timeout mechanism here
                 new_status = new_registry_entry.status
                 if (
@@ -526,6 +533,10 @@ class Node:
 
     async def process_results(self, result):
         # each of the following if sets the result either to a valid value or None
+        engine = current_engine_context.get()
+        if engine is None:
+            engine = context.db.engine
+
         new_task_status = TaskStatus.COMPLETED
         if result is None:
             logger.warning(f"Task task_id: {self.id} returned None")
@@ -535,8 +546,8 @@ class Node:
                 new_task_status = TaskStatus.FAILED
                 result = None
         elif is_simstack_model(result):  # backward compatibility
-            result_model = await context.db.upsert(result)
-            result_table_name = await context.db.find_one(
+            result_model = await engine.save(result)
+            result_table_name = await engine.find_one(
                 ModelMapping, ModelMapping.name == result.__class__.__name__
             )
             if result_table_name is None:
@@ -571,7 +582,7 @@ class Node:
                             logger.info(
                                 f"Task task_id: {self.id} saving file: {file_stack.name} {file_stack.id}"
                             )
-                            saved = await context.db.save(file_stack)
+                            saved = await engine.save(file_stack)
                             file_list_model.append(saved)
                         else:
                             logger.error(
@@ -584,7 +595,7 @@ class Node:
                         logger.error(f"Task task_id: {self.id} saving file is NONE")
                         raise ValueError("saving file is NONE")
 
-                result_table_name = await context.db.find_one(
+                result_table_name = await engine.find_one(
                     ModelMapping, ModelMapping.name == FileListModel.__name__
                 )
                 if result_table_name is None:
@@ -596,14 +607,14 @@ class Node:
                     )
                 result_tables.append(result_table_name.mapping)
                 result_names.append("files")
-                saved = await context.db.save(file_list_model)
+                saved = await engine.save(file_list_model)
                 result_ids.append(saved.id)
                 result_models.append(saved)
 
             for file_stack in result.info_files:
                 if file_stack:
                     if isinstance(file_stack, FileStack):
-                        saved = await context.db.save(file_stack)
+                        saved = await engine.save(file_stack)
                         logger.info(
                             f"Task task_id: {self.id} saving info file: {file_stack.name} {file_stack.id}"
                         )
@@ -619,11 +630,11 @@ class Node:
             for key, value in getattr(result, "__pydantic_extra__", {}).items():
                 if not callable(value) and is_simstack_model(value):
                     if isinstance(value, Model):
-                        result_model = await context.db.upsert(value)
+                        result_model = await engine.save(value)
                         result_models.append(result_model)
                         result_ids.append(result_model.id)
                         result_names.append(key)
-                        result_table_name = await context.db.find_one(
+                        result_table_name = await engine.find_one(
                             ModelMapping, ModelMapping.name == value.__class__.__name__
                         )
                         if result_table_name is None:
