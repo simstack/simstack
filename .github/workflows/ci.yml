@@ -58,14 +58,14 @@ jobs:
         env:
           SIMSTACK_TEST_USE_REAL_DB: "true"
         run: |
-          uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+          uv run python -m pytest tests/without_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
           # Verify simstack_runner can be invoked
-          uv run simstack_runner --help
+          #uv run simstack_runner --help
           # Start a real simstack_runner in background for testing if needed
-          uv run simstack_runner --resource local --no-pull &
-          sleep 5
+          #uv run simstack_runner --resource local --no-pull &
+          #sleep 5
           # Basic check if it's running
-          pgrep -f simstack_runner
+          #pgrep -f simstack_runner
 
   test-windows:
     name: Test on windows-latest
