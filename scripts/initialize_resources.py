@@ -22,8 +22,10 @@ async def main():
     
     # Get database information from simstack.toml
     db_info = DatabaseInformation.from_config(toml_reader.config)
-    
+
+    print("Database information:", db_info.to_dict())
     # Connect to the database
+
     db = Database.from_db_info(db_info)
     
     hostname = socket.gethostname()
@@ -65,10 +67,17 @@ async def main():
     try:
         # Check connection
         print(f"Connecting to database {db_info.db_name} at {db_info.connection_string}...")
-        # Use the motor client's command method via engine's database holder
+        
+        # In CI, we use a connection string with credentials.
+        # motor might fail if we try to ping a database we don't have access to yet,
+        # or if the auth database is not specified correctly.
+        
+        # Ping the database defined in db_info
         db_raw = db.client[db_info.db_name]
         await db_raw.command("ping")
-        print("Database connection successful.")
+        print(f"Successfully pinged '{db_info.db_name}' database.")
+        
+        print("Database connection verified.")
         
         await db.upsert(resource_self)
         await db.upsert(resource_local)

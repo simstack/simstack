@@ -78,7 +78,7 @@ jobs:
           workdir_self = "${{ github.workspace }}/simstack_workdir"
           # these are parameters for one user for all hosts
           [parameters.db]
-          connection_string="mongodb://git_testing:X1234GitTesting@localhost:27017/"
+          connection_string="mongodb://git_testing:X1234GitTesting@localhost:27017/git_testing?authSource=git_testing"
           database = "git_testing"
           test_database = "git_testing"
           EOF
