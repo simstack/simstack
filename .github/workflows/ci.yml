@@ -74,6 +74,11 @@ jobs:
           test_database = "git_testing"
           EOF
 
+      - name: Initialize resources
+        run: |
+          export PYTHONPATH=$PYTHONPATH:${{ github.workspace }}/src
+          uv run python scripts/initialize_resources.py
+
       - name: initialize tables
         run: |
           uv run create_model_table --dir ${{ github.workspace }}/src/simstack/models --dir ${{ github.workspace }}/src/simstack/core --dir ${{ github.workspace }}/tests
@@ -130,6 +135,12 @@ jobs:
           test_database = "ui_testing_test"
           "@
           $tomlContent | Set-Content -Path "${{ github.workspace }}\src\simstack\util\simstack.toml"
+
+      - name: Initialize resources
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH += ";${{ github.workspace }}\src"
+          uv run python scripts\initialize_resources.py
 
       - name: Run tests (all)
         env:
