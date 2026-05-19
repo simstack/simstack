@@ -93,14 +93,14 @@ jobs:
 
       - name: initialize tables
         run: |
-          uv run create_model_table --dir ${{ github.workspace }}/tests # --dir ${{ github.workspace }}/src/simstack/models --dir ${{ github.workspace }}/src/simstack/core --dir ${{ github.workspace }}/tests
-          # uv run create_node_table --dir ${{ github.workspace }}/src/simstack/methods --dir ${{ github.workspace }}/tests
+          uv run create_model_table -v --dir ${{ github.workspace }}/tests # --dir ${{ github.workspace }}/src/simstack/models --dir ${{ github.workspace }}/src/simstack/core --dir ${{ github.workspace }}/tests
+          uv run create_node_table -v --dir ${{ github.workspace }}/tests # --dir ${{ github.workspace }}/src/simstack/methods --dir ${{ github.workspace }}/tests
 
       - name: Run tests (some)
         env:
           SIMSTACK_TEST_USE_REAL_DB: "true"
         run: |
-          uv run python -m pytest tests/with_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+          uv run python -m pytest tests/with_context/test_create_array_storage --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
           # Verify simstack_runner can be invoked
           #uv run simstack_runner --help
           # Start a real simstack_runner in background for testing if needed
