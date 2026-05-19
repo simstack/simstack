@@ -6,13 +6,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Test on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+  test-linux:
+    name: Test on ubuntu-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
         python-version: ["3.12"]
 
     services:
@@ -57,15 +56,63 @@ jobs:
 
       - name: Run tests (all)
         env:
-          SIMSTACK_TEST_USE_REAL_DB: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
+          SIMSTACK_TEST_USE_REAL_DB: "true"
         run: |
           uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
           # Verify simstack_runner can be invoked
           uv run simstack_runner --help
           # Start a real simstack_runner in background for testing if needed
-          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-            uv run simstack_runner --resource local --no-pull &
-            sleep 5
-            # Basic check if it's running
-            pgrep -f simstack_runner
-          fi
+          uv run simstack_runner --resource local --no-pull &
+          sleep 5
+          # Basic check if it's running
+          pgrep -f simstack_runner
+
+  test-windows:
+    name: Test on windows-latest
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+    
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: "Set up Python ${{ matrix.python-version }}"
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Create simstack.toml
+        run: |
+          mkdir -p ${{ github.workspace }}/simstack_workdir
+          cat <<EOF > ${{ github.workspace }}/src/simstack/util/simstack.toml
+          [parameters]
+          [parameters.general]
+          use_db = true
+          workdir_self = "${{ github.workspace }}/simstack_workdir"
+          # these are parameters for one user for all hosts
+          [parameters.db]
+          connection_string="mongodb://ui_testing:!SimStack456454488743144@covalent.int.kit.edu:27017/"
+          database = "ui_testing_data"
+          test_database = "ui_testing_test"
+          EOF
+
+      - name: Run tests (all)
+        env:
+          SIMSTACK_TEST_USE_REAL_DB: "false"
+        run: |
+          uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+          # Verify simstack_runner can be invoked
+          uv run simstack_runner --help

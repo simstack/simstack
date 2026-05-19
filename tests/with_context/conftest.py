@@ -129,7 +129,7 @@ async def initialized_context(tmp_path_factory):
         print(f"Warning: Error during context cleanup: {e}")
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 def odmantic_engine(initialized_context):
     """
     Provide the ODMantic engine from the initialized context.
