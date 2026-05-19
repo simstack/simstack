@@ -74,6 +74,10 @@ jobs:
           test_database = "git_testing"
           EOF
 
+      - name: initialize tables
+        run: |
+          uv run create_model_table --dir ${{ github.workspace }}/src/simstack/models --dir ${{ github.workspace }}/src/simstack/core --dir ${{ github.workspace }}/tests
+          uv run create_node_table --dir ${{ github.workspace }}/src/simstack/methods --dir ${{ github.workspace }}/tests
       - name: Run tests (all)
         env:
           SIMSTACK_TEST_USE_REAL_DB: "true"
