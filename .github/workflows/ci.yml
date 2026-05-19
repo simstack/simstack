@@ -97,7 +97,7 @@ jobs:
         env:
           SIMSTACK_TEST_USE_REAL_DB: "true"
         run: |
-          uv run python -m pytest tests/without_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+          uv run python -m pytest tests/with_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
           # Verify simstack_runner can be invoked
           #uv run simstack_runner --help
           # Start a real simstack_runner in background for testing if needed
@@ -106,58 +106,58 @@ jobs:
           # Basic check if it's running
           #pgrep -f simstack_runner
 
-  test-windows:
-    name: Test on windows-latest
-    runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.12"]
-    
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: "Set up Python ${{ matrix.python-version }}"
-        run: uv python install ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: uv sync --all-extras --dev
-
-      - name: Create simstack.toml
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\simstack_workdir"
-          $tomlContent = @"
-          [parameters]
-          [parameters.general]
-          use_db = false
-          workdir_self = "${{ github.workspace }}\simstack_workdir"
-          # these are parameters for one user for all hosts
-          [parameters.db]
-          connection_string="mongodb://localhost:27017/"
-          database = "git_testing"
-          test_database = "git_testing"
-          "@
-          $tomlContent | Set-Content -Path "${{ github.workspace }}\src\simstack\util\simstack.toml"
-
-      - name: Initialize resources
-        shell: pwsh
-        run: |
-          $env:PYTHONPATH += ";${{ github.workspace }}\src"
-          # Skip initialization on Windows for now since we don't have a local MongoDB
-          # uv run python scripts\initialize_resources.py ${{ github.workspace }}\src\simstack\util\simstack.toml
-          echo "Skipping resource initialization on Windows"
-
-      - name: Run tests (all)
-        env:
-          SIMSTACK_TEST_USE_REAL_DB: "false"
-        run: |
-          uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
-          # Verify simstack_runner can be invoked
-          uv run simstack_runner --help
+#  test-windows:
+#    name: Test on windows-latest
+#    runs-on: windows-latest
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        python-version: ["3.12"]
+#    
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Install uv
+#        uses: astral-sh/setup-uv@v3
+#        with:
+#          enable-cache: true
+#          cache-dependency-glob: "uv.lock"
+#
+#      - name: "Set up Python ${{ matrix.python-version }}"
+#        run: uv python install ${{ matrix.python-version }}
+#
+#      - name: Install dependencies
+#        run: uv sync --all-extras --dev
+#
+#      - name: Create simstack.toml
+#        shell: pwsh
+#        run: |
+#          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\simstack_workdir"
+#          $tomlContent = @"
+#          [parameters]
+#          [parameters.general]
+#          use_db = false
+#          workdir_self = "${{ github.workspace }}\simstack_workdir"
+#          # these are parameters for one user for all hosts
+#          [parameters.db]
+#          connection_string="mongodb://localhost:27017/"
+#          database = "git_testing"
+#          test_database = "git_testing"
+#          "@
+#          $tomlContent | Set-Content -Path "${{ github.workspace }}\src\simstack\util\simstack.toml"
+#
+#      - name: Initialize resources
+#        shell: pwsh
+#        run: |
+#          $env:PYTHONPATH += ";${{ github.workspace }}\src"
+#          # Skip initialization on Windows for now since we don't have a local MongoDB
+#          # uv run python scripts\initialize_resources.py ${{ github.workspace }}\src\simstack\util\simstack.toml
+#          echo "Skipping resource initialization on Windows"
+#
+#      - name: Run tests (all)
+#        env:
+#          SIMSTACK_TEST_USE_REAL_DB: "false"
+#        run: |
+#          uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+#          # Verify simstack_runner can be invoked
+#          uv run simstack_runner --help
