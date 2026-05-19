@@ -89,7 +89,7 @@ class NodeRegistry(Model):
     result_ids: List[ObjectId] = Field(default_factory=list)
     result_names: List[str] = Field(default_factory=list)
 
-    info_files: FileList = Field(default=FileList())
+    info_files: FileList = Field(default_factory=FileList)
 
     parent_ids: List[ObjectId] = Field(default_factory=list)
     artifact_ids: List[ObjectId] = Field(default_factory=list)

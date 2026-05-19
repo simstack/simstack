@@ -1,7 +1,8 @@
 import re
-from typing import Union, List, Any, Optional, TypeVar, Generic, Iterator, Iterable
+from typing import Union, List, Any, Optional, TypeVar, Generic, Iterator, Iterable, Type
 
-from odmantic import EmbeddedModel, Field, Model
+from odmantic import EmbeddedModel, Field, Model, ObjectId, AIOEngine
+from simstack.core.engine import current_engine_context
 
 from simstack.models import simstack_model, StringData
 from simstack.models.files import FileStack
@@ -125,6 +126,101 @@ class GenericListMixin(Generic[T]):
 
     def sort_by_size(self, reverse: bool = False):
         self.elements.sort(key=lambda x: getattr(x, "size", 0) or 0, reverse=reverse)
+
+
+class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
+    """
+    Mixin class for lists of Model ObjectIDs.
+    Stores ObjectId instances in `elements`, but allows interaction with Model instances.
+    """
+
+    def _get_engine(self) -> AIOEngine:
+        engine = current_engine_context.get()
+        if engine is None:
+            raise RuntimeError("No engine found in current_engine_context")
+        return engine
+
+    async def _get_model_class(self) -> Type[T]:
+        # T is the first type argument of ObjectListMixin
+        if hasattr(self, "__orig_bases__"):
+            for base in self.__class__.__orig_bases__:
+                if base.__origin__ is ObjectListMixin:
+                    return base.__args__[0]
+        # Fallback for StringDataList which explicitly inherits
+        if self.__class__.__name__ == "StringDataList":
+            return StringData
+        raise RuntimeError(f"Could not determine model class for {self.__class__.__name__}")
+
+    async def append(self, element: T):
+        if not isinstance(element, Model):
+            raise TypeError(f"Expected Model, got {type(element)}")
+        engine = self._get_engine()
+        await engine.save(element)
+        self.elements.append(element.id)
+
+    async def extend(self, elements: Union[List[T], "ObjectListMixin[T]"]):
+        if isinstance(elements, ObjectListMixin):
+            self.elements.extend(elements.elements)
+        else:
+            for element in elements:
+                await self.append(element)
+
+    async def get(self, index: int) -> T:
+        obj_id = self.elements[index]
+        engine = self._get_engine()
+        model_class = await self._get_model_class()
+        obj = await engine.find_one(model_class, model_class.id == obj_id)
+        if obj is None:
+            raise KeyError(f"Object with id {obj_id} not found in database")
+        return obj
+
+    def __getitem__(self, index: int) -> ObjectId:
+        return self.elements[index]
+
+    def __aiter__(self):
+        return self._async_iter()
+
+    async def _async_iter(self):
+        engine = self._get_engine()
+        model_class = await self._get_model_class()
+        for obj_id in self.elements:
+            obj = await engine.find_one(model_class, model_class.id == obj_id)
+            if obj:
+                yield obj
+
+    async def find(self, pattern: str) -> Optional[T]:
+        engine = self._get_engine()
+        model_class = await self._get_model_class()
+        for obj_id in self.elements:
+            obj = await engine.find_one(model_class, model_class.id == obj_id)
+            if obj:
+                name = getattr(obj, "field_name", None)
+                if name and pattern == name:
+                    return obj
+        return None
+
+    async def find_all(self, pattern: str) -> List[T]:
+        matches: List[T] = []
+        engine = self._get_engine()
+        model_class = await self._get_model_class()
+        for obj_id in self.elements:
+            obj = await engine.find_one(model_class, model_class.id == obj_id)
+            if obj:
+                name = getattr(obj, "field_name", None)
+                if name and re.search(pattern, name):
+                    matches.append(obj)
+        return matches
+
+    def __contains__(self, element: Union[T, ObjectId]) -> bool:
+        if isinstance(element, Model):
+            return element.id in self.elements
+        return element in self.elements
+
+
+@simstack_model
+class StringDataList(Model, ObjectListMixin[StringData]):
+    field_name: str = "string_data_list"
+    elements: List[ObjectId] = Field(default_factory=list, description="List of StringData ObjectIDs")
 
     # def items(self) -> Iterator[tuple[Optional[str], T]]:
     #     """

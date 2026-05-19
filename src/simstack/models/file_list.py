@@ -1,7 +1,7 @@
 import re
 from typing import Union, List, Any, Optional
 
-from odmantic import EmbeddedModel, Field, Model
+from odmantic import EmbeddedModel, Field, Model, Reference, ObjectId
 
 from simstack.models import simstack_model
 from simstack.models.files import FileStack
@@ -48,7 +48,7 @@ class FileListMixin:
         """
         Inserts a FileStack at the specified index.
 
-        :param index: Index where to insert the FileStack
+        :param index: Index where to insert
         :type index: int
         :param file_stack: The FileStack to insert
         :type file_stack: FileStack
@@ -61,7 +61,6 @@ class FileListMixin:
 
         :param file_stack: The FileStack to remove
         :type file_stack: FileStack
-        :raises ValueError: If the FileStack is not found
         """
         self.file_stacks.remove(file_stack)
 
@@ -69,23 +68,22 @@ class FileListMixin:
         """
         Removes and returns the FileStack at the specified index.
 
-        :param index: Index of the FileStack to remove (default is last item)
+        :param index: Index of the item to remove
         :type index: int
         :return: The removed FileStack
         :rtype: FileStack
-        :raises IndexError: If the index is out of range
         """
         return self.file_stacks.pop(index)
 
     def clear(self):
         """
-        Removes all FileStacks from the file list.
+        Removes all items from the file list.
         """
         self.file_stacks.clear()
 
-    def index(self, file_stack: FileStack, start: int = 0, stop: int = None) -> int:
+    def index(self, file_stack: FileStack, start: int = 0, stop: int = 999999) -> int:
         """
-        Returns the index of the first occurrence of the specified FileStack.
+        Returns the index of the first occurrence.
 
         :param file_stack: The FileStack to find
         :type file_stack: FileStack
@@ -93,12 +91,9 @@ class FileListMixin:
         :type start: int
         :param stop: Stop index for search
         :type stop: int
-        :return: Index of the FileStack
+        :return: Index
         :rtype: int
-        :raises ValueError: If the FileStack is not found
         """
-        if stop is None:
-            return self.file_stacks.index(file_stack, start)
         return self.file_stacks.index(file_stack, start, stop)
 
     def count(self, file_stack: FileStack) -> int:
@@ -122,7 +117,7 @@ class FileListMixin:
         """
         Sorts the FileStacks in the file list.
 
-        :param key: Function to extract comparison key from each FileStack
+        :param key: Function to extract comparison key
         :param reverse: If True, sort in descending order
         :type reverse: bool
         """
@@ -158,14 +153,14 @@ class FileListMixin:
 
         :param index: Index or slice
         :type index: Union[int, slice]
-        :param value: FileStack or list of FileStacks to set
+        :param value: New FileStack(s)
         :type value: Union[FileStack, List[FileStack]]
         """
         self.file_stacks[index] = value
 
     def __delitem__(self, index: Union[int, slice]):
         """
-        Deletes FileStack(s) at the specified index or slice.
+        Deletes item(s) at the specified index or slice.
 
         :param index: Index or slice
         :type index: Union[int, slice]
@@ -209,34 +204,32 @@ class FileListMixin:
         """
         return f"{self.__class__.__name__}(file_stacks={self.file_stacks!r})"
 
-    def find(self, pattern: str) -> Union[FileStack, None]:
+    def find(self, pattern: str) -> Optional[FileStack]:
         """
-        Searches through file stacks for the first file name matching the given regex pattern.
+        Finds the first FileStack whose name matches the given regex pattern.
 
-        :param pattern: Regular expression pattern to match against file names
+        :param pattern: Regex pattern to match
         :type pattern: str
-        :return: First matching FileStack or None if no match found
-        :rtype: Union[FileStack, None]
+        :return: Matching FileStack or None
+        :rtype: Optional[FileStack]
         """
-        for file_stack in self.file_stacks:
-            if file_stack.name and pattern == file_stack.name: # re.search(pattern, file_stack.name):
-                return file_stack
+        regex = re.compile(pattern)
+        for fs in self.file_stacks:
+            if fs.name and regex.search(fs.name):
+                return fs
         return None
 
     def find_all(self, pattern: str) -> List[FileStack]:
         """
-        Searches through file stacks for all files with names matching the given regex pattern.
+        Finds all FileStacks whose names match the given regex pattern.
 
-        :param pattern: Regular expression pattern to match against file names
+        :param pattern: Regex pattern to match
         :type pattern: str
-        :return: List of all matching FileStacks
+        :return: List of matching FileStacks
         :rtype: List[FileStack]
         """
-        matches = []
-        for file_stack in self.file_stacks:
-            if file_stack.name and re.search(pattern, file_stack.name):
-                matches.append(file_stack)
-        return matches
+        regex = re.compile(pattern)
+        return [fs for fs in self.file_stacks if fs.name and regex.search(fs.name)]
 
     def filter_by_size(
         self, min_size: int = None, max_size: int = None
@@ -248,17 +241,15 @@ class FileListMixin:
         :type min_size: int
         :param max_size: Maximum file size (inclusive)
         :type max_size: int
-        :return: List of FileStacks within the size range
+        :return: List of FileStacks matching the size range
         :rtype: List[FileStack]
         """
-        results = []
-        for file_stack in self.file_stacks:
-            if min_size is not None and file_stack.size < min_size:
-                continue
-            if max_size is not None and file_stack.size > max_size:
-                continue
-            results.append(file_stack)
-        return results
+        return [
+            fs
+            for fs in self.file_stacks
+            if (min_size is None or fs.size >= min_size)
+            and (max_size is None or fs.size <= max_size)
+        ]
 
     def filter_by_property(self, property_name: str, value: Any) -> List[FileStack]:
         """
@@ -268,17 +259,14 @@ class FileListMixin:
         :type property_name: str
         :param value: Value to match
         :type value: Any
-        :return: List of matching FileStacks
+        :return: List of FileStacks matching the property value
         :rtype: List[FileStack]
         """
-        results = []
-        for file_stack in self.file_stacks:
-            if (
-                hasattr(file_stack, property_name)
-                and getattr(file_stack, property_name) == value
-            ):
-                results.append(file_stack)
-        return results
+        return [
+            fs
+            for fs in self.file_stacks
+            if hasattr(fs, property_name) and getattr(fs, property_name) == value
+        ]
 
     def sort_by_name(self, reverse: bool = False):
         """
@@ -300,29 +288,23 @@ class FileListMixin:
 
     def items(self):
         """
-        Iterator that yields (name, FileStack) tuples for each FileStack in the list.
-        Similar to dict.items() behavior.
+        Iterator that yields (name, FileStack) tuples.
 
         :return: Iterator yielding (name, FileStack) tuples
         :rtype: Iterator[tuple[str, FileStack]]
         """
-        for file_stack in self.file_stacks:
-            yield (file_stack.name, file_stack)
+        for fs in self.file_stacks:
+            yield (fs.name, fs)
 
 
 @simstack_model
 class FileList(EmbeddedModel, FileListMixin):
-    file_stacks: List[FileStack] = Field(
-        default_factory=list, description="List of file stacks"
-    )
-    
+    file_stacks: List[FileStack] = Field(default_factory=list)
 
 
 @simstack_model
 class FileListModel(Model, FileListMixin):
-    file_stacks: List[FileStack] = Field(
-        default_factory=list, description="List of file stacks"
-    )
+    file_stacks: List[FileStack] = Field(default_factory=list)
 
 
 @simstack_model
