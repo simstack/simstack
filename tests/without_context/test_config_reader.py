@@ -166,7 +166,7 @@ use_db = true
         return db_info
 
     @pytest.fixture
-    def mock_db(self, mock_db_info):
+    async def mock_db(self, mock_db_info):
         db = Database.from_db_info(mock_db_info)
 
         # Patch ODMantic engine to work without sessions in test mode
@@ -214,7 +214,7 @@ use_db = true
         db.engine.save_all = patched_save_all
 
         yield db
-        db.close()
+        await db.close()
 
     def test_reader(self, toml_reader):
         assert toml_reader.get("resources.allowed_resources") == ["local", "self", "uploads"]
