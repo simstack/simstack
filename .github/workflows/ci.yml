@@ -43,7 +43,7 @@ jobs:
       - name: Create simstack.toml
         run: |
           mkdir -p ${{ github.workspace }}/simstack_workdir
-          cat <<EOF > src/simstack/util/simstack.toml
+          cat <<EOF > /home/runner/work/simstack/simstack/src/simstack/util/simstack.toml 
           [parameters]
           [parameters.general]
           use_db = true
