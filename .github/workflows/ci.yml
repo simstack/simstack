@@ -39,6 +39,20 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
+      - name: Install mongodb
+        run: sudo apt-get install -y mongodb-clients
+
+      - name: Create database and user
+        run: |
+          mongosh --host localhost --port 27017 --eval '
+            db = db.getSiblingDB("git_testing");
+            db.createUser({
+              user: "git_testing",
+              pwd: "X1234GitTesting",
+              roles: [{ role: "readWrite", db: "git_testing" }]
+            });
+          '
+
       - name: Create simstack.toml
         run: |
           mkdir -p ${{ github.workspace }}/simstack_workdir
@@ -49,9 +63,9 @@ jobs:
           workdir_self = "${{ github.workspace }}/simstack_workdir"
           # these are parameters for one user for all hosts
           [parameters.db]
-          connection_string="mongodb://ui_testing:!SimStack456454488743144@covalent.int.kit.edu:27017/"
-          database = "ui_testing_data"
-          test_database = "ui_testing_test"
+          connection_string="mongodb://git_testing:X1234GitTesting@localhost:27017/"
+          database = "git_testing"
+          test_database = "git_testing"
           EOF
 
       - name: Run tests (all)
