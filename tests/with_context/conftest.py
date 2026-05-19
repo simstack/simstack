@@ -9,7 +9,7 @@ from simstack.models.files import FileStack
 from simstack.util.project_root_finder import find_project_root
 
 
-@pytest_asyncio.fixture(autouse=True, scope="session")
+@pytest_asyncio.fixture(autouse=True, scope="function")
 async def initialized_context(tmp_path_factory):
     # Use environment variable to control the database type for tests
     import os
@@ -129,10 +129,10 @@ async def initialized_context(tmp_path_factory):
         print(f"Warning: Error during context cleanup: {e}")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def odmantic_engine(initialized_context):
     """
-    Create an ODMantic engine for the entire test session.
+    Provide the ODMantic engine from the initialized context.
     """
     return context.db.engine
 
