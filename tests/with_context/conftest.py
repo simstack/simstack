@@ -67,6 +67,33 @@ async def initialized_context(tmp_path_factory):
 
     if use_real_db:
         await context.db.reset_database()
+        # Re-initialize basic resources after reset
+        from simstack.models.resource_definition import ResourceDefinition
+        import socket
+        hostname = socket.gethostname()
+        resource_self = ResourceDefinition(
+            resource_str="self",
+            workdir=str(working_dir),
+            hostname=hostname,
+            python_paths=[],
+            environment_start=None,
+            ssh_key=None,
+            routes=[],
+            is_default=False
+        )
+        resource_local = ResourceDefinition(
+            resource_str="local",
+            workdir=str(working_dir),
+            hostname=hostname,
+            python_paths=[],
+            environment_start=None,
+            ssh_key=None,
+            routes=[],
+            is_default=True
+        )
+        await context.db.upsert(resource_self)
+        await context.db.upsert(resource_local)
+        print("Test resources 'self' and 'local' re-initialized after database reset")
     else:
         # Patch ODMantic engine to work without sessions in test mode
         async def patched_save(instance, **kwargs):
