@@ -27,6 +27,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set SIMSTACK_PROJECT_ROOT
+        run: echo "SIMSTACK_PROJECT_ROOT=${{ github.workspace }}" >> $GITHUB_ENV
+
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
@@ -71,7 +74,7 @@ jobs:
       - name: Create simstack.toml
         run: |
           mkdir -p ${{ github.workspace }}/simstack_workdir
-          cat <<EOF > ${{ github.workspace }}/src/simstack/util/simstack.toml
+          cat <<EOF > ${{ github.workspace }}/simstack.toml
           [parameters]
           [parameters.general]
           use_db = true
@@ -86,7 +89,7 @@ jobs:
       - name: Initialize resources
         run: |
           export PYTHONPATH=$PYTHONPATH:${{ github.workspace }}/src
-          uv run python scripts/initialize_resources.py ${{ github.workspace }}/src/simstack/util/simstack.toml
+          uv run python scripts/initialize_resources.py ${{ github.workspace }}/simstack.toml
 
       - name: initialize tables
         run: |
@@ -117,6 +120,10 @@ jobs:
 #    steps:
 #      - uses: actions/checkout@v4
 #
+#      - name: Set SIMSTACK_PROJECT_ROOT
+#        shell: pwsh
+#        run: echo "SIMSTACK_PROJECT_ROOT=${{ github.workspace }}" >> $env:GITHUB_ENV
+#
 #      - name: Install uv
 #        uses: astral-sh/setup-uv@v3
 #        with:
@@ -144,14 +151,14 @@ jobs:
 #          database = "git_testing"
 #          test_database = "git_testing"
 #          "@
-#          $tomlContent | Set-Content -Path "${{ github.workspace }}\src\simstack\util\simstack.toml"
+#          $tomlContent | Set-Content -Path "${{ github.workspace }}\simstack.toml"
 #
 #      - name: Initialize resources
 #        shell: pwsh
 #        run: |
 #          $env:PYTHONPATH += ";${{ github.workspace }}\src"
 #          # Skip initialization on Windows for now since we don't have a local MongoDB
-#          # uv run python scripts\initialize_resources.py ${{ github.workspace }}\src\simstack\util\simstack.toml
+#          # uv run python scripts\initialize_resources.py ${{ github.workspace }}\simstack.toml
 #          echo "Skipping resource initialization on Windows"
 #
 #      - name: Run tests (all)

@@ -1,10 +1,12 @@
+import os
 from pathlib import Path
 
 
 def find_project_root(current_file=None, marker_files=(".git", "simstack.toml", "setup.py"),
                       skip_files=("simstack_marker.com",)) -> Path:
     """
-    Find the project root directory by searching for common marker files
+    Find the project root directory by searching for common marker files.
+    Checks whether an environment variable SIMSTACK_PROJECT_ROOT exists and use this as project root.
 
     Args:
         skip_files: directories with these names will be skipped
@@ -14,6 +16,9 @@ def find_project_root(current_file=None, marker_files=(".git", "simstack.toml", 
     Returns:
         Absolute path to the project root directory
     """
+    if "SIMSTACK_PROJECT_ROOT" in os.environ:
+        return Path(os.environ["SIMSTACK_PROJECT_ROOT"]).resolve()
+
     if current_file is None:
         current_file = __file__
 
