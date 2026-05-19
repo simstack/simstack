@@ -1,0 +1,126 @@
+{
+    "json_schema": {
+        "$defs": {
+            "DataSetMetadata": {
+                "properties": {
+                    "dataset_type": {
+                        "title": "Dataset Type",
+                        "type": "string"
+                    },
+                    "data": {
+                        "additionalProperties": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "number"
+                                },
+                                {
+                                    "type": "boolean"
+                                },
+                                {
+                                    "format": "date-time",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "title": "Data",
+                        "type": "object"
+                    },
+                    "is_validated": {
+                        "default": false,
+                        "title": "Is Validated",
+                        "type": "boolean"
+                    },
+                    "structure": {
+                        "additionalProperties": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "title": "Structure",
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "dataset_type"
+                ],
+                "title": "DataSetMetadata",
+                "type": "object"
+            },
+            "DataSetSection": {
+                "additionalProperties": false,
+                "description": "Represents a section of a dataset containing tuples of models.\n\nA DataSetSection is a list of tuples where all tuples contain the same types of models.\nFor example, if one tuple contains (ModelA, ModelB), then all tuples in this section\nmust contain (ModelA, ModelB) instances.\n\n:ivar model_types: List of model class names that define the structure of each tuple.\n:type model_types: List[str]\n:ivar data: List of tuples, where each tuple contains model IDs corresponding to model_types.\n:type data: List[List[ObjectId]]",
+                "properties": {
+                    "model_types": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "title": "Model Types",
+                        "type": "array"
+                    },
+                    "data": {
+                        "items": {
+                            "items": {
+                                "example": "5f85f36d6dfecacc68428a46",
+                                "examples": [
+                                    "5f85f36d6dfecacc68428a46",
+                                    "ffffffffffffffffffffffff"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "title": "Data",
+                        "type": "array"
+                    }
+                },
+                "title": "DataSetSection",
+                "type": "object"
+            }
+        },
+        "additionalProperties": false,
+        "properties": {
+            "name": {
+                "default": "dataset",
+                "title": "Name",
+                "type": "string"
+            },
+            "metadata": {
+                "$ref": "#/$defs/DataSetMetadata"
+            },
+            "sections": {
+                "additionalProperties": {
+                    "$ref": "#/$defs/DataSetSection"
+                },
+                "title": "Sections",
+                "type": "object"
+            },
+            "id": {
+                "example": "5f85f36d6dfecacc68428a46",
+                "examples": [
+                    "5f85f36d6dfecacc68428a46",
+                    "ffffffffffffffffffffffff"
+                ],
+                "title": "Id",
+                "type": "string"
+            }
+        },
+        "title": "DataSet",
+        "type": "object"
+    },
+    "ui_schema": {
+        "ui:field": "DataSetField",
+        "metadata": {
+            "ui:widget": "hidden"
+        },
+        "sections": {
+            "ui:widget": "hidden"
+        }
+    }
+}

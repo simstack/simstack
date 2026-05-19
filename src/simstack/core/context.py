@@ -3,7 +3,8 @@ from typing import TYPE_CHECKING
 from urllib.parse import urlparse, urlunparse
 from simstack.models.resource_definition import GitRepo
 from simstack.util.database_information import DatabaseInformation
-from simstack.util.db import DBType, current_engine_context
+from simstack.core.definitions import DBType
+from simstack.core.engine import current_engine_context
 from simstack.util.project_root_finder import find_project_root
 from simstack.util.toml_reader import TomlReader
 from simstack.util.config_reader import ConfigReader
@@ -178,10 +179,14 @@ class GlobalState:
             )
 
     def initialize_database(self, db_info: DatabaseInformation, is_test: bool):
-        from simstack.util.db import Database
+        from simstack.util.db import Database, USE_REMOTE_DATABASE
         try:
             self.db = Database.from_db_info(db_info)
-            if db_info.db_type == DBType.MONGODB:
+            if (
+                not USE_REMOTE_DATABASE
+                and db_info.db_type == DBType.MONGODB
+                and self.db.client is not None
+            ):
                 # Only ping real MongoDB connections
                 self.db.client.admin.command("ping")
             current_engine_context.set(self.db.engine)

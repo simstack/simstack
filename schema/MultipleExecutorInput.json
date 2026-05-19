@@ -1,0 +1,66 @@
+{
+    "json_schema": {
+        "description": "Represents a MultipleExecutor which handles multiple calculations in parallel and aggregates the results.\n# TODO store the inputs as ids not in memory",
+        "properties": {
+            "function_mapping": {
+                "title": "Function Mapping",
+                "type": "string"
+            },
+            "input_mappings": {
+                "items": {
+                    "type": "string"
+                },
+                "title": "Input Mappings",
+                "type": "array"
+            },
+            "result_mapping": {
+                "title": "Result Mapping",
+                "type": "string"
+            },
+            "timeout": {
+                "default": 600,
+                "title": "Timeout",
+                "type": "integer"
+            },
+            "inputs_data": {
+                "items": {
+                    "items": {
+                        "example": "5f85f36d6dfecacc68428a46",
+                        "examples": [
+                            "5f85f36d6dfecacc68428a46",
+                            "ffffffffffffffffffffffff"
+                        ],
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "title": "Inputs Data",
+                "type": "array"
+            },
+            "id": {
+                "example": "5f85f36d6dfecacc68428a46",
+                "examples": [
+                    "5f85f36d6dfecacc68428a46",
+                    "ffffffffffffffffffffffff"
+                ],
+                "title": "Id",
+                "type": "string"
+            }
+        },
+        "required": [
+            "function_mapping",
+            "input_mappings",
+            "result_mapping"
+        ],
+        "title": "MultipleExecutorInput",
+        "type": "object"
+    },
+    "ui_schema": {
+        "inputs_data": {
+            "ui:widget": "hidden"
+        },
+        "id": {
+            "ui:widget": "hidden"
+        }
+    }
+}

@@ -1,0 +1,67 @@
+{
+    "json_schema": {
+        "$defs": {
+            "FloatData": {
+                "properties": {
+                    "field_name": {
+                        "default": "float",
+                        "title": "Field Name",
+                        "type": "string"
+                    },
+                    "value": {
+                        "title": "Value",
+                        "type": "number"
+                    },
+                    "id": {
+                        "example": "5f85f36d6dfecacc68428a46",
+                        "examples": [
+                            "5f85f36d6dfecacc68428a46",
+                            "ffffffffffffffffffffffff"
+                        ],
+                        "title": "Id",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "value"
+                ],
+                "title": "FloatData",
+                "type": "object"
+            }
+        },
+        "properties": {
+            "arg1": {
+                "$ref": "#/$defs/FloatData"
+            },
+            "arg2": {
+                "$ref": "#/$defs/FloatData"
+            },
+            "id": {
+                "example": "5f85f36d6dfecacc68428a46",
+                "examples": [
+                    "5f85f36d6dfecacc68428a46",
+                    "ffffffffffffffffffffffff"
+                ],
+                "title": "Id",
+                "type": "string"
+            }
+        },
+        "required": [
+            "arg1",
+            "arg2"
+        ],
+        "title": "BinaryOperationInput",
+        "type": "object"
+    },
+    "ui_schema": {
+        "arg1": {
+            "ui:field": "FloatDataField"
+        },
+        "arg2": {
+            "ui:field": "FloatDataField"
+        },
+        "id": {
+            "ui:widget": "hidden"
+        }
+    }
+}

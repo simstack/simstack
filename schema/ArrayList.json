@@ -1,0 +1,85 @@
+{
+    "json_schema": {
+        "$defs": {
+            "ArrayStorage": {
+                "properties": {
+                    "name": {
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "shape": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "title": "Shape"
+                    },
+                    "data_json": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "title": "Data Json"
+                    },
+                    "id": {
+                        "example": "5f85f36d6dfecacc68428a46",
+                        "examples": [
+                            "5f85f36d6dfecacc68428a46",
+                            "ffffffffffffffffffffffff"
+                        ],
+                        "title": "Id",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "title": "ArrayStorage",
+                "type": "object"
+            }
+        },
+        "properties": {
+            "array_list": {
+                "items": {
+                    "$ref": "#/$defs/ArrayStorage"
+                },
+                "title": "Array List",
+                "type": "array"
+            },
+            "id": {
+                "example": "5f85f36d6dfecacc68428a46",
+                "examples": [
+                    "5f85f36d6dfecacc68428a46",
+                    "ffffffffffffffffffffffff"
+                ],
+                "title": "Id",
+                "type": "string"
+            }
+        },
+        "title": "ArrayList",
+        "type": "object"
+    },
+    "ui_schema": {
+        "array_list": {
+            "items": {
+                "ui:field": "GenericFormField",
+                "ui:options": {
+                    "model": "simstack.models.array_storage.ArrayStorage"
+                }
+            }
+        },
+        "id": {
+            "ui:widget": "hidden"
+        }
+    }
+}

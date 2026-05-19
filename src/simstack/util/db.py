@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import List, Type, TypeVar, Dict, Any, Union, Optional
 
 from bson import ObjectId
@@ -7,12 +8,36 @@ from odmantic import Model
 
 from simstack.core.definitions import DBType, TaskStatus
 from simstack.core.engine import current_engine_context, AIOEngineProxy
+from simstack.core.remote_engine import RemoteAIOEngine
+
+logger = logging.getLogger(__name__)
+
+# When True, Database uses simstack-server HTTP routes instead of a local MongoDB connection.
+USE_REMOTE_DATABASE: bool = os.environ.get(
+    "SIMSTACK_USE_REMOTE_DB", ""
+).lower() in ("1", "true", "yes")
+REMOTE_DATABASE_BASE_URL: str = os.environ.get(
+    "SIMSTACK_REMOTE_DB_URL", "http://localhost:8000"
+)
+REMOTE_DATABASE_TOKEN: str = os.environ.get("SIMSTACK_REMOTE_DB_TOKEN", "")
+
+
 from simstack.models import NodeModel
 from simstack.models.node_registry import NodeRegistry
 from simstack.util.database_information import DatabaseInformation
 from simstack.util.importer import import_class
 
-logger = logging.getLogger(__name__)
+
+def configure_remote_database(
+    enabled: bool,
+    base_url: str = "http://localhost:8000",
+    token: str = "",
+) -> None:
+    """Switch between direct MongoDB access and remote database API mode."""
+    global USE_REMOTE_DATABASE, REMOTE_DATABASE_BASE_URL, REMOTE_DATABASE_TOKEN
+    USE_REMOTE_DATABASE = enabled
+    REMOTE_DATABASE_BASE_URL = base_url.rstrip("/")
+    REMOTE_DATABASE_TOKEN = token
 
 T = TypeVar("T", bound=Model)
 
@@ -23,7 +48,16 @@ class Database(DatabaseInformation):
     Provides a cleaner interface for database operations.
     """
 
-    def __init__(self, db_type: DBType, db_name: str = "simstack", connection_string: str = ""):
+    def __init__(
+        self,
+        db_type: DBType,
+        db_name: str = "simstack",
+        connection_string: str = "",
+        *,
+        use_remote: Optional[bool] = None,
+        remote_base_url: Optional[str] = None,
+        remote_token: Optional[str] = None,
+    ):
         super().__init__(db_name, connection_string, db_type)
         """
         Initialize the MongoDB connection
@@ -32,7 +66,20 @@ class Database(DatabaseInformation):
             db_type: Type of database configuration
             connection_string: MongoDB connection string (if not using default)
             db_name: Name of the MongoDB database
+            use_remote: When set, overrides USE_REMOTE_DATABASE for this instance
+            remote_base_url: simstack-server base URL for remote mode
+            remote_token: Bearer token for authenticated database routes
         """
+        self._use_remote = USE_REMOTE_DATABASE if use_remote is None else use_remote
+
+        if self._use_remote:
+            base_url = remote_base_url or REMOTE_DATABASE_BASE_URL
+            token = remote_token if remote_token is not None else REMOTE_DATABASE_TOKEN
+            self.client = None
+            self.engine = RemoteAIOEngine(base_url=base_url, token=token)
+            current_engine_context.set(self.engine)
+            logger.info("Using remote database via simstack-server at %s", base_url)
+            return
 
         if db_type == DBType.IN_MEMORY:
             # For tests, use in-memory MongoDB (mongomock)
@@ -71,6 +118,8 @@ class Database(DatabaseInformation):
         """
         List all collections in the database
         """
+        if self._use_remote:
+            return await self.engine.list_collection_names()
         db = self.client[self.db_name]
         return await db.list_collection_names()
 
@@ -422,6 +471,11 @@ class Database(DatabaseInformation):
         """
         Reset the database by dropping all collections and recreating them
         """
+        if self._use_remote:
+            await self.engine.reset_database()
+            logger.info("Remote database has been reset")
+            return
+
         db = self.client[self.db_name]
         collections = await db.list_collection_names()
 
@@ -464,4 +518,7 @@ class Database(DatabaseInformation):
         """
         Close database connections
         """
+        if self._use_remote:
+            await self.engine.close()
+            return
         self.client.close()

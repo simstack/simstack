@@ -1,6 +1,6 @@
 import asyncio
 from contextvars import ContextVar
-from typing import Optional, Any, Iterable
+from typing import Optional, Any, Iterable, Union
 from odmantic import AIOEngine
 
 
@@ -130,11 +130,11 @@ class AIOEngineProxy(AIOEngine):
         return any_saved
 
 
-current_engine_context: ContextVar[Optional[AIOEngineProxy]] = ContextVar(
+current_engine_context: ContextVar[Optional[Union["AIOEngineProxy", Any]]] = ContextVar(
     "current_engine", default=None
 )
 
 
-def get_current_engine_from_context() -> Optional[AIOEngineProxy]:
+def get_current_engine_from_context() -> Optional[Union["AIOEngineProxy", Any]]:
     """Get the current engine from context"""
     return current_engine_context.get()

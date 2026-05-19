@@ -1,0 +1,58 @@
+{
+    "json_schema": {
+        "properties": {
+            "name": {
+                "title": "Name",
+                "type": "string"
+            },
+            "description": {
+                "anyOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "default": null,
+                "title": "Description"
+            },
+            "data": {
+                "additionalProperties": true,
+                "title": "Data",
+                "type": "object"
+            },
+            "path": {
+                "anyOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "default": null,
+                "title": "Path"
+            },
+            "id": {
+                "example": "5f85f36d6dfecacc68428a46",
+                "examples": [
+                    "5f85f36d6dfecacc68428a46",
+                    "ffffffffffffffffffffffff"
+                ],
+                "title": "Id",
+                "type": "string"
+            }
+        },
+        "required": [
+            "name"
+        ],
+        "title": "ArtifactModel",
+        "type": "object"
+    },
+    "ui_schema": {
+        "id": {
+            "ui:widget": "hidden"
+        }
+    }
+}

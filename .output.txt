@@ -1,0 +1,224 @@
+......F.F.......                                                         [100%]
+================================== FAILURES ===================================
+___________________ TestNodeRunner.test_subprocess_success ____________________
+self = <MagicMock name='run' id='1965377288576'>, args = ("echo 'hello'",)
+kwargs = {'capture_output': True, 'cwd': None, 'shell': True, 'text': True}
+expected = call("echo 'hello'", shell=True, capture_output=True, text=True, cwd=None)
+actual = call("echo 'hello'", shell=True, capture_output=True, text=True, encoding='utf-8', cwd=None)
+_error_message = <function NonCallableMock.assert_called_with.<locals>._error_message at 0x000001C999A17740>
+cause = None
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\n  Actual: %s'
+                    % (expected, actual))
+            raise AssertionError(error_message)
+
+        def _error_message():
+            msg = self._format_mock_failure_message(args, kwargs)
+            return msg
+        expected = self._call_matcher(_Call((args, kwargs), two=True))
+        actual = self._call_matcher(self.call_args)
+        if actual != expected:
+            cause = expected if isinstance(expected, Exception) else None
+>           raise AssertionError(_error_message()) from cause
+E           AssertionError: expected call not found.
+E           Expected: run("echo 'hello'", shell=True, capture_output=True, text=True, cwd=None)
+E             Actual: run("echo 'hello'", shell=True, capture_output=True, text=True, encoding='utf-8', cwd=None)
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\unittest\mock.py:949: AssertionError
+During handling of the above exception, another exception occurred:
+self = <MagicMock name='run' id='1965377288576'>, args = ("echo 'hello'",)
+kwargs = {'capture_output': True, 'cwd': None, 'shell': True, 'text': True}
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+            raise AssertionError(msg)
+>       return self.assert_called_with(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: expected call not found.
+E       Expected: run("echo 'hello'", shell=True, capture_output=True, text=True, cwd=None)
+E         Actual: run("echo 'hello'", shell=True, capture_output=True, text=True, encoding='utf-8', cwd=None)
+E
+E       pytest introspection follows:
+E
+E       Kwargs:
+E       assert {'capture_out...l': True, ...} == {'capture_out... 'text': True}
+E
+E         Omitting 4 identical items, use -vv to show
+E         Left contains 1 more item:
+E         {'encoding': 'utf-8'}
+E         Use -v to get more diff
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\unittest\mock.py:961: AssertionError
+During handling of the above exception, another exception occurred:
+self = <tests.with_context.core.test_node_runner.TestNodeRunner object at 0x000001C9E900A5A0>
+mock_file_stack = <MagicMock name='from_local_file' id='1965377285696'>
+mock_file = <MagicMock name='open' id='1965377276096'>
+mock_subprocess = <MagicMock name='run' id='1965377288576'>
+node_runner = NodeRunner(status=<TaskStatus.RETRIEVED: 'retrieved'>, error_message=None, message=None, files=[], info_files=[<MagicM...>, last_stdout='Success output', last_stderr='', log_string='', info_file_patterns={'*.log', '*.err', '*.in', '*.out'})
+    @patch("subprocess.run")
+    @patch("builtins.open", new_callable=mock_open)
+    @patch.object(FileStack, "from_local_file")
+    def test_subprocess_success(
+        self, mock_file_stack, mock_file, mock_subprocess, node_runner
+    ):
+        """Test successful subprocess execution"""
+        # Mock subprocess return
+        mock_process = MagicMock()
+        mock_process.returncode = 0
+        mock_process.stdout = "Success output"
+        mock_process.stderr = ""
+        mock_subprocess.return_value = mock_process
+
+        # Mock FileStack creation
+        mock_file_stack_instance = MagicMock()
+        mock_file_stack.return_value = mock_file_stack_instance
+
+        result = node_runner.subprocess("test_command", "echo 'hello'")
+
+        assert result is True
+>       mock_subprocess.assert_called_once_with(
+            "echo 'hello'", shell=True, capture_output=True, text=True, cwd=None
+        )
+E       AssertionError: expected call not found.
+E       Expected: run("echo 'hello'", shell=True, capture_output=True, text=True, cwd=None)
+E         Actual: run("echo 'hello'", shell=True, capture_output=True, text=True, encoding='utf-8', cwd=None)
+E
+E       pytest introspection follows:
+E
+E       Kwargs:
+E       assert {'capture_out...l': True, ...} == {'capture_out... 'text': True}
+E
+E         Omitting 4 identical items, use -vv to show
+E         Left contains 1 more item:
+E         {'encoding': 'utf-8'}
+E         Use -v to get more diff
+tests\with_context\core\test_node_runner.py:102: AssertionError
+_________________ TestNodeRunner.test_subprocess_default_name _________________
+self = <MagicMock name='open' id='1965379282912'>, args = ('process.log', 'w')
+kwargs = {}, expected = call('process.log', 'w')
+actual = call('process.log', 'w', encoding='utf-8')
+_error_message = <function NonCallableMock.assert_called_with.<locals>._error_message at 0x000001C999AD3EC0>
+cause = None
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\n  Actual: %s'
+                    % (expected, actual))
+            raise AssertionError(error_message)
+
+        def _error_message():
+            msg = self._format_mock_failure_message(args, kwargs)
+            return msg
+        expected = self._call_matcher(_Call((args, kwargs), two=True))
+        actual = self._call_matcher(self.call_args)
+        if actual != expected:
+            cause = expected if isinstance(expected, Exception) else None
+>           raise AssertionError(_error_message()) from cause
+E           AssertionError: expected call not found.
+E           Expected: open('process.log', 'w')
+E             Actual: open('process.log', 'w', encoding='utf-8')
+..\..\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\unittest\mock.py:949: AssertionError
+During handling of the above exception, another exception occurred:
+self = <tests.with_context.core.test_node_runner.TestNodeRunner object at 0x000001C9E900AD20>
+mock_file_stack = <MagicMock name='from_local_file' id='1965378027984'>
+mock_file = <MagicMock name='open' id='1965379282912'>
+mock_subprocess = <MagicMock name='run' id='1965379212240'>
+node_runner = NodeRunner(status=<TaskStatus.RETRIEVED: 'retrieved'>, error_message=None, message=None, files=[], info_files=[<MagicM...gicMock name='run().stderr' id='1965377090816'>, log_string='', info_file_patterns={'*.log', '*.err', '*.in', '*.out'})
+    @patch("subprocess.run")
+    @patch("builtins.open", new_callable=mock_open)
+    @patch.object(FileStack, "from_local_file")
+    def test_subprocess_default_name(
+        self, mock_file_stack, mock_file, mock_subprocess, node_runner
+    ):
+        """Test subprocess with empty name defaults to 'process'"""
+        mock_process = MagicMock()
+        mock_process.returncode = 0
+        mock_subprocess.return_value = mock_process
+
+        mock_file_stack_instance = MagicMock()
+        mock_file_stack.return_value = mock_file_stack_instance
+
+        node_runner.subprocess("", "echo 'test'")
+
+>       mock_file.assert_called_with("process.log", "w")
+E       AssertionError: expected call not found.
+E       Expected: open('process.log', 'w')
+E         Actual: open('process.log', 'w', encoding='utf-8')
+E
+E       pytest introspection follows:
+E
+E       Kwargs:
+E       assert {'encoding': 'utf-8'} == {}
+E
+E         Left contains 1 more item:
+E         {'encoding': 'utf-8'}
+E         Use -v to get more diff
+tests\with_context\core\test_node_runner.py:152: AssertionError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\pydantic\_internal\_generate_schema.py:319
+.venv\Lib\site-packages\pydantic\_internal\_generate_schema.py:319
+.venv\Lib\site-packages\pydantic\_internal\_generate_schema.py:319
+.venv\Lib\site-packages\pydantic\_internal\_generate_schema.py:319
+tests/with_context/core/test_node_runner.py::TestNodeRunner::test_init_default_values
+tests/with_context/core/test_node_runner.py::TestNodeRunner::test_init_default_values
+tests/with_context/core/test_node_runner.py::TestNodeRunner::test_init_default_values
+tests/with_context/core/test_node_runner.py::TestNodeRunner::test_init_default_values
+  C:\Users\bj7610\PycharmProjects\simstack\.venv\Lib\site-packages\pydantic\_internal\_generate_schema.py:319: PydanticDeprecatedSince20: `json_encoders` is deprecated. See https://docs.pydantic.dev/2.12/concepts/serialization/#custom-serializers for alternatives. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    warnings.warn(
+src\simstack\core\simstack_result.py:9
+  C:\Users\bj7610\PycharmProjects\simstack\src\simstack\core\simstack_result.py:9: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SimstackResult(BaseModel):
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:272
+  C:\Users\bj7610\PycharmProjects\simstack\.venv\Lib\site-packages\pytest_asyncio\plugin.py:272: PytestDeprecationWarning: initialized_context is asynchronous and explicitly requests the "event_loop" fixture. Asynchronous fixtures and test functions should use "asyncio.get_running_loop()" instead.
+    warnings.warn(
+tests/with_context/core/test_node_runner.py::TestNodeRunner::test_init_default_values
+  C:\Users\bj7610\PycharmProjects\simstack\.venv\Lib\site-packages\pytest_asyncio\plugin.py:884: DeprecationWarning: The event_loop fixture provided by pytest-asyncio has been redefined in
+  C:\Users\bj7610\PycharmProjects\simstack\tests\conftest.py:5
+  Replacing the event_loop fixture with a custom implementation is deprecated
+  and will lead to errors in the future.
+  If you want to request an asyncio event loop with a scope other than function
+  scope, use the "loop_scope" argument to the asyncio mark when marking the tests.
+  If you want to return different types of event loops, use the event_loop_policy
+  fixture.
+
+    warnings.warn(
+tests/with_context/core/test_node_runner.py::TestNodeRunner::test_init_default_values
+  C:\Users\bj7610\PycharmProjects\simstack\src\simstack\util\config_reader.py:90: PydanticDeprecatedSince211: Accessing the 'model_fields' attribute on the instance is deprecated. Instead, you should access this attribute from the model class. Deprecated in Pydantic V2.11 to be removed in V3.0.
+    for key in resource_definition.model_fields.keys():
+tests/with_context/core/test_node_runner.py::TestNodeRunner::test_init_default_values
+  C:\Users\bj7610\PycharmProjects\simstack\.venv\Lib\site-packages\pydantic\json_schema.py:2448: PydanticJsonSchemaWarning: Default value <odmantic.reference.ODMReferenceInfo object at 0x000001C9E7EA9570> is not JSON serializable; excluding default from JSON schema [non-serializable-default]
+    warnings.warn(message, PydanticJsonSchemaWarning)
+tests/with_context/core/test_node_runner.py::TestNodeRunner::test_init_default_values
+  C:\Users\bj7610\PycharmProjects\simstack\.venv\Lib\site-packages\pydantic\json_schema.py:2448: PydanticJsonSchemaWarning: Default value <odmantic.reference.ODMReferenceInfo object at 0x000001C9986B8EB0> is not JSON serializable; excluding default from JSON schema [non-serializable-default]
+    warnings.warn(message, PydanticJsonSchemaWarning)
+tests/with_context/core/test_node_runner.py::TestNodeRunnerIntegration::test_full_workflow_failure
+  C:\Users\bj7610\PycharmProjects\simstack\.venv\Lib\site-packages\pytest_asyncio\plugin.py:949: DeprecationWarning: pytest-asyncio detected an unclosed event loop when tearing down the event_loop
+  fixture: <ProactorEventLoop running=False closed=False debug=False>
+  pytest-asyncio will close the event loop for you, but future versions of the
+  library will no longer do so. In order to ensure compatibility with future
+  versions, please make sure that:
+      1. Any custom "event_loop" fixture properly closes the loop after yielding it
+      2. The scopes of your custom "event_loop" fixtures do not overlap
+      3. Your code does not modify the event loop in async fixtures or tests
+
+    warnings.warn(
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/with_context/core/test_node_runner.py::TestNodeRunner::test_subprocess_success - AssertionError: expected call not found.
+FAILED tests/with_context/core/test_node_runner.py::TestNodeRunner::test_subprocess_default_name - AssertionError: expected call not found.
+2 failed, 14 passed, 15 warnings in 1.04s

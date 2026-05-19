@@ -1,0 +1,200 @@
+{
+    "json_schema": {
+        "$defs": {
+            "FileInstance": {
+                "description": "",
+                "properties": {
+                    "path": {
+                        "description": "Path to the file relative to the host work directory",
+                        "title": "Path",
+                        "type": "string"
+                    },
+                    "resource": {
+                        "description": "Resource name",
+                        "title": "Resource",
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "description": "Creation timestamp",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "path",
+                    "resource",
+                    "created_at"
+                ],
+                "title": "FileInstance",
+                "type": "object"
+            },
+            "FileList": {
+                "properties": {
+                    "file_stacks": {
+                        "description": "List of file stacks",
+                        "items": {
+                            "$ref": "#/$defs/FileStack"
+                        },
+                        "title": "File Stacks",
+                        "type": "array"
+                    }
+                },
+                "title": "FileList",
+                "type": "object"
+            },
+            "FileStack": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Name of the file",
+                        "title": "Name"
+                    },
+                    "size": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Size of the file in bytes",
+                        "title": "Size"
+                    },
+                    "is_hashable": {
+                        "default": false,
+                        "description": "Whether the file stack is hashable",
+                        "title": "Is Hashable",
+                        "type": "boolean"
+                    },
+                    "hash": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Hash of the file stack content",
+                        "title": "Hash"
+                    },
+                    "in_memory": {
+                        "default": false,
+                        "description": "Whether the file stack is in memory",
+                        "title": "In Memory",
+                        "type": "boolean"
+                    },
+                    "content": {
+                        "anyOf": [
+                            {
+                                "format": "binary",
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Compressed file content",
+                        "title": "Content"
+                    },
+                    "locations": {
+                        "description": "List of file locations",
+                        "items": {
+                            "$ref": "#/$defs/FileInstance"
+                        },
+                        "title": "Locations",
+                        "type": "array"
+                    },
+                    "id": {
+                        "example": "5f85f36d6dfecacc68428a46",
+                        "examples": [
+                            "5f85f36d6dfecacc68428a46",
+                            "ffffffffffffffffffffffff"
+                        ],
+                        "title": "Id",
+                        "type": "string"
+                    }
+                },
+                "title": "FileStack",
+                "type": "object"
+            }
+        },
+        "properties": {
+            "file_list": {
+                "$ref": "#/$defs/FileList"
+            },
+            "task_status": {
+                "anyOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "default": null,
+                "title": "Task Status"
+            },
+            "error": {
+                "anyOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "default": null,
+                "title": "Error"
+            },
+            "message": {
+                "anyOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "default": null,
+                "title": "Message"
+            },
+            "id": {
+                "example": "5f85f36d6dfecacc68428a46",
+                "examples": [
+                    "5f85f36d6dfecacc68428a46",
+                    "ffffffffffffffffffffffff"
+                ],
+                "title": "Id",
+                "type": "string"
+            }
+        },
+        "title": "FileListIO",
+        "type": "object"
+    },
+    "ui_schema": {
+        "file_list": {
+            "ui:field": "GenericFormField",
+            "ui:options": {
+                "model": "simstack.models.file_list.FileList",
+                "accordion": "true"
+            }
+        },
+        "id": {
+            "ui:widget": "hidden"
+        }
+    }
+}

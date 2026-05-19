@@ -1,0 +1,35 @@
+{
+    "json_schema": {
+        "description": "",
+        "properties": {
+            "path": {
+                "description": "Path to the file relative to the host work directory",
+                "title": "Path",
+                "type": "string"
+            },
+            "resource": {
+                "description": "Resource name",
+                "title": "Resource",
+                "type": "string"
+            },
+            "created_at": {
+                "description": "Creation timestamp",
+                "format": "date-time",
+                "title": "Created At",
+                "type": "string"
+            }
+        },
+        "required": [
+            "path",
+            "resource",
+            "created_at"
+        ],
+        "title": "FileInstance",
+        "type": "object"
+    },
+    "ui_schema": {
+        "id": {
+            "ui:widget": "hidden"
+        }
+    }
+}
