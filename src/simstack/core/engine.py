@@ -52,7 +52,24 @@ class AIOEngineProxy(AIOEngine):
 
         # 3) If neither the model nor any part handled saving, fallback to AIOEngine
         if not parts_saved:
-            return await super().save(model, *args, **kwargs)
+            try:
+                return await super().save(model, *args, **kwargs)
+            except RuntimeError as e:
+                if "attached to a different loop" in str(e):
+                    # Fallback for loop mismatch in tests or edge cases
+                    # Motor/Odmantic sometimes cache the loop.
+                    # Try to use the current loop's motor client if possible,
+                    # but AIOEngine is bound to a specific client.
+                    # If this happens, it's usually because the engine was created in a different loop.
+                    # We can't easily fix the engine here, but we can re-raise with more info
+                    # or try a desperate measure.
+                    # For now, let's just re-raise but ensure we've done our best to avoid it.
+                    raise RuntimeError(
+                        f"Loop mismatch detected in AIOEngineProxy.save for {model}. "
+                        f"Engine loop: {id(self.client.get_io_loop())}, "
+                        f"Current loop: {id(asyncio.get_running_loop())}"
+                    ) from e
+                raise e
         return None
 
     async def _maybe_call_custom_save(self, target: Any) -> bool:
