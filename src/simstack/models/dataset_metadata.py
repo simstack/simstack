@@ -42,19 +42,23 @@ def _get_json_schema(data: Dict) -> dict:
 
 
 class DataSetMetadataTemplate(Model):
-    dataset_type: str
+    field_name: str
     model_json: dict[str, Any]
     structure: Dict[str, List[str]] = Field(default_factory=dict)
 
 
 @simstack_model
 class DataSetMetadata(EmbeddedModel):
-    field_name: str = Field(unique=True)
+    field_name: str
     data: Dict[str, Union[str, int, float, bool, datetime]] = Field(
         default_factory=dict
     )
     is_validated: bool = False
     structure: Dict[str, List[str]] = Field(default_factory=dict)
+
+    @property
+    def dataset_type(self) -> str:
+        return self.field_name
 
     def get_json_schema(self):
         return _get_json_schema(self.data)
@@ -63,7 +67,7 @@ class DataSetMetadata(EmbeddedModel):
         engine = current_engine_context.get()
         reference_metadata = await engine.find_one(
             DataSetMetadataTemplate,
-            DataSetMetadataTemplate.dataset_type == self.field_name,
+            DataSetMetadataTemplate.field_name == self.field_name,
         )
         # remove empty sections without mutating the dict during iteration
         new_structure = {
@@ -72,7 +76,7 @@ class DataSetMetadata(EmbeddedModel):
 
         if reference_metadata is None:
             metadata_template = DataSetMetadataTemplate(
-                dataset_type=self.field_name,
+                field_name=self.field_name,
                 model_json=_get_json_schema(self.data),
                 structure=new_structure,
             )
@@ -148,7 +152,7 @@ class DataSetMetadata(EmbeddedModel):
         engine = current_engine_context.get()
         reference_metadata = await engine.find_one(
             DataSetMetadataTemplate,
-            DataSetMetadataTemplate.dataset_type == self.field_name,
+            DataSetMetadataTemplate.field_name == self.field_name,
         )
         if not reference_metadata:
             raise ValueError("Metadata does not exist")
@@ -164,8 +168,8 @@ class DataSetMetadata(EmbeddedModel):
     @property
     def initialized(self) -> bool:
         """Check if the model has been fully constructed."""
-        # A simple heuristic: if we have an ID or if type is set, we're initialized
-        return hasattr(self, "dataset_type") and self.field_name is not None
+        # A simple heuristic: if we have field_name set, we're initialized
+        return self.field_name is not None
 
     # Dict-like behavior methods
     def __getitem__(self, key: str):

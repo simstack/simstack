@@ -130,6 +130,34 @@ class TestDataSetSection:
         assert all_tuples[1][1].value == "two"
 
     @pytest.mark.asyncio
+    async def test_add_model_group_with_none_cells(self):
+        """Rows may contain None placeholders for missing models."""
+        float_data = FloatData(value=1.0)
+        string_data = StringData(value="present")
+        await context.db.save(float_data)
+        await context.db.save(string_data)
+
+        section = DataSetSection()
+        section.add_model_group((float_data, None, string_data))
+
+        assert section.model_types == ["FloatData", "None", "StringData"]
+        assert section.data[0] == [float_data.id, None, string_data.id]
+
+        retrieved = section.get_model_group(0)
+        assert retrieved[0].value == 1.0
+        assert retrieved[1] is None
+        assert retrieved[2].value == "present"
+
+    @pytest.mark.asyncio
+    async def test_add_none_row(self):
+        """An entire row may be None."""
+        section = DataSetSection()
+        section.add_model_group(None)
+
+        assert section.data == [None]
+        assert section.get_model_group(0) == ()
+
+    @pytest.mark.asyncio
     async def test_list_like_operations(self):
         """Test list-like operations on DataSetSection."""
         float1 = FloatData(value=10.0)
@@ -172,10 +200,31 @@ class TestDataSet:
     """Test cases for DataSet functionality."""
 
     @pytest.mark.asyncio
+    async def test_section_persist_pending_models_uses_save_all(self, monkeypatch):
+        """Section row models are flushed through Database.save_all on persist."""
+        section = DataSetSection()
+        float_data = FloatData(value=7.5)
+        string_data = StringData(value="batch")
+        section.add_model_group((float_data, string_data))
+
+        saved_batches = []
+
+        async def fake_save_all(instances, **kwargs):
+            saved_batches.append(list(instances))
+            return instances
+
+        monkeypatch.setattr(context.db, "save_all", fake_save_all)
+        await section.persist_pending_models(context.db)
+
+        assert len(saved_batches) == 1
+        assert saved_batches[0] == [float_data, string_data]
+        assert section.data[0] == [float_data.id, string_data.id]
+
+    @pytest.mark.asyncio
     async def test_empty_dataset_initialization(self, real_database_context):
         """Test creating an empty DataSet."""
         metadata = DataSetMetadata(
-            dataset_type="test_empty_with_description",
+            field_name="test_empty_with_description",
             data={"description": "Empty test dataset"},
         )
 
@@ -183,7 +232,7 @@ class TestDataSet:
         engine = current_engine_context.get()
         await dataset.save(engine)
 
-        assert dataset.dataset_type == "test_empty_with_description"
+        assert dataset.field_name_property == "test_empty_with_description"
         assert len(dataset) == 0
         assert len(dataset.sections) == 0
 
@@ -192,7 +241,7 @@ class TestDataSet:
         """Test DataSet with multiple sections."""
         # Create metadata
         metadata = DataSetMetadata(
-            dataset_type="test_multi_section",
+            field_name="test_multi_section",
             data={"description": "Multi-section test dataset"},
         )
 
@@ -227,7 +276,7 @@ class TestDataSet:
     async def test_dict_like_operations(self, real_database_context):
         """Test dictionary-like operations on DataSet."""
         metadata = DataSetMetadata(
-            dataset_type="test_dict_ops",
+            field_name="test_dict_ops",
             data={"description": "Dictionary operations test"},
         )
 
@@ -272,7 +321,7 @@ class TestDataSet:
         """Test saving and loading DataSet from the database."""
         # Create metadata
         metadata = DataSetMetadata(
-            dataset_type="test_persistence",
+            field_name="test_persistence",
             data={"version": "1.0", "created": datetime.now()},
         )
 
@@ -298,7 +347,7 @@ class TestDataSet:
         loaded_dataset = await context.db.find_one(DataSet, DataSet.id == dataset_id)
 
         assert loaded_dataset is not None
-        assert loaded_dataset.field_name == "test_persistence"
+        assert loaded_dataset.field_name_property == "test_persistence"
         assert len(loaded_dataset) == 1
         assert "main" in loaded_dataset
 
@@ -317,7 +366,7 @@ class TestDataSet:
         """Test a complex workflow with multiple model types and sections."""
         # Create metadata
         metadata = DataSetMetadata(
-            dataset_type="test_complex_workflow",
+            field_name="test_complex_workflow",
             data={"experiment": "ML_Pipeline", "version": "2.1", "samples": 1000},
         )
 
@@ -409,8 +458,8 @@ class TestDataSet:
         await context.db.save(f)
         await context.db.save(s)
 
-        # First dataset defines the structure under dataset_type "ds_struct_v1"
-        meta1 = DataSetMetadata(dataset_type="ds_struct_v1", data={"desc": "v1"})
+        # First dataset defines the structure under field_name "ds_struct_v1"
+        meta1 = DataSetMetadata(field_name="ds_struct_v1", data={"desc": "v1"})
         ds1 = DataSet(metadata=meta1)
 
         sec_a = DataSetSection()
@@ -424,8 +473,8 @@ class TestDataSet:
         engine = current_engine_context.get()
         await ds1.save(engine)
 
-        # Second dataset with SAME dataset_type but DIFFERENT section names, same structure
-        meta2 = DataSetMetadata(dataset_type="ds_struct_v1", data={"desc": "v1 second"})
+        # Second dataset with SAME field_name but DIFFERENT section names, same structure
+        meta2 = DataSetMetadata(field_name="ds_struct_v1", data={"desc": "v1 second"})
         ds2 = DataSet(metadata=meta2)
 
         sec_train = DataSetSection()
@@ -449,7 +498,7 @@ class TestDataSet:
         self, node_registry, real_database_context
     ):
         """
-        Saving a second dataset with the same dataset_type but a different structure
+        Saving a second dataset with the same field_name but a different structure
         should fail with ValueError from DataSet.save().
         """
         # Common models
@@ -460,7 +509,7 @@ class TestDataSet:
         await context.db.save(s1)
 
         # First dataset establishes structure: {"pair": ["FloatData", "StringData"], "nodes": ["NodeRegistry"]}
-        meta1 = DataSetMetadata(dataset_type="ds_struct_v2", data={"desc": "baseline"})
+        meta1 = DataSetMetadata(field_name="ds_struct_v2", data={"desc": "baseline"})
         ds1 = DataSet(metadata=meta1)
 
         sec_pair = DataSetSection()
@@ -475,12 +524,12 @@ class TestDataSet:
         engine = current_engine_context.get()
         await ds1.save(engine)
 
-        # Second dataset with SAME dataset_type but DIFFERENT structure: change "pair" to only ["FloatData"]
+        # Second dataset with SAME field_name but DIFFERENT structure: change "pair" to only ["FloatData"]
         f2 = FloatData(value=99.9)
         await context.db.save(f2)
 
         meta2 = DataSetMetadata(
-            dataset_type="ds_struct_v2", data={"desc": "should fail"}
+            field_name="ds_struct_v2", data={"desc": "should fail"}
         )
         ds2 = DataSet(metadata=meta2)
 

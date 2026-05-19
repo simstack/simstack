@@ -1,9 +1,6 @@
 name: "Build Conda Package"
 on:
   workflow_dispatch:
-defaults:
-  run:
-    shell: bash
 jobs:
   build_conda_package:
     runs-on: ubuntu-latest
@@ -12,26 +9,28 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Pixi
-        uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          environments: condabuild
+          fetch-depth: 0
+
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: "3.12"
+
+      - name: Install Conda Build
+        run: conda install -c conda-forge conda-build
+
       - name: Build
         id: build
         run: |
-          pixi run condabuild --output-folder build/ --no-anaconda-upload
-          OUTPUTFILE=$(pixi run condabuild --output --output-folder build/ --no-anaconda-upload)
           mkdir -p build/
-          echo "releasepath=`realpath $OUTPUTFILE`" >> $GITHUB_OUTPUT
+          conda build conda-recipe/ --output-folder build/ --no-anaconda-upload
+          OUTPUTFILE=$(conda build conda-recipe/ --output --output-folder build/ --no-anaconda-upload)
+          echo "releasepath=$(realpath $OUTPUTFILE)" >> $GITHUB_OUTPUT
 
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:
           name: condapackage
           path: ${{ steps.build.outputs.releasepath }}
-
-      - name: Upload to Testing Repo
-        id: upload
-        run: |
-          pixi auth login prefix.dev --token ${{ secrets.PREFIX_PUBLISH_KEY }}
-          pixi upload https://prefix.dev/api/v1/upload/your_channel ${{ steps.build.outputs.releasepath }}

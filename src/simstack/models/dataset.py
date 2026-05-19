@@ -1,4 +1,4 @@
-from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List
+from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List, Optional
 
 from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
 
@@ -9,6 +9,31 @@ from simstack.models.dataset_metadata import DataSetMetadata
 from simstack.util.importer import import_class_by_name
 from simstack.util.make_table import make_column_defs_instance
 from simstack.util.make_table import make_table_entries_helper
+
+_NONE_TYPE_NAME = "None"
+RowIds = Optional[List[Optional[ObjectId]]]
+_PENDING_SAVE: Dict[int, List[Tuple[int, int, Model]]] = {}
+
+
+def _model_type_name(model: Optional[Model]) -> str:
+    if model is None:
+        return _NONE_TYPE_NAME
+    return model.__class__.__name__
+
+
+def _model_ids_from_group(models: Tuple[Optional[Model], ...]) -> List[Optional[ObjectId]]:
+    return [None if model is None else model.id for model in models]
+
+
+def _ensure_pending_save(section: "DataSetSection") -> List[Tuple[int, int, Model]]:
+    key = id(section)
+    if key not in _PENDING_SAVE:
+        _PENDING_SAVE[key] = []
+    return _PENDING_SAVE[key]
+
+
+def _clear_pending_save(section: "DataSetSection") -> None:
+    _PENDING_SAVE.pop(id(section), None)
 
 
 @simstack_model
@@ -23,15 +48,16 @@ class DataSetSection(EmbeddedModel):
     :ivar model_types: List of model class names that define the structure of each tuple.
     :type model_types: List[str]
     :ivar data: List of tuples, where each tuple contains model IDs corresponding to model_types.
-    :type data: List[List[ObjectId]]
+        Entries may be ``None`` for missing cells; an entire row may also be ``None``.
+    :type data: List[Optional[List[Optional[ObjectId]]]]
     """
 
     model_types: List[str] = Field(
         default_factory=list
     )  # Class names of models in each tuple
-    data: List[List[ObjectId]] = Field(
+    data: List[RowIds] = Field(
         default_factory=list
-    )  # List of tuples (as lists of ObjectIds)
+    )  # List of tuples (as lists of ObjectIds, with optional None cells/rows)
 
     column_defs: List[Dict] = Field(default_factory=list)
 
@@ -40,32 +66,32 @@ class DataSetSection(EmbeddedModel):
     model_config = {"extra": "forbid"}
 
     @async_helper
-    async def add_model_group(self, models: Union[Model, Tuple[Model, ...]]) -> None:
+    async def add_model_group(
+        self, models: Union[None, Model, Tuple[Optional[Model], ...]]
+    ) -> None:
         """
         Add a tuple of models to this section.
 
-        :param models: Tuple of model instances to add
+        :param models: Tuple of model instances to add, or ``None`` for an empty row
         :raises ValueError: If the model types don't match the section's expected types
         """
+        if models is None:
+            self.data.append(None)
+            return
+
         if isinstance(models, Model):
             models = (models,)
-        model_names = [model.__class__.__name__ for model in models]
+        model_names = [_model_type_name(model) for model in models]
 
-        # Verify that all the models are already stored, otherwise store them
-        engine = current_engine_context.get()
-        stored_models = []
-        model_ids = []
-        for model in models:
+        row_index = len(self.data)
+        model_ids: List[Optional[ObjectId]] = []
+        pending_save = _ensure_pending_save(self)
+        for column_index, model in enumerate(models):
             if model is None:
                 model_ids.append(None)
                 continue
-            if model.id is None:
-                stored_model = await engine.save(model)
-                stored_models.append(stored_model)
-            else:
-                stored_models.append(model)
+            pending_save.append((row_index, column_index, model))
             model_ids.append(model.id)
-
 
         # If this is the first tuple, set the model types
         if not self.model_types:
@@ -88,14 +114,21 @@ class DataSetSection(EmbeddedModel):
         column_defs = []
         if len(self.data) == 0:
             return column_defs
+        first_row = self.data[0]
+        if not first_row:
+            return column_defs
         engine = current_engine_context.get()
-        for model_group_id, model_type in zip(self.data[0], self.model_types):
+        for model_group_id, model_type in zip(first_row, self.model_types):
+            if model_group_id is None or model_type == _NONE_TYPE_NAME:
+                continue
             model_class = await import_class_by_name(model_type)
             model_instance = await engine.find_one(
                 model_class, model_class.id == model_group_id
             )
             if model_instance is None:
-                raise ValueError(f"DB-Save Model of type {model_type} with id {model_group_id} not found")
+                raise ValueError(
+                    f"DB-Save Model of type {model_type} with id {model_group_id} not found"
+                )
             model_columns = make_column_defs_instance(model_instance)
             column_defs.extend(model_columns)
         return column_defs
@@ -106,12 +139,17 @@ class DataSetSection(EmbeddedModel):
 
         for model_group_ids in self.data:
             data = []
+            if not model_group_ids:
+                all_data.append(data)
+                continue
             for model_group_id, model_type in zip(model_group_ids, self.model_types):
+                if model_group_id is None or model_type == _NONE_TYPE_NAME:
+                    data.append({})
+                    continue
                 model_class = await import_class_by_name(model_type)
                 model_instance = await engine.find_one(
-                   model_class, model_class.id == model_group_id
+                    model_class, model_class.id == model_group_id
                 )
-
                 model_data = make_table_entries_helper(model_instance)
                 data.append(model_data)
             all_data.append(data)
@@ -131,14 +169,17 @@ class DataSetSection(EmbeddedModel):
             )
 
         model_ids = self.data[index]
+        if model_ids is None:
+            return tuple()
+
         models = []
 
         for model_type, model_id in zip(self.model_types, model_ids):
-            model_class = await import_class_by_name(model_type)
-            engine = current_engine_context.get()
-            if model_id is None:
+            if model_id is None or model_type == _NONE_TYPE_NAME:
                 models.append(None)
                 continue
+            model_class = await import_class_by_name(model_type)
+            engine = current_engine_context.get()
             model_instance = await engine.find_one(
                 model_class, model_class.id == model_id
             )
@@ -196,8 +237,12 @@ class DataSetSection(EmbeddedModel):
                 f"Index {index} out of range for section with {len(self.data)} model groups"
             )
 
-        model_names = [model.__class__.__name__ for model in value]
-        model_ids = [model.id for model in value]
+        if value is None:
+            self.data[index] = None
+            return
+
+        model_names = [_model_type_name(model) for model in value]
+        model_ids = _model_ids_from_group(value)
 
         # Verify that the model types match
         if self.model_types and model_names != self.model_types:
@@ -219,7 +264,7 @@ class DataSetSection(EmbeddedModel):
             )
         del self.data[index]
 
-    def append(self, models: Tuple[Model, ...]) -> None:
+    def append(self, models: Union[None, Tuple[Optional[Model], ...]]) -> None:
         """
         Append a tuple of models to the section.
 
@@ -227,15 +272,23 @@ class DataSetSection(EmbeddedModel):
         """
         self.add_model_group(models)
 
-    def insert(self, index: int, models: Tuple[Model, ...]) -> None:
+    def insert(self, index: int, models: Union[None, Tuple[Optional[Model], ...]]) -> None:
         """
         Insert a tuple of models at the specified index.
 
         :param index: Index to insert at
-        :param models: Tuple of model instances to insert
+        :param models: Tuple of model instances to insert, or ``None`` for an empty row
         """
-        model_names = [model.__class__.__name__ for model in models]
-        model_ids = [model.id for model in models]
+        if models is None:
+            self.data.insert(index, None)
+            return
+
+        model_names = [_model_type_name(model) for model in models]
+        model_ids = _model_ids_from_group(models)
+        pending_save = _ensure_pending_save(self)
+        for column_index, model in enumerate(models):
+            if model is not None:
+                pending_save.append((index, column_index, model))
 
         # If this is the first tuple, set the model types
         if not self.model_types:
@@ -249,7 +302,7 @@ class DataSetSection(EmbeddedModel):
 
         self.data.insert(index, model_ids)
 
-    def extend(self, models_list: List[Tuple[Model, ...]]) -> None:
+    def extend(self, models_list: List[Union[None, Tuple[Optional[Model], ...]]]) -> None:
         """
         Extend the section with multiple tuples of models.
 
@@ -280,7 +333,7 @@ class DataSetSection(EmbeddedModel):
         :param models: Tuple of model instances to remove
         :raises ValueError: If the tuple is not found
         """
-        model_ids = [model.id for model in models]
+        model_ids = _model_ids_from_group(models)
         try:
             self.data.remove(model_ids)
         except ValueError:
@@ -290,6 +343,7 @@ class DataSetSection(EmbeddedModel):
         """Remove all model groups from the section."""
         self.data.clear()
         self.model_types.clear()
+        _clear_pending_save(self)
 
     async def index(
         self, models: Tuple[Model, ...], start: int = 0, stop: int = None
@@ -303,7 +357,7 @@ class DataSetSection(EmbeddedModel):
         :return: Index of the tuple
         :raises ValueError: If the tuple is not found
         """
-        model_ids = [model.id for model in models]
+        model_ids = _model_ids_from_group(models)
         if stop is None:
             stop = len(self.data)
 
@@ -313,14 +367,14 @@ class DataSetSection(EmbeddedModel):
 
         raise ValueError(f"Tuple {models} not found in DataSetSection")
 
-    def count(self, models: Tuple[Model, ...]) -> int:
+    def count(self, models: Tuple[Optional[Model], ...]) -> int:
         """
         Return the number of occurrences of the specified tuple of models.
 
         :param models: Tuple of model instances to count
         :return: Number of occurrences
         """
-        model_ids = [model.id for model in models]
+        model_ids = _model_ids_from_group(models)
         return self.data.count(model_ids)
 
     def reverse(self) -> None:
@@ -343,8 +397,26 @@ class DataSetSection(EmbeddedModel):
         :param models: Tuple of model instances to check for
         :return: True if found, False otherwise
         """
-        model_ids = [model.id for model in models]
+        model_ids = _model_ids_from_group(models)
         return model_ids in self.data
+
+    async def persist_pending_models(self, db) -> None:
+        """Save deferred section models and update row references."""
+        pending_save = _PENDING_SAVE.pop(id(self), None)
+        if not pending_save:
+            return
+
+        models = [model for _, _, model in pending_save]
+        saved_models = await db.save_all(models)
+
+        for (row_index, column_index, _), saved_model in zip(
+            pending_save, saved_models
+        ):
+            row = self.data[row_index]
+            if row is None:
+                row = [None] * len(self.model_types)
+                self.data[row_index] = row
+            row[column_index] = saved_model.id
 
     def __bool__(self) -> bool:
         """Return True if the section is not empty."""
@@ -367,11 +439,26 @@ class DataSet(Model):
 
     
     @property
+    def field_name_property(self) -> str:
+        return self.metadata.field_name
+
+    @property
     def dataset_type(self) -> str:
-        return self.metadata.dataset_type
+        return self.metadata.field_name
+
+    async def _persist_section_models(self, db) -> None:
+        for section in self.sections.values():
+            await section.persist_pending_models(db)
 
     async def save(self, engine):
-        # engine = current_engine_context.get()
+        from simstack.core.context import context
+
+        db = context.db
+        if db is None:
+            raise RuntimeError("Database not initialized; cannot save DataSet")
+
+        await self._persist_section_models(db)
+
         structure = self.collect_structure()
         ok = await self.metadata.validate_dict(structure)
         if not ok:

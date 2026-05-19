@@ -266,7 +266,7 @@ class NodeRunner(SimstackResult):
         Mark the task as failed with an error message.
         """
         self._make_log_file()
-        self.logger.error(
+        self.logger.exception(
             f"Task {self.name}: {msg} task_id: {self.task_id}",
             stacklevel=2,
         )

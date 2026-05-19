@@ -10,7 +10,7 @@ class TestDataSetMetadataBasic:
 
     def test_empty_initialization(self):
         """Test creating an empty DataSetMetadata."""
-        metadata = DataSetMetadata(dataset_type="test_empty")
+        metadata = DataSetMetadata(field_name="test_empty")
         assert metadata.field_name == "test_empty"
         assert metadata.data == {}
         assert metadata.initialized is True
@@ -24,7 +24,7 @@ class TestDataSetMetadataBasic:
             "active": True,
             "timestamp": datetime(2023, 1, 1),
         }
-        metadata = DataSetMetadata(dataset_type="experiment_basic", data=initial_data)
+        metadata = DataSetMetadata(field_name="experiment_basic", data=initial_data)
 
         assert metadata.field_name == "experiment_basic"
         assert metadata.data == initial_data
@@ -39,7 +39,7 @@ class TestDataSetMetadataDictBehavior:
     def metadata_with_data(self):
         """Fixture providing metadata with sample data."""
         return DataSetMetadata(
-            dataset_type="test_dict_behavior",
+            field_name="test_dict_behavior",
             data={
                 "name": "sample",
                 "count": 10,
@@ -145,7 +145,7 @@ class TestDataSetMetadataRestrictions:
     @pytest.fixture
     def metadata_with_data(self):
         return DataSetMetadata(
-            dataset_type="test_restrictions", data={"name": "sample", "count": 10}
+            field_name="test_restrictions", data={"name": "sample", "count": 10}
         )
 
     def test_delitem_fails_after_init(self, metadata_with_data):
@@ -194,7 +194,7 @@ class TestDataSetMetadataUpdate:
     @pytest.fixture
     def metadata_with_data(self):
         return DataSetMetadata(
-            dataset_type="test_update",
+            field_name="test_update",
             data={"name": "sample", "count": 10, "active": True},
         )
 
@@ -257,7 +257,7 @@ class TestDataSetMetadataUtilityMethods:
     @pytest.fixture
     def metadata_with_data(self):
         return DataSetMetadata(
-            dataset_type="test_utility",
+            field_name="test_utility",
             data={
                 "name": "sample",
                 "count": 10,
@@ -336,7 +336,7 @@ class TestDataSetMetadataJsonSchema:
 
     def test_get_data_json_schema_empty(self):
         """Test JSON schema for empty data."""
-        metadata = DataSetMetadata(dataset_type="test_json_schema_empty")
+        metadata = DataSetMetadata(field_name="test_json_schema_empty")
         schema = metadata.get_json_schema()
 
         expected = {"type": "object", "properties": {}, "additionalProperties": False}
@@ -345,7 +345,7 @@ class TestDataSetMetadataJsonSchema:
     def test_get_data_json_schema_with_data(self):
         """Test JSON schema with various data types."""
         metadata = DataSetMetadata(
-            dataset_type="test_json_schema_full",
+            field_name="test_json_schema_full",
             data={
                 "name": "sample",
                 "count": 10,
@@ -379,13 +379,13 @@ class TestDataSetMetadataStructureValidation:
         """Test that metadata with same structures but different names succeed."""
         # First metadata with structure: name (str), count (int), active (bool)
         metadata1 = DataSetMetadata(
-            dataset_type="analysis_type_1",
+            field_name="analysis_type_1",
             data={"name": "analysis_1", "count": 100, "active": True},
         )
 
-        # Second metadata with SAME structure but different dataset_type name
+        # Second metadata with SAME structure but different field_name name
         metadata2 = DataSetMetadata(
-            dataset_type="analysis_type_2",
+            field_name="analysis_type_2",
             data={"name": "analysis_2", "count": 200, "active": False},
         )
 
@@ -399,17 +399,17 @@ class TestDataSetMetadataStructureValidation:
 
         # First metadata with structure: name (str), samples (int), threshold (float)
         DataSetMetadata(
-            dataset_type="analysis_same_name",
+            field_name="analysis_same_name",
             data={"name": "analysis_1", "samples": 100, "threshold": 0.95},
         )
 
-        # Attempt to create second metadata with DIFFERENT structure but SAME dataset_type name
+        # Attempt to create second metadata with DIFFERENT structure but SAME field_name name
         # This should fail during validation
         with pytest.raises(
             ValueError, match="Metadata structure does not match reference"
         ):
             DataSetMetadata(
-                dataset_type="analysis_same_name",  # Same name as first
+                field_name="analysis_same_name",  # Same name as first
                 data={
                     "name": "analysis_2",
                     "samples": "one hundred",  # Different type: string instead of int
@@ -424,16 +424,16 @@ class TestDataSetMetadataStructureValidation:
 
         # First metadata with structure: name, count, active
         DataSetMetadata(
-            dataset_type="experiment_same_name",
+            field_name="experiment_same_name",
             data={"name": "experiment_1", "count": 50, "active": True},
         )
 
-        # Attempt to create second metadata with different keys but same dataset_type name
+        # Attempt to create second metadata with different keys but same field_name name
         with pytest.raises(
             ValueError, match="Metadata structure does not match reference"
         ):
             DataSetMetadata(
-                dataset_type="experiment_same_name",  # Same name as first
+                field_name="experiment_same_name",  # Same name as first
                 data={
                     "title": "experiment_2",  # Different key: 'title' instead of 'name'
                     "size": 75,  # Different key: 'size' instead of 'count'
@@ -447,13 +447,13 @@ class TestDataSetMetadataStructureValidation:
 
         # First metadata
         DataSetMetadata(
-            dataset_type="valid_same_structure",
+            field_name="valid_same_structure",
             data={"name": "test_1", "version": 1, "stable": True},
         )
 
-        # Second metadata with same structure and same dataset_type name should succeed
+        # Second metadata with same structure and same field_name name should succeed
         metadata2 = DataSetMetadata(
-            dataset_type="valid_same_structure",  # Same name as first
+            field_name="valid_same_structure",  # Same name as first
             data={
                 "name": "test_2",  # Same structure: name (str)
                 "version": 2,  # Same structure: version (int)
@@ -470,20 +470,20 @@ class TestDataSetMetadataEdgeCases:
 
     def test_bool_vs_int_distinction(self):
         """Test that bool and int are treated as different types."""
-        metadata = DataSetMetadata(dataset_type="test_bool_int", data={"flag": True})
+        metadata = DataSetMetadata(field_name="test_bool_int", data={"flag": True})
 
         # Should not be able to assign int to bool field
         with pytest.raises(TypeError):
             metadata["flag"] = 1
 
         # Should not be able to assign bool to int field
-        metadata2 = DataSetMetadata(dataset_type="test_int_bool", data={"number": 42})
+        metadata2 = DataSetMetadata(field_name="test_int_bool", data={"number": 42})
         with pytest.raises(TypeError):
             metadata2["number"] = True
 
     def test_float_vs_int_distinction(self):
         """Test that float and int are treated as different types."""
-        metadata = DataSetMetadata(dataset_type="test_float_int", data={"number": 42})
+        metadata = DataSetMetadata(field_name="test_float_int", data={"number": 42})
 
         # Should not be able to assign float to int field
         with pytest.raises(TypeError):
@@ -491,7 +491,7 @@ class TestDataSetMetadataEdgeCases:
 
     def test_empty_string_handling(self):
         """Test handling of empty strings."""
-        metadata = DataSetMetadata(dataset_type="test_empty_string", data={"name": ""})
+        metadata = DataSetMetadata(field_name="test_empty_string", data={"name": ""})
         assert metadata["name"] == ""
 
         # Should still be able to update with another string
@@ -501,7 +501,7 @@ class TestDataSetMetadataEdgeCases:
     def test_datetime_handling(self):
         """Test datetime handling specifics."""
         dt = datetime(2023, 1, 1, 12, 30, 45)
-        metadata = DataSetMetadata(dataset_type="test_datetime", data={"timestamp": dt})
+        metadata = DataSetMetadata(field_name="test_datetime", data={"timestamp": dt})
 
         assert metadata["timestamp"] == dt
 

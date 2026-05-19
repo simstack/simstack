@@ -34,8 +34,9 @@ class TestResourceDefinition:
         )
 
         assert resource.resource_str == "local"
-        assert resource.ssh_key == valid_paths["ssh_key"]
+        assert resource.ssh_key == str(valid_paths["ssh_key"]).replace("\\", "/")
         assert len(resource.python_paths) == 1
+        assert resource.python_paths[0] == str(valid_paths["python_path"]).replace("\\", "/")
 
 
     def test_optional_ssh_key(self, valid_paths):
@@ -96,4 +97,5 @@ class TestResourceDefinition:
         )
 
         # Test valid assignment
-        resource.ssh_key = valid_paths["ssh_key"]
+        resource.ssh_key = str(valid_paths["ssh_key"])
+        assert resource.ssh_key == str(valid_paths["ssh_key"]).replace("\\", "/")

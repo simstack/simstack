@@ -165,6 +165,12 @@ class Database(DatabaseInformation):
     async def save(self, model: Model) -> Model:
         return await self.upsert(model)
 
+    async def save_all(self, instances: List[Model], **kwargs) -> List[Model]:
+        """Save multiple model instances in order."""
+        if not instances:
+            return []
+        return await self.engine.save_all(instances, **kwargs)
+
     async def find_one(self, model_class: Type[T], query=None, **kwargs) -> Optional[T]:
         """
         Find a single document matching the query

@@ -85,9 +85,7 @@ class ResourceDefinition(Model):
 
     def validate_ssh_key(self):
         if self.ssh_key is not None:
-            file_path = transform_file_name(Path(self.ssh_key)) # Convert to Path for utility
-            if not file_path:
-                raise ValueError(f"SSH key path does not exist: {self.ssh_key}")
+            transform_file_name(Path(self.ssh_key))
 
     def get_ssh_key_path(self):
         if self.ssh_key is not None:
@@ -96,12 +94,7 @@ class ResourceDefinition(Model):
 
     def validate_python_path(self):
         for path_str in self.python_paths:
-            path = Path(path_str)
-            real_path = transform_file_name(path)
-            if not path.exists():
-                raise ValueError(f"Python path does not exist: {path}")
-            if not path.is_dir():
-                raise ValueError(f"Python path is not a directory: {path}")
+            transform_file_name(Path(path_str))
 
     def get_python_path(self):
         if self.python_paths:

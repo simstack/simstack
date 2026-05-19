@@ -16,6 +16,16 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         python-version: ["3.12"]
 
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+    
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - uses: actions/checkout@v4
 
@@ -31,8 +41,17 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
-      - name: Run tests without context
-        # Runs pytest with coverage, skipping 'local_runner' tests as per previous configuration
-        run: uv run python -m pytest tests/without_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml -m "not local_runner"
-      - name: Run tests with context
-        run: uv run python -m pytest tests/with_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml -m "not local_runner"
+      - name: Run tests (all)
+        env:
+          SIMSTACK_TEST_USE_REAL_DB: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
+        run: |
+          uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+          # Verify simstack_runner can be invoked
+          uv run simstack_runner --help
+          # Start a real simstack_runner in background for testing if needed
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            uv run simstack_runner --resource local &
+            sleep 5
+            # Basic check if it's running
+            pgrep -f simstack_runner
+          fi

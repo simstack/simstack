@@ -34,6 +34,13 @@ class AIOEngineProxy(AIOEngine):
         """
         return await super().save(obj, *args, **kwargs)
 
+    async def save_all(self, instances: Iterable[Any], *args, **kwargs) -> list[Any]:
+        """Save multiple model instances, preserving input order."""
+        results = []
+        for instance in instances:
+            results.append(await self._save_one(instance, *args, **kwargs))
+        return results
+
     async def _save_one(self, model: Any, *args, **kwargs) -> Any:
         # 1) Try model's own `save`
         if await self._maybe_call_custom_save(model):
