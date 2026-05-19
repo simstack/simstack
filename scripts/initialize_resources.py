@@ -23,7 +23,6 @@ async def main():
     # Get database information from simstack.toml
     db_info = DatabaseInformation.from_config(toml_reader.config)
 
-    print("Database information:", db_info.to_dict())
     # Connect to the database
 
     db = Database.from_db_info(db_info)
