@@ -857,6 +857,10 @@ def node(
             # Create Node with the remaining kwargs
             execution_node = Node(*args, **kwargs)
 
+            # Ensure engine is in context for the current loop
+            if context.db and context.db.engine:
+                current_engine_context.set(context.db.engine)
+
             status = await execution_node.get_node_registry()
             result = None
             if status == TaskStatus.COMPLETED:
@@ -892,6 +896,12 @@ def node(
             except RuntimeError:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
+            
+            # Use current_engine_context to ensure the database engine is bound to the current loop
+            # This is a workaround for Motor/Odmantic loop stickiness in tests
+            if context.db and context.db.engine:
+                current_engine_context.set(context.db.engine)
+
             status = loop.run_until_complete(execution_node.get_node_registry())
             result = None
             if status == TaskStatus.COMPLETED:

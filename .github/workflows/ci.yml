@@ -75,10 +75,6 @@ jobs:
       matrix:
         python-version: ["3.12"]
     
-    defaults:
-      run:
-        shell: bash
-
     steps:
       - uses: actions/checkout@v4
 
@@ -95,19 +91,21 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Create simstack.toml
+        shell: pwsh
         run: |
-          mkdir -p ${{ github.workspace }}/simstack_workdir
-          cat <<EOF > ${{ github.workspace }}/src/simstack/util/simstack.toml
+          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\simstack_workdir"
+          $tomlContent = @"
           [parameters]
           [parameters.general]
           use_db = true
-          workdir_self = "${{ github.workspace }}/simstack_workdir"
+          workdir_self = "${{ github.workspace }}\simstack_workdir"
           # these are parameters for one user for all hosts
           [parameters.db]
           connection_string="mongodb://ui_testing:!SimStack456454488743144@covalent.int.kit.edu:27017/"
           database = "ui_testing_data"
           test_database = "ui_testing_test"
-          EOF
+          "@
+          $tomlContent | Set-Content -Path "${{ github.workspace }}\src\simstack\util\simstack.toml"
 
       - name: Run tests (all)
         env:
