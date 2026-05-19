@@ -91,9 +91,6 @@ class GlobalState:
         """
         Initializes the global state with the given configuration parameters.
 
-        Raises:
-            RuntimeError: If the global state is already initialized.
-
         Args:
             **kwargs: Arbitrary keyword arguments for configuration. The following keys are expected:
                 - project_root (str, optional): The project root directory. If not provided, it will be
@@ -125,7 +122,11 @@ class GlobalState:
 
         """
         if self._initialized:
-            raise RuntimeError("GlobalState already initialized")
+            # If already initialized, we just return if not in test mode,
+            # or we re-initialize if it's explicitly requested (not typical though)
+            if not kwargs.get("is_test", False):
+                return
+        
         self._initialized = True
 
         project_root = kwargs.get("project_root", find_project_root())

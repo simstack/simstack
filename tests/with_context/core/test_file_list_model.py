@@ -62,7 +62,7 @@ class TestFileListMixin:
         file_list.append(sample_file_stack)
 
         assert len(file_list) == 1
-        assert file_list.file_stacks[0] == sample_file_stack
+        assert file_list[0] == sample_file_stack
 
     def test_append_multiple_files(self, sample_file_stacks):
         """Test appending multiple files"""
@@ -71,7 +71,7 @@ class TestFileListMixin:
             file_list.append(file_stack)
 
         assert len(file_list) == 3
-        assert file_list.file_stacks == sample_file_stacks
+        assert list(file_list) == sample_file_stacks
 
     def test_find_existing_pattern(self, sample_file_stacks):
         """Test finding file with existing pattern"""
@@ -158,7 +158,7 @@ class TestFileList:
         """Test creating FileList with initial data"""
         file_list = FileList(file_stacks=sample_file_stacks)
         assert len(file_list) == 3
-        assert file_list.file_stacks == sample_file_stacks
+        assert list(file_list) == sample_file_stacks
 
 
 class TestFileListModel:
@@ -167,7 +167,6 @@ class TestFileListModel:
     def test_file_list_model_creation(self):
         """Test creating an empty FileListModel"""
         file_list_model = FileListModel()
-        assert file_list_model.file_stacks == []
         assert len(file_list_model) == 0
         assert file_list_model.id is not None  # Model should have an ID
 
@@ -175,7 +174,7 @@ class TestFileListModel:
         """Test creating FileListModel with initial data"""
         file_list_model = FileListModel(file_stacks=sample_file_stacks)
         assert len(file_list_model) == 3
-        assert file_list_model.file_stacks == sample_file_stacks
+        assert list(file_list_model) == sample_file_stacks
         assert file_list_model.id is not None
 
     @pytest.mark.asyncio
@@ -195,6 +194,10 @@ class TestFileListModel:
         self, initialized_context, sample_file_stacks
     ):
         """Test saving and loading FileListModel with data"""
+        # MUST save FileStacks first because they are References now
+        for fs in sample_file_stacks:
+            await context.db.save(fs)
+
         # Create and save FileListModel
         file_list_model = FileListModel(file_stacks=sample_file_stacks)
         saved_model = await context.db.save(file_list_model)
@@ -207,10 +210,10 @@ class TestFileListModel:
         assert loaded_model is not None
         assert loaded_model.id == saved_model.id
         assert len(loaded_model) == 3
-        assert len(loaded_model.file_stacks) == 3
+        assert len(list(loaded_model)) == 3
 
         # Check that file stack properties are preserved
-        loaded_names = [fs.name for fs in loaded_model.file_stacks]
+        loaded_names = [fs.name for fs in loaded_model]
         original_names = [fs.name for fs in sample_file_stacks]
         assert loaded_names == original_names
 
@@ -219,6 +222,8 @@ class TestFileListModel:
         self, initialized_context, sample_file_stack
     ):
         """Test updating FileListModel in database"""
+        await context.db.save(sample_file_stack)
+
         # Create and save initial model
         file_list_model = FileListModel()
         saved_model = await context.db.save(file_list_model)
@@ -230,20 +235,23 @@ class TestFileListModel:
 
         # Verify update
         assert len(updated_model) == 1
-        assert updated_model.file_stacks[0].name == sample_file_stack.name
+        assert updated_model[0].name == sample_file_stack.name
 
         # Load from database to confirm persistence
         loaded_model = await context.db.find_one(
             FileListModel, FileListModel.id == updated_model.id
         )
         assert len(loaded_model) == 1
-        assert loaded_model.file_stacks[0].name == sample_file_stack.name
+        assert loaded_model[0].name == sample_file_stack.name
 
     @pytest.mark.asyncio
     async def test_delete_file_list_model(
         self, initialized_context, sample_file_stacks
     ):
         """Test deleting FileListModel from database"""
+        for fs in sample_file_stacks:
+            await context.db.save(fs)
+
         # Create and save model
         file_list_model = FileListModel(file_stacks=sample_file_stacks)
         saved_model = await context.db.save(file_list_model)
@@ -269,6 +277,9 @@ class TestFileListModel:
         self, initialized_context, sample_file_stacks
     ):
         """Test finding multiple FileListModels in database"""
+        for fs in sample_file_stacks:
+            await context.db.save(fs)
+
         # Create and save multiple models
         model1 = FileListModel(file_stacks=sample_file_stacks[:1])
         model2 = FileListModel(file_stacks=sample_file_stacks[1:])
@@ -302,6 +313,7 @@ class TestFileListModel:
             file_stack = FileStack.from_local_file(
                 path=tmp_file_path, is_hashable=True, in_memory=True
             )
+            await context.db.save(file_stack)
 
             # Create FileListModel and add the file stack
             file_list_model = FileListModel()
@@ -346,6 +358,7 @@ class TestFileListModelIntegration:
                 is_hashable=i % 2 == 0,  # Every other file is hashable
                 in_memory=i % 3 == 0,  # Every third file is in memory
             )
+            await context.db.save(file_stack)
             file_stacks.append(file_stack)
 
         # Create and save model
