@@ -1,6 +1,7 @@
 import base64
-from typing import Optional, List, TypeVar
+from typing import Optional, List, TypeVar, Any
 from odmantic import Model, Field, EmbeddedModel
+from pydantic import field_serializer
 from simstack.models.parameters import Parameters
 from simstack.models.pickle_models import FunctionPickle
 import logging
@@ -40,10 +41,14 @@ class NodeModel(Model):
         FunctionPickle
     ] = None  # Reference to FunctionPickle if available
 
+    @field_serializer("*", mode="wrap", check_fields=False)
+    def serialize_bytes(self, value: Any, nxt: Any) -> Any:
+        if isinstance(value, bytes):
+            return base64.b64encode(value).decode("ascii")
+        return nxt(value)
 
     model_config = {
         "collection": "node_model",
-        "json_encoders": {bytes: lambda b: base64.b64encode(b).decode("ascii")},
     }
 
     

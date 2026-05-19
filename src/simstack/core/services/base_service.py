@@ -92,14 +92,14 @@ class BaseService(ABC):
         """Internal loop that respects the stop event"""
         logger.info(f"Service {self._name} started.")
         while not self._stop_event.is_set():
-            start_time = asyncio.get_event_loop().time()
+            start_time = asyncio.get_running_loop().time()
             try:
                 await self.execute()
             except Exception as e:
                 logger.exception(f"Error in service {self._name}: {e}")
 
             # Calculate wait time to maintain interval regardless of execution duration
-            elapsed = asyncio.get_event_loop().time() - start_time
+            elapsed = asyncio.get_running_loop().time() - start_time
             wait_time = max(0, int(self._interval - elapsed))
 
             try:

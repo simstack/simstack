@@ -887,7 +887,11 @@ def node(
             execution_node = Node(*args, **kwargs)
 
             # If it's an async function but called in a sync context, run it in the event loop
-            loop = asyncio.get_event_loop()
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
             status = loop.run_until_complete(execution_node.get_node_registry())
             result = None
             if status == TaskStatus.COMPLETED:

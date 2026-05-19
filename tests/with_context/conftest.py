@@ -10,7 +10,7 @@ from simstack.util.project_root_finder import find_project_root
 
 
 @pytest_asyncio.fixture(autouse=True, scope="session")
-async def initialized_context(tmp_path_factory, event_loop):
+async def initialized_context(tmp_path_factory):
     # Use environment variable to control the database type for tests
     import os
 

@@ -1,5 +1,7 @@
 import base64
 import zlib
+from typing import Any
+from pydantic import field_serializer
 
 
 class BytesB64Mixin:
@@ -8,9 +10,11 @@ class BytesB64Mixin:
     base-64-encoded ASCII strings when exporting to JSON (dict / response).
     """
 
-    model_config = {
-        "json_encoders": {bytes: lambda b: base64.b64encode(b).decode("ascii")}
-    }
+    @field_serializer("*", mode="wrap", check_fields=False)
+    def serialize_bytes(self, value: Any, nxt: Any) -> Any:
+        if isinstance(value, bytes):
+            return base64.b64encode(value).decode("ascii")
+        return nxt(value)
 
     def _compress_bytes(self, data: bytes) -> str:
             """Compress bytes and encode to base64 string"""
