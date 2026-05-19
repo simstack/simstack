@@ -85,10 +85,10 @@ async def main():
         print(f"Error connecting to or writing to the database: {e}")
         import traceback
         traceback.print_exc()
-        db.close()
+        await db.close()
         sys.exit(1)
     
-    db.close()
+    await db.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
