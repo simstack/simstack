@@ -7,6 +7,8 @@ from simstack.tables.model_table import make_model_table
 from simstack.tables.node_table import make_node_table
 from simstack.models.files import FileStack
 from simstack.util.project_root_finder import find_project_root
+from simstack.util.toml_reader import TomlReader
+from simstack.util.database_information import DatabaseInformation
 
 
 @pytest_asyncio.fixture(autouse=True, scope="function")
@@ -34,15 +36,31 @@ async def initialized_context(tmp_path_factory):
     os.environ["TEMP"] = str(working_dir)
 
     project_root = find_project_root(skip_files=())
+    toml_reader = TomlReader(project_root)
+
+    db_name = "simstack_test"
+    connection_string = "mongodb://localhost:27017" if use_real_db else None
+    db_type = DBType.MONGODB if use_real_db else DBType.IN_MEMORY
+
+    if use_real_db:
+        # Try to get database info from toml if it exists
+        try:
+            db_info_toml = DatabaseInformation.from_config(toml_reader.config)
+            if db_info_toml.connection_string:
+                connection_string = db_info_toml.connection_string
+            if db_info_toml.db_name:
+                db_name = db_info_toml.db_name
+        except Exception as e:
+            print(f"Warning: Could not read database info from toml: {e}")
 
     # Initialize context - use test mode for logging, real DB mode for data if requested
     await context.initialize(
         console=False,
         is_test=True,
         resource="local",
-        connection_string="mongodb://localhost:27017" if use_real_db else None,
-        db_type=DBType.MONGODB if use_real_db else DBType.IN_MEMORY,
-        db_name="simstack_test",
+        connection_string=connection_string,
+        db_type=db_type,
+        db_name=db_name,
         workdir=working_dir,
         project_root=project_root
     )

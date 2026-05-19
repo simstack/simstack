@@ -47,7 +47,7 @@ class ConfigReader(DatabaseInformation):
 
         required_keys = ["resource", "python_path", "ssh_key", "git_list", "allowed_resources",
                          "workdir", "environment_start"]
-        init_done = False
+        init_done = True
         config = {"project_root": project_root}
         for key in required_keys:
             if key in kwargs:
