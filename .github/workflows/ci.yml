@@ -50,6 +50,15 @@ jobs:
 
       - name: Create database and user
         run: |
+          # Wait for MongoDB to be ready
+          for i in {1..30}; do
+            if mongosh --host localhost --port 27017 --eval 'db.adminCommand("ping")' > /dev/null 2>&1; then
+              echo "MongoDB is ready"
+              break
+            fi
+            echo "Waiting for MongoDB..."
+            sleep 1
+          done
           mongosh --host localhost --port 27017 --eval '
             db = db.getSiblingDB("git_testing");
             db.createUser({
@@ -127,13 +136,13 @@ jobs:
           $tomlContent = @"
           [parameters]
           [parameters.general]
-          use_db = true
+          use_db = false
           workdir_self = "${{ github.workspace }}\simstack_workdir"
           # these are parameters for one user for all hosts
           [parameters.db]
-          connection_string="mongodb://ui_testing:!SimStack456454488743144@covalent.int.kit.edu:27017/"
-          database = "ui_testing_data"
-          test_database = "ui_testing_test"
+          connection_string="mongodb://localhost:27017/"
+          database = "git_testing"
+          test_database = "git_testing"
           "@
           $tomlContent | Set-Content -Path "${{ github.workspace }}\src\simstack\util\simstack.toml"
 
@@ -141,7 +150,9 @@ jobs:
         shell: pwsh
         run: |
           $env:PYTHONPATH += ";${{ github.workspace }}\src"
-          uv run python scripts\initialize_resources.py ${{ github.workspace }}\src\simstack\util\simstack.toml
+          # Skip initialization on Windows for now since we don't have a local MongoDB
+          # uv run python scripts\initialize_resources.py ${{ github.workspace }}\src\simstack\util\simstack.toml
+          echo "Skipping resource initialization on Windows"
 
       - name: Run tests (all)
         env:

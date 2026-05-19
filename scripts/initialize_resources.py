@@ -1,6 +1,7 @@
 import asyncio
 import socket
 import argparse
+import sys
 from pathlib import Path
 from simstack.models.resource_definition import ResourceDefinition
 from simstack.util.db import Database
@@ -61,10 +62,24 @@ async def main():
     )
 
     # Upsert records into the database
-    await db.upsert(resource_self)
-    await db.upsert(resource_local)
+    try:
+        # Check connection
+        print(f"Connecting to database {db_info.db_name} at {db_info.connection_string}...")
+        # Use the motor client's command method via engine's database holder
+        db_raw = db.client[db_info.db_name]
+        await db_raw.command("ping")
+        print("Database connection successful.")
+        
+        await db.upsert(resource_self)
+        await db.upsert(resource_local)
+        print("Successfully wrote 'self' and 'local' ResourceDefinition records to the database.")
+    except Exception as e:
+        print(f"Error connecting to or writing to the database: {e}")
+        import traceback
+        traceback.print_exc()
+        db.close()
+        sys.exit(1)
     
-    print("Successfully wrote 'self' and 'local' ResourceDefinition records to the database.")
     db.close()
 
 if __name__ == "__main__":
