@@ -11,7 +11,7 @@ from simstack.util.toml_reader import TomlReader
 from simstack.util.database_information import DatabaseInformation
 
 
-@pytest_asyncio.fixture(autouse=True, scope="function")
+@pytest_asyncio.fixture(autouse=True, scope="session")
 async def initialized_context(tmp_path_factory):
     # Use environment variable to control the database type for tests
     import os
@@ -144,12 +144,15 @@ async def initialized_context(tmp_path_factory):
     # Provide the initialized context
     yield context
 
-    # Cleanup after each test
+    # Cleanup after session
     try:
         if context.initialized:
             # Close the main database connection
             if hasattr(context, "db") and context.db:
-                await context.db.close()
+                try:
+                    await context.db.close()
+                except Exception:
+                    pass
                 context.db = None
 
             # Close logging handler's MongoDB connection
@@ -158,10 +161,16 @@ async def initialized_context(tmp_path_factory):
                 for handler in context.log_handler.handlers[:]:
                     if hasattr(handler, "close"):
                         # This is likely a DBLogHandler with a close method
-                        handler.close()
+                        try:
+                            handler.close()
+                        except Exception:
+                            pass
                     elif hasattr(handler, "client") and handler.client:
                         # Fallback: directly close the client
-                        handler.client.close()
+                        try:
+                            handler.client.close()
+                        except Exception:
+                            pass
                     context.log_handler.removeHandler(handler)
                 context.log_handler = None
 
@@ -169,12 +178,12 @@ async def initialized_context(tmp_path_factory):
             context._initialized = False
             context.path_manager = None
             context.config = None
-            print("Test context cleaned up")
+            print("Session test context cleaned up")
     except Exception as e:
         print(f"Warning: Error during context cleanup: {e}")
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture(scope="session")
 def odmantic_engine(initialized_context):
     """
     Provide the ODMantic engine from the initialized context.
