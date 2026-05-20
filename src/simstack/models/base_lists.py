@@ -243,3 +243,4 @@ class StringList(Model, GenericListMixin[str]):
 
     def __len__(self) -> int:
         return len(self.elements)
+
