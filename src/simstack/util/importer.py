@@ -5,6 +5,7 @@ from typing import Callable, Optional, Type
 from odmantic import Model, AIOEngine, ObjectId
 from simstack.core.engine import current_engine_context
 from simstack.models.models import ModelMapping, NodeModel
+from simstack.core.context import context
 
 logger = logging.getLogger("importer")
 
@@ -56,17 +57,14 @@ async def import_function(
     Returns:
         The imported function object or None if import fails
     """
-    engine = current_engine_context.get()
+    node_mappings = context.node_mappings
+    node_model = node_mappings.get_by_mapping(function_path)
 
-    node_model = await engine.find_one(
-        NodeModel, NodeModel.function_mapping == function_path
-    )
     if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
         _, function_name = function_path.rsplit(".", 1)
-        node_model = await engine.find_one(NodeModel, NodeModel.name == function_name)
+        node_model = node_mappings.get_by_name(function_name)
 
     if node_model is None:
-
         raise LookupError(
             f"task_id: {task_id} Function {function_path} not found in the NodeModel Table"
         )
@@ -79,11 +77,13 @@ async def import_function(
         else:
             raise e
 
-async def import_function_by_name(function_name: str, task_id: ObjectId, engine: AIOEngine = None) -> Optional[Callable]:
-    if not engine:
-        engine = current_engine_context.get()
 
-    node_model = await engine.find_one(NodeModel, NodeModel.name == function_name)
+async def import_function_by_name(
+    function_name: str, task_id: ObjectId, engine: AIOEngine = None
+) -> Optional[Callable]:
+    node_mappings = context.node_mappings
+    node_model = node_mappings.get_by_name(function_name)
+
     if node_model is None:
         logger.error(f"Could not find function mapping for name: {function_name}")
         raise ValueError(f"Could not find function mapping for name: {function_name}")
@@ -106,18 +106,14 @@ async def import_class(class_path: str) -> Type[Model] | None:
     """
 
     try:
-        engine = current_engine_context.get()
+        model_mappings = context.model_mappings
         # Split the path into module path and class name
         module_path, class_name = class_path.rsplit(".", 1)
-        model_mapping = await engine.find_one(
-            ModelMapping, ModelMapping.name == class_name
-        )
+        model_mapping = model_mappings.get_by_name(class_name)
 
-       # If not found by name, try by mapping
+        # If not found by name, try by mapping
         if not model_mapping:
-            model_mapping = await engine.find_one(
-                ModelMapping, ModelMapping.mapping == class_path
-            )
+            model_mapping = model_mappings.get_by_mapping(class_path)
         else:  # when searching by name, the path may have changed
             module_path, class_name = model_mapping.mapping.rsplit(".", 1)
 
@@ -136,8 +132,8 @@ async def import_class(class_path: str) -> Type[Model] | None:
 
 
 async def import_class_by_name(class_name: str) -> Type[Model]:
-    engine = current_engine_context.get()
-    model_mapping = await engine.find_one(ModelMapping, ModelMapping.name == class_name)
+    model_mappings = context.model_mappings
+    model_mapping = model_mappings.get_by_name(class_name)
 
     if not model_mapping:
         logger.error(f"Error finding ModelMapping for {class_name}")
