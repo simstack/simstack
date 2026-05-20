@@ -3,9 +3,7 @@ import logging
 from typing import Callable, Optional, Type
 
 from odmantic import Model, AIOEngine, ObjectId
-from simstack.core.engine import current_engine_context
-from simstack.models.models import ModelMapping, NodeModel
-from simstack.core.context import context
+
 
 logger = logging.getLogger("importer")
 
@@ -57,6 +55,7 @@ async def import_function(
     Returns:
         The imported function object or None if import fails
     """
+    from simstack.core.context import context
     node_mappings = context.node_mappings
     node_model = node_mappings.get_by_mapping(function_path)
 
@@ -81,6 +80,7 @@ async def import_function(
 async def import_function_by_name(
     function_name: str, task_id: ObjectId, engine: AIOEngine = None
 ) -> Optional[Callable]:
+    from simstack.core.context import context
     node_mappings = context.node_mappings
     node_model = node_mappings.get_by_name(function_name)
 
@@ -106,6 +106,7 @@ async def import_class(class_path: str) -> Type[Model] | None:
     """
 
     try:
+        from simstack.core.context import context
         model_mappings = context.model_mappings
         # Split the path into module path and class name
         module_path, class_name = class_path.rsplit(".", 1)
@@ -132,6 +133,7 @@ async def import_class(class_path: str) -> Type[Model] | None:
 
 
 async def import_class_by_name(class_name: str) -> Type[Model]:
+    from simstack.core.context import context
     model_mappings = context.model_mappings
     model_mapping = model_mappings.get_by_name(class_name)
 
