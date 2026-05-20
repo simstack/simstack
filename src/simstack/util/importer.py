@@ -113,7 +113,7 @@ async def import_class(class_path: str) -> Type[Model] | None:
             ModelMapping, ModelMapping.name == class_name
         )
 
-       # If not found by name, try by mapping
+        # If not found by name, try by mapping
         if not model_mapping:
             model_mapping = await engine.find_one(
                 ModelMapping, ModelMapping.mapping == class_path
@@ -121,7 +121,7 @@ async def import_class(class_path: str) -> Type[Model] | None:
         else:  # when searching by name, the path may have changed
             module_path, class_name = model_mapping.mapping.rsplit(".", 1)
 
-        if not model_mapping:
+        if model_mapping is None:
             logger.error(f"Error finding ModelMapping for {class_name}")
             raise LookupError(f"Error finding ModelMapping for {class_name}")
 

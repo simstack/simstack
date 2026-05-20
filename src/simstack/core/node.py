@@ -35,7 +35,7 @@ from simstack.core.task_id import set_task_id, clear_task_id
 from simstack.models import ModelMapping, Parameters
 from simstack.models import NodeModel
 from simstack.models import NodeRegistry
-from simstack.models.file_list import FileListModel
+from simstack.models.file_list import FileListModel, OLD_FILE_LIST_DEFINITION
 from simstack.models.files import FileStack
 from simstack.models.parameters import Resource, Queue
 from simstack.models.simstack_model import is_simstack_model
@@ -641,9 +641,8 @@ class Node:
 
             # check if there are files in the result
             if len(result.files) > 0:
-                file_list_model = (
-                    FileListModel()
-                )  # this goes into the results must be a model
+                file_list_model = FileListModel()
+                  # this goes into the results must be a model
                 for file_stack in result.files:
                     if file_stack:
                         if isinstance(file_stack, FileStack):
@@ -651,7 +650,10 @@ class Node:
                                 f"Task task_id: {self.id} saving file: {file_stack.name} {file_stack.id}"
                             )
                             saved = await context.db.save(file_stack)
-                            file_list_model.append(saved)
+                            if OLD_FILE_LIST_DEFINITION:
+                                file_list_model.append(saved)
+                            else:
+                                await file_list_model.files.append(saved)
                         else:
                             logger.error(
                                 f"Task task_id: {self.id} cannot save file: FileStack expected but got {file_stack}"
@@ -682,11 +684,12 @@ class Node:
             for file_stack in result.info_files:
                 if file_stack:
                     if isinstance(file_stack, FileStack):
-                        saved = await context.db.save(file_stack)
-                        logger.info(
-                            f"Task task_id: {self.id} saving info file: {file_stack.name} {file_stack.id}"
-                        )
-                        self.registry_entry.info_files.append(saved)
+                        logger.info(f"Task task_id: {self.id} saving info file: {file_stack.name} {file_stack.id}")
+                        if OLD_FILE_LIST_DEFINITION:
+                            saved = await context.db.save(file_stack)
+                            self.registry_entry.info_files.append(saved)
+                        else:
+                            await self.registry_entry.info_files.append(file_stack)
                     else:
                         logger.error(
                             f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
