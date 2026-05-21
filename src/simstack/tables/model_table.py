@@ -13,6 +13,7 @@ from simstack.tables.table_builder import TableBuilderBase
 
 logger = logging.getLogger("ModelTable")
 
+
 class CreateModelTable(TableBuilderBase):
     """
     Helper class to build the model table without passing around many parameters.
@@ -25,6 +26,10 @@ class CreateModelTable(TableBuilderBase):
     @property
     def logger(self) -> logging.Logger:
         return logger
+
+    async def build(self, *args, **kwargs) -> None:
+        await super().build(*args, **kwargs)
+        await context.refresh_mappings(models=True, nodes=False)
 
     async def _process_module(self, module, drops: str) -> None:
         await self._create_models_from_module(module, drops)
@@ -69,20 +74,22 @@ class CreateModelTable(TableBuilderBase):
             logger.debug(f"    Class: {class_name} Model Mapping: {full_mapping}")
 
             # Remove any existing ModelMapping entry for this class
-            
+
             try:
                 existing_entries = await self.engine.find(
                     ModelMapping, ModelMapping.name == class_name
                 )
             except (ValidationError, NameError, DocumentParsingError) as e:
-                logger.error(f"Error finding existing ModelMapping for {class_name}: {e}")
+                logger.error(
+                    f"Error finding existing ModelMapping for {class_name}: {e}"
+                )
                 existing_entries = []
-            
+
             if len(existing_entries) > 1:
                 error_msg = f"Fatal error: Found {len(existing_entries)} ModelMapping entries for class_name '{class_name}'. Expected at most one."
                 logger.fatal(error_msg)
                 raise RuntimeError(error_msg)
-            
+
             if len(existing_entries) == 1:
                 existing_mapping = existing_entries[0].mapping
                 if existing_mapping != full_mapping:
@@ -98,7 +105,7 @@ class CreateModelTable(TableBuilderBase):
             collection_name = getattr(new_class, "__collection__", None)
             if collection_name is None:
                 if is_embedded_model:
-                    collection_name = f"EmbeddedModel"
+                    collection_name = "EmbeddedModel"
                 else:
                     logger.error(f"No collection specified for {class_name}")
 
@@ -112,7 +119,9 @@ class CreateModelTable(TableBuilderBase):
                     ui_schema=json.dumps(new_class.ui_schema()),
                     route="",
                 )
-                logger.debug(f"SimStack Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}")
+                logger.debug(
+                    f"SimStack Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}"
+                )
                 # open a file in a subdirectory of the current file schema/model.json
                 if self.write_schema:
                     project_root = context.config.project_root
@@ -131,7 +140,9 @@ class CreateModelTable(TableBuilderBase):
                     mapping=full_mapping,
                     collection_name=collection_name,
                 )
-                logger.debug(f"Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}")
+                logger.debug(
+                    f"Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}"
+                )
 
             await self.engine.save(model_entry)
 
@@ -170,6 +181,7 @@ async def make_model_table(
 
 def create_model_table_main():
     TableBuilderBase.cli_main(CreateModelTable)
+
 
 if __name__ == "__main__":
     create_model_table_main()
