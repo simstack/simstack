@@ -8,7 +8,25 @@ from simstack.models.models import ModelMapping, NodeModel
 
 logger = logging.getLogger("importer")
 
+NODES_SEARCH_BY_NAME_FALLBACK = True
+MODELS_SEARCH_BY_NAME_FALLBACK = True
+
 async def function_from_model(model, task_id: Optional[ObjectId] = None) -> Optional[Callable]:
+    """
+    Loads and retrieves a callable function from a specified model using dynamic import.
+    If a task ID is specified, additional logging information is provided regarding the
+    function retrieval process.
+
+    Args:
+        model: The model containing the function mapping which specifies the path to the
+               desired function in dot notation.
+        task_id (Optional[ObjectId]): Optional parameter specifying the task ID for logging
+                                      purposes. Default is None.
+
+    Returns:
+        Optional[Callable]: The loaded callable function if successful, or None if the
+                            function cannot be found.
+    """
     function_path = model.function_mapping
     module_path, function_name = function_path.rsplit(".", 1)
 
@@ -25,7 +43,7 @@ async def import_function(
     function_path: str, task_id: ObjectId = None, tolerate_missing_function: bool = False
 ) -> Optional[Callable]:
     """
-    Dynamically import a function from a module using its full path.
+    Dynamically import a function from a module using its full path, including a migration mechanism.
     load the function information using NodeModel
     load the pickled version if it exists
     if there is no pickled version, use regular import.
@@ -33,6 +51,7 @@ async def import_function(
     Args:
         function_path: Dot notation path to the function (e.g. 'methods.submodule.function_name')
         task_id: Optional task id
+        tolerate_missing_function: If True, return None if function is not found, otherwise raise exception
 
     Returns:
         The imported function object or None if import fails
@@ -42,7 +61,12 @@ async def import_function(
     node_model = await engine.find_one(
         NodeModel, NodeModel.function_mapping == function_path
     )
+    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
+        _, function_name = function_path.rsplit(".", 1)
+        node_model = await engine.find_one(NodeModel, NodeModel.name == function_name)
+
     if node_model is None:
+
         raise LookupError(
             f"task_id: {task_id} Function {function_path} not found in the NodeModel Table"
         )

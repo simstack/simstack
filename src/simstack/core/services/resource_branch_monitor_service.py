@@ -13,7 +13,6 @@ class ResourceBranchMonitorService(RestartService):
     """
     Monitors the ResourceDefinition for the current resource.
     If the git_branch field changes, it stashes, switches branch, syncs, and restarts.
-    """
 
     def __init__(self, resource: Resource, interval: int):
         super().__init__("ResourceBranchMonitor", resource, interval)
