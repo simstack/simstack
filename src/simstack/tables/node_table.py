@@ -5,6 +5,7 @@ from typing import Callable, List, get_type_hints, Dict, Any, Type
 
 
 from simstack.core.simstack_result import SimstackResult
+from simstack.core.context import context
 from simstack.tables.node_children import update_node_children
 from simstack.models import Parameters
 from simstack.models.models import NodeModel, ModelMapping, DataMapping
@@ -32,6 +33,13 @@ class CreateNodeTable(TableBuilderBase):
     @property
     def logger(self) -> logging.Logger:
         return logger
+
+    async def build(self, *args, **kwargs) -> None:
+        if not context.initialized:
+            await context.initialize()
+        await context.refresh_mappings(models=True, nodes=False)
+        await super().build(*args, **kwargs)
+        await context.refresh_mappings(models=False, nodes=True)
 
     async def _process_module(self, module: Any, drops: str) -> None:
         await self._register_nodes_from_module(module, drops)

@@ -1,3 +1,5 @@
+from odmantic import ObjectId
+
 from simstack.core.definitions import TaskStatus
 from simstack.models.node_registry import NodeRegistry
 from simstack.models.parameters import Parameters
@@ -19,18 +21,19 @@ def _build_node_registry(**overrides) -> NodeRegistry:
 
 
 def test_reassigning_parameters_preserves_project_field():
+    project_id = ObjectId()
+    node_registry = _build_node_registry(project=project_id)
+
+    node_registry.parameters = Parameters(queue="slurm-queue")
+
+    assert node_registry.project == project_id
+    assert node_registry.model_dump_doc()["project"] == project_id
+
+
+def test_reassigning_parameters_keeps_project_none_when_not_set():
     node_registry = _build_node_registry()
 
     node_registry.parameters = Parameters(queue="slurm-queue")
 
-    assert node_registry.project == "default"
-    assert node_registry.model_dump_doc()["project"] == "default"
-
-
-def test_legacy_new_project_payload_maps_to_project():
-    node_registry = _build_node_registry(
-        project=None,
-        new_project={"field_name": "legacy-project"},
-    )
-
-    assert node_registry.project == "legacy-project"
+    assert node_registry.project is None
+    assert node_registry.model_dump_doc()["project"] is None

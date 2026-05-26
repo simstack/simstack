@@ -24,7 +24,7 @@ async def initialize_default_resource():
     """
     resource_def = await context.db.find_one(
         ResourceDefinition,
-        ResourceDefinition.resource_str == str(context.config.resource)
+        ResourceDefinition.resource_str == str(context.config.resource),
     )
 
     if resource_def is None:
@@ -50,27 +50,34 @@ async def initialize_default_resource():
                 return resource_def
 
             logger.info(f"Default resource: initializing tables for {active_dirs}")
-            await make_node_table(context.db.engine, dirs=active_dirs)
             await make_model_table(context.db.engine, dirs=active_dirs)
+            await make_node_table(context.db.engine, dirs=active_dirs)
 
         except Exception as e:
             logger.error(f"Failed to initialize default resource tables: {e}")
 
     return resource_def
 
+
 async def async_main(args):
     """Async entry point"""
     await context.initialize(resource=args.resource, db_name=args.db_name)
-    
+
     # Initialize tables if this is the default resource
     resource_def = await initialize_default_resource()
     is_default_resource = bool(resource_def and resource_def.is_default)
 
     if args.resource:
         logger.info(f"Setting resource for runner to {args.resource}")
-        runner_manager = RunnerManager(context.config.resource, detach=args.detach, no_pull=args.no_pull,
-                                       is_default=is_default_resource)
-        await runner_manager.run_nodes_for_resource(args.polling_interval, 10, timeout=args.timeout)
+        runner_manager = RunnerManager(
+            context.config.resource,
+            detach=args.detach,
+            no_pull=args.no_pull,
+            is_default=is_default_resource,
+        )
+        await runner_manager.run_nodes_for_resource(
+            args.polling_interval, 10, timeout=args.timeout
+        )
 
 
 def runner_main():
@@ -97,7 +104,7 @@ def runner_main():
 
     parser.add_argument(
         "--detach",
-        type=lambda x: (str(x).lower() not in ['false', '0', 'no']),
+        type=lambda x: (str(x).lower() not in ["false", "0", "no"]),
         default=True,
         help="If true (default), run nodes in an external process. Set to 'false' to run inline.",
     )
