@@ -85,8 +85,8 @@ async def initialized_context(tmp_path_factory, event_loop):
 
     # Initialize model and node tables for both real and mock databases
     dirs = ["src/simstack/models", "src/simstack/methods", "tests"]
-    await make_model_table(context.db.engine, dirs=dirs, drops="src", clear=True)
-    await make_node_table(context.db.engine, dirs=dirs, drops="src", clear=True)
+    await make_model_table(context.db.engine, dirs=dirs, drops="src", clear=True, project_root=project_root)
+    await make_node_table(context.db.engine, dirs=dirs, drops="src", clear=True, project_root=project_root)
 
     # Ensure "local" resource exists in DB for tests
     from simstack.models.resource_definition import ResourceDefinition

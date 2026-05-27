@@ -1,6 +1,7 @@
 import inspect
 import logging
 import re
+from pathlib import Path
 from typing import Callable, List, get_type_hints, Dict, Any, Type
 
 
@@ -469,13 +470,14 @@ async def make_node_table(
     drops: str | None = None,
     write_schema: bool = False,
     clear: bool = False,
+    project_root: Path | None = None,
 ) -> None:
     """
     Rebuild the node table using the given engine.
 
     This is a thin wrapper around CreateNodeTable for backward compatibility.
     """
-    creator = CreateNodeTable(engine, write_schema=write_schema)
+    creator = CreateNodeTable(engine, write_schema=write_schema, project_root=project_root)
     await creator.build(dirs=dirs, drops=drops, clear=clear)
 
 
