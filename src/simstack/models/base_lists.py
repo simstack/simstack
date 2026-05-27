@@ -217,6 +217,9 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
             return element.id in self.elements
         return element in self.elements
 
+    def __len__(self) -> int:
+        return len(self.elements)
+
 
 @simstack_model
 class StringDataList(Model, ObjectListMixin[StringData]):
