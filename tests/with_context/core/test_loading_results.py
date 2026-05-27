@@ -1,12 +1,12 @@
 import logging
 import pytest
 
-from tests.with_context.core.test_simple_nodes import adder_in_tests
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.node import node
 from simstack.core.node_runner import NodeRunner
 from simstack.models import BinaryOperationInput, FloatData
 from simstack.models.files import FileStack
+from tests.with_context.core.test_simple_nodes import adder_in_tests
 
 logger = logging.getLogger("TestNode")
 
