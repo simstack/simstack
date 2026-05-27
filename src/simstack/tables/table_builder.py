@@ -24,9 +24,19 @@ class TableBuilderBase(ABC):
     Subclasses only implement `_process_module(module, drops)`.
     """
 
-    def __init__(self, db: Database, write_schema: bool = False):
+    def __init__(self, db: Database, write_schema: bool = False, project_root: Optional[Path] = None):
         self.db = db
         self.write_schema = write_schema
+        self._project_root = project_root
+
+    @property
+    def project_root(self) -> Path:
+        if self._project_root:
+            return self._project_root
+        if context.config:
+            return context.config.project_root
+        from simstack.util.project_root_finder import find_project_root
+        return find_project_root()
 
     @property
     @abstractmethod
@@ -103,7 +113,7 @@ class TableBuilderBase(ABC):
             base_dir = Path(base_dir)
 
             # Accept either absolute paths or paths relative to project root.
-            base_dir_path = base_dir if base_dir.is_absolute() else (context.config.project_root / base_dir)
+            base_dir_path = base_dir if base_dir.is_absolute() else (self.project_root / base_dir)
 
             for py_file in self._iter_python_files_under_dir(base_dir_path, exclude=exclude):
                 await self._process_file(py_file, drops)
@@ -186,7 +196,7 @@ class TableBuilderBase(ABC):
 
     async def _process_file(self, file_path: Path, drops: str) -> None:
         self.logger.debug("Processing file: %s", file_path)
-        module = import_module_from_file(file_path, context.config.project_root)
+        module = import_module_from_file(file_path, self.project_root)
         if not module:
             self.logger.debug("Skipping %s because module import returned None", file_path)
             return

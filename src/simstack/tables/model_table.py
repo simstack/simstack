@@ -1,6 +1,7 @@
 import inspect
 import json
 import logging
+from pathlib import Path
 
 from odmantic.exceptions import DocumentParsingError
 from pydantic import ValidationError
@@ -125,7 +126,7 @@ class CreateModelTable(TableBuilderBase):
                 )
                 # open a file in a subdirectory of the current file schema/model.json
                 if self.write_schema:
-                    project_root = context.config.project_root
+                    project_root = self.project_root
                     json_file_dir = project_root / "schema"
                     json_file_dir.mkdir(parents=True, exist_ok=True)
 
@@ -170,6 +171,7 @@ async def make_model_table(
     drops: str = "",
     write_schema: bool = False,
     clear: bool = False,
+    project_root: Path = None,
 ):
     """
     Rebuild the model table using the given database.
