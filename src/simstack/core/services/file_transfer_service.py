@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from pathlib import Path
+from typing import Any
 
 from simstack.core.context import context
 from simstack.core.services.base_service import BaseService
@@ -23,8 +24,10 @@ class FileTransferService(BaseService):
         interval: int = 10,
         max_concurrent: int = 2,
         shutdown_event: asyncio.Event | None = None,
-    ):
-        super().__init__("FileTransfer", resource, interval, shutdown_event=shutdown_event)
+    ) -> None:
+        super().__init__(
+            "FileTransfer", resource, interval, shutdown_event=shutdown_event
+        )
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._running_tasks: set[asyncio.Task[bool]] = set()
         self._client: FileTransferClient | None = None
@@ -43,7 +46,7 @@ class FileTransferService(BaseService):
             )
         return self._client
 
-    async def execute(self):
+    async def execute(self) -> None:
         completed_tasks = {task for task in self._running_tasks if task.done()}
         for task in completed_tasks:
             try:
@@ -66,17 +69,24 @@ class FileTransferService(BaseService):
             transfer_id = str(transfer.get("transfer_id") or "")
             if not transfer_id:
                 continue
-            if any(getattr(task, "transfer_id", None) == transfer_id for task in self._running_tasks):
+            if any(
+                getattr(task, "transfer_id", None) == transfer_id
+                for task in self._running_tasks
+            ):
                 continue
             task = asyncio.create_task(self._run_with_semaphore(client, transfer))
             setattr(task, "transfer_id", transfer_id)
             self._running_tasks.add(task)
 
-    async def _run_with_semaphore(self, client: FileTransferClient, transfer: dict) -> bool:
+    async def _run_with_semaphore(
+        self, client: FileTransferClient, transfer: dict[str, Any]
+    ) -> bool:
         async with self._semaphore:
             return await asyncio.to_thread(self._upload_transfer, client, transfer)
 
-    def _upload_transfer(self, client: FileTransferClient, transfer: dict) -> bool:
+    def _upload_transfer(
+        self, client: FileTransferClient, transfer: dict[str, Any]
+    ) -> bool:
         transfer_id = str(transfer.get("transfer_id"))
         source_path = transfer.get("source_path")
         if not source_path:
@@ -101,5 +111,7 @@ class FileTransferService(BaseService):
                     error_code="SOURCE_UPLOAD_FAILED",
                 )
             except Exception:
-                logger.exception("Failed to report failed file transfer %s", transfer_id)
+                logger.exception(
+                    "Failed to report failed file transfer %s", transfer_id
+                )
             return False

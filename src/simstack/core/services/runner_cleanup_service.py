@@ -2,6 +2,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from simstack.core.context import context
 from simstack.models.files import FileStack
@@ -12,7 +13,7 @@ from simstack.core.services.base_service import BaseService
 logger = logging.getLogger("NodeRunner")
 
 
-def _resource_to_str(resource) -> str:
+def _resource_to_str(resource: Any) -> str:
     if hasattr(resource, "resource_str"):
         return str(getattr(resource, "resource_str"))
     raw = getattr(resource, "__dict__", {}).get("value")
@@ -54,11 +55,11 @@ class RunnerCleanupService(BaseService):
     copies for the current resource.
     """
 
-    def __init__(self, resource: Resource, interval: int = 300):
+    def __init__(self, resource: Resource, interval: int = 300) -> None:
         # Default interval 5 minutes
         super().__init__("RunnerCleanup", resource, interval)
 
-    async def execute(self):
+    async def execute(self) -> None:
         cutoff_time = datetime.now() - timedelta(minutes=30)
 
         # Find and delete events matching the criteria
@@ -66,18 +67,20 @@ class RunnerCleanupService(BaseService):
             RunnerEvent,
             (RunnerEvent.runner_type == RunnerType.RESOURCE_RUNNER)
             & (RunnerEvent.resource == self._resource)
-            & (RunnerEvent.timestamp < cutoff_time)
+            & (RunnerEvent.timestamp < cutoff_time),
         )
 
         if old_events:
-            logger.info(f"Cleaning up {len(old_events)} old RunnerEvent logs for resource {self._resource}")
+            logger.info(
+                f"Cleaning up {len(old_events)} old RunnerEvent logs for resource {self._resource}"
+            )
             for event in old_events:
                 await context.db.delete(event)
 
         if _cache_cleanup_enabled():
             await self._cleanup_file_cache()
 
-    async def _cleanup_file_cache(self):
+    async def _cleanup_file_cache(self) -> None:
         ttl_days = _cache_ttl_days()
         cutoff_time = datetime.now() - timedelta(days=ttl_days)
         resource_name = _resource_to_str(self._resource)
@@ -109,7 +112,10 @@ class RunnerCleanupService(BaseService):
                 resolved_path = path if path.is_absolute() else workdir / path
                 try:
                     resolved_path = resolved_path.resolve()
-                    if workdir != resolved_path and workdir not in resolved_path.parents:
+                    if (
+                        workdir != resolved_path
+                        and workdir not in resolved_path.parents
+                    ):
                         logger.warning(
                             "Skipping cached FileInstance outside workdir: file_stack=%s path=%s",
                             file_stack.id,

@@ -8,7 +8,7 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, cast
 from urllib.parse import urlencode, urlparse
 
 from simstack.util.file_hashing import hash_file
@@ -77,7 +77,9 @@ class FileTransferClient:
             or getattr(config, "runner_token", None)
             or getattr(config, "simstack_runner_token", None)
         )
-        timeout_seconds = int(os.environ.get("SIMSTACK_FILE_TRANSFER_REQUEST_TIMEOUT_SECONDS", "60"))
+        timeout_seconds = int(
+            os.environ.get("SIMSTACK_FILE_TRANSFER_REQUEST_TIMEOUT_SECONDS", "60")
+        )
 
         if not server_url or not runner_token:
             if required:
@@ -131,7 +133,9 @@ class FileTransferClient:
         transfers = response.get("transfers", [])
         return transfers if isinstance(transfers, list) else []
 
-    def fail_transfer(self, transfer_id: str, *, error_message: str, error_code: str | None = None) -> Dict[str, Any]:
+    def fail_transfer(
+        self, transfer_id: str, *, error_message: str, error_code: str | None = None
+    ) -> Dict[str, Any]:
         return self._json_request(
             "POST",
             f"/api/file-transfers/{transfer_id}/fail",
@@ -182,7 +186,9 @@ class FileTransferClient:
         checksum = hash_file(path)
         conn = self._connection()
         try:
-            conn.putrequest("PUT", self._path(f"/api/file-transfers/{transfer_id}/upload"))
+            conn.putrequest(
+                "PUT", self._path(f"/api/file-transfers/{transfer_id}/upload")
+            )
             for key, value in self._auth_headers().items():
                 conn.putheader(key, value)
             conn.putheader("Content-Type", "application/octet-stream")
@@ -271,7 +277,9 @@ class FileTransferClient:
             },
         )
 
-    def _json_request(self, method: str, path: str, payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    def _json_request(
+        self, method: str, path: str, payload: Dict[str, Any] | None = None
+    ) -> Dict[str, Any]:
         body = None if payload is None else json.dumps(payload).encode("utf-8")
         headers = self._auth_headers()
         if body is not None:
@@ -284,7 +292,11 @@ class FileTransferClient:
             conn.close()
 
     def _connection(self) -> http.client.HTTPConnection:
-        connection_cls = http.client.HTTPSConnection if self._parsed.scheme == "https" else http.client.HTTPConnection
+        connection_cls = (
+            http.client.HTTPSConnection
+            if self._parsed.scheme == "https"
+            else http.client.HTTPConnection
+        )
         return connection_cls(self._parsed.netloc, timeout=self.timeout_seconds)
 
     def _path(self, path: str) -> str:
@@ -308,12 +320,17 @@ class FileTransferClient:
         content_type = response.getheader("Content-Type") or ""
         if "application/json" not in content_type:
             return {"raw": payload.decode("utf-8", errors="replace")}
-        return json.loads(payload.decode("utf-8"))
+        parsed = json.loads(payload.decode("utf-8"))
+        return cast(Dict[str, Any], parsed)
 
     def _raise_response(self, response: http.client.HTTPResponse) -> None:
         payload = response.read()
-        detail = payload.decode("utf-8", errors="replace") if payload else response.reason
-        raise FileTransferError(f"File transfer API returned HTTP {response.status}: {detail}")
+        detail = (
+            payload.decode("utf-8", errors="replace") if payload else response.reason
+        )
+        raise FileTransferError(
+            f"File transfer API returned HTTP {response.status}: {detail}"
+        )
 
 
 def path_for_file_instance(path: Path, workdir: Path) -> str:
@@ -339,7 +356,9 @@ def resource_name(value: Any) -> str:
     return str(value)
 
 
-def first_available_remote_location(locations: Iterable[Any], local_resource: Any) -> Any | None:
+def first_available_remote_location(
+    locations: Iterable[Any], local_resource: Any
+) -> Any | None:
     local_resource_str = resource_name(local_resource)
     for location in locations:
         if resource_name(getattr(location, "resource", "")) == local_resource_str:

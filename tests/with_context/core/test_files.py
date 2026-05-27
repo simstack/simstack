@@ -18,7 +18,8 @@ from simstack.util.file_transfer_client import DownloadResult
 # Define a TypeVar for classes
 T = TypeVar("T", bound=Type)
 
-#TODO why do filetests not use the context fixture from conftest?
+# TODO why do filetests not use the context fixture from conftest?
+
 
 @pytest.fixture
 def setup_test_env(initialized_context, monkeypatch):
@@ -296,7 +297,6 @@ def test_get_same_resource(file_stack, file_instance, setup_test_env):
         user_dir = Path(context.config.workdir) / "testuser" / str(file_stack.id)
         os.makedirs(user_dir, exist_ok=True)
 
-
         result_path = file_stack.get(user_dir)
 
         # Verify
@@ -316,12 +316,14 @@ def test_get_no_suitable_instance(file_stack, setup_test_env):
         user_dir = Path(context.config.workdir) / "testuser" / str(file_stack.id)
         os.makedirs(user_dir, exist_ok=True)
 
-    # Test
+        # Test
         with pytest.raises(ValueError):
             file_stack.get(user_dir)
 
 
-def test_get_remote_instance_uses_token_transfer_client(file_stack, setup_test_env, monkeypatch):
+def test_get_remote_instance_uses_token_transfer_client(
+    file_stack, setup_test_env, monkeypatch
+):
     """Remote FileInstance should be materialized through the server transfer API."""
     context = setup_test_env
     payload = b"remote payload"
@@ -361,7 +363,11 @@ def test_get_remote_instance_uses_token_transfer_client(file_stack, setup_test_e
 
         def complete_transfer(self, **kwargs):
             self.completed = kwargs
-            return {"transfer_id": kwargs["transfer_id"], "status": "completed", "file_instance_id": "local-instance"}
+            return {
+                "transfer_id": kwargs["transfer_id"],
+                "status": "completed",
+                "file_instance_id": "local-instance",
+            }
 
     fake_client = FakeTransferClient()
     monkeypatch.setattr(
@@ -393,7 +399,9 @@ def test_get_remote_instance_uses_token_transfer_client(file_stack, setup_test_e
         if getattr(location, "id", None) == "local-instance"
     ]
     assert len(local_instances) == 1
-    assert local_instances[0].path == str(result_path.relative_to(Path(context.config.workdir)))
+    assert local_instances[0].path == str(
+        result_path.relative_to(Path(context.config.workdir))
+    )
     assert local_instances[0].is_cached is True
 
 
