@@ -36,10 +36,11 @@ async def initialized_context(tmp_path_factory, event_loop):
     project_root = find_project_root(skip_files=())
 
     # Initialize context - use test mode for logging, real DB mode for data if requested
+    # We use a dummy resource first, then update it after DB is ready
     await context.initialize(
         console=False,
         is_test=True,
-        resource="local",
+        resource="self",
         connection_string="mongodb://localhost:27017" if use_real_db else None,
         db_type=DBType.MONGODB if use_real_db else DBType.IN_MEMORY,
         db_name="simstack_test",
@@ -84,8 +85,31 @@ async def initialized_context(tmp_path_factory, event_loop):
 
     # Initialize model and node tables for both real and mock databases
     dirs = ["src/simstack/models", "src/simstack/methods", "tests"]
-    await make_model_table(context.db.engine, dirs=dirs, drops="src")
-    await make_node_table(context.db.engine, dirs=dirs, drops="src")
+    await make_model_table(context.db.engine, dirs=dirs, drops="src", clear=True)
+    await make_node_table(context.db.engine, dirs=dirs, drops="src", clear=True)
+
+    # Ensure "local" resource exists in DB for tests
+    from simstack.models.resource_definition import ResourceDefinition
+    local_resource = ResourceDefinition(
+        resource_str="local",
+        hostname="localhost",
+        workdir=working_dir,
+        routes=[]
+    )
+    await context.db.engine.save(local_resource)
+
+    # Now re-initialize with the "local" resource after it has been saved to DB
+    from simstack.util.config_reader import ConfigReader
+    from unittest.mock import MagicMock
+    from simstack.core.resources import allowed_resources
+    
+    # Reset allowed_resources to allow second initialization
+    allowed_resources.clear_resources()
+    
+    # Mock TomlReader to avoid file access
+    mock_toml = MagicMock()
+    mock_toml.use_db.return_value = True
+    context.config = await ConfigReader.create("local", context.db, mock_toml, project_root=project_root, workdir=working_dir)
 
     if use_real_db:
         print("Test context initialized with real MongoDB database")
@@ -101,6 +125,10 @@ async def initialized_context(tmp_path_factory, event_loop):
 
     # Cleanup after each test
     try:
+        from simstack.core.resources import allowed_resources
+        allowed_resources.clear_resources()
+        from simstack.tables.node_table import route_table
+        route_table.clear_routes()
         if context.initialized:
             # Close the main database connection
             if hasattr(context, "db") and context.db:
@@ -129,7 +157,7 @@ async def initialized_context(tmp_path_factory, event_loop):
         print(f"Warning: Error during context cleanup: {e}")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def odmantic_engine(initialized_context):
     """
     Create an ODMantic engine for the entire test session.
