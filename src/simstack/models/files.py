@@ -2,6 +2,7 @@ import logging
 import os
 import tempfile
 import zlib
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
 
@@ -10,6 +11,12 @@ from odmantic import Model, Field, ObjectId, Reference
 from simstack.models import simstack_model
 from simstack.models.file_instance import FileInstance
 from simstack.models.parameters import Resource
+from simstack.util.file_transfer_client import (
+    FileTransferClient,
+    first_available_remote_location,
+    path_for_file_instance,
+    resource_name,
+)
 from simstack.util.file_hashing import hash_file, hash_string
 
 logger = logging.getLogger(__name__)
@@ -246,8 +253,15 @@ class FileStack(Model):
 
         # If in-memory instance not found or decompression failed, try finding instance on same resource
         if same_resource_instance := next(
-            (f for f in self.locations if f.resource == local_resource), None
+            (
+                f
+                for f in self.locations
+                if resource_name(f.resource) == resource_name(local_resource)
+                and getattr(f, "status", "available") == "available"
+            ),
+            None
         ):
+            same_resource_instance.last_accessed_at = datetime.now()
             # Return the absolute path by joining with the resource's workdir if it's relative
             path = Path(same_resource_instance.path)
             if not path.is_absolute():
@@ -255,11 +269,91 @@ class FileStack(Model):
                 return context.config.workdir / path
             logger.info(f"Using existing instance {path} for {self.name}")
             return path
-        else:
-            local_dir.mkdir(parents=True, exist_ok=True)
+
+        remote_instance = first_available_remote_location(self.locations, local_resource)
+        if remote_instance is None:
             logger.error("No suitable file instance found for copying.")
-            from simstack.methods.get_file import get_file
-            return get_file(self,local_resource, local_dir / self.name)
+            raise ValueError(
+                f"FileStack {self.id} is unavailable: no accessible file instance for resource {local_resource}."
+            )
+
+        local_dir.mkdir(parents=True, exist_ok=True)
+        return self._get_via_server_transfer(remote_instance, local_resource, local_dir)
+
+    def _get_via_server_transfer(
+        self,
+        remote_instance: FileInstance,
+        local_resource: Resource,
+        local_dir: Path,
+    ) -> Path:
+        from simstack.core.context import context
+
+        client = FileTransferClient.from_context(required=True)
+        assert client is not None
+
+        transfer = client.create_transfer(
+            file_stack_id=str(self.id),
+            source_file_instance_id=getattr(remote_instance, "id", None),
+            source_resource_name=resource_name(remote_instance.resource),
+            target_resource_name=resource_name(local_resource),
+        )
+        transfer_id = str(transfer["transfer_id"])
+        logger.info(
+            "Created FileStack transfer %s for file_stack=%s from resource=%s to resource=%s",
+            transfer_id,
+            self.id,
+            resource_name(remote_instance.resource),
+            resource_name(local_resource),
+        )
+
+        try:
+            client.wait_until_uploaded(transfer_id)
+        except Exception as exc:
+            try:
+                client.fail_transfer(
+                    transfer_id,
+                    error_message=str(exc),
+                    error_code="SOURCE_RUNNER_UNAVAILABLE",
+                )
+            except Exception:
+                logger.warning("Failed to report failed FileStack transfer %s", transfer_id)
+            raise
+        target_path = local_dir / (self.name or Path(str(remote_instance.path)).name)
+        downloaded = client.download_file(transfer_id, target_path)
+        instance_path = path_for_file_instance(downloaded.path, context.config.workdir)
+        completed = client.complete_transfer(
+            transfer_id=transfer_id,
+            target_resource_name=resource_name(local_resource),
+            target_path=instance_path,
+            size_bytes=downloaded.size_bytes,
+            checksum_sha256=downloaded.checksum_sha256,
+        )
+
+        file_instance_id = completed.get("file_instance_id")
+        existing = next(
+            (
+                location
+                for location in self.locations
+                if getattr(location, "id", None) == file_instance_id
+            ),
+            None,
+        )
+        if existing is None:
+            self.locations.append(
+                FileInstance(
+                    id=str(file_instance_id) if file_instance_id else None,
+                    path=instance_path,
+                    resource=local_resource,
+                    created_at=datetime.now(),
+                    size_bytes=downloaded.size_bytes,
+                    checksum_sha256=downloaded.checksum_sha256,
+                    location_type="local_path",
+                    is_cached=True,
+                    status="available",
+                )
+            )
+
+        return downloaded.path
 
 
     def str(self):

@@ -9,6 +9,7 @@ from simstack.models.parameters import Resource
 from simstack.core.services.node_execution_service import NodeExecutionService
 from simstack.core.services.runner_status_service import RunnerStatusService
 from simstack.core.services.runner_cleanup_service import RunnerCleanupService
+from simstack.core.services.file_transfer_service import FileTransferService
 from simstack.core.services.slurm_status_service import SlurmStatusService
 from simstack.core.services.resource_branch_monitor_service import ResourceBranchMonitorService
 from simstack.core.services.stop_check_service import StopCheckService
@@ -93,6 +94,7 @@ class RunnerManager:
         self._services = [
             NodeExecutionService(self._resource, polling_interval, max_concurrent, self._shutdown_event,
                                  detach=self._detach, is_default=self._is_default),
+            FileTransferService(self._resource, interval=10, max_concurrent=2, shutdown_event=self._shutdown_event),
             RunnerStatusService(self._resource, interval=60),
             RunnerCleanupService(self._resource, interval=300),
             SlurmStatusService(self._resource, interval=60),

@@ -1,7 +1,7 @@
 import os
 import shutil
 import zlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import pytest
 from unittest.mock import patch
@@ -13,6 +13,7 @@ from mongomock.object_id import ObjectId
 from simstack.models.files import FileStack
 from simstack.models.file_instance import FileInstance
 from simstack.models.parameters import Resource
+from simstack.util.file_transfer_client import DownloadResult
 
 # Define a TypeVar for classes
 T = TypeVar("T", bound=Type)
@@ -318,6 +319,122 @@ def test_get_no_suitable_instance(file_stack, setup_test_env):
     # Test
         with pytest.raises(ValueError):
             file_stack.get(user_dir)
+
+
+def test_get_remote_instance_uses_token_transfer_client(file_stack, setup_test_env, monkeypatch):
+    """Remote FileInstance should be materialized through the server transfer API."""
+    context = setup_test_env
+    payload = b"remote payload"
+
+    remote_instance = FileInstance(
+        path="remote/job/output.txt",
+        resource=Resource(value="remote"),
+        created_at=datetime.now(),
+        size_bytes=len(payload),
+        checksum_sha256="remote-checksum",
+    )
+    file_stack.name = "output.txt"
+    file_stack.in_memory = False
+    file_stack.locations = [remote_instance]
+
+    class FakeTransferClient:
+        def __init__(self):
+            self.created = None
+            self.completed = None
+
+        def create_transfer(self, **kwargs):
+            self.created = kwargs
+            return {"transfer_id": "transfer-1"}
+
+        def wait_until_uploaded(self, transfer_id):
+            assert transfer_id == "transfer-1"
+            return {"status": "uploaded"}
+
+        def download_file(self, transfer_id, target_path):
+            assert transfer_id == "transfer-1"
+            target_path.write_bytes(payload)
+            return DownloadResult(
+                path=target_path,
+                size_bytes=len(payload),
+                checksum_sha256="downloaded-checksum",
+            )
+
+        def complete_transfer(self, **kwargs):
+            self.completed = kwargs
+            return {"transfer_id": kwargs["transfer_id"], "status": "completed", "file_instance_id": "local-instance"}
+
+    fake_client = FakeTransferClient()
+    monkeypatch.setattr(
+        "simstack.models.files.FileTransferClient.from_context",
+        lambda required=True: fake_client,
+    )
+
+    output_dir = Path(context.config.workdir) / "target"
+    result_path = file_stack.get(output_dir)
+
+    assert result_path == output_dir / "output.txt"
+    assert result_path.read_bytes() == payload
+    assert fake_client.created == {
+        "file_stack_id": str(file_stack.id),
+        "source_file_instance_id": remote_instance.id,
+        "source_resource_name": "remote",
+        "target_resource_name": str(context.config.resource),
+    }
+    assert fake_client.completed == {
+        "transfer_id": "transfer-1",
+        "target_resource_name": str(context.config.resource),
+        "target_path": str(result_path.relative_to(Path(context.config.workdir))),
+        "size_bytes": len(payload),
+        "checksum_sha256": "downloaded-checksum",
+    }
+    local_instances = [
+        location
+        for location in file_stack.locations
+        if getattr(location, "id", None) == "local-instance"
+    ]
+    assert len(local_instances) == 1
+    assert local_instances[0].path == str(result_path.relative_to(Path(context.config.workdir)))
+    assert local_instances[0].is_cached is True
+
+
+@pytest.mark.asyncio
+async def test_runner_cleanup_deletes_expired_cached_file(setup_test_env, monkeypatch):
+    from simstack.core.services.runner_cleanup_service import RunnerCleanupService
+
+    context = setup_test_env
+    monkeypatch.setenv("SIMSTACK_FILE_CACHE_TTL_DAYS", "14")
+
+    for existing in await context.db.find_all(FileStack):
+        await context.db.delete(existing)
+
+    cached_path = Path(context.config.workdir) / "cache" / "result.dat"
+    cached_path.parent.mkdir(parents=True, exist_ok=True)
+    cached_path.write_bytes(b"cached payload")
+
+    cached_instance = FileInstance(
+        path=str(cached_path.relative_to(Path(context.config.workdir))),
+        resource=context.config.resource,
+        created_at=datetime.now() - timedelta(days=30),
+        last_accessed_at=datetime.now() - timedelta(days=30),
+        is_cached=True,
+        status="available",
+    )
+    file_stack = await context.db.save(
+        FileStack(
+            name="result.dat",
+            in_memory=False,
+            is_hashable=False,
+            locations=[cached_instance],
+        )
+    )
+
+    service = RunnerCleanupService(context.config.resource, interval=300)
+    await service._cleanup_file_cache()
+
+    updated = await context.db.find_one(FileStack, FileStack.id == file_stack.id)
+    assert updated is not None
+    assert not cached_path.exists()
+    assert updated.locations[0].status == "deleted"
 
 
 def test_str_representation(file_stack):

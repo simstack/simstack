@@ -1,14 +1,16 @@
 import logging
 import shutil
+import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 from odmantic import EmbeddedModel, Field, ObjectId
 from pydantic import model_validator
 
 from simstack.models import simstack_model
 from simstack.models.parameters import Resource
+from simstack.util.file_hashing import hash_file
 
 logger = logging.getLogger("file_instance")
 
@@ -29,9 +31,19 @@ class FileInstance(EmbeddedModel):
         created_at (datetime): Timestamp indicating when the file instance was created.
     """
 
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="File instance id")
     path: str = Field(description="Path to the file relative to the host work directory")
     resource: Resource = Field(description="Resource name")
     created_at: datetime = Field(description="Creation timestamp")
+    runner_id: Optional[str] = Field(default=None, description="Runner identity that created the instance")
+    location_type: str = Field(default="local_path", description="File location type")
+    size_bytes: Optional[int] = Field(default=None, description="File size in bytes")
+    checksum_sha256: Optional[str] = Field(default=None, description="SHA256 checksum")
+    last_accessed_at: Optional[datetime] = Field(default=None, description="Last access timestamp")
+    expires_at: Optional[datetime] = Field(default=None, description="Expiration timestamp")
+    is_authoritative: bool = Field(default=True, description="Whether this instance is authoritative")
+    is_cached: bool = Field(default=False, description="Whether this instance is a reusable local cache copy")
+    status: str = Field(default="available", description="Instance lifecycle status")
 
     @model_validator(mode='before')
     def migration(cls, values):
@@ -39,6 +51,16 @@ class FileInstance(EmbeddedModel):
             values['resource'] = Resource(value=values['resource'])
         if "path" in values and isinstance(values['path'], Path):
             values['path'] = str(values['path'])
+        if not values.get("id"):
+            values["id"] = str(uuid.uuid4())
+        if not values.get("location_type"):
+            values["location_type"] = "local_path"
+        if not values.get("status"):
+            values["status"] = "available"
+        if values.get("is_authoritative") is None:
+            values["is_authoritative"] = True
+        if values.get("is_cached") is None:
+            values["is_cached"] = False
         return values
 
     @classmethod
@@ -94,5 +116,7 @@ class FileInstance(EmbeddedModel):
             path=str(relative_path),
             resource=context.config.resource,
             created_at=datetime.now(),
+            size_bytes=source_path.stat().st_size if source_path.exists() else None,
+            checksum_sha256=hash_file(source_path) if source_path.exists() else None,
         )
         return file_instance
