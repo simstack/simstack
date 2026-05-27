@@ -194,7 +194,7 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
         for obj_id in self.elements:
             obj = await engine.find_one(model_class, model_class.id == obj_id)
             if obj:
-                name = getattr(obj, "field_name", None)
+                name = getattr(obj, "name", None)
                 if name and pattern == name:
                     return obj
         return None
@@ -203,11 +203,12 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
         matches: List[T] = []
         engine = self._get_engine()
         model_class = await self._get_model_class()
+        regex = re.compile(pattern)
         for obj_id in self.elements:
             obj = await engine.find_one(model_class, model_class.id == obj_id)
             if obj:
-                name = getattr(obj, "field_name", None)
-                if name and re.search(pattern, name):
+                name = getattr(obj, "name", None)
+                if name and regex.search(name):
                     matches.append(obj)
         return matches
 

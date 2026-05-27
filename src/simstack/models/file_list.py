@@ -4,7 +4,7 @@ from typing import Union, List, Any, Optional
 from odmantic import EmbeddedModel, Field, Model, Reference, ObjectId
 
 from simstack.models import simstack_model
-from simstack.models.base_lists import ObjectListMixin
+from simstack.models.base_lists import ObjectListMixin, GenericListMixin
 from simstack.models.files import FileStack
 
 
@@ -312,12 +312,15 @@ if OLD_FILE_LIST_DEFINITION:
 
 else:
     @simstack_model
-    class FileList(EmbeddedModel, ObjectListMixin[FileStack]):
+    class FileList(EmbeddedModel, GenericListMixin[FileStack]):
         elements: List[FileStack] = Field(default_factory=list)
 
     @simstack_model
     class FileListModel(Model, ObjectListMixin[FileStack]):
-        elements: List[FileStack] = Field(default_factory=list)
+        elements: List[ObjectId] = Field(default_factory=list)
+
+        async def _get_model_class(self):
+            return FileStack
 
 
 @simstack_model

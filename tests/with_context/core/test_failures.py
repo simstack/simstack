@@ -7,7 +7,7 @@ from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import node
 from simstack.core.node_runner import NodeRunner
-from simstack.models import NodeRegistry, IntData
+from simstack.models import NodeRegistry, IntData, NodeModel
 from simstack.models.files import FileStack
 
 
@@ -98,6 +98,16 @@ def test_node_returns_nothing():
 
 @pytest.mark.asyncio
 async def test_failing_node_with_runner(info_file, hello_world_file):
+    # Ensure the function mapping exists in the mock database
+    from simstack.models.parameters import Parameters
+    default_params = Parameters()
+    await context.db.save(NodeModel(
+        name="failing_node_with_runner", 
+        function_mapping="simstack.tests.with_context.core.test_failures.failing_node_with_runner",
+        input_mappings=[],
+        default_parameters=default_params
+    ))
+
     with pytest.raises(RuntimeError) as exc_info:
         failing_node_with_runner(info_file, hello_world_file)
 

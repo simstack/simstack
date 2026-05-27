@@ -242,6 +242,7 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
         module_path, class_name = class_path.rsplit(".", 1)
         model_mapping = await _find_model_mapping(class_path, db)
 
+        engine = current_engine_context.get()
         # If not found by name, try by mapping
         if not model_mapping:
             model_mapping = await db.find_one(

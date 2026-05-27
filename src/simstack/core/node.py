@@ -34,7 +34,7 @@ from simstack.core.task_id import set_task_id, clear_task_id
 from simstack.models import ModelMapping, Parameters
 from simstack.models import NodeModel
 from simstack.models import NodeRegistry
-from simstack.models.file_list import FileListModel, OLD_FILE_LIST_DEFINITION
+from simstack.models.file_list import FileList, FileListModel, OLD_FILE_LIST_DEFINITION
 from simstack.models.files import FileStack
 from simstack.models.parameters import Resource, Queue
 from simstack.models.simstack_model import is_simstack_model
@@ -652,7 +652,7 @@ class Node:
                             if OLD_FILE_LIST_DEFINITION:
                                 file_list_model.append(saved)
                             else:
-                                await file_list_model.files.append(saved)
+                                await file_list_model.append(saved)
                         else:
                             logger.error(
                                 f"Task task_id: {self.id} cannot save file: FileStack expected but got {file_stack}"
@@ -688,7 +688,11 @@ class Node:
                             saved = await context.db.save(file_stack)
                             self.registry_entry.info_files.append(saved)
                         else:
-                            await self.registry_entry.info_files.append(file_stack)
+                            # info_files is a FileList (EmbeddedModel), its append is not async
+                            if self.registry_entry.info_files is None:
+                                self.registry_entry.info_files = FileList()
+                            self.registry_entry.info_files.append(file_stack)
+                            await context.db.save(file_stack)  # FileStack needs to be saved to DB
                     else:
                         logger.error(
                             f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
