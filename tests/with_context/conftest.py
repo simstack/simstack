@@ -36,10 +36,11 @@ async def initialized_context(tmp_path_factory):
     project_root = find_project_root(skip_files=())
 
     # Initialize context - use test mode for logging, real DB mode for data if requested
+    # We use a dummy resource first, then update it after DB is ready
     await context.initialize(
         console=False,
         is_test=True,
-        resource="local",
+        resource="self",
         connection_string="mongodb://localhost:27017" if use_real_db else None,
         db_type=DBType.MONGODB if use_real_db else DBType.IN_MEMORY,
         db_name="simstack_test",
@@ -101,6 +102,10 @@ async def initialized_context(tmp_path_factory):
 
     # Cleanup after each test
     try:
+        from simstack.core.resources import allowed_resources
+        allowed_resources.clear_resources()
+        from simstack.tables.node_table import route_table
+        route_table.clear_routes()
         if context.initialized:
             # Close the main database connection
             if hasattr(context, "db") and context.db:
