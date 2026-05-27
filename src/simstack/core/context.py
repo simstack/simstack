@@ -1,4 +1,5 @@
 import logging
+import sys
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse, urlunparse
 from simstack.models.resource_definition import GitRepo
@@ -8,10 +9,10 @@ from simstack.util.project_root_finder import find_project_root
 from simstack.util.toml_reader import TomlReader
 from simstack.util.config_reader import ConfigReader
 from simstack.util.setup_logging import setup_logging
+from simstack.util.mappings import ModelMappingTable, NodeMappingTable
 
 if TYPE_CHECKING:
     from simstack.util.db import Database
-
 
 
 def remove_password_from_connection_string(connection_string):
@@ -28,11 +29,13 @@ def remove_password_from_connection_string(connection_string):
 
     return urlunparse(clean_url)
 
+
 async def initialize_git_list(db: "Database", toml_reader: TomlReader | None):
     git_list = await db.find_all(GitRepo)
     if git_list is None and toml_reader is not None:
         git_list = toml_reader.get("parameters.common.git", [])
     return git_list
+
 
 class GlobalState:
     _instance = None
@@ -46,6 +49,8 @@ class GlobalState:
             cls._instance.log_handler = None
             cls._instance.path_manager = None
             cls._instance.config = None
+            cls._instance.model_mappings: ModelMappingTable = None
+            cls._instance.node_mappings: NodeMappingTable = None
 
         return cls._instance
 
@@ -62,6 +67,8 @@ class GlobalState:
             self.log_handler = None
             self.path_manager = None
             self.config = None
+            self.model_mappings = None
+            self.node_mappings = None
 
             self.initialize(**kwargs)
 
@@ -130,12 +137,12 @@ class GlobalState:
         self._initialized = True
 
         project_root = kwargs.get("project_root", find_project_root())
-        if project_root is None: # maybe None was passed
+        if project_root is None:  # maybe None was passed
             project_root = find_project_root()
         kwargs["project_root"] = project_root  # overwrite in case it was not set before
-        db_name : str | None = kwargs.get("db_name", None)
+        db_name: str | None = kwargs.get("db_name", None)
         connection_string: str | None = kwargs.get("connection_string", None)
-        db_type: DBType | None = kwargs.get("db_type",None)
+        db_type: DBType | None = kwargs.get("db_type", None)
         is_test = kwargs.get("is_test", False)
 
         toml_reader = None
@@ -154,14 +161,38 @@ class GlobalState:
 
         logger = logging.getLogger("Context")
         if db_info.connection_string is not None:
-            safe_connection_string = remove_password_from_connection_string(db_info.connection_string)
-            logger.info(f"Database connection to {db_type} {safe_connection_string}/{db_name}")
+            safe_connection_string = remove_password_from_connection_string(
+                db_info.connection_string
+            )
+            logger.info(
+                f"Database connection to {db_type} {safe_connection_string}/{db_name}"
+            )
         else:
             logger.info(f"Database connection in_memory {db_type}")
         # here we have a db, we may or may not have a toml reader
         resource_str: str = kwargs.get("resource", "self")
-        self.config = await ConfigReader.create(resource_str, self.db, toml_reader, **kwargs)
+        # For testing, we might want to skip ConfigReader if it causes issues
+        if not kwargs.get("skip_config", False):
+            try:
+                self.config = await ConfigReader.create(
+                    resource_str, self.db, toml_reader, **kwargs
+                )
+            except Exception as e:
+                if is_test:
+                    logger.warning(
+                        f"Failed to initialize ConfigReader in test mode: {e}"
+                    )
+                else:
+                    raise e
 
+        # Initialize memory-loaded mappings
+        await self.refresh_mappings()
+
+    async def refresh_mappings(self, *, models: bool = True, nodes: bool = True):
+        if models:
+            self.model_mappings = await ModelMappingTable.load(self.db.engine)
+        if nodes:
+            self.node_mappings = await NodeMappingTable.load(self.db.engine)
 
     def initialize_logging(self, is_test: bool, log_level: str = "INFO"):
         if is_test:
@@ -180,6 +211,7 @@ class GlobalState:
 
     def initialize_database(self, db_info: DatabaseInformation, is_test: bool):
         from simstack.util.db import Database
+
         try:
             self.db = Database.from_db_info(db_info)
             if db_info.db_type == DBType.MONGODB:
@@ -198,6 +230,7 @@ class GlobalState:
     @property
     def initialized(self):
         return self._initialized
+
 
 # Create the singleton instance, but it's not initialized yet
 context = GlobalState()

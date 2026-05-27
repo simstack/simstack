@@ -16,6 +16,8 @@ from .models import (
 )
 from .parameters import Parameters
 from .node_registry import NodeRegistry
+from .project import Project
+from .tag import Tag
 from .resource_assignment import ResourceAssignmentRule, SlurmParametersPatch
 from .dataset import DataSet, DataSetSection, DataSetSelection, DataSetSelectionField
 from .dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
@@ -37,6 +39,8 @@ __all__ = [
     "FileListModel",
     "Parameters",
     "NodeRegistry",
+    "Project",
+    "Tag",
     "ResourceAssignmentRule",
     "SlurmParametersPatch",
     "simstack_model",

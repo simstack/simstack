@@ -7,7 +7,9 @@ from simstack.core import runner
 
 
 @pytest.mark.asyncio
-async def test_initialize_default_resource_returns_none_when_resource_is_missing(tmp_path, monkeypatch):
+async def test_initialize_default_resource_returns_none_when_resource_is_missing(
+    tmp_path, monkeypatch
+):
     db = SimpleNamespace(find_one=AsyncMock(return_value=None))
     config = SimpleNamespace(resource="docker", project_root=tmp_path)
     monkeypatch.setattr(runner, "context", SimpleNamespace(db=db, config=config))
@@ -18,7 +20,9 @@ async def test_initialize_default_resource_returns_none_when_resource_is_missing
 
 
 @pytest.mark.asyncio
-async def test_initialize_default_resource_keeps_resource_when_config_toml_missing(tmp_path, monkeypatch):
+async def test_initialize_default_resource_keeps_resource_when_config_toml_missing(
+    tmp_path, monkeypatch
+):
     resource_def = SimpleNamespace(is_default=True)
     db = SimpleNamespace(find_one=AsyncMock(return_value=resource_def), engine=object())
     config = SimpleNamespace(resource="docker", project_root=tmp_path)
@@ -37,7 +41,40 @@ async def test_initialize_default_resource_keeps_resource_when_config_toml_missi
 
 
 @pytest.mark.asyncio
-async def test_async_main_uses_false_is_default_when_default_resource_init_returns_none(monkeypatch):
+async def test_initialize_default_resource_builds_model_table_before_node_table(
+    tmp_path, monkeypatch
+):
+    resource_def = SimpleNamespace(is_default=True)
+    engine = object()
+    db = SimpleNamespace(find_one=AsyncMock(return_value=resource_def), engine=engine)
+    config = SimpleNamespace(resource="docker", project_root=tmp_path)
+    (tmp_path / "config.toml").write_text('active_dirs = ["src/simstack/models"]\n')
+    call_order = []
+
+    async def make_model_table(*args, **kwargs):
+        call_order.append(("model", args, kwargs))
+
+    async def make_node_table(*args, **kwargs):
+        call_order.append(("node", args, kwargs))
+
+    monkeypatch.setattr(runner, "context", SimpleNamespace(db=db, config=config))
+    monkeypatch.setattr(runner, "make_model_table", make_model_table)
+    monkeypatch.setattr(runner, "make_node_table", make_node_table)
+
+    result = await runner.initialize_default_resource()
+
+    assert result is resource_def
+    assert [call[0] for call in call_order] == ["model", "node"]
+    assert call_order[0][1] == (engine,)
+    assert call_order[1][1] == (engine,)
+    assert call_order[0][2] == {"dirs": ["src/simstack/models"]}
+    assert call_order[1][2] == {"dirs": ["src/simstack/models"]}
+
+
+@pytest.mark.asyncio
+async def test_async_main_uses_false_is_default_when_default_resource_init_returns_none(
+    monkeypatch
+):
     captured: dict[str, object] = {}
 
     class DummyContext:
@@ -59,7 +96,9 @@ async def test_async_main_uses_false_is_default_when_default_resource_init_retur
             captured["timeout"] = timeout
 
     monkeypatch.setattr(runner, "context", DummyContext())
-    monkeypatch.setattr(runner, "initialize_default_resource", AsyncMock(return_value=None))
+    monkeypatch.setattr(
+        runner, "initialize_default_resource", AsyncMock(return_value=None)
+    )
     monkeypatch.setattr(runner, "RunnerManager", DummyRunnerManager)
 
     args = SimpleNamespace(

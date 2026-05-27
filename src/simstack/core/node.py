@@ -748,7 +748,7 @@ class Node:
             self.registry_entry.status = TaskStatus(status)
         engine = current_engine_context.get()
         await engine.save(self.registry_entry)
-        logger.info(f"Task task_id: {self.id} {self.name} is set to {status}")
+        logger.info(f"Task task_id: {self.id} {self.name} is set to {status}, id is: {self.id}")
 
 
 async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None]:
