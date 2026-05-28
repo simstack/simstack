@@ -19,7 +19,7 @@ async def initialized_context(tmp_path_factory):
 
     if use_real_db and not _mongodb_available():
         raise RuntimeError(
-            "SIMSTACK_TEST_USE_REAL_DB=true but MongoDB not available at localhost:27017"
+            f"SIMSTACK_TEST_USE_REAL_DB=true but MongoDB not available at {os.getenv('MONGODB_CONNECTION_STRING', 'localhost:27017')}"
         )
 
     working_dir = tmp_path_factory.mktemp("simstack_test")
@@ -37,13 +37,16 @@ async def initialized_context(tmp_path_factory):
 
     # Initialize context - use test mode for logging, real DB mode for data if requested
     # We use a dummy resource first, then update it after DB is ready
+    conn_str = os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017")
+    db_name = os.getenv("MONGODB_DATABASE", "simstack_test")
+    
     await context.initialize(
         console=False,
         is_test=True,
         resource="self",
-        connection_string="mongodb://localhost:27017" if use_real_db else None,
+        connection_string=conn_str if use_real_db else None,
         db_type=DBType.MONGODB if use_real_db else DBType.IN_MEMORY,
-        db_name="simstack_test",
+        db_name=db_name,
         workdir=working_dir,
         project_root=project_root
     )
@@ -164,21 +167,28 @@ def test_file_stack():
 
 # Check if real MongoDB is available for tests that require it
 def _mongodb_available():
-    """Check if MongoDB is available on localhost:27017"""
+    """Check if MongoDB is available"""
     try:
+        import os
+        from urllib.parse import urlparse
+        conn_str = os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017")
+        parsed = urlparse(conn_str)
+        host = parsed.hostname or "localhost"
+        port = parsed.port or 27017
+        
         # Use a simple socket connection test instead of Motor client
         import socket
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)  # 1 second timeout
-        result = sock.connect_ex(("localhost", 27017))
+        result = sock.connect_ex((host, port))
         sock.close()
         return result == 0
     except Exception:
         return False
 
 
-@pytest_asyncio.fixture(autouse=False, scope="function")
+@pytest_asyncio.fixture(autouse=False, scope="session")
 async def real_database_context():
     """
     Use the regular context but skip tests if real MongoDB is not available or if using mock database.
@@ -194,11 +204,9 @@ async def real_database_context():
     db_mode = os.getenv("SIMSTACK_TEST_USE_REAL_DB", "false").lower()
 
     if db_mode == "false":
-        pytest.skip(
-            "Test requires real MongoDB - set SIMSTACK_TEST_USE_REAL_DB=true to enable"
-        )
+        pytest.skip("Test requires real MongoDB - set SIMSTACK_TEST_USE_REAL_DB=true to enable")
     elif db_mode == "true":
-        assert _mongodb_available(), "Real MongoDB not available at localhost:27017, but testing with real db was requested. Start using pixi run startmongo"
+        assert _mongodb_available(), f"Real MongoDB not available at {os.getenv('MONGODB_CONNECTION_STRING', 'localhost:27017')}, but testing with real db was requested."
         # Use the regular context which should already be using real MongoDB
         yield context
     else:

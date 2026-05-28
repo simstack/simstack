@@ -13,10 +13,10 @@ def some_node(arg: StringData, **kwargs) -> StringData:
     return StringData(value=arg.value.lower())
 
 
-@pytest.mark.skip(reason="works locally but not in gitlab ci/cd")
 @pytest.mark.local_runner
 def test_node_runner(caplog, test_runner):
-    assert allowed_resources.has_resource("tests")
+    allowed_resources.add_resource("test")
+    assert allowed_resources.has_resource("test")
     with caplog.at_level(logging.INFO):
         result = some_node(
             StringData(value="Test"), parameters=Parameters(resource="tests")
