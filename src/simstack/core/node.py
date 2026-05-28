@@ -14,6 +14,7 @@ from typing import (
     List,
     ParamSpec,
     Union,
+    Tuple,
     overload,
 )
 
@@ -178,6 +179,8 @@ class Node:
         self.is_async = kwargs.pop("is_async")
         self.parent_id = kwargs.pop("parent_id", None)
         self.call_path = kwargs.pop("call_path", "") or "." + self.name
+        self._arg_hash = None
+        self._function_hash = None
 
         # Get function signature to identify argument names
         sig = inspect.signature(self._func)
@@ -313,7 +316,9 @@ class Node:
             raise ValueError("Database is not connected")
 
         arg_hash = compute_arg_hash(self._args)
-        function_hash = cast(str, complex_hash_function(self._func))
+        function_hash = complex_hash_function(self._func)
+        self._arg_hash = arg_hash
+        self._function_hash = function_hash
 
         self.registry_entry = (
             await context.db.load_task(self.name, arg_hash, function_hash)
@@ -535,6 +540,8 @@ class Node:
                 # the child nodes
                 "recompute_artifacts": self.recompute_artifacts,
                 "custom_name": self.custom_name,
+                "arg_hash": self._arg_hash,
+                "function_hash": self._function_hash,
             }
 
             if self.parameters.force_rerun:
@@ -611,126 +618,50 @@ class Node:
             if not result:
                 new_task_status = TaskStatus.FAILED
                 result = None
-        elif is_simstack_model(result):  # backward compatibility
-            result_model = await context.db.upsert(result)
-            result_table_name = await context.db.find_one(
-                ModelMapping, ModelMapping.name == result.__class__.__name__
-            )
-            if result_table_name is None:
-                logger.error(
-                    f"Task task_id: {self.id} could not find table name for {result.__class__.__name__}"
-                )
-                raise ValueError(
-                    f"Could not find table name for {result.__class__.__name__}"
-                )
-            self.registry_entry.result_ids = [result_model.id]
-            self.registry_entry.result_tables = [result_table_name.mapping]
-            self.registry_entry.result_names = [result.__class__.__name__]
-            if hasattr(result, "status"):
+        elif is_simstack_model(result) or isinstance(result, SimstackResult):
+            if isinstance(result, SimstackResult):
                 new_task_status = result.status
-            elif hasattr(result, "task_status"):
-                new_task_status = result.task_status
-        elif isinstance(result, SimstackResult):
-            # it is possible that the task failed internally but returned logging info which we process anyway
-            new_task_status = result.status
-            result_ids = []
-            result_tables = []
-            result_models = []
-            result_names = []
+                if hasattr(result, "custom_name"):
+                    self.registry_entry.custom_name = result.custom_name
 
-            if hasattr(result, "custom_name"):
-                self.registry_entry.custom_name = result.custom_name
-
-            # check if there are files in the result
-            if len(result.files) > 0:
-                file_list_model = FileListModel()
-                  # this goes into the results must be a model
-                for file_stack in result.files:
+                for file_stack in result.info_files:
                     if file_stack:
                         if isinstance(file_stack, FileStack):
                             logger.info(
-                                f"Task task_id: {self.id} saving file: {file_stack.name} {file_stack.id}"
+                                f"Task task_id: {self.id} saving info file: {file_stack.name} {file_stack.id}"
                             )
-                            saved = await context.db.save(file_stack)
-                            await file_list_model.append(saved)
+                            # info_files is a FileList (EmbeddedModel), its append is not async
+                            if self.registry_entry.info_files is None:
+                                self.registry_entry.info_files = FileList()
+                            self.registry_entry.info_files.append(file_stack)
+                            await context.db.save(file_stack)  # FileStack needs to be saved to DB
                         else:
                             logger.error(
-                                f"Task task_id: {self.id} cannot save file: FileStack expected but got {file_stack}"
-                            )
-                            raise ValueError(
-                                f"Task task_id: {self.id} cannot save file: FileStack expected but got {type(file_stack)}"
+                                f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
                             )
                     else:
-                        logger.error(f"Task task_id: {self.id} saving file is NONE")
-                        raise ValueError("saving file is NONE")
+                        logger.error(f"Task task_id: {self.id} saving info-file is NONE")
+                        raise ValueError("saving info file is NONE")
 
-                result_table_name = await context.db.find_one(
-                    ModelMapping, ModelMapping.name == FileListModel.__name__
-                )
-                if result_table_name is None:
+                if result.error_message is not None and result.error_message != "":
                     logger.error(
-                        f"Task task_id: {self.id} could not find table name for {FileListModel.__name__}"
+                        f"Task task_id: {self.id} returned with error: {result.error_message}"
                     )
-                    raise ValueError(
-                        f"Could not find table name for {FileListModel.__name__}"
-                    )
-                result_tables.append(result_table_name.mapping)
-                result_names.append("files")
-                saved = await context.db.save(file_list_model)
-                result_ids.append(saved.id)
-                result_models.append(saved)
+                if result.message is not None and result.message != "":
+                    logger.info(f"Task task_id: {self.id} message: {result.message}")
+            else:
+                if hasattr(result, "status"):
+                    new_task_status = result.status
+                elif hasattr(result, "task_status"):
+                    new_task_status = result.task_status
 
-            for file_stack in result.info_files:
-                if file_stack:
-                    if isinstance(file_stack, FileStack):
-                        logger.info(f"Task task_id: {self.id} saving info file: {file_stack.name} {file_stack.id}")
-                        # info_files is a FileList (EmbeddedModel), its append is not async
-                        if self.registry_entry.info_files is None:
-                            self.registry_entry.info_files = FileList()
-                        self.registry_entry.info_files.append(file_stack)
-                        await context.db.save(file_stack)  # FileStack needs to be saved to DB
-                    else:
-                        logger.error(
-                            f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
-                        )
-                else:
-                    logger.error(f"Task task_id: {self.id} saving info-file is NONE")
-                    raise ValueError("saving info file is NONE")
-
-            for key, value in getattr(result, "__pydantic_extra__", {}).items():
-                if not callable(value) and is_simstack_model(value):
-                    if isinstance(value, Model):
-                        result_model = await context.db.upsert(value)
-                        result_models.append(result_model)
-                        result_ids.append(result_model.id)
-                        result_names.append(key)
-                        result_table_name = await context.db.find_one(
-                            ModelMapping, ModelMapping.name == value.__class__.__name__
-                        )
-                        if result_table_name is None:
-                            logger.error(
-                                f"Task task_id: {self.id} could not find table name for {value.__class__.__name__}"
-                            )
-                            raise ValueError(
-                                f"Could not find table name for {value.__class__.__name__}"
-                            )
-                        result_tables.append(result_table_name.mapping)
-                    else:
-                        raise ValueError(
-                            f"task_id: {self.id} cannot save model: {key} is not a model"
-                        )
+            result_ids, result_tables, result_models, result_names = await process_result_helper(result, str(self.id))
 
             self.registry_entry.result_ids = result_ids
             self.registry_entry.result_tables = result_tables
             self.registry_entry.result_names = result_names
             self.registry_entry.status = new_task_status
 
-            if result.error_message is not None and result.error_message != "":
-                logger.error(
-                    f"Task task_id: {self.id} returned with error: {result.error_message}"
-                )
-            if result.message is not None and result.message != "":
-                logger.info(f"Task task_id: {self.id} message: {result.message}")
             if len(result_ids) == 1:
                 result = result_models[
                     0
@@ -748,6 +679,122 @@ class Node:
         engine = current_engine_context.get()
         await engine.save(self.registry_entry)
         logger.info(f"Task task_id: {self.id} {self.name} is set to {status}, id is: {self.id}")
+
+
+async def process_result_helper(
+    result: Any, task_id: str = "NA"
+) -> Tuple[List[ObjectId], List[str], List[Model], List[str]]:
+    """
+    Computes the result_ids, result_tables and result_names and returns a List[Model].
+    It works if the result is a SimstackResult, a single Model or a bool.
+    """
+    from simstack.core.context import context
+    from simstack.models import ModelMapping
+    from simstack.models.file_list import FileListModel
+    from simstack.models.simstack_model import is_simstack_model
+
+    result_ids: List[ObjectId] = []
+    result_tables: List[str] = []
+    result_models: List[Model] = []
+    result_names: List[str] = []
+
+    if isinstance(result, bool):
+        return result_ids, result_tables, result_models, result_names
+
+    if isinstance(result, SimstackResult):
+        # check if there are files in the result
+        if len(result.files) > 0:
+            file_list_model = FileListModel()
+            # this goes into the results must be a model
+            for file_stack in result.files:
+                if file_stack:
+                    if isinstance(file_stack, FileStack):
+                        logger.info(
+                            f"Task task_id: {task_id} saving file: {file_stack.name} {file_stack.id}"
+                        )
+                        saved = await context.db.save(file_stack)
+                        await file_list_model.append(saved)
+                    else:
+                        logger.error(
+                            f"Task task_id: {task_id} cannot save file: FileStack expected but got {file_stack}"
+                        )
+                        raise ValueError(
+                            f"Task task_id: {task_id} cannot save file: FileStack expected but got {type(file_stack)}"
+                        )
+                else:
+                    logger.error(f"Task task_id: {task_id} saving file is NONE")
+                    raise ValueError("saving file is NONE")
+
+            result_table_name = await context.db.find_one(
+                ModelMapping, ModelMapping.name == FileListModel.__name__
+            )
+            if result_table_name is None:
+                logger.error(
+                    f"Task task_id: {task_id} could not find table name for {FileListModel.__name__}"
+                )
+                raise ValueError(
+                    f"Could not find table name for {FileListModel.__name__}"
+                )
+            result_tables.append(result_table_name.mapping)
+            result_names.append("files")
+            saved = await context.db.save(file_list_model)
+            if saved.id is None:
+                raise ValueError(f"Task task_id: {task_id} saved FileListModel has no ID")
+            result_ids.append(saved.id)
+            result_models.append(saved)
+
+        extra = getattr(result, "__pydantic_extra__", {})
+        if extra is None:
+            extra = {}
+        for key, value in extra.items():
+            # gather only non-callable public attributes
+            if (
+                not key.startswith("_")
+                and not callable(value)
+                and is_simstack_model(value)
+            ):
+                if isinstance(value, Model):
+                    result_model = await context.db.upsert(value)
+                    result_models.append(result_model)
+                    if result_model.id is None:
+                        raise ValueError(
+                            f"Task task_id: {task_id} saved model {key} has no ID"
+                        )
+                    result_ids.append(result_model.id)
+                    result_names.append(key)
+                    result_table_name = await context.db.find_one(
+                        ModelMapping, ModelMapping.name == value.__class__.__name__
+                    )
+                    if result_table_name is None:
+                        logger.error(
+                            f"Task task_id: {task_id} could not find table name for {value.__class__.__name__}"
+                        )
+                        raise ValueError(
+                            f"Could not find table name for {value.__class__.__name__}"
+                        )
+                    result_tables.append(result_table_name.mapping)
+                else:
+                    raise ValueError(
+                        f"task_id: {task_id} cannot save model: {key} is not a model"
+                    )
+    elif is_simstack_model(result) and isinstance(result, Model):
+        result_model = await context.db.upsert(result)
+        result_models.append(result_model)
+        result_ids.append(result_model.id)
+        result_names.append(result.__class__.__name__)
+        result_table_name = await context.db.find_one(
+            ModelMapping, ModelMapping.name == result.__class__.__name__
+        )
+        if result_table_name is None:
+            logger.error(
+                f"Task task_id: {task_id} could not find table name for {result.__class__.__name__}"
+            )
+            raise ValueError(
+                f"Could not find table name for {result.__class__.__name__}"
+            )
+        result_tables.append(result_table_name.mapping)
+
+    return result_ids, result_tables, result_models, result_names
 
 
 async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None]:
