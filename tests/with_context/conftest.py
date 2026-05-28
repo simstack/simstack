@@ -82,6 +82,7 @@ async def initialized_context(tmp_path_factory):
         # Apply patches only for the mock database
         context.db.save = patched_save
         context.db.save_all = patched_save_all
+        context.db..save_unchecked = patched_save
 
     # Initialize model and node tables for both real and mock databases
     dirs = ["src/simstack/models", "src/simstack/methods", "tests"]

@@ -64,8 +64,10 @@ class Database:
                 client = AsyncMongoMockClient()
                 logger.info("Using in-memory MongoDB mock")
             except ImportError:
-                logger.warning("mongomock not installed, falling back to localhost MongoDB")
-                client = AsyncIOMotorClient("mongodb://localhost:27017")
+                logger.warning(
+                    "mongomock not installed, falling back to localhost MongoDB"
+                )
+                raise ValueError("mongomock not installed, cannot use in-memory MongoDB")
 
         elif db_info.db_type == DBType.MONGODB:
             connection_string = db_info.connection_string

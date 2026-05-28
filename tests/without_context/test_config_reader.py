@@ -1,3 +1,4 @@
+import asyncio
 import socket
 from pathlib import Path
 import pytest
@@ -212,9 +213,13 @@ use_db = true
         # Apply patches only for mock database
         db.save = patched_save
         db.save_all = patched_save_all
-
+        db.save_unchecked = patched_save
         yield db
-
+        if asyncio.iscoroutinefunction(db.close):
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(db.close())
+        else:
+            db.close()
 
     def test_reader(self, toml_reader):
         assert toml_reader.get("resources.allowed_resources") == ["local", "self", "uploads"]
