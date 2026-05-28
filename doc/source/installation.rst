@@ -128,6 +128,8 @@ Sync dependencies
    source ~/.bashrc
    uv sync --locked
 
+Note: This will install all required dependencies, including ``mongomock`` and ``mongomock-motor``, which are used for in-memory database support during testing.
+
 
 .. _configuration-file:
 

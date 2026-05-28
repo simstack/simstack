@@ -37,7 +37,7 @@ class Database(DatabaseInformation):
         if db_type == DBType.IN_MEMORY:
             # For tests, use in-memory MongoDB (mongomock)
             try:
-                # import mongomock
+                import mongomock
                 from mongomock_motor import AsyncMongoMockClient
 
                 self.client = AsyncMongoMockClient()
@@ -46,7 +46,7 @@ class Database(DatabaseInformation):
                 logger.warning(
                     "mongomock not installed, falling back to localhost MongoDB"
                 )
-                self.client = AsyncIOMotorClient("mongodb://localhost:27017")
+                raise ValueError("mongomock not installed, cannot use in-memory MongoDB")
 
         elif db_type == DBType.MONGODB:
             if not connection_string:
