@@ -297,16 +297,30 @@ class FileListMixin:
         for fs in self.file_stacks:
             yield (fs.name, fs)
 
-@simstack_model
-class FileList(EmbeddedModel, GenericListMixin[FileStack]):
-    elements: List[FileStack] = Field(default_factory=list)
+OLD_FILE_LIST_DEFINITION = False
 
-@simstack_model
-class FileListModel(Model, ObjectListMixin[FileStack]):
-    elements: List[ObjectId] = Field(default_factory=list)
+if OLD_FILE_LIST_DEFINITION:
+    @simstack_model
+    class FileList(EmbeddedModel, FileListMixin):
+        file_stacks: List[FileStack] = Field(default_factory=list)
 
-    async def _get_model_class(self):
-        return FileStack
+
+    @simstack_model
+    class FileListModel(Model, FileListMixin):
+        file_stacks: List[FileStack] = Field(default_factory=list)
+
+
+else:
+    @simstack_model
+    class FileList(EmbeddedModel, GenericListMixin[FileStack]):
+        elements: List[FileStack] = Field(default_factory=list)
+
+    @simstack_model
+    class FileListModel(Model, ObjectListMixin[FileStack]):
+        elements: List[ObjectId] = Field(default_factory=list)
+
+        async def _get_model_class(self):
+            return FileStack
 
 
 @simstack_model

@@ -389,15 +389,17 @@ class DataSetTuple(Model):
         """
         return {"id": str(self.id)}
 
-    def collect_structure(self) -> Dict[str, List[str]]:
+    def collect_structure(self) -> Dict[str, Dict[str,str]]:
         """
-        Returns a dictionary where keys are section names and values are lists of model types.
+        Returns a dictionary where keys are section names and values are dictionaries mapping
+        string indices to model types at those indices.
 
-        :return: Dictionary mapping section names to their model types
-        :rtype: Dict[str, List[str]]
+        :return: Dictionary mapping section names to their model type structures
+        :rtype: Dict[str, Dict[str, str]]
         """
         return {
-            section_name: section.model_types if len(section) > 0 else None
+            section_name: {str(i): model_type for i, model_type in enumerate(section.model_types)} if len(
+                section) > 0 else None
             for section_name, section in self.sections.items()
         }
 

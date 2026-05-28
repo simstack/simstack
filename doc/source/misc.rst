@@ -35,7 +35,11 @@ Customizing Simstack Models
 ---------------------------
 
 .. note:: General information about Simstack models
-.. todo:: document json_schema and ui_schema for models here
+
+Simstack models are built on top of `odmantic`, which uses `pydantic` for data validation.
+By decorating a class with `@simstack_model`, you enable additional UI-related features.
+You can customize how a model appears in the GUI by implementing `json_schema` and `ui_schema` methods.
+Refer to :ref:`persisting_data` for more details.
 
 
 
@@ -48,7 +52,7 @@ Running the above code as a workflow we would like to achieve the following:
 * (workflows can be created from existing components in a GUI)
 
 To address the first points, all data must be serializable. This can be achieved by pickling the inputs/outputs but
-then the data is hidden in the pickled string and not searchable. Here we have chosen SQLModel classes to persist the
+then the data is hidden in the pickled string and not searchable. Here we have chosen odmantic classes to persist the
 data in a database. See: :ref:`persisting-results-section`. This has the charm that routes to access this data can be
 automatically generated.
 
@@ -62,8 +66,7 @@ Overall we need four "servers" to run the workflow:
 
 .. code-block:: python
 
-    parameters = Parameters(resource="my_resource",queue = "slurm-queue")
-    @node(parameter=Parameters)
+    @node(parameters=Parameters(resource="my_resource", queue="slurm-queue"))
     def my_node(arg1: Model1, arg2: Model2, **kwargs) -> SimstackResult:
         # do something with inputs
         return outputs
