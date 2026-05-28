@@ -16,6 +16,15 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         python-version: ["3.12"]
 
+    services:
+      mongodb:
+        image: mongodb/mongodb-community-server:latest
+        ports:
+          - 27017:27017
+        env:
+          MONGODB_INITDB_ROOT_USERNAME: root
+          MONGODB_INITDB_ROOT_PASSWORD: rootpassword
+
     steps:
       - uses: actions/checkout@v4
 
@@ -31,8 +40,42 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
+      - name: Set up MongoDB for testing
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          uv run python -c "
+          from pymongo import MongoClient
+          client = MongoClient('mongodb://root:rootpassword@localhost:27017/')
+          db = client['admin']
+          db.command('createUser', 'testing', pwd='testpassword', roles=[{'role': 'readWrite', 'db': 'testing_data'}])
+          db = client['testing_data']
+          db['init'].insert_one({'init': True})
+          print('MongoDB initialized with user testing and database testing_data')
+          "
+
       - name: Run tests without context
         # Runs pytest with coverage, skipping 'local_runner' tests as per previous configuration
         run: uv run python -m pytest tests/without_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml -m "not local_runner"
+
       - name: Run tests with context
-        run: uv run python -m pytest tests/with_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml -m "not local_runner"
+        env:
+          SIMSTACK_TEST_USE_REAL_DB: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
+          MONGODB_CONNECTION_STRING: mongodb://testing:testpassword@localhost:27017/
+          MONGODB_DATABASE: testing_data
+        run: uv run python -m pytest tests/with_runner --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml -m "not local_runner"
+      - name: Run tests with runner
+        shell: bash
+        env:
+          SIMSTACK_TEST_USE_REAL_DB: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
+          MONGODB_CONNECTION_STRING: mongodb://testing:testpassword@localhost:27017/
+          MONGODB_DATABASE: testing_data
+        run: |
+          mkdir -p simstack
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            printf '[parameters]\n[parameters.general]\nuse_db = true\nworkdir_self = "$PWD/simstack"\n[parameters.db]\ndatabase = "testing_data"\nconnection_string = "mongodb://testing:testpassword@localhost:27017/"\n[parameters.general]\nuse_db = true\n' > simstack.toml
+          else
+            printf '[parameters.db]\ndatabase = "testing_data"\nconnection_string = ""\n[parameters.general]\nuse_db = false\n' > simstack.toml
+          fi
+          uv run create_model_table --dir tests 
+          uv run create_node_table --dir tests
+          uv run python -m pytest tests/with_runner --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml 
