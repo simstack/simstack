@@ -1,3 +1,4 @@
+import uuid
 from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List
 from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
 from simstack.core.asnyc_helper import async_helper
@@ -16,54 +17,65 @@ class DataSetSection(EmbeddedModel):
 
     :ivar model_types: Dictionary mapping keys to model class names.
     :type model_types: Dict[str, str]
-    :ivar data: List of dictionaries mapping keys to ObjectIds.
-    :type data: List[Dict[str, ObjectId]]
+    :ivar data: Dictionary mapping names to dictionaries mapping keys to ObjectIds.
+    :type data: Dict[str, Dict[str, ObjectId]]
     """
 
     model_types: Dict[str, str] = Field(default_factory=dict)
-    data: List[Dict[str, ObjectId]] = Field(default_factory=list)
+    data: Dict[str, Dict[str, ObjectId]] = Field(default_factory=dict)
 
     column_defs: List[Dict] = Field(default_factory=list)
     table_entries: List[List[Dict]] = Field(default_factory=list)
 
     model_config = {"extra": "forbid"}
 
-    async def add_item(self, item: Dict[str, Optional[Model]]) -> None:
+    async def add_item(self, item: Dict[str, Optional[Model]], name: Optional[str] = None) -> None:
         """
         Add a dictionary of models to this section.
 
         :param item: Dictionary of model instances to add.
+        :param name: Optional name for the item. If None, a UUID will be generated.
         :raises ValueError: If the model types don't match the section's expected types.
+        :raises TypeError: If a non-None item value is not a Model instance.
         """
-        from simstack.core.context import context
-        if isinstance(models, Model):
-            models = (models,)
-        model_names = [model.__class__.__name__ for model in models]
 
-        # Verify that all the models are already stored, otherwise store them
-        db = context.db
-        stored_models = []
-        model_ids = []
-        for model in models:
-            if model is None:
-                model_ids.append(None)
-                continue
-            if model.id is None:
-                stored_model = await db.save(model)
-                stored_models.append(stored_model)
+        if name is None:
+            name = str(uuid.uuid4())
+
+        # Type check: raise TypeError if an item which is not None is not a Model
+        for key, value in item.items():
+            if value is not None and not isinstance(value, Model):
+                raise TypeError(
+                    f"Item with key '{key}' is not a Model instance: {type(value).__name__}"
+                )
+
+        filtered_item = {k: v for k, v in item.items() if v is not None}
+
+        current_item_types = {k: v.__class__.__name__ for k, v in filtered_item.items()}
+
+        # If this is the first item, we can partially or fully initialize model_types
+        # However, subsequent items might have new keys.
+        # The requirement says: "all items with the same key must be the same Model type"
+
+        for key, model_name in current_item_types.items():
+            if key in self.model_types:
+                if self.model_types[key] != model_name:
+                    raise ValueError(
+                        f"Model type for key '{key}' is {model_name}, but expected {self.model_types[key]}"
+                    )
             else:
                 self.model_types[key] = model_name
 
-        # Save models if they don't have an ID
+        # Save all models
         item_ids = {}
-        for key, model in filtered_item.items():
-            if model.id is None:
-                await engine.save_unchecked(model)
-                item_ids[key] = model.id
-            else:
-                item_ids[key] = model.id
+        from simstack.core.context import context
+        for key, model in item.items():
+            if model is None:
+                continue
+            await context.db.save_unchecked(model)
+            item_ids[key] = model.id
 
-        self.data.append(item_ids)
+        self.data[name] = item_ids
 
     async def make_column_defs(self):
         """
@@ -75,42 +87,71 @@ class DataSetSection(EmbeddedModel):
         column_defs = []
         if not self.data:
             return column_defs
-        db = context.db
-        for model_group_id, model_type in zip(self.data[0], self.model_types):
-            model_class = await import_class_by_name(model_type, db)
-            model_instance = await db.find_one(
-                model_class, model_class.id == model_group_id
-            )
-            if model_instance is None:
-                raise ValueError(f"DB-Save Model of type {model_type} with id {model_group_id} not found")
-            model_columns = make_column_defs_instance(model_instance)
-            column_defs.extend(model_columns)
+
+        # Use model_types to determine columns. 
+        # Since it's a dict, we might want to order them or just iterate.
+        for key, model_type in self.model_types.items():
+            # Find the first instance of this key in data to get an ID for make_column_defs_instance if needed
+            # Actually make_column_defs_instance might just need the class, let's check how it's used in DataSetTuple
+            
+            # In DataSetTuple:
+            # for model_group_id, model_type in zip(self.data[0], self.model_types):
+            #     model_class = await import_class_by_name(model_type)
+            #     model_instance = await engine.find_one(model_class, model_class.id == model_group_id)
+            #     model_columns = make_column_defs_instance(model_instance)
+            #     column_defs.extend(model_columns)
+            
+            # We do something similar but we need an instance for each key.
+            model_group_id = None
+            for row in self.data.values():
+                if key in row:
+                    model_group_id = row[key]
+                    break
+            
+            if model_group_id is None:
+                continue
+                
+            model_class = await import_class_by_name(model_type)
+            model_instance = await engine.find_one(model_class, model_class.id == model_group_id)
+            if model_instance:
+                model_columns = make_column_defs_instance(model_instance)
+                # Maybe prefix column headers with the key? 
+                # DataSetTuple doesn't seem to prefix, but it's a tuple so order matters.
+                # In a dict, we might have many models.
+                column_defs.extend(model_columns)
+        
         return column_defs
 
     async def make_table_entries(self):
+        all_data = []
+
         from simstack.core.context import context
         from simstack.util.importer import import_class_by_name
-        all_data = []
-        db = context.db
+        for row in self.data.values():
+            row_data = []
+            for key, model_type in self.model_types.items():
+                model_group_id = row.get(key)
+                if model_group_id is None:
+                    # How to handle missing values in make_table_entries?
+                    # DataSetTuple assumes all models in the tuple are present (or at least zip handles it)
+                    # Let's see what make_table_entries_helper does with None.
+                    row_data.append({}) # Or some empty representation
+                    continue
 
-        for model_group_ids in self.data:
-            data = []
-            for model_group_id, model_type in zip(model_group_ids, self.model_types):
-                model_class = await import_class_by_name(model_type, db)
-                model_instance = await db.find_one(
-                   model_class, model_class.id == model_group_id
-                )
 
+                model_class = await import_class_by_name(model_type, context.db)
+                model_instance = await context.db.find_one(model_class, model_class.id == model_group_id)
                 model_data = make_table_entries_helper(model_instance)
                 row_data.append(model_data)
             all_data.append(row_data)
         return all_data
 
-    async def get_item(self, index: int) -> Dict[str, Model]:
-        if index < 0 or index >= len(self.data):
-            raise IndexError("Index out of range")
 
-        row = self.data[index]
+    async def get_item(self, name: str) -> Dict[str, Model]:
+        if name not in self.data:
+            raise KeyError(f"Item with name '{name}' not found")
+
+        row = self.data[name]
         db = context.db
         result = {}
         for key, model_id in row.items():
@@ -126,10 +167,12 @@ class DataSetSection(EmbeddedModel):
     def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, index: Union[int, slice]):
-        if isinstance(index, slice):
-            return self.data[index]
-        return self.data[index]
+    async def __aiter__(self):
+        for name, row_data in self.data.items():
+            yield name, await self.get_item(name)
+
+    def __getitem__(self, name: str):
+        return self.data[name]
 
     def __repr__(self) -> str:
         return f"DataSetSection(keys={list(self.model_types.keys())}, length={len(self.data)})"
@@ -165,12 +208,10 @@ class DataSet(Model):
 
         await engine.save_unchecked(self)
 
-    def collect_structure(self) -> Dict[str, List[str]]:
-        # This is a bit tricky. DataSetMetadata.validate_dict expects List[str].
-        # If we want to stay compatible without changing DataSetMetadata yet:
+    def collect_structure(self) -> Dict[str, Dict[str, str]]:
         return {
-            section_name: list(section.model_types.values()) if len(section) > 0 else None
-            for section_name, section in self.sections.items()
+            section_name: section.model_types if len(section) > 0 else {}
+            for section_name, section in self.sections.items() if len(section) > 0
         }
 
     def __getitem__(self, key: str) -> DataSetSection:

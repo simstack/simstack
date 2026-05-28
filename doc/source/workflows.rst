@@ -17,13 +17,13 @@ Workflows are comprised of nodes, which are implemented as python functions.
 
 .. code-block:: python
 
-    def adder(arg1: float. arg2: float) -> float:
+    def adder(arg1: float, arg2: float) -> float:
         return arg1 + arg2
 
     def multiplier(arg1: float, arg2: float) -> float:
         return arg1 * arg2
 
-    def add_multiply_python(arg1: float, arg2: float, arg2: float) -> float:
+    def add_multiply_python(arg1: float, arg2: float, arg3: float) -> float:
         add_result = adder(arg1, arg2) 
         multiply_result = multiplier(add_result, arg3)
         return multiply_result
@@ -49,22 +49,22 @@ For the specific example above the code looks as follows:
 
 .. code-block:: python
 
-    @node(parameters=Parameters(resource="my-remote-host",queue="slurm-queue"))
-     def adder(arg1: FloatData. arg2: FloatData, **kwargs) -> FloatData:
-        return FloatData(field_name="adder_result",value=arg1 + arg2)
+    @node(parameters=Parameters(resource="my-remote-host", queue="slurm-queue"))
+    def adder(arg1: FloatData, arg2: FloatData, **kwargs) -> FloatData:
+        return FloatData(field_name="adder_result", value=arg1.value + arg2.value)
 
-    @node(parameters=Parameters(resource="my-remote-host",queue="default"))
-    def multiplier(arg1: FloatData. arg2: FloatData, **kwargs) -> float:
-        return FloatData(field_name="adder_result",value=arg1 + arg2)
+    @node(parameters=Parameters(resource="my-remote-host", queue="default"))
+    def multiplier(arg1: FloatData, arg2: FloatData, **kwargs) -> FloatData:
+        return FloatData(field_name="multiplier_result", value=arg1.value * arg2.value)
 
     @node
-    def add_multiply_python(arg1: FloatData, arg2: FloatData, arg2: FloatData, **kwargs) -> FloatData:
+    def add_multiply_python(arg1: FloatData, arg2: FloatData, arg3: FloatData, **kwargs) -> FloatData:
         add_result = adder(arg1, arg2, **kwargs)  # note passing the kwargs!!!!
         multiply_result = multiplier(add_result, arg3, **kwargs)
         return multiply_result
 
 The first thing you notice is that the datatypes have changed. Since int, floats etc appear a lot, Simstack provides 
-models for these types in its core package (see: :mod:`simstack.models.base_types`).
+models for these types (see: :mod:`simstack.models.base_types`).
 
 The @node decorator embeds the simple python functions into a complex workflow class
 (see: :func:`simstack.core.node.node` in module: :mod:`simstack.core.node`).
@@ -345,7 +345,7 @@ Nodes scheduled to run on a remote execution require a runner
 --resource flag set to the name of that node. The user or the administrator
 has to install Simstack and the relevant user repositories on the remote
 server and specify the information relevant to the remote node in the
-``simistack.toml`` configuration file (see: :ref:`configuration-file`). This
+``simstack.toml`` configuration file (see: :ref:`configuration-file`). This
 needs to be done only once.
 
 When someone is actively developing new nodes or other code to be run on the

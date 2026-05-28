@@ -13,6 +13,9 @@ SimStack II Documentation
    ui_documentation
    workflows
    data
+   lists
+   files
+   mass_runner
    database_migrations
    misc
    installation

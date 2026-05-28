@@ -32,7 +32,7 @@ from simstack.core.node_runner import NodeRunner
 from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.task_id import set_task_id, clear_task_id
-from simstack.models import ModelMapping, Parameters
+from simstack.models import ModelMapping, Parameters, BooleanData
 from simstack.models import NodeModel
 from simstack.models import NodeRegistry
 from simstack.models.file_list import FileList, FileListModel
@@ -698,6 +698,27 @@ async def process_result_helper(
     result_names: List[str] = []
 
     if isinstance(result, bool):
+        # Convert bool to BooleanData
+        boolean_data = BooleanData(value=result)
+        result_model = await context.db.upsert(boolean_data)
+        result_models.append(result_model)
+        if result_model.id is None:
+            raise ValueError(
+                f"Task task_id: {task_id} saved BooleanData has no ID"
+            )
+        result_ids.append(result_model.id)
+        result_names.append("value")
+        result_table_name = await context.db.find_one(
+            ModelMapping, ModelMapping.name == BooleanData.__name__
+        )
+        if result_table_name is None:
+            logger.error(
+                f"Task task_id: {task_id} could not find table name for {BooleanData.__name__}"
+            )
+            raise ValueError(
+                f"Could not find table name for {BooleanData.__name__}"
+            )
+        result_tables.append(result_table_name.mapping)
         return result_ids, result_tables, result_models, result_names
 
     if isinstance(result, SimstackResult):

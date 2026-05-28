@@ -43,7 +43,6 @@ class NodeRunner(SimstackResult):
             **kwargs: Additional keyword arguments. 'task_id' can be provided here.
         """
         super().__init__()
-        self.kwargs = kwargs.copy()
         self.task_id = kwargs.get("task_id", "NA")
         if isinstance(self.task_id, ObjectId):
             self.task_id = str(self.task_id)
