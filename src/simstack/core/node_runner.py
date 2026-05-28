@@ -4,13 +4,14 @@ import os
 import subprocess
 import uuid
 from pathlib import Path
-from typing import Set
+from typing import Set, List, Tuple, Union
 
-from odmantic import ObjectId
+from odmantic import ObjectId, Model
 
 from simstack.core.definitions import TaskStatus
 from simstack.core.simstack_result import SimstackResult
 from simstack.models.files import FileStack
+
 
 local_logger = logging.getLogger("NodeRunner")
 
@@ -30,6 +31,7 @@ class NodeRunner(SimstackResult):
         last_stderr (str): Most recent stderr from subprocess execution
         info_file_patterns (Set[str]): File patterns used to collect information files
     """
+
 
     def __init__(self, name: str = "node", logger=None, **kwargs):
         """
