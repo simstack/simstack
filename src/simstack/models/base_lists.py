@@ -87,17 +87,19 @@ class GenericListMixin(Generic[T]):
         return f"{self.__class__.__name__}(elements={self.elements!r})"
 
     def find(self, pattern: str) -> Optional[T]:
+        regex = re.compile(pattern)
         for elements in self.elements:
             name = getattr(elements, "name", None)
-            if name and pattern == name:  # re.search(pattern, name):
+            if name and regex.search(name):
                 return elements
         return None
 
     def find_all(self, pattern: str) -> List[T]:
         matches: List[T] = []
+        regex = re.compile(pattern)
         for elements in self.elements:
             name = getattr(elements, "name", None)
-            if name and re.search(pattern, name):
+            if name and regex.search(name):
                 matches.append(elements)
         return matches
 

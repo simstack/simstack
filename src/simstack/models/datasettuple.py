@@ -143,8 +143,6 @@ class DataSetTupleSection(EmbeddedModel):
                 )
             models.append(model_instance)
 
-        if len(models) == 1:
-            return models[0]
         return tuple(models)
 
     async def get_all_model_groups(self) -> List[Tuple[Model, ...]]:
