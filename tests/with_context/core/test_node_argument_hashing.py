@@ -37,7 +37,7 @@ class FanoutHashInput(Model):
 
 
 @node(
-    resource="local",
+    resource="test",
     queue="slurm-queue",
     force_rerun=True,
     slurm_parameters=SlurmParameters(nodes=1, tasks_per_node=1),
@@ -83,7 +83,7 @@ def test_compute_arg_hash_preserves_top_level_custom_hash_contract():
 
 @pytest.mark.asyncio
 async def test_async_parent_fanout_creates_slurm_children_with_nested_hash_traps(
-    monkeypatch,
+    monkeypatch,initialized_context
 ):
     custom_name = f"hash-fanout-{uuid.uuid4()}"
     submitted_ids = []

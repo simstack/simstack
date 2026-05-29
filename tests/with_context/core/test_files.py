@@ -66,12 +66,12 @@ def test_file_instance_creation():
     """Test basic FileInstance creation"""
     instance = FileInstance(
         path="test/path/file.txt",
-        resource=Resource(value="local"),
+        resource=Resource(value="test"),
         created_at=datetime(2023, 1, 1, 12, 0, 0),
     )
 
     assert instance.path == "test/path/file.txt"
-    assert instance.resource.value == "local"
+    assert instance.resource.value == "test"
     assert instance.created_at == datetime(2023, 1, 1, 12, 0, 0)
 
 

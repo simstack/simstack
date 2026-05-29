@@ -103,7 +103,7 @@ async def test_runner_skips_stale_entry_when_another_process_claimed_it(monkeypa
         _slurm_registry("runner_stale_slurm_child", status=TaskStatus.RETRIEVED)
     )
     service = NodeExecutionService(
-        Resource(value="local"),
+        Resource(value="test"),
         interval=1,
         max_concurrent=1,
         shutdown_event=None,
