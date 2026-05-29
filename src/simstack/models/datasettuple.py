@@ -217,15 +217,15 @@ class DataSetTupleSection(EmbeddedModel):
             )
         del self.data[index]
 
-    def append(self, models: Tuple[Model, ...]) -> None:
+    async def append(self, models: Tuple[Model, ...]) -> None:
         """
         Append a tuple of models to the section.
 
         :param models: Tuple of model instances to append
         """
-        self.add_model_group(models)
+        await self.add_model_group(models)
 
-    def insert(self, index: int, models: Tuple[Model, ...]) -> None:
+    async def insert(self, index: int, models: Tuple[Model, ...]) -> None:
         """
         Insert a tuple of models at the specified index.
 
@@ -247,14 +247,14 @@ class DataSetTupleSection(EmbeddedModel):
 
         self.data.insert(index, model_ids)
 
-    def extend(self, models_list: List[Tuple[Model, ...]]) -> None:
+    async def extend(self, models_list: List[Tuple[Model, ...]]) -> None:
         """
         Extend the section with multiple tuples of models.
 
         :param models_list: List of tuples of model instances to extend with
         """
         for models in models_list:
-            self.add_model_group(models)
+            await self.add_model_group(models)
 
     def pop(self, index: int = -1) -> Tuple[Model, ...]:
         """

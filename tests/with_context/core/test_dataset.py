@@ -118,10 +118,10 @@ class TestDataSetSection:
             await context.db.save(model)
 
         section = DataSetTupleSection()
-        section.add_model_group((float1, string1))
-        section.add_model_group((float2, string2))
+        await section.add_model_group((float1, string1))
+        await section.add_model_group((float2, string2))
 
-        all_tuples = section.get_all_model_groups()
+        all_tuples = await section.get_all_model_groups()
 
         assert len(all_tuples) == 2
         assert all_tuples[0][0].value == 1.0
@@ -238,7 +238,7 @@ class TestDataSet:
         await context.db.save(float_data)
 
         section = DataSetTupleSection()
-        section.add_model_group((float_data,))
+        await section.add_model_group((float_data,))
 
         # Test setitem and getitem
         dataset["test"] = section
@@ -304,7 +304,7 @@ class TestDataSet:
 
         # Test retrieving models from the loaded section
         loaded_section = loaded_dataset["main"]
-        retrieved_models = loaded_section.get_model_group(0)
+        retrieved_models = await loaded_section.get_model_group(0)
 
         assert len(retrieved_models) == 2
         assert isinstance(retrieved_models[0], FloatData)
