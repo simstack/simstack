@@ -108,6 +108,7 @@ async def test_async_main_uses_false_is_default_when_default_resource_init_retur
         no_pull=False,
         polling_interval=5,
         timeout=None,
+        connection_string="none",
     )
 
     await runner.async_main(args)

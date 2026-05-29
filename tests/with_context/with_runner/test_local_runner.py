@@ -16,9 +16,8 @@ def runner_process(test_runner) -> subprocess.Popen:
 
 
 # Example usage in tests:
-
+@pytest.mark.skip(reason="Skipping local runner tests for now")
 @pytest.mark.local_runner
-@pytest.mark.skip("runners not tested in new version")
 def test_runner_is_running(runner_process):
     """Test that the runner process is running correctly."""
     assert runner_process.poll() is None, "Runner process should be running"

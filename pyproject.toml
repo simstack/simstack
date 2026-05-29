@@ -133,6 +133,7 @@ exclude = ["tests", "doc", "docs"]
 [project.entry-points."simstack.modules"]
 example_modules = "simstack.models"
 applicatio_modules = "simstack.methods"
+test_modules = "tests"
 
 [[tool.uv.index]]
 name = "testpypi"

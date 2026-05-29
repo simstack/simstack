@@ -197,11 +197,18 @@ class GlobalState:
     def initialize_logging(self, is_test: bool, log_level: str = "INFO"):
         if is_test:
             # For tests, use simple console logging without the database handler
+            # We use force=True to ensure it overrides any existing configuration (e.g. from pytest or PyCharm)
+            # We also ensure the stream is sys.stderr so PyCharm/pytest can capture it properly if configured
             logging.basicConfig(
                 level=log_level,
                 format="%(asctime)s - %(name)-15s - %(levelname)-10s - %(filename)-20s:%(lineno)4d - %(message)s",
+                stream=sys.stderr,
+                force=True,
             )
             self.log_handler = logging.getLogger()
+            # Flush stdout and stderr to ensure logs are not buffered
+            sys.stdout.flush()
+            sys.stderr.flush()
         else:
             self.log_handler = setup_logging(
                 self.db.connection_string,
