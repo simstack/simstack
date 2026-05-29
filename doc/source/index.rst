@@ -13,6 +13,7 @@ SimStack II Documentation
    ui_documentation
    workflows
    data
+   database_migrations
    misc
    installation
    simstack/modules
@@ -22,4 +23,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
