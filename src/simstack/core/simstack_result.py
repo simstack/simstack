@@ -1,12 +1,13 @@
 from typing import Optional, List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from simstack.core.definitions import TaskStatus
 from simstack.models.files import FileStack
 
 
 class SimstackResult(BaseModel):
+    model_config = ConfigDict(extra="allow")
     """
     Represents the results from a Simstack operation.
 
@@ -36,6 +37,3 @@ class SimstackResult(BaseModel):
     message: Optional[str] = None
     files: List[FileStack] = Field(default_factory=list)
     info_files: List[FileStack] = Field(default_factory=list)
-
-    class Config:
-        extra = "allow"  # Allow extra fields without validation
