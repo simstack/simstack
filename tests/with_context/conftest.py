@@ -22,6 +22,7 @@ def pytest_report_header(config):
     import os
     db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
     use_real_db = db_connection_string.lower() != "none"
+
     if use_real_db:
         conn_str = db_connection_string if db_connection_string.lower() != "none" else os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017")
         return f"SIMSTACK: Using real MongoDB database at: {conn_str}"
@@ -29,7 +30,7 @@ def pytest_report_header(config):
         return "SIMSTACK: Using mock database (patched for mongomock)"
 
 @pytest_asyncio.fixture(autouse=True, scope="session", loop_scope="session")
-async def initialized_context(tmp_path_factory, event_loop):
+async def initialized_context(tmp_path_factory):
     # Use environment variable to control the database type for tests
     import os
 
