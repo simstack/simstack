@@ -14,7 +14,7 @@ def some_node(arg: StringData, **kwargs) -> StringData:
 
 
 @pytest.mark.local_runner
-def test_node_runner(caplog, test_runner):
+def test_node_runner(caplog):
     allowed_resources.add_resource("test")
     assert allowed_resources.has_resource("test")
     with caplog.at_level(logging.INFO):

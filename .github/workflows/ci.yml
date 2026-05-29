@@ -82,4 +82,4 @@ jobs:
           cat simstack.toml
           uv run create_model_table --dir tests 
           uv run create_node_table --dir tests
-          uv run python -m pytest tests/with_context/with_runner --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml 
+          uv run python -m pytest tests/with_context/with_runner --junitxml=pytest.xml 
