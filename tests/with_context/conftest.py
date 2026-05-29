@@ -38,24 +38,14 @@ async def initialized_context(tmp_path_factory, event_loop):
     use_real_db = db_connection_string != "none"
 
     if use_real_db and not _mongodb_available(db_connection_string):
-        raise RuntimeError(f"fSIMSTACK_TEST cannot reac db at: {db_connection_string}")
+        raise RuntimeError(f"fSIMSTACK_TEST cannot reach db at: {db_connection_string}")
     else:
-        # print("Test context initialized with mock database (patched for mongomock)")
-        pass
-    db_mode = os.getenv("SIMSTACK_TEST_USE_REAL_DB", "false").lower()
-    use_real_db = db_mode == "true"
+        print("Test context initialized with mock database (patched for mongomock)")
 
-    if use_real_db and not _mongodb_available():
-        raise RuntimeError(
-            f"SIMSTACK_TEST_USE_REAL_DB=true but MongoDB not available at {os.getenv('MONGODB_CONNECTION_STRING', 'localhost:27017')}"
-        )
-
-    import logging
-    logger = logging.getLogger("simstack.test")
     if use_real_db:
-        logger.info(f"Test context initialized with real MongoDB database")
+        print(f"Test context initialized with real MongoDB database")
     else:
-        logger.info("Test context initialized with mock database (patched for mongomock)")
+        print("Test context initialized with mock database (patched for mongomock)")
 
     working_dir = tmp_path_factory.mktemp("simstack_test")
     # set the variables such that fake dirs exist, project_root is the actual project root
