@@ -49,98 +49,109 @@ class TestFileListMixin:
         file_list = FileList()
         assert len(file_list) == 0
 
-    def test_len_with_files(self, sample_file_stacks):
+    @pytest.mark.asyncio
+    async def test_len_with_files(self, sample_file_stacks):
         """Test __len__ method with files in list"""
         file_list = FileList()
         for file_stack in sample_file_stacks:
-            file_list.append(file_stack)
+            await file_list.append(file_stack)
         assert len(file_list) == 3
 
-    def test_append_single_file(self, sample_file_stack):
+    @pytest.mark.asyncio
+    async def test_append_single_file(self, sample_file_stack):
         """Test appending a single file"""
         file_list = FileList()
-        file_list.append(sample_file_stack)
+        await file_list.append(sample_file_stack)
 
         assert len(file_list) == 1
-        assert file_list[0] == sample_file_stack
+        # In ObjectListMixin, file_list[0] returns the ObjectId, not the object
+        assert file_list[0] == sample_file_stack.id
 
-    def test_append_multiple_files(self, sample_file_stacks):
+    @pytest.mark.asyncio
+    async def test_append_multiple_files(self, sample_file_stacks):
         """Test appending multiple files"""
         file_list = FileList()
         for file_stack in sample_file_stacks:
-            file_list.append(file_stack)
+            await file_list.append(file_stack)
 
         assert len(file_list) == 3
-        assert file_list.elements == sample_file_stacks
+        # In ObjectListMixin, elements contains ObjectIds
+        assert file_list.elements == [fs.id for fs in sample_file_stacks]
 
-    def test_find_existing_pattern(self, sample_file_stacks):
+    @pytest.mark.asyncio
+    async def test_find_existing_pattern(self, sample_file_stacks):
         """Test finding file with existing pattern"""
         file_list = FileList()
         for file_stack in sample_file_stacks:
-            file_list.append(file_stack)
+            await file_list.append(file_stack)
 
         # Find .py file
-        result = file_list.find("file2.py")
+        result = await file_list.find("file2.py")
         assert result is not None
         assert result.name == "file2.py"
 
-    def test_find_non_existing_pattern(self, sample_file_stacks):
+    @pytest.mark.asyncio
+    async def test_find_non_existing_pattern(self, sample_file_stacks):
         """Test finding file with non-existing pattern"""
         file_list = FileList()
         for file_stack in sample_file_stacks:
-            file_list.append(file_stack)
+            await file_list.append(file_stack)
 
         # Try to find .pdf file (doesn't exist)
-        result = file_list.find(r"\.pdf$")
+        result = await file_list.find(r"\.pdf$")
         assert result is None
 
-    def test_find_case_sensitive(self, sample_file_stacks):
+    @pytest.mark.asyncio
+    async def test_find_case_sensitive(self, sample_file_stacks):
         """Test case-sensitive pattern matching"""
         file_list = FileList()
         for file_stack in sample_file_stacks:
-            file_list.append(file_stack)
+            await file_list.append(file_stack)
 
         # Find files starting with "test" (case sensitive)
-        result = file_list.find("test_data.csv")
+        result = await file_list.find("test_data.csv")
         assert result is not None
         assert result.name == "test_data.csv"
 
-    def test_find_all_matching_pattern(self, sample_file_stacks):
+    @pytest.mark.asyncio
+    async def test_find_all_matching_pattern(self, sample_file_stacks):
         """Test finding all files matching pattern"""
         file_list = FileList()
         for file_stack in sample_file_stacks:
-            file_list.append(file_stack)
+            await file_list.append(file_stack)
 
         # Find all .txt files
-        results = file_list.find_all(r"\.txt$")
+        results = await file_list.find_all(r"\.txt$")
         assert len(results) == 1
         assert results[0].name == "file1.txt"
 
-    def test_find_all_multiple_matches(self, sample_file_stacks):
+    @pytest.mark.asyncio
+    async def test_find_all_multiple_matches(self, sample_file_stacks):
         """Test finding all files when multiple match"""
         file_list = FileList()
         for file_stack in sample_file_stacks:
-            file_list.append(file_stack)
+            await file_list.append(file_stack)
 
         # Add another .txt file
         extra_file = FileStack(name="another.txt", size=25)
-        file_list.append(extra_file)
+        await file_list.append(extra_file)
 
         # Find all files containing "file" in name
-        results = file_list.find_all(r"file")
+        results = await file_list.find_all(r"file")
         assert len(results) == 2
         names = [f.name for f in results]
         assert "file1.txt" in names
         assert "file2.py" in names
 
-    def test_find_all_no_matches(self, sample_file_stacks):
+    @pytest.mark.asyncio
+    async def test_find_all_no_matches(self, sample_file_stacks):
         """Test finding all files when none match"""
         file_list = FileList()
         for file_stack in sample_file_stacks:
-            file_list.append(file_stack)
+            await file_list.append(file_stack)
 
         # Try to find .exe files (none exist)
-        results = file_list.find_all(r"\.exe$")
+        results = await file_list.find_all(r"\.exe$")
         assert len(results) == 0
         assert results == []
 
@@ -419,7 +430,7 @@ async def test_file_list_len_parametrized(initialized_context, file_count):
     # Add specified number of files
     for i in range(file_count):
         file_stack = create_test_file_stack(f"file_{i}.txt")
-        file_list.append(file_stack)
+        await file_list.append(file_stack)
 
     assert len(file_list) == file_count
 
@@ -431,8 +442,8 @@ async def test_file_list_len_parametrized(initialized_context, file_count):
 )
 async def test_find_all_patterns(initialized_context, pattern, expected_count, sample_file_stacks):
     """Parametrized test for find_all with different patterns"""
+    file_list = FileList()
     for fs in sample_file_stacks:
-        await context.db.save(fs)
-    file_list = FileList(elements=sample_file_stacks)
-    results = file_list.find_all(pattern)
+        await file_list.append(fs)
+    results = await file_list.find_all(pattern)
     assert len(results) == expected_count
