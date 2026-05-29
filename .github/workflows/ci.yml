@@ -75,11 +75,11 @@ jobs:
         run: |
           mkdir -p simstack
           if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-            printf '[parameters]\n[parameters.general]\nuse_db = true\nworkdir_self = "$PWD/simstack"\n[parameters.db]\ndatabase = "testing_data"\nconnection_string = "mongodb://testing:testpassword@localhost:27017/"\n[parameters.general]\nuse_db = true\n' > simstack.toml
+            printf '[parameters]\n[parameters.general]\nuse_db = true\nworkdir_self = "${{ github.workspace }}/simstack"\n[parameters.db]\ndatabase = "testing_data"\nconnection_string = "mongodb://testing:testpassword@localhost:27017/"\n[parameters.general]\nuse_db = true\n' > simstack.toml
           else
             printf '[parameters.db]\ndatabase = "testing_data"\nconnection_string = ""\n[parameters.general]\nuse_db = false\n' > simstack.toml
           fi
-          ls
+          cat simstack.toml
           uv run create_model_table --dir tests 
           uv run create_node_table --dir tests
           uv run python -m pytest tests/with_context/with_runner --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml 
