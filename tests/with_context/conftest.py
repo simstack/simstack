@@ -113,7 +113,7 @@ async def initialized_context(tmp_path_factory):
     # Mock TomlReader to avoid file access
     mock_toml = MagicMock()
     mock_toml.use_db.return_value = True
-    context.config = await ConfigReader.create("local", context.db, mock_toml, project_root=project_root, workdir=working_dir)
+    context.config = await ConfigReader.create("test", context.db, mock_toml, project_root=project_root, workdir=working_dir)
 
     if use_real_db:
         print("Test context initialized with real MongoDB database")
