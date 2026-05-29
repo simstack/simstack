@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "master", "feature-new-datasets" ]
+    branches: [ "main", "master", "feature_new_datasets" ]
   pull_request:
     branches: [ "main", "master", "feature-new-datasets" ]
   workflow_dispatch:  # This line enables the manual run button
@@ -80,6 +80,6 @@ jobs:
             printf '[parameters]\n[parameters.general]\nuse_db = true\nworkdir_self = "${{ github.workspace }}\\simstack"\n[parameters.db]\ndatabase = "testing_data"\nconnection_string = ""\n[parameters.general]\nuse_db = false\n' > simstack.toml
           fi
           cat simstack.toml
-          uv run create_model_table --dir tests 
+          uv run create_model_table --dir tests
           uv run create_node_table --dir tests
-          uv run python -m pytest tests/with_context/with_runner --junitxml=pytest.xml 
+          uv run python -m pytest tests/with_context/with_runner --junitxml=pytest.xml
