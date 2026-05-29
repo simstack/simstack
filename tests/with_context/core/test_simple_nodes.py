@@ -74,7 +74,7 @@ def iterator_workflow_in_tests(args: IteratorInput, **kwargs) -> FloatData:
 
 
 @node(
-    resource="local",
+    resource="test",
     queue="slurm-queue",
     slurm_parameters=SlurmParameters(
         nodes=3,
@@ -138,7 +138,7 @@ def test_call_path():
 def test_legacy_decorator_parameter_kwargs_are_applied_to_parameters():
     parameters = legacy_decorator_parameters_in_tests._node_parameters
 
-    assert parameters.resource == "local"
+    assert parameters.resource == "test"
     assert parameters.queue == "slurm-queue"
     assert parameters.force_rerun is True
     assert parameters.recompute_artifacts is True

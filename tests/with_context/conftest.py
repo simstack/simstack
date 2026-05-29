@@ -109,6 +109,7 @@ async def initialized_context(tmp_path_factory):
     
     # Reset allowed_resources to allow second initialization
     allowed_resources.clear_resources()
+    allowed_resources.add_resource("test")
     
     # Mock TomlReader to avoid file access
     mock_toml = MagicMock()
