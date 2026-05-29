@@ -150,7 +150,7 @@ class DataSetTupleSection(EmbeddedModel):
             return models[0]
         return tuple(models)
 
-    def get_all_model_groups(self) -> List[Tuple[Model, ...]]:
+    async def get_all_model_groups(self) -> List[Tuple[Model, ...]]:
         """
         Retrieve all tuples in this section.
 
@@ -158,7 +158,7 @@ class DataSetTupleSection(EmbeddedModel):
         """
         all_tuples = []
         for i in range(len(self.data)):
-            tuple_models = self.get_model_group(i)
+            tuple_models = await self.get_model_group(i)
             all_tuples.append(tuple_models)
         return all_tuples
 
@@ -256,7 +256,7 @@ class DataSetTupleSection(EmbeddedModel):
         for models in models_list:
             await self.add_model_group(models)
 
-    def pop(self, index: int = -1) -> Tuple[Model, ...]:
+    async def pop(self, index: int = -1) -> Tuple[Model, ...]:
         """
         Remove and return a model group at the specified index (default last).
 
@@ -267,11 +267,11 @@ class DataSetTupleSection(EmbeddedModel):
             raise IndexError("pop from empty DataSetSection")
 
         # Get the models first before removing
-        models = self.get_model_group(index)
+        models = await self.get_model_group(index)
         del self.data[index]
         return models
 
-    def remove(self, models: Tuple[Model, ...]) -> None:
+    async def remove(self, models: Tuple[Model, ...]) -> None:
         """
         Remove the first occurrence of the specified tuple of models.
 
