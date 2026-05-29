@@ -145,12 +145,12 @@ class TestDataSetSection:
         section = DataSetTupleSection()
 
         # Test append
-        section.append((float1, string1))
-        section.append((float2, string2))
+        await section.append((float1, string1))
+        await section.append((float2, string2))
         assert len(section) == 2
 
         # Test insert
-        section.insert(1, (float3, string3))
+        await section.insert(1, (float3, string3))
         assert len(section) == 3
 
         # Test __contains__
@@ -158,7 +158,7 @@ class TestDataSetSection:
         assert (float3, string3) in section
 
         # Test remove
-        section.remove((float3, string3))
+        await section.remove((float3, string3))
         assert len(section) == 2
         assert (float3, string3) not in section
 
@@ -352,17 +352,17 @@ class TestDataSet:
         # Training section: (FloatData, StringData) tuples
         training_section = DataSetTupleSection()
         for i in range(0, 6, 3):  # indices 0, 3
-            training_section.add_model_group((models[i], models[i + 1]))
+            await training_section.add_model_group((models[i], models[i + 1]))
 
         # Validation section: (FloatData, StringData) tuples
         validation_section = DataSetTupleSection()
         for i in range(9, 15, 3):  # indices 9, 12
-            validation_section.add_model_group((models[i], models[i + 1]))
+            await validation_section.add_model_group((models[i], models[i + 1]))
 
         # Node section: single NodeRegistry tuples
         node_section = DataSetTupleSection()
         for i in range(2, 15, 3):  # indices 2, 5, 8, 11, 14
-            node_section.add_model_group((models[i],))
+            await node_section.add_model_group((models[i],))
 
         dataset["training"] = training_section
         dataset["validation"] = validation_section
@@ -383,12 +383,12 @@ class TestDataSet:
         assert dataset["nodes"].model_types == ["NodeRegistry"]
 
         # Test retrieval from each section
-        training_tuple = dataset["training"].get_model_group(0)
+        training_tuple = await dataset["training"].get_model_group(0)
         assert isinstance(training_tuple[0], FloatData)
         assert isinstance(training_tuple[1], StringData)
 
-        node_tuple = dataset["nodes"].get_model_group(0)
-        assert isinstance(node_tuple, NodeRegistry)
+        node_tuple = await dataset["nodes"].get_model_group(0)
+        assert isinstance(node_tuple[0], NodeRegistry)
 
     # ---------------------------------------------------------------------
     # Additional tests for DataSet.save() structure validation
