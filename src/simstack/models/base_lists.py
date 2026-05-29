@@ -144,7 +144,7 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
         # T is the first type argument of ObjectListMixin
         if hasattr(self, "__orig_bases__"):
             for base in self.__class__.__orig_bases__:
-                if base.__origin__ is ObjectListMixin:
+                if hasattr(base, "__origin__") and base.__origin__ is ObjectListMixin:
                     return base.__args__[0]
         # Fallback for StringDataList which explicitly inherits
         if self.__class__.__name__ == "StringDataList":
