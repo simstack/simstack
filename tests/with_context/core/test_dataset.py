@@ -172,7 +172,7 @@ class TestDataSet:
     """Test cases for DataSet functionality."""
 
     @pytest.mark.asyncio
-    async def test_empty_dataset_initialization(self, real_database_context):
+    async def test_empty_dataset_initialization(self):
         """Test creating an empty DataSet."""
         metadata = DataSetMetadata(
             field_name="test_empty_with_description",
@@ -188,7 +188,7 @@ class TestDataSet:
         assert len(dataset.sections) == 0
 
     @pytest.mark.asyncio
-    async def test_dataset_with_sections(self, node_registry, real_database_context):
+    async def test_dataset_with_sections(self, node_registry):
         """Test DataSet with multiple sections."""
         # Create metadata
         metadata = DataSetMetadata(
@@ -224,7 +224,7 @@ class TestDataSet:
         assert "validation" in dataset
 
     @pytest.mark.asyncio
-    async def test_dict_like_operations(self, real_database_context):
+    async def test_dict_like_operations(self):
         """Test dictionary-like operations on DataSet."""
         metadata = DataSetMetadata(
             field_name="test_dict_ops",
@@ -313,7 +313,7 @@ class TestDataSet:
         assert retrieved_models[1].value == "persistence_test"
 
     @pytest.mark.asyncio
-    async def test_complex_dataset_workflow(self, real_database_context):
+    async def test_complex_dataset_workflow(self):
         """Test a complex workflow with multiple model types and sections."""
         # Create metadata
         metadata = DataSetMetadata(
@@ -396,7 +396,7 @@ class TestDataSet:
 
     @pytest.mark.asyncio
     async def test_dataset_save_same_type_same_structure_different_names_succeeds(
-        self, node_registry, real_database_context
+        self, node_registry
     ):
         """
         Saving a second dataset with the same dataset_type and the same structure
@@ -446,7 +446,7 @@ class TestDataSet:
 
     @pytest.mark.asyncio
     async def test_dataset_save_same_type_different_structure_fails(
-        self, node_registry, real_database_context
+        self, node_registry
     ):
         """
         Saving a second dataset with the same dataset_type but a different structure
