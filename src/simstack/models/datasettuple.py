@@ -58,11 +58,8 @@ class DataSetTupleSection(EmbeddedModel):
             if model is None:
                 model_ids.append(None)
                 continue
-            if model.id is None:
-                stored_model = await engine.save(model)
-                stored_models.append(stored_model)
-            else:
-                stored_models.append(model)
+            stored_model = await engine.save(model)
+            stored_models.append(stored_model)
             model_ids.append(model.id)
 
 
