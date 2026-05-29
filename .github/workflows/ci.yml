@@ -56,9 +56,8 @@ jobs:
       - name: Run tests with runner
         shell: bash
         env:
-          SIMSTACK_TEST_USE_REAL_DB: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
-          MONGODB_CONNECTION_STRING: mongodb://testing:testpassword@localhost:27017/
-          MONGODB_DATABASE: testing_data
+          SIMSTACK_TEST_DB_CONNECTION_STRING: ${{ matrix.os == 'ubuntu-latest' && 'mongodb://testing:testpassword@localhost:27017/' || '' }}
+          SIMSTACK_TEST_DB: testing_data
           SIMSTACK_PROJECT_ROOT: ${{ github.workspace }}
         run: |
           mkdir -p simstack
