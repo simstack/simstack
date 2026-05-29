@@ -19,7 +19,7 @@ def _slurm_registry(name: str, status: TaskStatus = TaskStatus.SUBMITTED):
         arg_hash=f"{name}-arg-hash",
         func_mapping=f"tests:{name}",
         parameters=Parameters(
-            resource="local",
+            resource="test",
             queue="slurm-queue",
             slurm_parameters=SlurmParameters(nodes=1),
         ),

@@ -65,6 +65,7 @@ jobs:
           MONGODB_DATABASE: testing_data
         run: uv run python -m pytest tests/with_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml -m "not local_runner"
       - name: Run tests with runner
+        if: always()  # Add this line
         shell: bash
         env:
           SIMSTACK_TEST_USE_REAL_DB: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
