@@ -129,17 +129,12 @@ class DataSetMetadata(EmbeddedModel):
         for section_name, new_section_content in new_structure.items():
             if section_name in updated_structure:
                 ref_section_content = updated_structure[section_name]
-                for key, model_type in new_section_content.items():
-                    if key in ref_section_content:
-                        if ref_section_content[key] != model_type:
-                            raise ValueError(
-                                f"Model type mismatch for key '{key}' in section '{section_name}'. "
-                                f"Reference: {ref_section_content[key]}, Current: {model_type}"
-                            )
-                    else:
-                        # New key in existing section
-                        ref_section_content[key] = model_type
-                        save_template = True
+                # Check if the structure of the section matches exactly
+                if ref_section_content != new_section_content:
+                    raise ValueError(
+                        f"Section {section_name} has different content in existing structure. "
+                        f"Reference: {ref_section_content}, Current: {new_section_content}"
+                    )
             else:
                 # Completely new section
                 updated_structure[section_name] = new_section_content
