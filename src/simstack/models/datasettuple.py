@@ -39,7 +39,6 @@ class DataSetTupleSection(EmbeddedModel):
 
     model_config = {"extra": "forbid"}
 
-    @async_helper
     async def add_model_group(self, models: Union[Model, Tuple[Model, ...]]) -> None:
         """
         Add a tuple of models to this section.
@@ -117,7 +116,6 @@ class DataSetTupleSection(EmbeddedModel):
             all_data.append(data)
         return all_data
 
-    @async_helper
     async def get_model_group(self, index: int) -> Tuple[Model, ...]:
         """
         Retrieve a tuple of models at the specified index.
@@ -403,7 +401,6 @@ class DataSetTuple(Model):
             for section_name, section in self.sections.items()
         }
 
-    @async_helper
     async def clone(self, new_field_name: str = None, exclude_sections: List[str] = None) -> "DataSetTuple":
         """
         Clone the dataset with optionally a new field name and excluding specified sections.
@@ -516,7 +513,6 @@ class DataSetTupleSelection(Model):
     async def get_dataset(self):
         return await current_engine_context.get().find_one(DataSetTuple, DataSetTuple.id == self.dataset_id)
 
-    @async_helper
     async def get_selected_elements(self, section_name: str = None) -> List[Tuple[Model, ...]]:
         """
         Retrieve all selected model groups from the dataset.

@@ -128,4 +128,4 @@ async def test_async_parent_fanout_creates_slurm_children_with_nested_hash_traps
     }
     assert {entry.status for entry in child_entries} == {TaskStatus.COMPLETED}
     assert all(entry.parameters.queue == "slurm-queue" for entry in child_entries)
-    assert all(entry.parameters.resource == "local" for entry in child_entries)
+    assert all(entry.parameters.resource == "test" for entry in child_entries)

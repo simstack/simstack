@@ -32,7 +32,7 @@ class TestDataSetSection:
         await context.db.save(string_data)
 
         section = DataSetTupleSection()
-        section.add_model_group((float_data, string_data))
+        await section.add_model_group((float_data, string_data))
 
         assert len(section) == 1
         assert section.model_types == ["FloatData", "StringData"]
@@ -52,8 +52,8 @@ class TestDataSetSection:
             await context.db.save(model)
 
         section = DataSetTupleSection()
-        section.add_model_group((float1, string1))
-        section.add_model_group((float2, string2))
+        await section.add_model_group((float1, string1))
+        await section.add_model_group((float2, string2))
 
         assert len(section) == 2
         assert section.model_types == ["FloatData", "StringData"]
@@ -70,13 +70,13 @@ class TestDataSetSection:
             await context.db.save(model)
 
         section = DataSetTupleSection()
-        section.add_model_group((float_data, string_data))
+        await section.add_model_group((float_data, string_data))
 
         # Should fail when adding different types
         with pytest.raises(
             ValueError, match="Model types .* don't match section's expected types"
         ):
-            section.add_model_group((float_data, float_data))
+            await section.add_model_group((float_data, float_data))
 
     @pytest.mark.asyncio
     async def test_get_model_group(self):
@@ -88,9 +88,9 @@ class TestDataSetSection:
         await context.db.save(string_data)
 
         section = DataSetTupleSection()
-        section.add_model_group((float_data, string_data))
+        await section.add_model_group((float_data, string_data))
 
-        retrieved = section.get_model_group(0)
+        retrieved = await section.get_model_group(0)
 
         assert len(retrieved) == 2
         assert isinstance(retrieved[0], FloatData)
@@ -205,11 +205,11 @@ class TestDataSet:
 
         # Create sections
         section1 = DataSetTupleSection()
-        section1.add_model_group((float_data, string_data))
+        await section1.add_model_group((float_data, string_data))
 
         node_registry_instance = node_registry
         section2 = DataSetTupleSection()
-        section2.add_model_group((node_registry_instance, float_data))
+        await section2.add_model_group((node_registry_instance, float_data))
 
         # Create dataset
         dataset = DataSetTuple(metadata=metadata)
@@ -285,7 +285,7 @@ class TestDataSet:
 
         # Create dataset with section
         section = DataSetTupleSection()
-        section.add_model_group((float_data, string_data))
+        await section.add_model_group((float_data, string_data))
 
         dataset = DataSetTuple(metadata=metadata)
         dataset["main"] = section
@@ -414,10 +414,10 @@ class TestDataSet:
         ds1 = DataSetTuple(metadata=meta1)
 
         sec_a = DataSetTupleSection()
-        sec_a.add_model_group((f, s))  # ["FloatData", "StringData"]
+        await sec_a.add_model_group((f, s))  # ["FloatData", "StringData"]
 
         sec_b = DataSetTupleSection()
-        sec_b.add_model_group((node,))  # ["NodeRegistry"]
+        await sec_b.add_model_group((node,))  # ["NodeRegistry"]
 
         ds1["a"] = sec_a
         ds1["b"] = sec_b
@@ -429,10 +429,10 @@ class TestDataSet:
         ds2 = DataSetTuple(metadata=meta2)
 
         sec_train = DataSetTupleSection()
-        sec_train.add_model_group((f, s))  # same ["FloatData", "StringData"]
+        await sec_train.add_model_group((f, s))  # same ["FloatData", "StringData"]
 
         sec_nodes = DataSetTupleSection()
-        sec_nodes.add_model_group((node,))  # same ["NodeRegistry"]
+        await sec_nodes.add_model_group((node,))  # same ["NodeRegistry"]
 
         ds2["training"] = sec_train
         ds2["nodes"] = sec_nodes
