@@ -8,15 +8,6 @@ from simstack.tables.node_table import make_node_table
 from simstack.models.files import FileStack
 from simstack.util.project_root_finder import find_project_root
 
-@pytest.fixture(scope="session")
-def event_loop():
-    import asyncio
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 def pytest_report_header(config):
     import os
@@ -30,7 +21,7 @@ def pytest_report_header(config):
         return "SIMSTACK: Using mock database (patched for mongomock)"
 
 @pytest_asyncio.fixture(autouse=True, scope="session")
-async def initialized_context(tmp_path_factory, event_loop):
+async def initialized_context(tmp_path_factory):
     # Use environment variable to control the database type for tests
     import os
 

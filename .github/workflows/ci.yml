@@ -8,13 +8,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Test on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+  test-linux:
+    name: Test on ubuntu-latest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
         python-version: ["3.12"]
 
     services:
@@ -42,7 +41,6 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Set up MongoDB for testing
-        if: matrix.os == 'ubuntu-latest'
         run: |
           uv run python -c "
           from pymongo import MongoClient
@@ -56,16 +54,49 @@ jobs:
       - name: Run tests with runner
         shell: bash
         env:
-          SIMSTACK_TEST_DB_CONNECTION_STRING: ${{ matrix.os == 'ubuntu-latest' && 'mongodb://testing:testpassword@localhost:27017/' || '' }}
+          SIMSTACK_TEST_DB_CONNECTION_STRING: 'mongodb://testing:testpassword@localhost:27017/'
           SIMSTACK_TEST_DB: testing_data
           SIMSTACK_PROJECT_ROOT: ${{ github.workspace }}
         run: |
           mkdir -p simstack
-          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-            printf '[parameters]\n[parameters.general]\nuse_db = true\nworkdir_self = "${{ github.workspace }}/simstack"\n[parameters.db]\ndatabase = "testing_data"\nconnection_string = "mongodb://testing:testpassword@localhost:27017/"\n' > simstack.toml
-          else
-            printf '[parameters]\n[parameters.general]\nuse_db = true\nworkdir_self = "${{ github.workspace }}\\simstack"\n[parameters.db]\ndatabase = "testing_data"\nconnection_string = ""\n[parameters.general]\nuse_db = false\n' > simstack.toml
-          fi
+          printf '[parameters]\n[parameters.general]\nuse_db = true\nworkdir_self = "${{ github.workspace }}/simstack"\n[parameters.db]\ndatabase = "testing_data"\nconnection_string = "mongodb://testing:testpassword@localhost:27017/"\n' > simstack.toml
+          cat simstack.toml
+          uv run create_model_table --dir tests
+          uv run create_node_table --dir tests
+          uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+
+  test-windows:
+    name: Test on windows-latest (Python ${{ matrix.python-version }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: "Set up Python ${{ matrix.python-version }}"
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Run tests with runner
+        shell: bash
+        env:
+          SIMSTACK_TEST_DB_CONNECTION_STRING: ''
+          SIMSTACK_TEST_DB: testing_data
+          SIMSTACK_PROJECT_ROOT: ${{ github.workspace }}
+        run: |
+          mkdir -p simstack
+          printf '[parameters]\n[parameters.general]\nuse_db = true\nworkdir_self = "${{ github.workspace }}\\simstack"\n[parameters.db]\ndatabase = "testing_data"\nconnection_string = ""\n[parameters.general]\nuse_db = false\n' > simstack.toml
           cat simstack.toml
           uv run create_model_table --dir tests
           uv run create_node_table --dir tests
