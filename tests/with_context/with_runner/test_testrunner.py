@@ -19,6 +19,6 @@ def test_node_runner(caplog):
     assert allowed_resources.has_resource("test")
     with caplog.at_level(logging.INFO):
         result = some_node(
-            StringData(value="Test"), parameters=Parameters(resource="tests")
+            StringData(value="Test"), parameters=Parameters(resource="test")
         )
         assert result.value == "test"
