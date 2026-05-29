@@ -40,14 +40,14 @@ def hello_world_file():
 
 
 @node
-def failing_node_with_runner(
+async def failing_node_with_runner(
     info_file: FileStack, hello_world_file: FileStack, **kwargs
 ) -> IntData:
     node_runner: NodeRunner | None = kwargs.get("node_runner", None)
     if node_runner is None:
         raise RuntimeError("No node runner found")
-    node_runner.info_files.append(info_file)
-    node_runner.files.append(hello_world_file)
+    await node_runner.info_files.append(info_file)
+    await node_runner.files.append(hello_world_file)
     raise RuntimeError(f"Task task_id: {node_runner.task_id} This is a test exception")
 
 
@@ -99,7 +99,7 @@ def test_node_returns_nothing():
 @pytest.mark.asyncio
 async def test_failing_node_with_runner(info_file, hello_world_file):
     with pytest.raises(RuntimeError) as exc_info:
-        failing_node_with_runner(info_file, hello_world_file)
+        await failing_node_with_runner(info_file, hello_world_file)
 
         # Extract task_id from the error message
     error_message = str(exc_info.value)
