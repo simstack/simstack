@@ -88,7 +88,7 @@ class ConfigReader(DatabaseInformation):
             raise ValueError("No valid resource definition found.")
 
         # override the values in resource definition with those from the keyword arguments
-        for key in resource_definition.model_fields.keys():
+        for key in resource_definition.__class__.model_fields.keys():
             if key in config:
                 logger.info(f"Overriding {key} from kwargs to: {config[key]}")
                 resource_definition.__setattr__(key, config[key])
