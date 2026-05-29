@@ -464,10 +464,10 @@ class TestDataSet:
         ds1 = DataSetTuple(metadata=meta1)
 
         sec_pair = DataSetTupleSection()
-        sec_pair.add_model_group((f1, s1))
+        await sec_pair.add_model_group((f1, s1))
 
         sec_nodes = DataSetTupleSection()
-        sec_nodes.add_model_group((node,))
+        await sec_nodes.add_model_group((node,))
 
         ds1["pair"] = sec_pair
         ds1["nodes"] = sec_nodes
@@ -485,13 +485,9 @@ class TestDataSet:
         ds2 = DataSetTuple(metadata=meta2)
 
         sec_pair_changed = DataSetTupleSection()
-        sec_pair_changed.add_model_group(
-            (f2,)
-        )  # ["FloatData"] instead of ["FloatData", "StringData"]
+        await sec_pair_changed.add_model_group((f2,))  # ["FloatData"] instead of ["FloatData", "StringData"]
 
-        ds2[
-            "pair"
-        ] = sec_pair_changed  # keep the same key to emphasize structural mismatch
+        ds2["pair"] = sec_pair_changed  # keep the same key to emphasize structural mismatch
         ds2["nodes"] = sec_nodes  # keep one section same
 
         with pytest.raises(
