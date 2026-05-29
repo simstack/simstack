@@ -20,11 +20,11 @@ def event_loop():
 
 def pytest_report_header(config):
     import os
-    db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none").lower()
-    use_real_db = db_connection_string != "none"
+    db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
+    use_real_db = db_connection_string.lower() != "none"
     
     if use_real_db:
-        conn_str = db_connection_string if db_connection_string != "none" else os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017")
+        conn_str = db_connection_string if db_connection_string.lower() != "none" else os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017")
         return f"SIMSTACK: Using real MongoDB database at: {conn_str}"
     else:
         return "SIMSTACK: Using mock database (patched for mongomock)"
@@ -34,18 +34,22 @@ async def initialized_context(tmp_path_factory, event_loop):
     # Use environment variable to control the database type for tests
     import os
 
-    db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none").lower()
-    use_real_db = db_connection_string != "none"
-
-    if use_real_db and not _mongodb_available(db_connection_string):
-        raise RuntimeError(f"fSIMSTACK_TEST cannot reach db at: {db_connection_string}")
-    else:
-        print("Test context initialized with mock database (patched for mongomock)")
+    db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
+    use_real_db = db_connection_string.lower() != "none" and db_connection_string != ""
+    test_database_name = os.getenv("SIMSTACK_TEST_DB", "ui_testing")
 
     if use_real_db:
-        print(f"Test context initialized with real MongoDB database")
+        print(f"Test context initialized with real MongoDB database at: {db_connection_string}")
+        if not _mongodb_available(db_connection_string):
+            raise RuntimeError(f"fSIMSTACK_TEST cannot reach db at: {db_connection_string}")
+
+        # Test actual read/write operations
+        if not await _test_mongodb_connection(db_connection_string, test_database_name):
+            pytest.exit("SIMSTACK_TEST: Failed to write and read test document from MongoDB. Terminating all tests.",
+                        returncode=1)
     else:
         print("Test context initialized with mock database (patched for mongomock)")
+
 
     working_dir = tmp_path_factory.mktemp("simstack_test")
     # set the variables such that fake dirs exist, project_root is the actual project root
@@ -60,18 +64,14 @@ async def initialized_context(tmp_path_factory, event_loop):
 
     project_root = find_project_root(skip_files=())
 
-    # Initialize context - use test mode for logging, real DB mode for data if requested
-    # We use a dummy resource first, then update it after DB is ready
-    conn_str = os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017")
-    db_name = os.getenv("MONGODB_DATABASE", "simstack_test")
     
     await context.initialize(
         console=False,
         is_test=True,
         resource="self",
-        connection_string=conn_str if use_real_db else None,
+        connection_string=db_connection_string if use_real_db else None,
         db_type=DBType.MONGODB if use_real_db else DBType.IN_MEMORY,
-        db_name=db_name,
+        db_name=test_database_name,
         workdir=working_dir,
         project_root=project_root
     )
@@ -250,3 +250,34 @@ def _mongodb_available(conn_str: str = None):
         return False
 
 
+async def _test_mongodb_connection(conn_str: str, db_name: str = "ui_testing"):
+    """Test MongoDB connection by writing and reading a test document"""
+    try:
+        from motor.motor_asyncio import AsyncIOMotorClient
+        import datetime
+
+        client = AsyncIOMotorClient(conn_str)
+        db = client.get_database(db_name)
+        collection = db["connection_test"]
+
+        # Write test document
+        test_doc = {
+            "test": "connection_check",
+            "timestamp": datetime.datetime.now(datetime.UTC)
+        }
+        result = await collection.insert_one(test_doc)
+
+        # Read it back
+        retrieved_doc = await collection.find_one({"_id": result.inserted_id})
+
+        # Clean up
+        await collection.delete_one({"_id": result.inserted_id})
+        client.close()
+
+        if retrieved_doc is None or retrieved_doc.get("test") != "connection_check":
+            return False
+
+        return True
+    except Exception as e:
+        print(f"MongoDB connection test failed: {e}")
+        return False
