@@ -92,10 +92,10 @@ async def initialized_context(tmp_path_factory):
     await make_model_table(context.db.engine, dirs=dirs, drops="src", clear=True, project_root=project_root)
     await make_node_table(context.db.engine, dirs=dirs, drops="src", clear=True, project_root=project_root)
 
-    # Ensure "local" resource exists in DB for tests
+    # Ensure a "test" resource exists in DB for tests
     from simstack.models.resource_definition import ResourceDefinition
     local_resource = ResourceDefinition(
-        resource_str="local",
+        resource_str="test",
         hostname="localhost",
         workdir=working_dir,
         routes=[]
@@ -131,8 +131,13 @@ async def initialized_context(tmp_path_factory):
     try:
         from simstack.core.resources import allowed_resources
         allowed_resources.clear_resources()
-        from simstack.tables.node_table import route_table
-        route_table.clear_routes()
+        # TODO remove route table
+        try:
+            from simstack.tables.node_table import route_table
+            route_table.clear_routes()
+        except ImportError:
+            # route_table might have been removed or moved
+            pass
         if context.initialized:
             # Close the main database connection
             if hasattr(context, "db") and context.db:

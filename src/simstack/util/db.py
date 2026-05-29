@@ -60,6 +60,7 @@ class Database(DatabaseInformation):
         # Create engine
         self.engine = AIOEngineProxy(client=self.client, database=db_name)
         # this will set the engine for all functions that are either called from the core package or the server
+        from simstack.core.engine import current_engine_context
         current_engine_context.set(self.engine)
 
 
