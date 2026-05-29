@@ -8,12 +8,40 @@ from simstack.tables.node_table import make_node_table
 from simstack.models.files import FileStack
 from simstack.util.project_root_finder import find_project_root
 
+@pytest.fixture(scope="session")
+def event_loop():
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
+
+def pytest_report_header(config):
+    import os
+    db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none").lower()
+    use_real_db = db_connection_string != "none"
+
+    if use_real_db:
+        conn_str = db_connection_string if db_connection_string != "none" else os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017")
+        return f"SIMSTACK: Using real MongoDB database at: {conn_str}"
+    else:
+        return "SIMSTACK: Using mock database (patched for mongomock)"
 
 @pytest_asyncio.fixture(autouse=True, scope="session", loop_scope="session")
-async def initialized_context(tmp_path_factory):
+async def initialized_context(tmp_path_factory, event_loop):
     # Use environment variable to control the database type for tests
     import os
 
+    db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none").lower()
+    use_real_db = db_connection_string != "none"
+
+    if use_real_db and not _mongodb_available(db_connection_string):
+        raise RuntimeError(f"fSIMSTACK_TEST cannot reac db at: {db_connection_string}")
+    else:
+        # print("Test context initialized with mock database (patched for mongomock)")
+        pass
     db_mode = os.getenv("SIMSTACK_TEST_USE_REAL_DB", "false").lower()
     use_real_db = db_mode == "true"
 
@@ -21,6 +49,13 @@ async def initialized_context(tmp_path_factory):
         raise RuntimeError(
             f"SIMSTACK_TEST_USE_REAL_DB=true but MongoDB not available at {os.getenv('MONGODB_CONNECTION_STRING', 'localhost:27017')}"
         )
+
+    import logging
+    logger = logging.getLogger("simstack.test")
+    if use_real_db:
+        logger.info(f"Test context initialized with real MongoDB database")
+    else:
+        logger.info("Test context initialized with mock database (patched for mongomock)")
 
     working_dir = tmp_path_factory.mktemp("simstack_test")
     # set the variables such that fake dirs exist, project_root is the actual project root
@@ -117,9 +152,18 @@ async def initialized_context(tmp_path_factory):
     context.config = await ConfigReader.create("test", context.db, mock_toml, project_root=project_root, workdir=working_dir)
 
     if use_real_db:
-        print("Test context initialized with real MongoDB database")
+        # print(f"\n[SIMSTACK] Test context initialized with real MongoDB database at: {db_connection_string}")
+        pass
     else:
-        print("Test context initialized with mock database (patched for mongomock)")
+        # print("\n[SIMSTACK] Test context initialized with mock database (patched for mongomock)")
+        pass
+
+    import logging
+    logger = logging.getLogger("simstack.test")
+    if use_real_db:
+        logger.info(f"Test context initialized with real MongoDB database at: {db_connection_string}")
+    else:
+        logger.info("Test context initialized with mock database (patched for mongomock)")
 
     if hasattr(context, "log_handler") and context.log_handler:
         root_logger = context.log_handler.root
@@ -195,12 +239,11 @@ def test_file_stack():
         temp_file.unlink()
 
 # Check if real MongoDB is available for tests that require it
-def _mongodb_available():
+def _mongodb_available(conn_str: str = None):
     """Check if MongoDB is available"""
     try:
         import os
         from urllib.parse import urlparse
-        conn_str = os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017")
         parsed = urlparse(conn_str)
         host = parsed.hostname or "localhost"
         port = parsed.port or 27017
@@ -217,28 +260,3 @@ def _mongodb_available():
         return False
 
 
-@pytest_asyncio.fixture(autouse=False, scope="session")
-async def real_database_context():
-    """
-    Use the regular context but skip tests if real MongoDB is not available or if using mock database.
-    For tests that require MongoDB features not supported by mongomock.
-
-    Supports three modes:
-    - SIMSTACK_TEST_USE_REAL_DB=false (default): Skip these tests
-    - SIMSTACK_TEST_USE_REAL_DB=true: Run with real DB (already configured)
-    """
-    import os
-
-    # Check database mode
-    db_mode = os.getenv("SIMSTACK_TEST_USE_REAL_DB", "false").lower()
-
-    if db_mode == "false":
-        pytest.skip("Test requires real MongoDB - set SIMSTACK_TEST_USE_REAL_DB=true to enable")
-    elif db_mode == "true":
-        assert _mongodb_available(), f"Real MongoDB not available at {os.getenv('MONGODB_CONNECTION_STRING', 'localhost:27017')}, but testing with real db was requested."
-        # Use the regular context which should already be using real MongoDB
-        yield context
-    else:
-        assert (
-            False
-        ), f"Invalid SIMSTACK_TEST_USE_REAL_DB value: {db_mode}. Use 'false', 'true'"

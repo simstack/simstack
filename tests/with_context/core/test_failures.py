@@ -46,8 +46,8 @@ async def failing_node_with_runner(
     node_runner: NodeRunner | None = kwargs.get("node_runner", None)
     if node_runner is None:
         raise RuntimeError("No node runner found")
-    await node_runner.info_files.append(info_file)
-    await node_runner.files.append(hello_world_file)
+    node_runner.info_files.append(info_file)
+    node_runner.files.append(hello_world_file)
     raise RuntimeError(f"Task task_id: {node_runner.task_id} This is a test exception")
 
 
@@ -73,11 +73,8 @@ def test_failing_node():
         failing_node(IntData(value=1))
 
 
-@pytest.mark.skip(reason="works locally but not in gitlab ci/cd")
 def test_calling_failing_node():
-    with pytest.raises(
-        RuntimeError, match=r"Task task_id: .* This is a test exception"
-    ):
+    with pytest.raises(RuntimeError, match=r"Task task_id: .* This is a test exception"):
         calling_failing_node(IntData(value=1))
 
 

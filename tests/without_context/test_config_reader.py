@@ -166,7 +166,7 @@ use_db = true
         db_info = DatabaseInformation.from_config(toml_reader.config, **kwargs)
         return db_info
 
-    @pytest.fixture
+    @pytest.fixture(scope="function")
     def mock_db(self, mock_db_info):
         db = Database.from_db_info(mock_db_info)
 
