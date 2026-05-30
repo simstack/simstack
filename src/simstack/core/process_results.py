@@ -1,4 +1,4 @@
-from typing import Any, Tuple, List
+from typing import Any, Tuple, List, Union
 from odmantic import ObjectId, Model
 from simstack.core.simstack_result import SimstackResult
 from simstack.models import BooleanData
@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger("process_results")
 
 async def process_result_helper(
-    result: Any, task_id: str = "NA"
+    result: Union[SimstackResult,Model, bool, BooleanData], task_id: str = "NA"
 ) -> Tuple[List[ObjectId], List[str], List[Model], List[str]]:
     """
     Computes the result_ids, result_tables and result_names and returns a List[Model].
@@ -25,9 +25,12 @@ async def process_result_helper(
     result_models: List[Model] = []
     result_names: List[str] = []
 
-    if isinstance(result, bool):
+    if isinstance(result, bool) or isinstance(result, BooleanData) :
         # Convert bool to BooleanData
-        boolean_data = BooleanData(value=result)
+        if isinstance(result, bool):
+            boolean_data = BooleanData(value=result)
+        else:
+            boolean_data = result
         result_model = await context.db.upsert(boolean_data)
         result_models.append(result_model)
         if result_model.id is None:
@@ -60,8 +63,8 @@ async def process_result_helper(
                         logger.info(
                             f"Task task_id: {task_id} saving file: {file_stack.name} {file_stack.id}"
                         )
-                        saved = await context.db.save(file_stack)
-                        await file_list_model.append(saved)
+                        await file_list_model.append(file_stack)
+
                     else:
                         logger.error(
                             f"Task task_id: {task_id} cannot save file: FileStack expected but got {file_stack}"
