@@ -151,7 +151,7 @@ async def update_node_children(engine, drops: str) -> None:
                 #     continue
 
         if len(resolved) != 0:
-            logger.info(f"Resolved children of {nm.name} to {resolved}")
+            logger.debug(f"Resolved children of {nm.name} to {resolved}")
         nm.called_nodes = sorted(resolved)
 
         await engine.save(nm)

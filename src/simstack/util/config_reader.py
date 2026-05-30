@@ -101,9 +101,12 @@ class ConfigReader(DatabaseInformation):
         if config:
             logger.warning(f"Ignoring unused ConfigReader init keys: {sorted(config.keys())}")
 
-        logger.info(f"ConfigReader initialized with workdir: {resource_definition.workdir}")
+
+        log_msg = f"Resource: {resource_definition.resource_str}"
         for key, value in resource_definition.__dict__.items():
-            logger.info(f"resource_definition.{key}: {value}")
+            if key in ["workdir", "git-branch", "environment_start"]:
+                log_msg += f"\n{key}: {value}"
+        logger.info(log_msg)
 
         return cls(db, resource_definition, project_root=project_root, git_list=git_list_final)
 

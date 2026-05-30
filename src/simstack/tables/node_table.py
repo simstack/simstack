@@ -160,9 +160,7 @@ class CreateNodeTable(TableBuilderBase):
             else:
                 doc_simstack_result = parser.simstack_results()
                 if doc_simstack_result is None:
-                    logger.warning(
-                        f"The docstring of {func_name} does not defines its SimstackResult outputs"
-                    )
+                    logger.warning(f"The docstring of {func_name} does not defines its SimstackResult outputs")
                 else:
                     for name, data in doc_simstack_result.items():
                         output_mapping = None
@@ -228,7 +226,22 @@ class CreateNodeTable(TableBuilderBase):
         else:  # not a SimstackResult
             for output in outputs:
                 try:
-                    output_mapping = self.get_class_mapping(output["type"], drops)
+                    output_type = output["type"]
+                    if isinstance(output_type, str):
+                        output_mapping = output_type
+                        if " | None" in output_mapping:
+                            output_mapping = output_mapping.replace(" | None", "")
+                    else:
+                        # Handle Optional[T] / T | None
+                        from typing import get_args, get_origin, Union
+                        import types
+                        origin = get_origin(output_type)
+                        if origin is types.UnionType or origin is Union:
+                            args = get_args(output_type)
+                            if type(None) in args:
+                                # It's an Optional, take the first non-None argument
+                                output_type = next(arg for arg in args if arg is not type(None))
+                        output_mapping = self.get_class_mapping(output_type, drops)
                     result_mappings.append(
                         DataMapping(
                             name=output["name"],
@@ -237,7 +250,7 @@ class CreateNodeTable(TableBuilderBase):
                         )
                     )
                 except ValueError:
-                    logger.error(f"Could not parse '{output['type']}' to mapping")
+                    logger.error(f"Could not parse '{output['type']}' to mapping in {func_name}")
         return result_mappings
 
     def _extract_default_parameters(self, func: Callable[..., Any]) -> Parameters:
@@ -447,7 +460,7 @@ class CreateNodeTable(TableBuilderBase):
                     favorite=existing_favorite,
                 )
 
-                logger.info(
+                logger.debug(
                     f"NodeModel: {node_model.name}, {node_model.function_mapping}, {node_model.input_mappings}"
                 )
                 await self.db.save(node_model)
