@@ -247,6 +247,11 @@ class GlobalState:
     def config(self):
         return self._config
 
+
+    @config.setter
+    def config(self, value):
+        self._config = value
+
     @property
     def model_mappings(self):
         return self._model_mappings
@@ -262,6 +267,7 @@ class GlobalState:
     @property
     def initialized(self):
         return self._initialized
+
 
 
 # Create the singleton instance, but it's not initialized yet
