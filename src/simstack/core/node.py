@@ -529,7 +529,7 @@ class Node:
         )
         original_dir = Path.cwd()
         try:
-            node_runner = NodeRunner(self._func.__name__, None, task_id=self.id)
+            node_runner = NodeRunner(self._func.__name__, self.id)
             node_kwargs = {
                 "node_runner": node_runner,
                 "parent_id": self.id,

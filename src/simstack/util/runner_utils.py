@@ -16,7 +16,7 @@ logger = logging.getLogger("runner_utils")
 
 def make_git_status_list() -> List[str]:
     git_status_list = []
-    git_path_list = context.config.git_list + [context.config.project_root]
+    git_path_list = [context.config.project_root]
     for path in git_path_list:
         result = get_git_status(path)
         if result["branch"]:

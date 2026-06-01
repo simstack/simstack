@@ -64,9 +64,9 @@ async def initialize_default_resource():
 async def async_main(args):
     """Async entry point"""
     if args.connection_string == "none" or args.db_name == "none":
-        await context.initialize(resource=args.resource)
+        await context.initialize(resource=args.resource, config_file=args.config)
     else:
-        await context.initialize(resource=args.resource, db_name=args.db_name, connection_string=args.connection_string, db_type=DBType.MONGODB)
+        await context.initialize(resource=args.resource, db_name=args.db_name, connection_string=args.connection_string, db_type=DBType.MONGODB, config_file=args.config)
 
     # Initialize tables if this is the default resource
     resource_def = await initialize_default_resource()
@@ -87,6 +87,13 @@ async def async_main(args):
 
 def runner_main():
     parser = argparse.ArgumentParser(description="Run nodes for a specific resource")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="config.toml",
+        help="Path to the configuration file",
+    )
+
     parser.add_argument(
         "--resource",
         type=str,

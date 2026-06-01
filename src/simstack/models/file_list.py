@@ -313,7 +313,7 @@ if OLD_FILE_LIST_DEFINITION:
 else:
     @simstack_model
     class FileList(EmbeddedModel, ObjectListMixin[FileStack]):
-        elements: List[FileStack] = Field(default_factory=list)
+        elements: List[ObjectId] = Field(default_factory=list)
 
     @simstack_model
     class FileListModel(Model, ObjectListMixin[FileStack]):

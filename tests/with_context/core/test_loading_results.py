@@ -13,7 +13,7 @@ logger = logging.getLogger("TestNode")
 
 @node
 def node_with_simstack_results(arg: BinaryOperationInput, **kwargs) -> SimstackResult:
-    node_runner = NodeRunner(name="test_node", logger=logger)
+    node_runner = NodeRunner("test_node", kwargs.get("task_id", "NA"), logger=logger)
     result1 = FloatData(value=arg.arg1.value + arg.arg2.value)
     result2 = FloatData(value=arg.arg1.value * arg.arg2.value)
     node_runner.info(f"Computed results: {result1.value}, {result2.value}")
@@ -26,7 +26,7 @@ def node_with_simstack_results(arg: BinaryOperationInput, **kwargs) -> SimstackR
 def node_with_files(
     arg: BinaryOperationInput, test_file: FileStack, **kwargs
 ) -> SimstackResult:
-    node_runner = NodeRunner(name="test_node", logger=logger)
+    node_runner = NodeRunner("test_node", kwargs.get("task_id", "NA"), logger=logger)
     result1 = FloatData(value=arg.arg1.value + arg.arg2.value)
     result2 = FloatData(value=arg.arg1.value * arg.arg2.value)
     node_runner.info(f"Computed results: {result1.value}, {result2.value}")

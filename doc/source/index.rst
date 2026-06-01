@@ -12,6 +12,7 @@ SimStack II Documentation
    overview
    ui_documentation
    workflows
+   resource_config
    data
    lists
    files

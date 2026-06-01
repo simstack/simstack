@@ -335,12 +335,3 @@ use_db = true
             assert Path(config_reader.ssh_key).exists()
             assert config_reader.ssh_key == Path(tmp_ssh_key.name)
 
-    @pytest.mark.asyncio
-    async def test_git_list_property(self, toml_reader, mock_db):
-        """Test that the git_list property is populated correctly."""
-        project_root = find_project_root(skip_files=())
-        config_reader = await ConfigReader.create("local", mock_db, toml_reader, project_root)
-
-        git_list = config_reader.git_list
-        assert isinstance(git_list, list)
-        assert len(git_list) == 1

@@ -16,7 +16,10 @@ logger = logging.getLogger(__name__)
 class TomlReader:
     def __init__(self, config_path: Path, config_file: Path = Path("simstack.toml")):
         try:
-            toml_file = config_path / config_file
+            if config_file.is_absolute():
+                toml_file = config_file
+            else:
+                toml_file = config_path / config_file
             if toml_file.exists():
                 with open(toml_file, "rb") as f:
                     self._config = tomllib.load(f)
@@ -41,9 +44,6 @@ class TomlReader:
             else:
                 return default
         return value
-
-    def get_git_list(self):
-        return self.get("parameters.general.git", [])
 
     def use_db(self):
         return self.get("parameters.general.use_db", False)

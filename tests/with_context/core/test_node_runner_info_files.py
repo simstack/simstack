@@ -16,7 +16,7 @@ class TestMakeInfoFiles:
     @pytest.fixture
     def node_runner(self, mock_logger):
         """Create a NodeRunner instance for testing"""
-        return NodeRunner(name="test_node", logger=mock_logger, task_id="test_123")
+        return NodeRunner("test_node", "test_123", logger=mock_logger)
 
     @pytest.fixture
     def test_dir(self):
