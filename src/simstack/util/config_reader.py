@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, TYPE_CHECKING, Union
 from simstack.core.resources import allowed_resources
 from simstack.models.parameters import Resource
-from simstack.models.resource_definition import ResourceDefinition, GitRepo
+from simstack.models.resource_definition import ResourceDefinition
 from simstack.util.transform_file_name import transform_file_name
 from simstack.util.init_data_source import initialize_resource_from_db, initialize_paths_from_db
 from simstack.util.toml_reader import TomlReader
@@ -24,14 +24,12 @@ class ConfigReader(DatabaseInformation):
         resource_definition: ResourceDefinition,
         *,
         project_root: Path,
-        git_list: list[Path] | None = None,
     ):
         db_temp_info = DatabaseInformation.from_db_info_or_db(db_info)
         super().__init__(*db_temp_info.get_information())
 
         self._project_root = project_root
         self._resource_definition = resource_definition
-        self._git_list = list(git_list or [])
         self._resource_str = resource_definition.resource_str
 
     @classmethod
@@ -46,7 +44,7 @@ class ConfigReader(DatabaseInformation):
         import logging
         logger = logging.getLogger("config-reader")  # do this here because the calling function sets the logger up
 
-        required_keys = ["resource", "python_path", "ssh_key", "git_list", "allowed_resources",
+        required_keys = ["resource", "python_path", "ssh_key", "allowed_resources",
                          "workdir", "environment_start"]
         init_done = False
         config = {"project_root": project_root}
@@ -58,7 +56,6 @@ class ConfigReader(DatabaseInformation):
                 init_done = False
 
         resource_definition = None
-        git_list = []
         if not init_done:
             if not toml_reader:
                 toml_reader = TomlReader(project_root)
@@ -81,7 +78,6 @@ class ConfigReader(DatabaseInformation):
                 allowed_resources_list = toml_reader.get_allowed_resources()
                 allowed_resources.set_resources(allowed_resources_list)
                 resource_definition = toml_reader.get_resource_definition(resource_str)
-                git_list = toml_reader.get_git_list()
                 toml_reader.build_routes()
 
         if resource_definition is None:
@@ -96,7 +92,6 @@ class ConfigReader(DatabaseInformation):
                 del required_keys[required_keys.index(key)]
 
         project_root = config.pop("project_root")
-        git_list_final = config.pop("git_list", git_list)
 
         if config:
             logger.warning(f"Ignoring unused ConfigReader init keys: {sorted(config.keys())}")
@@ -105,14 +100,10 @@ class ConfigReader(DatabaseInformation):
         log_msg = f"Resource: {resource_definition.resource_str}"
         for key, value in resource_definition.__dict__.items():
             if key in ["workdir", "git-branch", "environment_start"]:
-                log_msg += f"\n{key}: {value}"
+                log_msg += f" {key}: {value}"
         logger.info(log_msg)
 
-        return cls(db, resource_definition, project_root=project_root, git_list=git_list_final)
-
-    @property
-    def git_list(self) -> List[GitRepo]:
-        return self._git_list
+        return cls(db, resource_definition, project_root=project_root)
 
     @property
     def resource(self) -> Resource:

@@ -33,19 +33,18 @@ class NodeRunner(SimstackResult):
     """
 
 
-    def __init__(self, name: str = "node", logger=None, **kwargs):
+    def __init__(self, name: str, task_id: str | ObjectId, logger=None, **kwargs):
         """
         Initialize the NodeRunner instance.
 
         Args:
-            name (str, optional): Name for this task runner. Defaults to "node".
+            name (str): Name for this task runner.
+            task_id (str | ObjectId): Unique identifier for the task.
             logger (optional): Logger instance to use. If None, uses local_logger.
-            **kwargs: Additional keyword arguments. 'task_id' can be provided here.
+            **kwargs: Additional keyword arguments.
         """
         super().__init__()
-        self.task_id = kwargs.get("task_id", "NA")
-        if isinstance(self.task_id, ObjectId):
-            self.task_id = str(self.task_id)
+        self.task_id = str(task_id) if isinstance(task_id, ObjectId) else task_id
         self.name = name
         self.logger = logger or local_logger
         self.last_stdout = ""
@@ -72,8 +71,6 @@ class NodeRunner(SimstackResult):
         """
         try:
             files_set: Set[str] = set()
-
-
             # Process args for patterns and files
             for value in args:
                 if isinstance(value, str):

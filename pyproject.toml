@@ -10,8 +10,12 @@ readme = "README.md"
 requires-python = ">= 3.12"
 authors = [
     {name = "Wolfgang Wenzel", email = "wolfgang.wenzel@kit.edu"},
-    {name = "Timo Strunk", email = "timo.strunk@nanomatch.de"},
-
+    { name = "Artem Buildin", email = "artem.buildin@kit.edu" },
+    { name = "Nikita Mitagin", email = "nikita.mitagin@kit.edu" },
+    { name = "Phillip Dullinger", email = "phillip.dullinger@kit.edu" },
+    { name = "Celso Rego", email = "celso.rego@kit.edu" },
+    { name = "Oliver Pettkau", email = "oliver.pettkau@kit.edu" },
+    { name = "Timo Strunk", email = "timo.strunk@nanomatch.de" },
 ]
 license = { text = "MIT" }
 
@@ -33,6 +37,8 @@ Homepage = "https://gitlab.kit.edu/kit/ag_wenzel/simstack-model/"
 [project.scripts]
 create_node_table = "simstack.tables.node_table:create_node_table_main"
 create_model_table = "simstack.tables.model_table:create_model_table_main"
+create_test_from_node = "simstack.scripts.node_test_exporter:node_test_exporter_main"
+run_test_for_hash = "simstack.scripts.run_test_for_hash:run_node_test_main"
 simstack_runner = "simstack.core.runner:runner_main"
 run_node = "simstack.core.run_node:run_node_main"
 simstack_write_sample_config = "simstack.util.sample_config:sample_config_writer_entrypoint"

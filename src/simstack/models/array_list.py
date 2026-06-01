@@ -5,7 +5,7 @@ from odmantic import Model, Field
 from simstack.models import simstack_model
 from simstack.models.array_storage import ArrayStorage
 
-
+# TODO: remove deadly List[ArrayStorage] and replace with ObjectListMixin
 @simstack_model
 class ArrayList(Model):
     array_list: List[ArrayStorage] = Field(default_factory=list)

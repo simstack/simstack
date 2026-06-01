@@ -16,11 +16,11 @@ class TestNodeRunner:
     @pytest.fixture
     def node_runner(self, mock_logger):
         """Create a NodeRunner instance for testing"""
-        return NodeRunner(name="test_node", logger=mock_logger, task_id="test_123")
+        return NodeRunner("test_node", "test_123", logger=mock_logger)
 
     def test_init_default_values(self, mock_logger):
         """Test NodeRunner initialization with default values"""
-        runner = NodeRunner()
+        runner = NodeRunner("node", "NA")
 
         # Test inherited SimstackResult properties
         assert hasattr(runner, "files")
@@ -37,7 +37,7 @@ class TestNodeRunner:
     def test_init_custom_values(self, mock_logger):
         """Test NodeRunner initialization with custom values"""
         runner = NodeRunner(
-            name="custom_node", logger=mock_logger, task_id="custom_123"
+            "custom_node", "custom_123", logger=mock_logger
         )
 
         assert runner.name == "custom_node"
@@ -231,9 +231,9 @@ class TestNodeRunner:
         assert isinstance(node_runner.info_files, list)
 
     def test_task_id_in_kwargs(self, mock_logger):
-        """Test that task_id is properly extracted from kwargs"""
+        """Test that task_id is properly handled"""
         runner = NodeRunner(
-            name="test", logger=mock_logger, task_id="specific_id", other_param="value"
+            "test", "specific_id", logger=mock_logger, other_param="value"
         )
 
         assert runner.task_id == "specific_id"
@@ -255,7 +255,7 @@ class TestNodeRunnerIntegration:
 
         try:
             runner = NodeRunner(
-                name="integration_test", logger=mock_logger, task_id="int_123"
+                "integration_test", "int_123", logger=mock_logger
             )
 
             # Test subprocess with real command
@@ -291,7 +291,7 @@ class TestNodeRunnerIntegration:
 
         try:
             runner = NodeRunner(
-                name="integration_fail", logger=mock_logger, task_id="fail_123"
+                "integration_fail", "fail_123", logger=mock_logger
             )
 
             # Test subprocess with failing command
