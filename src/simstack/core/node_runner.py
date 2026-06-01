@@ -53,6 +53,19 @@ class NodeRunner(SimstackResult):
         self.info_file_patterns = {"*.in", "*.out", "*.err", "*.log"}
         self.info("started")
 
+
+    @classmethod
+    def from_kwargs(cls, **kwargs):
+        node_runner = kwargs.get("node_runner")
+        if isinstance(node_runner, cls):
+            return node_runner
+
+        return cls(
+            name=kwargs["name"],
+            task_id=kwargs["task_id"],
+            logger=kwargs.get("logger"),
+        )
+
     async def make_info_files(self, *args):
         """
         Collect and process information files based on patterns and explicit file paths.
