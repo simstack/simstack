@@ -165,7 +165,7 @@ class GlobalState:
 
         # check that the database can be reached and set logging up
         self.initialize_database(db_info, is_test)
-        self.initialize_logging(is_test, kwargs.get("log_level", "INFO"))
+        self.initialize_logging(connection_string, db_name, is_test, kwargs.get("log_level", "INFO"))
 
         logger = logging.getLogger("Context")
         if db_info.connection_string is not None:
@@ -181,6 +181,7 @@ class GlobalState:
         resource_str: str = kwargs.get("resource", "self")
         # For testing, we might want to skip ConfigReader if it causes issues
         from simstack.util.config_reader import ConfigReader
+        from simstack.util.resource_config import ResourceConfig
         if not kwargs.get("skip_config", False):
             try:
                 self._config = await ConfigReader.create(resource_str, self._db, toml_reader, **kwargs)
@@ -196,11 +197,11 @@ class GlobalState:
 
     async def refresh_mappings(self, *, models: bool = True, nodes: bool = True):
         if models:
-            self.model_mappings = await ModelMappingTable.load(self.db)
+            self._model_mappings = await ModelMappingTable.load(self.db)
         if nodes:
-            self.node_mappings = await NodeMappingTable.load(self.db)
+            self._node_mappings = await NodeMappingTable.load(self.db)
 
-    def initialize_logging(self, is_test: bool, log_level: str = "INFO"):
+    def initialize_logging(self, connection_string: str, dn_name: str, is_test: bool, log_level: str = "INFO"):
         if is_test:
             # For tests, use simple console logging without the database handler
             # We use force=True to ensure it overrides any existing configuration (e.g. from pytest or PyCharm)
@@ -217,8 +218,8 @@ class GlobalState:
             sys.stderr.flush()
         else:
             self._log_handler = setup_logging(
-                self._db.connection_string,
-                self._db.db_name,
+                connection_string,
+                db_name,
                 log_level,
             )
 
@@ -261,7 +262,7 @@ class GlobalState:
         return self._node_mappings
 
     @property
-    def resource_config(self) -> ResourceConfig:
+    def resource_config(self) -> "ResourceConfig":
         return self._resource_config
 
     @property

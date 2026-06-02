@@ -2,7 +2,6 @@ import pytest
 from datetime import datetime
 
 from simstack.core.context import context
-from simstack.core.engine import current_engine_context
 from simstack.models.datasettuple import DataSetTuple, DataSetTupleSection
 from simstack.models.dataset_metadata import DataSetMetadata
 from simstack.models import FloatData, StringData
@@ -172,7 +171,7 @@ class TestDataSet:
     """Test cases for DataSet functionality."""
 
     @pytest.mark.asyncio
-    async def test_empty_dataset_initialization(self):
+    async def test_empty_dataset_initialization(self, initialized_context):
         """Test creating an empty DataSet."""
         metadata = DataSetMetadata(
             field_name="test_empty_with_description",
@@ -180,8 +179,8 @@ class TestDataSet:
         )
 
         dataset = DataSetTuple(metadata=metadata)
-        engine = current_engine_context.get()
-        await dataset.save(engine)
+
+        await dataset.save(context.db)
 
         assert dataset.metadata.field_name == "test_empty_with_description"
         assert len(dataset) == 0
@@ -215,16 +214,14 @@ class TestDataSet:
         dataset = DataSetTuple(metadata=metadata)
         dataset["training"] = section1
         dataset["validation"] = section2
-
-        engine = current_engine_context.get()
-        await dataset.save(engine)
+        await dataset.save(context.db)
 
         assert len(dataset) == 2
         assert "training" in dataset
         assert "validation" in dataset
 
     @pytest.mark.asyncio
-    async def test_dict_like_operations(self):
+    async def test_dict_like_operations(self, initialized_context):
         """Test dictionary-like operations on DataSet."""
         metadata = DataSetMetadata(
             field_name="test_dict_ops",
@@ -243,8 +240,8 @@ class TestDataSet:
         # Test setitem and getitem
         dataset["test"] = section
 
-        engine = current_engine_context.get()
-        await dataset.save(engine)
+
+        await dataset.save(context.db)
         assert dataset["test"] == section
 
         # Test keys, values, items
@@ -313,7 +310,7 @@ class TestDataSet:
         assert retrieved_models[1].value == "persistence_test"
 
     @pytest.mark.asyncio
-    async def test_complex_dataset_workflow(self):
+    async def test_complex_dataset_workflow(self, initialized_context):
         """Test a complex workflow with multiple model types and sections."""
         # Create metadata
         metadata = DataSetMetadata(
@@ -369,8 +366,8 @@ class TestDataSet:
         dataset["nodes"] = node_section
 
         # Save and verify
-        engine = current_engine_context.get()
-        await dataset.save(engine)
+
+        await dataset.save(context.db)
 
         assert len(dataset) == 3
         assert len(dataset["training"]) == 2
@@ -396,7 +393,7 @@ class TestDataSet:
 
     @pytest.mark.asyncio
     async def test_dataset_save_same_type_same_structure_different_names_succeeds(
-        self, node_registry
+        self, node_registry, initialized_context
     ):
         """
         Saving a second dataset with the same dataset_type and the same structure
@@ -421,8 +418,8 @@ class TestDataSet:
 
         ds1["a"] = sec_a
         ds1["b"] = sec_b
-        engine = current_engine_context.get()
-        await ds1.save(engine)
+
+        await ds1.save(context.db)
 
         # Second dataset with SAME dataset_type but DIFFERENT section names, same structure
         meta2 = DataSetMetadata(field_name="ds_struct_v1", data={"desc": "v1 second"})
@@ -439,7 +436,7 @@ class TestDataSet:
 
         # Should not raise
 
-        await ds2.save(engine)
+        await ds2.save(context.db)
 
         assert len(ds1) == 2
         assert len(ds2) == 2
@@ -472,8 +469,7 @@ class TestDataSet:
         ds1["pair"] = sec_pair
         ds1["nodes"] = sec_nodes
 
-        engine = current_engine_context.get()
-        await ds1.save(engine)
+        await ds1.save(context.db)
 
         # Second dataset with SAME dataset_type but DIFFERENT structure: change "pair" to only ["FloatData"]
         f2 = FloatData(value=99.9)
@@ -493,4 +489,4 @@ class TestDataSet:
         with pytest.raises(
             ValueError, match="Section pair has different content in existing structure"
         ):
-            await ds2.save(engine)
+            await ds2.save(context.db)

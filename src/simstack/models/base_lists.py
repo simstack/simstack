@@ -1,8 +1,8 @@
 import re
 from typing import Union, List, Any, Optional, TypeVar, Generic, Iterator, Iterable, Type
 
-from odmantic import EmbeddedModel, Field, Model, ObjectId, AIOEngine
-from simstack.core.engine import current_engine_context
+from odmantic import Field, Model, ObjectId
+
 
 from simstack.models import simstack_model, StringData
 from simstack.models.files import FileStack
@@ -136,11 +136,12 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
     Stores ObjectId instances in `elements`, but allows interaction with Model instances.
     """
 
-    def _get_engine(self) -> AIOEngine:
-        engine = current_engine_context.get()
-        if engine is None:
-            raise RuntimeError("No engine found in current_engine_context")
-        return engine
+    def _get_db(self):
+        from simstack.core.context import context
+        db = context.db
+        if db is None:
+            raise RuntimeError("No database found in context")
+        return db
 
     async def _get_model_class(self) -> Type[T]:
         # T is the first type argument of ObjectListMixin
@@ -156,8 +157,8 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
     async def append(self, element: T):
         if not isinstance(element, Model):
             raise TypeError(f"Expected Model, got {type(element)}")
-        engine = self._get_engine()
-        await engine.save(element)
+        db = self._get_db()
+        await db.save(element)
         self.elements.append(element.id)
 
     async def extend(self, elements: Union[List[T], "ObjectListMixin[T]"]):
@@ -169,9 +170,9 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
 
     async def get(self, index: int) -> T:
         obj_id = self.elements[index]
-        engine = self._get_engine()
+        db = self._get_db()
         model_class = await self._get_model_class()
-        obj = await engine.find_one(model_class, model_class.id == obj_id)
+        obj = await db.find_one(model_class, model_class.id == obj_id)
         if obj is None:
             raise KeyError(f"Object with id {obj_id} not found in database")
         return obj
@@ -183,18 +184,18 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
         return self._async_iter()
 
     async def _async_iter(self):
-        engine = self._get_engine()
+        db = self._get_db()
         model_class = await self._get_model_class()
         for obj_id in self.elements:
-            obj = await engine.find_one(model_class, model_class.id == obj_id)
+            obj = await db.find_one(model_class, model_class.id == obj_id)
             if obj:
                 yield obj
 
     async def find(self, pattern: str) -> Optional[T]:
-        engine = self._get_engine()
+        db = self._get_db()
         model_class = await self._get_model_class()
         for obj_id in self.elements:
-            obj = await engine.find_one(model_class, model_class.id == obj_id)
+            obj = await db.find_one(model_class, model_class.id == obj_id)
             if obj:
                 name = getattr(obj, "name", None)
                 if name and pattern == name:
@@ -203,11 +204,11 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
 
     async def find_all(self, pattern: str) -> List[T]:
         matches: List[T] = []
-        engine = self._get_engine()
+        db = self._get_db()
         model_class = await self._get_model_class()
         regex = re.compile(pattern)
         for obj_id in self.elements:
-            obj = await engine.find_one(model_class, model_class.id == obj_id)
+            obj = await db.find_one(model_class, model_class.id == obj_id)
             if obj:
                 name = getattr(obj, "name", None)
                 if name and regex.search(name):

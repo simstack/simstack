@@ -178,7 +178,7 @@ async def make_model_table(
 
     This is a thin wrapper around CreateModelTable for backward compatibility.
     """
-    creator = CreateModelTable(db, write_schema=write_schema)
+    creator = CreateModelTable(db, write_schema=write_schema, project_root=project_root)
     await creator.build(dirs=dirs, drops=drops, clear=clear)
 
 

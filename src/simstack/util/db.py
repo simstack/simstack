@@ -122,7 +122,8 @@ class Database:
         return await self._engine.find_one(*args, **kwargs)
 
     async def close(self):
-        return await self._engine.close()
+        if self._client is not None:
+            self._client.close()
 
     async def save(self, *args: Any, **kwargs: Any) -> Any:
         if not args:

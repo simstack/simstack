@@ -31,7 +31,7 @@ async def process_result_helper(
             boolean_data = BooleanData(value=result)
         else:
             boolean_data = result
-        result_model = await context.db.upsert(boolean_data)
+        result_model = await context.db.save(boolean_data)
         result_models.append(result_model)
         if result_model.id is None:
             raise ValueError(
@@ -105,7 +105,7 @@ async def process_result_helper(
                 and is_simstack_model(value)
             ):
                 if isinstance(value, Model):
-                    result_model = await context.db.upsert(value)
+                    result_model = await context.db.save(value)
                     result_models.append(result_model)
                     if result_model.id is None:
                         raise ValueError(
@@ -129,7 +129,7 @@ async def process_result_helper(
                         f"task_id: {task_id} cannot save model: {key} is not a model"
                     )
     elif is_simstack_model(result) and isinstance(result, Model):
-        result_model = await context.db.upsert(result)
+        result_model = await context.db.save(result)
         result_models.append(result_model)
         result_ids.append(result_model.id)
         result_names.append(result.__class__.__name__)

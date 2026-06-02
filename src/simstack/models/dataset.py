@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List
+from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List, Optional
 from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
 from simstack.core.asnyc_helper import async_helper
 from simstack.models import simstack_model

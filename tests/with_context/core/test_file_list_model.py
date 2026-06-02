@@ -165,11 +165,14 @@ class TestFileList:
         assert file_list.elements == []
         assert len(file_list) == 0
 
-    def test_file_list_initialization_with_data(self, sample_file_stacks):
+
+    @pytest.mark.asyncio
+    async def test_file_list_initialization_with_data(self, initialized_context, sample_file_stacks):
         """Test creating FileList with initial data"""
-        file_list = FileList(elements=sample_file_stacks)
+        file_list = FileList()
+        await file_list.extend(sample_file_stacks)
         assert len(file_list) == 3
-        assert file_list.elements == sample_file_stacks
+        assert file_list.elements == [fs.id for fs in sample_file_stacks]
 
 
 class TestFileListModel:

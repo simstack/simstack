@@ -140,7 +140,7 @@ class DataSetMetadata(EmbeddedModel):
 
         if save_template:
             reference_metadata.structure = new_structure
-            await db.save(reference_metadata)
+            await context.db.save(reference_metadata)
         self.structure = new_structure
         return True
 

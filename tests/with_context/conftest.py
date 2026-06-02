@@ -3,13 +3,12 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
+from simstack.core.context import context
 from simstack.core.definitions import DBType
 from simstack.tables.model_table import make_model_table
 from simstack.tables.node_table import make_node_table
 from simstack.models.files import FileStack
 from simstack.util.project_root_finder import find_project_root
-
-from simstack.core.context import context
 
 
 def pytest_report_header(config):
@@ -62,7 +61,7 @@ async def initialized_context(tmp_path_factory):
 
     project_root = find_project_root(skip_files=())
 
-    
+
     await context.initialize(
         console=False,
         is_test=True,
@@ -108,7 +107,7 @@ async def initialized_context(tmp_path_factory):
         # Apply patches only for the mock database
         context.db.save = patched_save
         context.db.save_all = patched_save_all
-        context.db..save_unchecked = patched_save
+        context.db.save_unchecked = patched_save
 
     project_root = find_project_root()
     test_workdir = Path(project_root) / "test_workdir"
@@ -123,7 +122,7 @@ async def initialized_context(tmp_path_factory):
         git_branch="main"
     )
 
-    await context.db.engine.save(test_resource_definition)
+    await context.db.save(test_resource_definition)
 
     # Initialize model and node tables for both real and mock databases
     dirs = ["src/simstack/models", "src/simstack/methods", "tests"]
@@ -144,7 +143,7 @@ async def initialized_context(tmp_path_factory):
     from simstack.util.config_reader import ConfigReader
     from unittest.mock import MagicMock
     from simstack.core.resources import allowed_resources
-    
+
     # Reset allowed_resources to allow second initialization
     allowed_resources.clear_resources()
 
@@ -250,7 +249,7 @@ def _mongodb_available(conn_str: str = None):
         parsed = urlparse(conn_str)
         host = parsed.hostname or "localhost"
         port = parsed.port or 27017
-        
+
         # Use a simple socket connection test instead of Motor client
         import socket
 

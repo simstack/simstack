@@ -61,7 +61,7 @@ def test_resource_config_resource_storage(tmp_path):
 @pytest.mark.asyncio
 async def test_global_state_initialization(tmp_path, monkeypatch):
     from simstack.core.context import GlobalState
-    from simstack.util.db import Database
+    from simstack.util.db import Database, DBType
     from simstack.util.config_reader import ConfigReader
     from simstack.util.resource_config import ResourceConfig
     
@@ -71,7 +71,7 @@ async def test_global_state_initialization(tmp_path, monkeypatch):
     monkeypatch.setattr(ConfigReader, "create", AsyncMock(return_value=SimpleNamespace()))
     
     # We need to mock initialize_logging and refresh_mappings to avoid side effects
-    monkeypatch.setattr(GlobalState, "initialize_logging", lambda self, is_test, log_level: None)
+    monkeypatch.setattr(GlobalState, "initialize_logging", lambda self, connection_string, db_name, is_test, log_level: None)
     monkeypatch.setattr(GlobalState, "refresh_mappings", AsyncMock())
     
     gs = GlobalState()
@@ -86,7 +86,7 @@ async def test_global_state_initialization(tmp_path, monkeypatch):
         project_root=tmp_path,
         db_name="test",
         connection_string="test",
-        db_type="MONGODB",
+        db_type=DBType.IN_MEMORY,
         resource="local"
     )
     

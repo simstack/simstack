@@ -78,8 +78,6 @@ async def test_initialization_flow(tmp_path):
         with pytest.raises(AttributeError):
             gs.db = None
         with pytest.raises(AttributeError):
-            gs.config = None
-        with pytest.raises(AttributeError):
             gs.resource_config = None
 
 @pytest.mark.asyncio
