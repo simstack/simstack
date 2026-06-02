@@ -16,8 +16,216 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=Model)
 
+from __future__ import annotations
 
-class Database(DatabaseInformation):
+from contextlib import contextmanager
+from typing import Any, Iterable, Iterator
+
+from motor.motor_asyncio import AsyncIOMotorClient
+from odmantic import AIOEngine
+
+from simstack.core.engine import current_engine_context
+
+
+class Database:
+    """Server-owned database facade.
+
+    The server should depend on this object instead of reaching into SimStack
+    core engine abstractions directly.  The underlying persistence primitive is
+    the plain ODMantic engine; SimStack-specific behavior lives in this facade.
+    """
+
+    def __init__(
+        self,
+        *,
+        client: AsyncIOMotorClient | None = None,
+        database_name: str | None = None,
+        engine: Any | None = None,
+    ) -> None:
+        if engine is None:
+            if client is None or database_name is None:
+                raise ValueError("client and database_name are required when engine is not provided")
+            engine = AIOEngine(client=client, database=database_name)
+
+        self._engine = engine
+        self._client = client or getattr(engine, "client", None)
+        self._database_name = database_name or getattr(engine, "database_name", None)
+
+        if self._database_name is None:
+            database = getattr(engine, "database", None)
+            self._database_name = getattr(database, "name", None)
+
+    @property
+    def core_engine(self) -> Any:
+        """Compatibility escape hatch for SimStack core internals only."""
+        return self._engine
+
+    @property
+    def client(self) -> AsyncIOMotorClient:
+        return self._client
+
+    @property
+    def database_name(self) -> str:
+        return self._database_name
+
+    @property
+    def raw_database(self):
+        if self._client is not None and self._database_name is not None:
+            return self._client[self._database_name]
+        return getattr(self._engine, "database")
+
+    @property
+    def database(self):
+        return getattr(self._engine, "database", self.raw_database)
+
+    def collection(self, model_or_name: Any):
+        if isinstance(model_or_name, str):
+            return self.raw_database[model_or_name]
+        return self._engine.get_collection(model_or_name)
+
+    def get_collection(self, model_or_name: Any):
+        """Temporary compatibility alias for code still being migrated."""
+        return self.collection(model_or_name)
+
+    async def find(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._engine.find(*args, **kwargs)
+
+    async def find_one(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._engine.find_one(*args, **kwargs)
+
+    async def save(self, *args: Any, **kwargs: Any) -> Any:
+        if not args:
+            return await self._engine.save(*args, **kwargs)
+
+        obj = args[0]
+        rest_args = args[1:]
+        if isinstance(obj, (list, tuple, set)):
+            return [await self._save_one(item, *rest_args, **kwargs) for item in obj]
+
+        return await self._save_one(obj, *rest_args, **kwargs)
+
+    async def save_unchecked(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._engine.save(*args, **kwargs)
+
+    async def delete(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._engine.delete(*args, **kwargs)
+
+    def set_core_context(self):
+        return current_engine_context.set(self)
+
+    def reset_core_context(self, token) -> None:
+        current_engine_context.reset(token)
+
+    @contextmanager
+    def core_context(self) -> Iterator["Database"]:
+        token = self.set_core_context()
+        try:
+            yield self
+        finally:
+            self.reset_core_context(token)
+
+    async def apply_resource_assignment_to_node_registry(self, node_registry: Any) -> Any:
+        from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
+
+        return await apply_resource_assignment_to_node_registry(self, node_registry)
+
+    async def find_artifact_mappings(self, *args: Any, **kwargs: Any) -> Any:
+        from simstack.core.artifacts import find_artifact_mappings
+
+        with self.core_context():
+            return await find_artifact_mappings(*args, **kwargs)
+
+    async def find_all_artifacts(self, node_registry: Any) -> Any:
+        from simstack.core.artifacts import find_all_artifacts
+
+        with self.core_context():
+            return await find_all_artifacts(node_registry)
+
+    async def ping(self) -> Any:
+        return await self.client.admin.command("ping")
+
+    async def stats(self) -> Any:
+        return await self.database.command("dbStats")
+
+    async def _save_one(self, model: Any, *args: Any, **kwargs: Any) -> Any:
+        if await self._maybe_call_custom_save(model):
+            return None
+
+        parts_saved = await self._call_parts_saves(model)
+        if parts_saved:
+            return None
+
+        return await self._engine.save(model, *args, **kwargs)
+
+    async def _maybe_call_custom_save(self, target: Any) -> bool:
+        save_attr = getattr(target, "save", None)
+        if not callable(save_attr):
+            return False
+        await save_attr(self)
+        return True
+
+    async def _call_parts_saves(self, model: Any) -> bool:
+        any_saved = False
+        seen_ids: set[int] = set()
+
+        for part in self._iter_save_parts(model):
+            part_id = id(part)
+            if part_id in seen_ids:
+                continue
+            seen_ids.add(part_id)
+
+            if await self._maybe_call_custom_save(part):
+                any_saved = True
+
+        return any_saved
+
+    @staticmethod
+    def _iter_save_parts(root: Any) -> Iterable[Any]:
+        try:
+            values = list(vars(root).values())
+        except TypeError:
+            return []
+
+        parts: list[Any] = []
+        for value in values:
+            parts.append(value)
+            if isinstance(value, (list, tuple, set)):
+                parts.extend(value)
+            elif isinstance(value, dict):
+                parts.extend(value.values())
+        return parts
+
+
+def set_database_core_context(database: Any):
+    set_context = getattr(database, "set_core_context", None)
+    if callable(set_context):
+        return set_context()
+    return current_engine_context.set(database)
+
+
+def reset_database_core_context(database: Any, token) -> None:
+    reset_context = getattr(database, "reset_core_context", None)
+    if callable(reset_context):
+        reset_context(token)
+        return
+    current_engine_context.reset(token)
+
+
+async def find_all_artifacts_for_database(database: Any, node_registry: Any) -> Any:
+    find_all = getattr(database, "find_all_artifacts", None)
+    if callable(find_all):
+        return await find_all(node_registry)
+
+    from simstack.core.artifacts import find_all_artifacts
+
+    token = set_database_core_context(database)
+    try:
+        return await find_all_artifacts(node_registry)
+    finally:
+        reset_database_core_context(database, token)
+
+
+class DatabaseOld(DatabaseInformation):
     """
     Asynchronous MongoDB database access class using ODMantic ORM.
     Provides a cleaner interface for database operations.
