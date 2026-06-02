@@ -7,7 +7,7 @@ from odmantic import Model
 
 from simstack.core.definitions import DBType, TaskStatus
 from simstack.core.engine import current_engine_context, AIOEngineProxy
-from simstack.models import NodeModel
+from simstack.models import NodeModel, ArtifactMapping
 from simstack.models.node_registry import NodeRegistry
 from simstack.util.database_information import DatabaseInformation
 from simstack.util.importer import import_class
@@ -110,36 +110,31 @@ class Database:
     async def delete(self, *args: Any, **kwargs: Any) -> Any:
         return await self._engine.delete(*args, **kwargs)
 
-    def set_core_context(self):
-        return current_engine_context.set(self)
-
-    def reset_core_context(self, token) -> None:
-        current_engine_context.reset(token)
-
-    @contextmanager
-    def core_context(self) -> Iterator["Database"]:
-        token = self.set_core_context()
-        try:
-            yield self
-        finally:
-            self.reset_core_context(token)
+    # def set_core_context(self):
+    #     return current_engine_context.set(self)
+    #
+    # def reset_core_context(self, token) -> None:
+    #     current_engine_context.reset(token)
+    #
+    # @contextmanager
+    # def core_context(self) -> Iterator["Database"]:
+    #     token = self.set_core_context()
+    #     try:
+    #         yield self
+    #     finally:
+    #         self.reset_core_context(token)
 
     async def apply_resource_assignment_to_node_registry(self, node_registry: Any) -> Any:
         from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
-
         return await apply_resource_assignment_to_node_registry(self, node_registry)
 
-    async def find_artifact_mappings(self, *args: Any, **kwargs: Any) -> Any:
+    async def find_artifact_mappings(self, node_registry_path: str,) -> Any:
         from simstack.core.artifacts import find_artifact_mappings
-
-        with self.core_context():
-            return await find_artifact_mappings(*args, **kwargs)
+        return await find_artifact_mappings(node_registry_path, self)
 
     async def find_all_artifacts(self, node_registry: Any) -> Any:
         from simstack.core.artifacts import find_all_artifacts
-
-        with self.core_context():
-            return await find_all_artifacts(node_registry)
+        return await find_all_artifacts(node_registry, self)
 
     async def ping(self) -> Any:
         return await self.client.admin.command("ping")
@@ -195,34 +190,30 @@ class Database:
                 parts.extend(value.values())
         return parts
 
+#
+# def set_database_core_context(database: Any):
+#     set_context = getattr(database, "set_core_context", None)
+#     if callable(set_context):
+#         return set_context()
+#     return current_engine_context.set(database)
+#
+#
+# def reset_database_core_context(database: Any, token) -> None:
+#     reset_context = getattr(database, "reset_core_context", None)
+#     if callable(reset_context):
+#         reset_context(token)
+#         return
+#     current_engine_context.reset(token)
+#
 
-def set_database_core_context(database: Any):
-    set_context = getattr(database, "set_core_context", None)
-    if callable(set_context):
-        return set_context()
-    return current_engine_context.set(database)
-
-
-def reset_database_core_context(database: Any, token) -> None:
-    reset_context = getattr(database, "reset_core_context", None)
-    if callable(reset_context):
-        reset_context(token)
-        return
-    current_engine_context.reset(token)
-
-
-async def find_all_artifacts_for_database(database: Any, node_registry: Any) -> Any:
+# TODO engines
+async def find_all_artifacts_for_database(database: Database, node_registry: Any) -> Any:
     find_all = getattr(database, "find_all_artifacts", None)
     if callable(find_all):
         return await find_all(node_registry)
 
     from simstack.core.artifacts import find_all_artifacts
-
-    token = set_database_core_context(database)
-    try:
-        return await find_all_artifacts(node_registry)
-    finally:
-        reset_database_core_context(database, token)
+    return await find_all_artifacts(node_registry, database)
 
 
 class DatabaseOld(DatabaseInformation):

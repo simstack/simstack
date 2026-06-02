@@ -12,6 +12,7 @@ from simstack.models.artifact_models import ArtifactMapping, ArtifactModel
 from simstack.models.charts_artifact import ChartArtifactModel
 from simstack.models.node_registry import find_child_nodes, NodeRegistry
 from simstack.models.table_artifact import TableArtifactModel
+from simstack.util.db import Database
 from simstack.util.importer import function_from_model
 from simstack.util.module_path_checker import is_module_subpath_of_path
 
@@ -38,14 +39,9 @@ class ArtifactArguments:
             setattr(self, param_name, arg_value)
 
 
-async def find_artifact_mappings(
-    node_registry_path: str, task_id: Optional[str] = None
-) -> List[ArtifactMapping]:
-    logger.debug(
-        f"task_id: {task_id} Loading artifacts with regex pattern: {node_registry_path} "
-    )
-    engine = current_engine_context.get()
-    all_mappings = await engine.find(ArtifactMapping)
+async def find_artifact_mappings(node_registry_path: str, db: Database, task_id: Optional[str] = None) -> List[ArtifactMapping]:
+    logger.debug(f"task_id: {task_id} Loading artifacts with regex pattern: {node_registry_path} ")
+    all_mappings = await db.find(ArtifactMapping)
 
     # Filter them manually to find those whose patterns match your path
     matching_mappings = [
@@ -87,13 +83,9 @@ async def register_artifact_mapping(artifact_mapping: ArtifactMapping):
             logger.error(f"Error processing function {artifact_mapping.function_mapping}: {e}")
     return await context.db.save(artifact_mapping)
 
-
-async def find_all_artifacts(node_registry: NodeRegistry) -> List[ArtifactModel]:
-    # if not engine:
-    #     engine = context.db.engine
-    engine = current_engine_context.get()
+async def find_all_artifacts(node_registry: NodeRegistry, db: Database) -> List[ArtifactModel]:
     return [
-        await engine.find_one(ArtifactModel, ArtifactModel.id == artifact_id)
+        await db.find_one(ArtifactModel, ArtifactModel.id == artifact_id)
         for artifact_id in node_registry.artifact_ids
     ]
 

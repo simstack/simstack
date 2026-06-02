@@ -6,6 +6,7 @@ from odmantic import Model, AIOEngine, ObjectId
 
 from simstack.core.engine import current_engine_context
 from simstack.models.models import ModelMapping, NodeModel
+from simstack.util.db import Database
 
 logger = logging.getLogger("importer")
 
@@ -24,17 +25,17 @@ def _get_initialized_context():
     return None
 
 
-def _context_cache_matches_engine(context, engine: AIOEngine = None) -> bool:
+def _context_cache_matches_engine(context, db: Database = None) -> bool:
     if context is None:
         return False
-    if engine is None:
+    if db is None:
         return True
     try:
-        return context.db is not None and engine is context.db.engine
+        return context.db is not None and db is context.db
     except RuntimeError:
         return False
 
-
+# TODO remove engine function
 def _resolve_engine(context, engine: AIOEngine = None):
     if engine is not None:
         return engine
@@ -58,10 +59,10 @@ def _lookup_node_cache(node_mappings, function_path: str) -> Optional[NodeModel]
 
 
 async def _find_node_model(
-    function_path: str, engine: AIOEngine = None
+    function_path: str, db: Database = None
 ) -> Optional[NodeModel]:
     context = _get_initialized_context()
-    if _context_cache_matches_engine(context, engine):
+    if _context_cache_matches_engine(context, db):
         if context.node_mappings is None:
             await context.refresh_mappings(models=False, nodes=True)
 
@@ -74,7 +75,7 @@ async def _find_node_model(
         if node_model is not None:
             return node_model
 
-    lookup_engine = _resolve_engine(context, engine)
+    lookup_engine = _resolve_engine(context, db)
     if lookup_engine is None:
         return None
 
@@ -127,11 +128,11 @@ def _lookup_model_cache(
 
 
 async def _find_model_mapping(
-    class_path: str, engine: AIOEngine = None
+    class_path: str, db: Database
 ) -> Optional[ModelMapping]:
     _, class_name = class_path.rsplit(".", 1)
     context = _get_initialized_context()
-    if _context_cache_matches_engine(context, engine):
+    if _context_cache_matches_engine(context, db):
         if context.model_mappings is None:
             await context.refresh_mappings(models=True, nodes=False)
 
@@ -222,6 +223,7 @@ async def function_from_model(
 
 async def import_function(
     function_path: str,
+    db: Database,
     task_id: ObjectId = None,
     tolerate_missing_function: bool = False,
 ) -> Optional[Callable]:
@@ -233,6 +235,7 @@ async def import_function(
 
     Args:
         function_path: Dot notation path to the function (e.g. 'methods.submodule.function_name')
+        db: Database object
         task_id: Optional task id
         tolerate_missing_function: If True, return None if function is not found, otherwise raise exception
 
@@ -267,7 +270,7 @@ async def import_function_by_name(
     return await function_from_model(node_model, task_id)
 
 
-async def import_class(class_path: str) -> Type[Model] | None:
+async def import_class(class_path: str, db: Database) -> Type[Model] | None:
     """
     Dynamically import a class from a module using its full path.
     First tries to load the class from the database using ModelMapping
@@ -276,8 +279,9 @@ async def import_class(class_path: str) -> Type[Model] | None:
 
 
     Args:
-        class_path: Dot notation path to the class (e.g. 'models.submodule.ClassName')
-        :param class_path:
+
+        :param class_path:   class_path: Dot notation path to the class (e.g. 'models.submodule.ClassName')
+        :param db:    db: Database object
     Returns:
         The imported class object or None if import fails
     """
@@ -285,7 +289,7 @@ async def import_class(class_path: str) -> Type[Model] | None:
     try:
         # Split the path into module path and class name
         module_path, class_name = class_path.rsplit(".", 1)
-        model_mapping = await _find_model_mapping(class_path)
+        model_mapping = await _find_model_mapping(class_path, db)
 
         if model_mapping:
             module_path, class_name = model_mapping.mapping.rsplit(".", 1)
