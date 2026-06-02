@@ -111,7 +111,7 @@ async def test_import_function_from_pickle(setup_pickled_function):
 
 
 @pytest.mark.asyncio
-async def test_import_function_nonexistent():
+async def test_import_function_nonexistent(initialized_context):
     """Test importing a non-existent function which should raise ImportError."""
     # Try to import a non-existent function and expect ImportError
 
@@ -119,7 +119,7 @@ async def test_import_function_nonexistent():
         LookupError,
         match="Function tests.core.test_import_function.nonexistent_function not found in the NodeModel Table",
     ):
-        await import_function("tests.core.test_import_function.nonexistent_function")
+        await import_function("tests.core.test_import_function.nonexistent_function", context.db)
 
 
 if __name__ == "__main__":

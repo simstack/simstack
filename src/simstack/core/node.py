@@ -25,7 +25,6 @@ from pydantic import BaseModel
 from simstack.core.artifacts import create_artifacts, ArtifactArguments
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.engine import current_engine_context
 from simstack.core.hash import complex_hash_function
 from simstack.core.node_claim import claim_submitted_node
 from simstack.core.node_runner import NodeRunner
@@ -250,15 +249,15 @@ class Node:
                 logger.error(f"{arg.__class__.__name__} is not an odmantic Model")
                 raise ValueError(f"{arg.__class__.__name__} is not an odmantic Model")
 
-            argument_entry = await context.db.upsert(arg)
+            argument_entry = await context.db.save(arg)
 
-            # Check if the upsert operation was successful and returned a valid ID
+            # Check if the save operation was successful and returned a valid ID
             if argument_entry is None or argument_entry.id is None:
                 logger.error(
-                    f"Failed to upsert argument {arg} - returned None or invalid ID"
+                    f"Failed to save argument {arg} - returned None or invalid ID"
                 )
                 raise ValueError(
-                    f"Failed to upsert argument of type {arg.__class__.__name__}"
+                    f"Failed to save argument of type {arg.__class__.__name__}"
                 )
 
             input_ids.append(argument_entry.id)
@@ -282,14 +281,14 @@ class Node:
         registry_entry = self.registry_entry
         assert registry_entry is not None
         await apply_resource_assignment_to_node_registry(
-            context.db.engine,
+            context.db,
             registry_entry,
             parent_parameters=parent_parameters
             if isinstance(parent_parameters, Parameters)
             else None,
         )
         self.parameters = registry_entry.parameters
-        await context.db.upsert(registry_entry)
+        await context.db.save(registry_entry)
         logger.info(
             f"Task task_id: {self.id} with name {self.name} created for resource: {registry_entry.parameters.resource} queue: {registry_entry.parameters.queue} with id: {self.id}"
         )
@@ -368,7 +367,7 @@ class Node:
 
         :return: The retrieved task outputs from the database.
         """
-        engine = current_engine_context.get()
+        db = context.db
         assert self.registry_entry is not None
         logger.info(
             f"Task task_id: {self.id} loading results with task status {self.status}"
@@ -389,8 +388,8 @@ class Node:
                 self.registry_entry.result_tables,
                 self.registry_entry.result_ids,
             ):
-                model = await import_class(table_name)
-                result = await engine.find_one(model, model.id == table_id)
+                model = await import_class(table_name, db)
+                result = await db.find_one(model, model.id == table_id)
                 if result is None:
                     await self.set_status(TaskStatus.FAILED)
                     logger.error(
@@ -612,7 +611,7 @@ class Node:
                 new_task_status = TaskStatus.FAILED
                 result = None
         elif is_simstack_model(result):  # backward compatibility
-            result_model = await context.db.upsert(result)
+            result_model = await context.db.save(result)
             result_table_name = await context.db.find_one(
                 ModelMapping, ModelMapping.name == result.__class__.__name__
             )
@@ -698,7 +697,7 @@ class Node:
             for key, value in getattr(result, "__pydantic_extra__", {}).items():
                 if not callable(value) and is_simstack_model(value):
                     if isinstance(value, Model):
-                        result_model = await context.db.upsert(value)
+                        result_model = await context.db.save(value)
                         result_models.append(result_model)
                         result_ids.append(result_model.id)
                         result_names.append(key)
@@ -743,8 +742,8 @@ class Node:
         else:
             logger.warning(f"Task task_id: {self.id} {status} is not a TaskStatus")
             self.registry_entry.status = TaskStatus(status)
-        engine = current_engine_context.get()
-        await engine.save(self.registry_entry)
+
+        await context.db.save(self.registry_entry)
         logger.info(f"Task task_id: {self.id} {self.name} is set to {status}, id is: {self.id}")
 
 
@@ -773,12 +772,12 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
     :rtype: Optional[Node]
     """
     args = []
-    engine = current_engine_context.get()
+    db = context.db
 
     for table, table_id in zip(registry_entry.input_tables, registry_entry.input_ids):
         try:
-            model = await import_class(table)
-            arg = await engine.find_one(model, model.id == table_id)
+            model = await import_class(table, db)
+            arg = await db.find_one(model, model.id == table_id)
             args.append(arg)
         except Exception as e:
             logger.exception(
@@ -812,13 +811,13 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
         if registry_entry.function_hash == "NOT INITIALIZED":
             registry_entry.function_hash = cast(str, complex_hash_function(func))
             registry_entry.is_async = asyncio.iscoroutinefunction(func)
-            duplicate_entry = await engine.find_one(
+            duplicate_entry = await db.find_one(
                 NodeRegistry,
                 (NodeRegistry.name == registry_entry.name)
                 & (NodeRegistry.arg_hash == registry_entry.arg_hash)
                 & (NodeRegistry.function_hash == registry_entry.function_hash),
             )
-            await engine.save(
+            await db.save(
                 registry_entry
             )  # save the fixed entry AFTER checking for duplicates
             # the calling function may have the originial entry unsaved !
@@ -840,7 +839,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 if duplicate_entry.id != registry_entry.id:
                     # the parameters of the new job may be different
                     duplicate_entry.parameters = registry_entry.parameters
-                    await engine.delete(registry_entry)
+                    await db.delete(registry_entry)
                     registry_entry = duplicate_entry
 
     except Exception as e:

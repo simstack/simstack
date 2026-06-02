@@ -104,7 +104,7 @@ async def test_async_parent_fanout_creates_slurm_children_with_nested_hash_traps
     assert result.value == 50
     assert len(submitted_ids) == 50
 
-    entries = await context.db.find_all(NodeRegistry)
+    entries = await context.db.find(NodeRegistry)
     parent_entries = [
         entry
         for entry in entries

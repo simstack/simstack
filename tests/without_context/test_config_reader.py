@@ -173,7 +173,7 @@ use_db = true
         async def patched_save(instance, **kwargs):
             """Patched save method that doesn't use sessions"""
             # Use the collection directly without transactions
-            collection = db.engine.get_collection(type(instance))
+            collection = db.get_collection(type(instance))
 
             # Ensure the instance has an ObjectId
             if not instance.id:
@@ -210,11 +210,11 @@ use_db = true
             return results
 
         # Apply patches only for mock database
-        db.engine.save = patched_save
-        db.engine.save_all = patched_save_all
+        db.save = patched_save
+        db.save_all = patched_save_all
 
         yield db
-        db.close()
+
 
     def test_reader(self, toml_reader):
         assert toml_reader.get("resources.allowed_resources") == ["local", "self", "uploads"]
@@ -264,7 +264,7 @@ use_db = true
 
     @pytest.mark.asyncio
     async def test_init_datasource_with_db(self,mock_db, toml_reader, resource_definitions):
-        assert mock_db.db_name == "user_data"
+        assert mock_db.database_name == "user_data"
         toml_reader.config["parameters"]["general"]["use_db"] = True
 
         for resource_def in resource_definitions:

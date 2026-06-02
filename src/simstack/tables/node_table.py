@@ -10,6 +10,7 @@ from simstack.tables.node_children import update_node_children
 from simstack.models import Parameters
 from simstack.models.models import NodeModel, ModelMapping, DataMapping
 from simstack.tables.table_builder import TableBuilderBase
+from simstack.util.db import Database
 from simstack.util.docstring_parser import DocstringParser
 from simstack.util.importer import import_class_by_name
 
@@ -26,7 +27,7 @@ class CreateNodeTable(TableBuilderBase):
     Helper class to build the node table without passing around many parameters.
 
     Usage:
-        creator = CreateNodeTable(engine)
+        creator = CreateNodeTable(database)
         await creator.make_node_table()
     """
 
@@ -149,6 +150,7 @@ class CreateNodeTable(TableBuilderBase):
             output["type"] == SimstackResult for output in outputs
         )
         result_mappings = []
+        db = context.db
         if returns_simstack_result:
             if len(outputs) > 1:
                 logger.warning(
@@ -180,7 +182,7 @@ class CreateNodeTable(TableBuilderBase):
                                 else:
                                     try:
                                         inner_model = await import_class_by_name(
-                                            inner_type_str
+                                            inner_type_str, db
                                         )
                                     except (ValueError, LookupError):
                                         inner_model = None
@@ -200,7 +202,7 @@ class CreateNodeTable(TableBuilderBase):
                                 # It's a single class name
                                 try:
                                     output_model = await import_class_by_name(
-                                        output_type
+                                        output_type, db
                                     )
                                     output_mapping = self.get_class_mapping(
                                         output_model, drops
@@ -271,7 +273,7 @@ class CreateNodeTable(TableBuilderBase):
             (should_skip, existing_favorite)
         """
         try:
-            existing_model = await self.engine.find_one(
+            existing_model = await self.db.find_one(
                 NodeModel, NodeModel.name == node_name
             )
         except Exception as e:
@@ -293,12 +295,12 @@ class CreateNodeTable(TableBuilderBase):
 
         if getattr(existing_model, "pickle_function", None):
             try:
-                await self.engine.delete(existing_model.pickle_function)
+                await self.db.delete(existing_model.pickle_function)
             except Exception as e:
                 logger.error(f"Error deleting FunctionPickle for {node_name}: {e}")
 
         try:
-            await self.engine.delete(existing_model)
+            await self.db.delete(existing_model)
         except Exception as e:
             logger.error(f"Error deleting existing NodeModel {node_name}: {e}")
 
@@ -333,7 +335,7 @@ class CreateNodeTable(TableBuilderBase):
                     if drops and input_mapping.startswith(drops + "."):
                         input_mapping = input_mapping[len(drops) + 1 :]
 
-                    input_mapping_found = await self.engine.find_one(
+                    input_mapping_found = await self.db.find_one(
                         ModelMapping, ModelMapping.mapping == input_mapping
                     )
                     if not input_mapping_found and input_mapping:
@@ -447,7 +449,7 @@ class CreateNodeTable(TableBuilderBase):
                 logger.info(
                     f"NodeModel: {node_model.name}, {node_model.function_mapping}, {node_model.input_mappings}"
                 )
-                await self.engine.save(node_model)
+                await self.db.save(node_model)
 
             except Exception as e:
                 logger.error(f"Error creating/saving NodeModel {node_name}: {e}")
@@ -456,26 +458,26 @@ class CreateNodeTable(TableBuilderBase):
                 traceback.print_exc()
 
     async def second_stage(self, drops: str) -> None:
-        await update_node_children(self.engine, drops)
+        await update_node_children(self.db, drops)
 
     async def clear_table(self) -> None:
         self.logger.info("Clearing NodeModel collection")
-        await self.engine.get_collection(NodeModel).drop()
+        await self.db.get_collection(NodeModel).drop()
 
 
 async def make_node_table(
-    engine: Any,
+    db: Database,
     dirs: list[str] | None = None,
     drops: str | None = None,
     write_schema: bool = False,
     clear: bool = False,
 ) -> None:
     """
-    Rebuild the node table using the given engine.
+    Rebuild the node table using the given databse.
 
     This is a thin wrapper around CreateNodeTable for backward compatibility.
     """
-    creator = CreateNodeTable(engine, write_schema=write_schema)
+    creator = CreateNodeTable(db, write_schema=write_schema)
     await creator.build(dirs=dirs, drops=drops, clear=clear)
 
 

@@ -1,7 +1,6 @@
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, Union
 from simstack.core.definitions import DBType
-
 
 class DatabaseInformation:
     """
@@ -60,7 +59,18 @@ class DatabaseInformation:
     @classmethod
     def from_db_info(cls, db_info: "DatabaseInformation"):
         return cls(db_info._db_name, db_info._connection_string, db_info._db_type)
-    
+
+
+    @classmethod
+    def from_db_info_or_db(cls, db_info: Union["DatabaseInformation", "Database"]):
+        from simstack.util.db import Database
+        if isinstance(db_info, DatabaseInformation):
+            return DatabaseInformation.from_db_info(db_info)
+        elif isinstance(db_info, Database):
+            return cls(db_info.database_name, "None", db_info.databae_type)
+        else:
+            raise TypeError("db_info must be an instance of DatabaseInformation or Database")
+
     @property
     def db_type(self) -> DBType:
         return self._db_type

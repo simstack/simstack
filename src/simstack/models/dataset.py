@@ -1,12 +1,8 @@
 from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List
-
 from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
-
 from simstack.core.asnyc_helper import async_helper
-from simstack.core.engine import current_engine_context
 from simstack.models import simstack_model
 from simstack.models.dataset_metadata import DataSetMetadata
-from simstack.util.importer import import_class_by_name
 from simstack.util.make_table import make_column_defs_instance
 from simstack.util.make_table import make_table_entries_helper
 
@@ -47,12 +43,13 @@ class DataSetSection(EmbeddedModel):
         :param models: Tuple of model instances to add
         :raises ValueError: If the model types don't match the section's expected types
         """
+        from simstack.core.context import context
         if isinstance(models, Model):
             models = (models,)
         model_names = [model.__class__.__name__ for model in models]
 
         # Verify that all the models are already stored, otherwise store them
-        engine = current_engine_context.get()
+        db = context.db
         stored_models = []
         model_ids = []
         for model in models:
@@ -60,7 +57,7 @@ class DataSetSection(EmbeddedModel):
                 model_ids.append(None)
                 continue
             if model.id is None:
-                stored_model = await engine.save(model)
+                stored_model = await db.save(model)
                 stored_models.append(stored_model)
             else:
                 stored_models.append(model)
@@ -85,13 +82,16 @@ class DataSetSection(EmbeddedModel):
 
         :return: List of column definitions for ag-grid
         """
+
+        from simstack.util.importer import import_class_by_name
+        from simstack.core.context import context
         column_defs = []
         if len(self.data) == 0:
             return column_defs
-        engine = current_engine_context.get()
+        db = context.db
         for model_group_id, model_type in zip(self.data[0], self.model_types):
-            model_class = await import_class_by_name(model_type)
-            model_instance = await engine.find_one(
+            model_class = await import_class_by_name(model_type, db)
+            model_instance = await db.find_one(
                 model_class, model_class.id == model_group_id
             )
             if model_instance is None:
@@ -101,14 +101,16 @@ class DataSetSection(EmbeddedModel):
         return column_defs
 
     async def make_table_entries(self):
+        from simstack.core.context import context
+        from simstack.util.importer import import_class_by_name
         all_data = []
-        engine = current_engine_context.get()
+        db = context.db
 
         for model_group_ids in self.data:
             data = []
             for model_group_id, model_type in zip(model_group_ids, self.model_types):
-                model_class = await import_class_by_name(model_type)
-                model_instance = await engine.find_one(
+                model_class = await import_class_by_name(model_type, db)
+                model_instance = await db.find_one(
                    model_class, model_class.id == model_group_id
                 )
 
@@ -125,6 +127,9 @@ class DataSetSection(EmbeddedModel):
         :param index: Index of the tuple to retrieve
         :return: Tuple of model instances
         """
+        from simstack.util.importer import import_class_by_name
+        from simstack.core.context import context
+        db = context.db
         if index >= len(self.data):
             raise IndexError(
                 f"Index {index} out of range for section with {len(self.data)} model groups"
@@ -134,12 +139,13 @@ class DataSetSection(EmbeddedModel):
         models = []
 
         for model_type, model_id in zip(self.model_types, model_ids):
-            model_class = await import_class_by_name(model_type)
-            engine = current_engine_context.get()
+            from simstack.core.context import context
+            model_class = await import_class_by_name(model_type, db)
+            db = context.db
             if model_id is None:
                 models.append(None)
                 continue
-            model_instance = await engine.find_one(
+            model_instance = await db.find_one(
                 model_class, model_class.id == model_id
             )
             if model_instance is None:
@@ -371,7 +377,7 @@ class DataSet(Model):
         return self.metadata.dataset_type
 
     async def save(self, engine):
-        # engine = current_engine_context.get()
+        # db = context.db
         structure = self.collect_structure()
         ok = await self.metadata.validate_dict(structure)
         if not ok:
@@ -512,7 +518,8 @@ class DataSetSelection(Model):
     dataset_selection_fields: List[DataSetSelectionField] = Field(default_factory=list)
 
     async def get_dataset(self):
-        return await current_engine_context.get().find_one(DataSet, DataSet.id == self.dataset_id)
+        from simstack.core.context import context
+        return await context.db.find_one(DataSet, DataSet.id == self.dataset_id)
 
     @async_helper
     async def get_selected_elements(self, section_name: str = None) -> List[Tuple[Model, ...]]:
@@ -522,8 +529,9 @@ class DataSetSelection(Model):
         :param section_name: Optional section name to filter results. If None, returns all sections.
         :return: List of tuples of model instances for all selected elements
         """
-        engine = current_engine_context.get()
-        dataset = await engine.find_one(DataSet, DataSet.id == self.dataset_id)
+        from simstack.core.context import context
+        db = context.db
+        dataset = await db.find_one(DataSet, DataSet.id == self.dataset_id)
 
         if dataset is None:
             raise ValueError(f"Dataset with id {self.dataset_id} not found")
@@ -554,8 +562,9 @@ class DataSetSelection(Model):
         :param section_name: Optional section name to filter results. If None, returns all sections.
         :return: Async iterator yielding tuples of model instances
         """
-        engine = current_engine_context.get()
-        dataset = await engine.find_one(DataSet, DataSet.id == self.dataset_id)
+        from simstack.core.context import context
+        db = context.db
+        dataset = await db.find_one(DataSet, DataSet.id == self.dataset_id)
 
         if dataset is None:
             raise ValueError(f"Dataset with id {self.dataset_id} not found")

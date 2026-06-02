@@ -277,7 +277,7 @@ class TestFileListModel:
         await context.db.save(model2)
 
         # Find all FileListModels
-        all_models = await context.db.find_all(FileListModel)
+        all_models = await context.db.find(FileListModel)
 
         # Should have at least our 2 models (may have more from other tests)
         assert len(all_models) >= 2

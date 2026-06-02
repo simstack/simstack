@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 from typing import List, Type, TypeVar, Dict, Any, Union, Optional
 
@@ -6,25 +7,21 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from odmantic import Model
 
 from simstack.core.definitions import DBType, TaskStatus
-from simstack.core.engine import current_engine_context, AIOEngineProxy
-from simstack.models import NodeModel, ArtifactMapping
+from simstack.core.engine import  AIOEngineProxy
 from simstack.models.node_registry import NodeRegistry
+
 from simstack.util.database_information import DatabaseInformation
-from simstack.util.importer import import_class
+# from simstack.util.importer import import_class
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=Model)
-
-from __future__ import annotations
 
 from contextlib import contextmanager
 from typing import Any, Iterable, Iterator
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from odmantic import AIOEngine
-
-from simstack.core.engine import current_engine_context
 
 
 class Database:
@@ -41,12 +38,14 @@ class Database:
         client: AsyncIOMotorClient | None = None,
         database_name: str | None = None,
         engine: Any | None = None,
+        db_type: DBType | None = None,
     ) -> None:
         if engine is None:
             if client is None or database_name is None:
                 raise ValueError("client and database_name are required when engine is not provided")
             engine = AIOEngine(client=client, database=database_name)
 
+        self._db_type = db_type or getattr(engine, "db_type", None)
         self._engine = engine
         self._client = client or getattr(engine, "client", None)
         self._database_name = database_name or getattr(engine, "database_name", None)
@@ -54,6 +53,37 @@ class Database:
         if self._database_name is None:
             database = getattr(engine, "database", None)
             self._database_name = getattr(database, "name", None)
+
+    @property
+    def databae_type(self) -> DBType:
+        return self._db_type
+
+    @classmethod
+    def from_db_info(cls, db_info: DatabaseInformation):
+        if db_info.db_type == DBType.IN_MEMORY:
+            # For tests, use in-memory MongoDB (mongomock)
+            from mongomock_motor import AsyncMongoMockClient
+            try:
+                # import mongomock
+                client = AsyncMongoMockClient()
+                logger.info("Using in-memory MongoDB mock")
+            except ImportError:
+                logger.warning("mongomock not installed, falling back to localhost MongoDB")
+                client = AsyncIOMotorClient("mongodb://localhost:27017")
+
+        elif db_info.db_type == DBType.MONGODB:
+            connection_string = db_info.connection_string
+            if not connection_string:
+                connection_string = "mongodb://localhost:27017"
+            client = AsyncIOMotorClient(connection_string)
+            logger.info("Connected to MongoDB")
+        else:
+            raise ValueError(f"Unsupported database type for MongoDB: {db_info.db_type}")
+
+        # Create engine
+        engine = AIOEngine(client=client, database=db_info.db_name)
+        return cls(engine=engine, client=client, database_name=db_info.db_name)
+
 
     @property
     def core_engine(self) -> Any:
@@ -92,6 +122,9 @@ class Database:
 
     async def find_one(self, *args: Any, **kwargs: Any) -> Any:
         return await self._engine.find_one(*args, **kwargs)
+
+    async def close(self):
+        return await self._engine.close()
 
     async def save(self, *args: Any, **kwargs: Any) -> Any:
         if not args:
@@ -190,6 +223,108 @@ class Database:
                 parts.extend(value.values())
         return parts
 
+
+    async def load_task(
+        self, name: str, arg_hash: str, function_hash: str
+    ) -> Optional["NodeRegistry"]:
+        """
+        Load a task based on name, arg_hash and function_hash
+
+        Args:
+            name: Node name
+            arg_hash: Hash of the arguments
+            function_hash: Hash of the function
+
+        Returns:
+            The found NodeRegistry instance or None
+        """
+        result = await self.find_one(
+            NodeRegistry,
+            (NodeRegistry.name == name)
+            & (NodeRegistry.arg_hash == arg_hash)
+            & (NodeRegistry.function_hash == function_hash),
+        )
+        return result
+    # TODO legacy functions
+    # load_waiting_tasks_for_resource DONE
+    # reset_database                  DONE
+    # the rest is hopefully not needed anymore
+    # list_collections
+    # upsert
+    # _save_references
+    # find_one_by_model_name
+    # find_all
+    # find_many
+    # delete_by_id
+    # drop_collection
+    # load_from_collection
+    # load_node_model_by_name
+    # load_task_by_id
+
+    # count
+    # aggregate
+
+
+    async def load_waiting_tasks_for_resource(
+        self, resource: str
+    ) -> List["NodeRegistry"]:
+        """
+        Load all waiting tasks for a specific resource
+
+        Args:
+            resource: The resource name
+
+        Returns:
+            List of matching NodeRegistry instances
+        """
+        submitted_tasks = await self.engine.find(
+            NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED
+        )
+        # Then filter them in Python by checking the resource field
+        matching_tasks = []
+        for task in submitted_tasks:
+            # Check if parameters has a resource attribute and if it matches our resource
+            # the local runner will also do the immidiate tasks
+            if hasattr(task.parameters, "resource") and (
+                task.parameters.resource == resource
+                or (resource == "local" and task.parameters.resource == "self")
+            ):
+                if resource == "local" and task.parameters.resource == "self":
+                    logger.info(f"local runner taking job for 'self' with  {task.id}")
+                matching_tasks.append(task)
+        return matching_tasks
+
+    async def reset_database(self) -> None:
+        """
+        Reset the database by dropping all collections and recreating them
+        """
+        db = self.client[self.db_name]
+        collections = await db.list_collection_names()
+
+        for collection in collections:
+            await db[collection].drop()
+
+        logger.info(f"Database {self.db_name} has been reset")
+
+
+    async def load_task_by_id(
+        self, task_id: Union[str, ObjectId]
+    ) -> Optional[NodeRegistry]:
+        """
+        Load a task based on its ID
+
+        Args:
+            task_id: The task ID
+
+        Returns:
+            The found NodeRegistry instance or None
+        """
+        if isinstance(task_id, str):
+            task_id = ObjectId(task_id)
+
+        return await self.find_one(NodeRegistry, NodeRegistry.id == task_id)
+
+
 #
 # def set_database_core_context(database: Any):
 #     set_context = getattr(database, "set_core_context", None)
@@ -210,7 +345,7 @@ class Database:
 async def find_all_artifacts_for_database(database: Database, node_registry: Any) -> Any:
     find_all = getattr(database, "find_all_artifacts", None)
     if callable(find_all):
-        return await find_all(node_registry)
+        return await database.find(node_registry)
 
     from simstack.core.artifacts import find_all_artifacts
     return await find_all_artifacts(node_registry, database)
@@ -412,7 +547,8 @@ class DatabaseOld(DatabaseInformation):
         # if model_class is None:
         #    logger.info(f"Trying to import model: {model_mapping}")
 
-        model_class = await import_class(model_mapping)
+        from simstack.util.importer import import_class
+        model_class = await import_class(model_mapping, self)
         if model_class is None:
             raise ValueError(
                 f"DB: model class {model_mapping} not found in the available modules"
@@ -529,31 +665,9 @@ class DatabaseOld(DatabaseInformation):
             )
         return instance
 
-    async def load_task(
-        self, name: str, arg_hash: str, function_hash: str
-    ) -> Optional[NodeRegistry]:
-        """
-        Load a task based on name, arg_hash and function_hash
-
-        Args:
-            name: Node name
-            arg_hash: Hash of the arguments
-            function_hash: Hash of the function
-
-        Returns:
-            The found NodeRegistry instance or None
-        """
-        result = await self.engine.find_one(
-            NodeRegistry,
-            (NodeRegistry.name == name)
-            & (NodeRegistry.arg_hash == arg_hash)
-            & (NodeRegistry.function_hash == function_hash),
-        )
-        return result
-
     async def load_node_model_by_name(
         self, node_model_name: str
-    ) -> Optional[NodeModel]:
+    ) -> Optional["NodeModel"]:
         """
         Load a node based on its name
 
@@ -563,6 +677,7 @@ class DatabaseOld(DatabaseInformation):
         Returns:
             The found NodeRegistry instance or None
         """
+        from simstack.models import NodeModel
         return await self.engine.find_one(NodeModel, NodeModel.name == node_model_name)
 
     async def load_task_by_id(

@@ -1,10 +1,9 @@
 import importlib
 import logging
 from typing import Callable, Optional, Type
-
 from odmantic import Model, AIOEngine, ObjectId
 
-from simstack.core.engine import current_engine_context
+from simstack.core.context import context
 from simstack.models.models import ModelMapping, NodeModel
 from simstack.util.db import Database
 
@@ -45,7 +44,7 @@ def _resolve_engine(context, engine: AIOEngine = None):
                 return context.db.engine
         except RuntimeError:
             pass
-    return current_engine_context.get()
+    raise RuntimeError("Could not resolve engine both engine and context have no engine")
 
 
 def _lookup_node_cache(node_mappings, function_path: str) -> Optional[NodeModel]:
@@ -58,65 +57,46 @@ def _lookup_node_cache(node_mappings, function_path: str) -> Optional[NodeModel]
     return node_model
 
 
-async def _find_node_model(
-    function_path: str, db: Database = None
-) -> Optional[NodeModel]:
-    context = _get_initialized_context()
-    if _context_cache_matches_engine(context, db):
-        if context.node_mappings is None:
-            await context.refresh_mappings(models=False, nodes=True)
-
-        node_model = _lookup_node_cache(context.node_mappings, function_path)
-        if node_model is not None:
-            return node_model
-
+async def _find_node_model(function_path: str, db: Database) -> Optional[NodeModel]:
+    if context.node_mappings is None:
         await context.refresh_mappings(models=False, nodes=True)
-        node_model = _lookup_node_cache(context.node_mappings, function_path)
-        if node_model is not None:
-            return node_model
 
-    lookup_engine = _resolve_engine(context, db)
-    if lookup_engine is None:
-        return None
+    node_model = _lookup_node_cache(context.node_mappings, function_path)
+    if node_model is not None:
+        return node_model
 
-    node_model = await lookup_engine.find_one(
+    await context.refresh_mappings(models=False, nodes=True)
+    node_model = _lookup_node_cache(context.node_mappings, function_path)
+    if node_model is not None:
+        return node_model
+
+    node_model = await db.find_one(
         NodeModel, NodeModel.function_mapping == function_path
     )
     if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
         _, function_name = function_path.rsplit(".", 1)
-        node_model = await lookup_engine.find_one(
+        node_model = await db.find_one(
             NodeModel, NodeModel.name == function_name
         )
     return node_model
 
 
-async def _find_node_model_by_name(
-    function_name: str, engine: AIOEngine = None
-) -> Optional[NodeModel]:
-    context = _get_initialized_context()
-    if _context_cache_matches_engine(context, engine):
-        if context.node_mappings is None:
-            await context.refresh_mappings(models=False, nodes=True)
-
-        node_model = context.node_mappings.get_by_name(function_name)
-        if node_model is not None:
-            return node_model
-
+async def _find_node_model_by_name(function_name: str, db: Database) -> Optional[NodeModel]:
+    if context.node_mappings is None:
         await context.refresh_mappings(models=False, nodes=True)
-        node_model = context.node_mappings.get_by_name(function_name)
-        if node_model is not None:
-            return node_model
 
-    lookup_engine = _resolve_engine(context, engine)
-    if lookup_engine is None:
-        return None
+    node_model = context.node_mappings.get_by_name(function_name)
+    if node_model is not None:
+        return node_model
 
-    return await lookup_engine.find_one(NodeModel, NodeModel.name == function_name)
+    await context.refresh_mappings(models=False, nodes=True)
+    node_model = context.node_mappings.get_by_name(function_name)
+    if node_model is not None:
+        return node_model
+    return await db.find_one(NodeModel, NodeModel.name == function_name)
 
 
-def _lookup_model_cache(
-    model_mappings, class_path: str, class_name: str
-) -> Optional[ModelMapping]:
+def _lookup_model_cache(model_mappings, class_path: str, class_name: str) -> Optional[ModelMapping]:
     if model_mappings is None:
         return None
     model_mapping = None
@@ -126,72 +106,47 @@ def _lookup_model_cache(
         model_mapping = model_mappings.get_by_mapping(class_path)
     return model_mapping
 
-
-async def _find_model_mapping(
-    class_path: str, db: Database
-) -> Optional[ModelMapping]:
+async def _find_model_mapping(class_path: str, db: Database) -> Optional[ModelMapping]:
     _, class_name = class_path.rsplit(".", 1)
-    context = _get_initialized_context()
-    if _context_cache_matches_engine(context, db):
-        if context.model_mappings is None:
-            await context.refresh_mappings(models=True, nodes=False)
 
-        model_mapping = _lookup_model_cache(
-            context.model_mappings, class_path, class_name
-        )
-        if model_mapping is not None:
-            return model_mapping
-
+    if context.model_mappings is None:
         await context.refresh_mappings(models=True, nodes=False)
-        model_mapping = _lookup_model_cache(
-            context.model_mappings, class_path, class_name
-        )
-        if model_mapping is not None:
-            return model_mapping
 
-    lookup_engine = _resolve_engine(context, engine)
-    if lookup_engine is None:
-        return None
+    model_mapping = _lookup_model_cache(context.model_mappings, class_path, class_name)
+    if model_mapping is not None:
+        return model_mapping
+
+    await context.refresh_mappings(models=True, nodes=False)
+    model_mapping = _lookup_model_cache(context.model_mappings, class_path, class_name)
+    if model_mapping is not None:
+        return model_mapping
 
     model_mapping = None
     if MODELS_SEARCH_BY_NAME_FALLBACK:
-        model_mapping = await lookup_engine.find_one(
-            ModelMapping, ModelMapping.name == class_name
-        )
+        model_mapping = await db.find_one(ModelMapping, ModelMapping.name == class_name)
     if model_mapping is None:
-        model_mapping = await lookup_engine.find_one(
-            ModelMapping, ModelMapping.mapping == class_path
-        )
+        model_mapping = await db.find_one(ModelMapping, ModelMapping.mapping == class_path)
     return model_mapping
 
+# TODO engines remove: duplicate of find_class_mapping_by_name
+async def _find_model_mapping_by_name(class_name: str, db: Database) -> Optional[ModelMapping]:
 
-async def _find_model_mapping_by_name(
-    class_name: str, engine: AIOEngine = None
-) -> Optional[ModelMapping]:
-    context = _get_initialized_context()
-    if _context_cache_matches_engine(context, engine):
-        if context.model_mappings is None:
-            await context.refresh_mappings(models=True, nodes=False)
-
-        model_mapping = context.model_mappings.get_by_name(class_name)
-        if model_mapping is not None:
-            return model_mapping
-
+    if context.model_mappings is None:
         await context.refresh_mappings(models=True, nodes=False)
-        model_mapping = context.model_mappings.get_by_name(class_name)
-        if model_mapping is not None:
-            return model_mapping
 
-    lookup_engine = _resolve_engine(context, engine)
-    if lookup_engine is None:
-        return None
+    model_mapping = context.model_mappings.get_by_name(class_name)
+    if model_mapping is not None:
+        return model_mapping
 
-    return await lookup_engine.find_one(ModelMapping, ModelMapping.name == class_name)
+    await context.refresh_mappings(models=True, nodes=False)
+    model_mapping = context.model_mappings.get_by_name(class_name)
+    if model_mapping is not None:
+        return model_mapping
+
+    return await db.find_one(ModelMapping, ModelMapping.name == class_name)
 
 
-async def function_from_model(
-    model, task_id: Optional[ObjectId] = None
-) -> Optional[Callable]:
+async def function_from_model(model, task_id: Optional[ObjectId] = None) -> Optional[Callable]:
     """
     Loads and retrieves a callable function from a specified model using dynamic import.
     If a task ID is specified, additional logging information is provided regarding the
@@ -242,12 +197,10 @@ async def import_function(
     Returns:
         The imported function object or None if import fails
     """
-    node_model = await _find_node_model(function_path)
+    node_model = await _find_node_model(function_path, db)
 
     if node_model is None:
-        raise LookupError(
-            f"task_id: {task_id} Function {function_path} not found in the NodeModel Table"
-        )
+        raise LookupError(f"task_id: {task_id} Function {function_path} not found in the NodeModel Table")
 
     try:
         return await function_from_model(node_model, task_id)
@@ -258,10 +211,8 @@ async def import_function(
             raise e
 
 
-async def import_function_by_name(
-    function_name: str, task_id: ObjectId, engine: AIOEngine = None
-) -> Optional[Callable]:
-    node_model = await _find_node_model_by_name(function_name, engine)
+async def import_function_by_name(function_name: str, db: Database, task_id: ObjectId) -> Optional[Callable]:
+    node_model = await _find_node_model_by_name(function_name, db)
 
     if node_model is None:
         logger.error(f"Could not find function mapping for name: {function_name}")
@@ -308,11 +259,11 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
         raise e
 
 
-async def import_class_by_name(class_name: str) -> Type[Model]:
-    model_mapping = await _find_model_mapping_by_name(class_name)
+async def import_class_by_name(class_name: str, db: Database) -> Type[Model]:
+    model_mapping = await _find_model_mapping_by_name(class_name, db)
 
     if not model_mapping:
         logger.error(f"Error finding ModelMapping for {class_name}")
         raise LookupError(f"Error finding ModelMapping for {class_name}")
 
-    return await import_class(model_mapping.mapping)
+    return await import_class(model_mapping.mapping, db)

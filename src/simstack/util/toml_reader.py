@@ -5,7 +5,7 @@ from pathlib import Path
 
 from simstack.core.resources import allowed_resources
 from simstack.core.route_table import route_table
-from simstack.models.resource_definition import ResourceDefinition
+
 from simstack.util.path_manager import path_manager
 import logging
 
@@ -54,13 +54,13 @@ class TomlReader:
             raise ValueError("Allowed resources must be specified in the config file")
         return allowed_resources_list
 
-    def get_resource_definition(self, resource_str) -> ResourceDefinition:
+    def get_resource_definition(self, resource_str) -> "ResourceDefinition":
         """
         Retrieves the resource definition for the given resource string from the TOML configuration.
         Raises ValueError if the resource is not allowed or if the resource definition is not found.
         Sets the allowed resources list from the config file.
         """
-
+        from simstack.models.resource_definition import ResourceDefinition
         if not allowed_resources.has_resource(resource_str):
             raise ValueError(f"Illegal resource {resource_str}. Allowed resources are: {allowed_resources.get_resources()}.")
 

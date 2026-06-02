@@ -4,7 +4,6 @@ from typing import Dict, Any, Union, List
 from odmantic import Model, EmbeddedModel, Field
 
 from simstack.core.asnyc_helper import async_helper
-from simstack.core.engine import current_engine_context
 from simstack.models import simstack_model
 
 
@@ -60,8 +59,9 @@ class DataSetMetadata(EmbeddedModel):
         return _get_json_schema(self.data)
 
     async def validate_dict(self, new_structure: Dict[str, List[str]]) -> bool:
-        engine = current_engine_context.get()
-        reference_metadata = await engine.find_one(
+        from simstack.core.context import context
+        db = context.db
+        reference_metadata = await db.find_one(
             DataSetMetadataTemplate,
             DataSetMetadataTemplate.dataset_type == self.field_name,
         )
@@ -76,8 +76,7 @@ class DataSetMetadata(EmbeddedModel):
                 model_json=_get_json_schema(self.data),
                 structure=new_structure,
             )
-            engine = current_engine_context.get()
-            await engine.save(metadata_template)
+            await db.save(metadata_template)
             return True  # first model of this type
 
         new_data_json = _get_json_schema(self.data)
@@ -139,14 +138,15 @@ class DataSetMetadata(EmbeddedModel):
 
         if save_template:
             reference_metadata.structure = new_structure
-            await engine.save(reference_metadata)
+            await db.save(reference_metadata)
         self.structure = new_structure
         return True
 
     @async_helper
     async def freeze(self, new_structure: Dict[str, Dict[str, Any]]) -> bool:
-        engine = current_engine_context.get()
-        reference_metadata = await engine.find_one(
+        from simstack.core.context import context
+        db = context.db
+        reference_metadata = await db.find_one(
             DataSetMetadataTemplate,
             DataSetMetadataTemplate.dataset_type == self.field_name,
         )
@@ -157,7 +157,7 @@ class DataSetMetadata(EmbeddedModel):
         if self.structure == {}:
             self.structure = new_structure
             reference_metadata.structure = new_structure
-            await engine.save(reference_metadata)
+            await db.save(reference_metadata)
         # some structure exists already
         return new_structure == self.structure
 

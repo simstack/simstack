@@ -2,12 +2,12 @@ import logging
 import sys
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse, urlunparse
-from simstack.models.resource_definition import GitRepo
+
 from simstack.util.database_information import DatabaseInformation
-from simstack.util.db import DBType, current_engine_context
+from simstack.util.db import DBType
 from simstack.util.project_root_finder import find_project_root
 from simstack.util.toml_reader import TomlReader
-from simstack.util.config_reader import ConfigReader
+
 from simstack.util.setup_logging import setup_logging
 from simstack.util.mappings import ModelMappingTable, NodeMappingTable
 
@@ -31,6 +31,7 @@ def remove_password_from_connection_string(connection_string):
 
 
 async def initialize_git_list(db: "Database", toml_reader: TomlReader | None):
+    from simstack.models.resource_definition import GitRepo
     git_list = await db.find_all(GitRepo)
     if git_list is None and toml_reader is not None:
         git_list = toml_reader.get("parameters.common.git", [])
@@ -171,6 +172,7 @@ class GlobalState:
         # here we have a db, we may or may not have a toml reader
         resource_str: str = kwargs.get("resource", "self")
         # For testing, we might want to skip ConfigReader if it causes issues
+        from simstack.util.config_reader import ConfigReader
         if not kwargs.get("skip_config", False):
             try:
                 self.config = await ConfigReader.create(
@@ -189,9 +191,9 @@ class GlobalState:
 
     async def refresh_mappings(self, *, models: bool = True, nodes: bool = True):
         if models:
-            self.model_mappings = await ModelMappingTable.load(self.db.engine)
+            self.model_mappings = await ModelMappingTable.load(self.db)
         if nodes:
-            self.node_mappings = await NodeMappingTable.load(self.db.engine)
+            self.node_mappings = await NodeMappingTable.load(self.db)
 
     def initialize_logging(self, is_test: bool, log_level: str = "INFO"):
         if is_test:
@@ -216,7 +218,6 @@ class GlobalState:
             if db_info.db_type == DBType.MONGODB:
                 # Only ping real MongoDB connections
                 self.db.client.admin.command("ping")
-            current_engine_context.set(self.db.engine)
 
         except ConnectionError as e:
             if not is_test:

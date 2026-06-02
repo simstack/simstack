@@ -6,7 +6,6 @@ from odmantic import Model, Field, ObjectId, Reference
 from simstack.core.definitions import TaskStatus
 from simstack.models.file_list import FileList
 from simstack.models.parameters import Parameters
-from simstack.core.engine import current_engine_context
 
 class NodeRegistry(Model):
     """
@@ -106,5 +105,5 @@ class NodeRegistry(Model):
 
 
 async def find_child_nodes(task_id: str) -> List[NodeRegistry]:
-    engine = current_engine_context.get()
-    return await engine.find(NodeRegistry, {"parent_ids": {"$in": [task_id]}})
+    from simstack.core.context import context
+    return await context.db.find(NodeRegistry, {"parent_ids": {"$in": [task_id]}})

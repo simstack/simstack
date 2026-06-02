@@ -1,6 +1,6 @@
 
 from pathlib import Path
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Union
 from simstack.core.resources import allowed_resources
 from simstack.models.parameters import Resource
 from simstack.models.resource_definition import ResourceDefinition, GitRepo
@@ -20,13 +20,14 @@ class ConfigReader(DatabaseInformation):
 
     def __init__(
         self,
-        db_info: DatabaseInformation,
+        db_info: Union[DatabaseInformation , "Database"],
         resource_definition: ResourceDefinition,
         *,
         project_root: Path,
         git_list: list[Path] | None = None,
     ):
-        super().__init__(*db_info.get_information())
+        db_temp_info = DatabaseInformation.from_db_info_or_db(db_info)
+        super().__init__(*db_temp_info.get_information())
 
         self._project_root = project_root
         self._resource_definition = resource_definition

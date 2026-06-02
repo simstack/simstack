@@ -9,8 +9,8 @@ from simstack.models.files import FileStack
 from simstack.util.project_root_finder import find_project_root
 
 
-@pytest_asyncio.fixture(autouse=True, scope="session")
-async def initialized_context(tmp_path_factory, event_loop):
+@pytest_asyncio.fixture(autouse=True, scope="session", loop_scope="session")
+async def initialized_context(tmp_path_factory):
     # Use environment variable to control the database type for tests
     import os
 
@@ -54,7 +54,7 @@ async def initialized_context(tmp_path_factory, event_loop):
         async def patched_save(instance, **kwargs):
             """Patched save method that doesn't use sessions"""
             # Use the collection directly without transactions
-            collection = context.db.engine.get_collection(type(instance))
+            collection = context.db.get_collection(type(instance))
 
             # Ensure the instance has an ObjectId
             if not instance.id:
@@ -79,13 +79,13 @@ async def initialized_context(tmp_path_factory, event_loop):
             return results
 
         # Apply patches only for the mock database
-        context.db.engine.save = patched_save
-        context.db.engine.save_all = patched_save_all
+        context.db.save = patched_save
+        context.db.save_all = patched_save_all
 
     # Initialize model and node tables for both real and mock databases
     dirs = ["src/simstack/models", "src/simstack/methods", "tests"]
-    await make_model_table(context.db.engine, dirs=dirs, drops="src")
-    await make_node_table(context.db.engine, dirs=dirs, drops="src")
+    await make_model_table(context.db, dirs=dirs, drops="src")
+    await make_node_table(context.db, dirs=dirs, drops="src")
 
     if use_real_db:
         print("Test context initialized with real MongoDB database")
@@ -134,7 +134,7 @@ def odmantic_engine(initialized_context):
     """
     Create an ODMantic engine for the entire test session.
     """
-    return context.db.engine
+    return context.db
 
 
 @pytest.fixture

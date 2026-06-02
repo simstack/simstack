@@ -2,7 +2,6 @@ import pytest
 from datetime import datetime
 
 from simstack.core.context import context
-from simstack.core.engine import current_engine_context
 from simstack.models.dataset import DataSet, DataSetSection
 from simstack.models.dataset_metadata import DataSetMetadata
 from simstack.models import FloatData, StringData

@@ -8,8 +8,8 @@ from typing import Iterable, Optional, Type
 import fnmatch  # <-- added
 
 from simstack.core.context import context
-from simstack.core.engine import AIOEngineProxy
 from simstack.core.find_simstack_modules import find_simstack_modules
+from simstack.util.db import Database
 from simstack.util.import_module import import_module_from_file
 from simstack.util.path_manager import path_manager
 
@@ -24,8 +24,8 @@ class TableBuilderBase(ABC):
     Subclasses only implement `_process_module(module, drops)`.
     """
 
-    def __init__(self, engine: AIOEngineProxy, write_schema: bool = False):
-        self.engine = engine
+    def __init__(self, db: Database, write_schema: bool = False):
+        self.db = db
         self.write_schema = write_schema
 
     @property
@@ -276,7 +276,7 @@ class TableBuilderBase(ABC):
 
         async def _run() -> None:
             await context.initialize(log_level=level, resource="self")
-            builder = builder_cls(context.db.engine, write_schema=args.write_schema)
+            builder = builder_cls(context.db.db, write_schema=args.write_schema)
             await builder.build(dirs=dirs, drops=args.drops, exclude=args.exclude, clear=args.clear)
             await builder.second_stage(args.drops)
         loop.run_until_complete(_run())

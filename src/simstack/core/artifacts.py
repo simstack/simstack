@@ -7,7 +7,6 @@ from typing import Optional, List
 from odmantic import ObjectId
 
 from simstack.core.context import context
-from simstack.core.engine import current_engine_context
 from simstack.models.artifact_models import ArtifactMapping, ArtifactModel
 from simstack.models.charts_artifact import ChartArtifactModel
 from simstack.models.node_registry import find_child_nodes, NodeRegistry
@@ -129,7 +128,7 @@ async def create_artifacts(
         artifact_arguments.call_path = call_path
 
         artifact_list = []
-        engine = current_engine_context.get()
+
 
         if len(artifact_mappings_list) > 0:
             for artifact_mapping in artifact_mappings_list:
@@ -181,15 +180,15 @@ async def create_artifacts(
                         continue
                     if isinstance(artifact, TableArtifactModel):
                         artifact.parent_id = node_registry.id
-                        saved_artifact = await engine.save(artifact)
+                        saved_artifact = await context.db.save(artifact)
                         logger.debug(f"{log_string_mapping} new table: {saved_artifact}")
                     elif isinstance(artifact, ChartArtifactModel):
                         artifact.parent_id = node_registry.id
-                        saved_artifact = await engine.save(artifact)
+                        saved_artifact = await context.db.save(artifact)
                         logger.debug(f"{log_string_mapping} new table: {saved_artifact}")
                     elif isinstance(artifact, ArtifactModel):
                         artifact.path = call_path
-                        saved_artifact = await engine.save(artifact)
+                        saved_artifact = await context.db.save(artifact)
                         logger.debug(f"{log_string_mapping} new: {saved_artifact}")
                         artifact_list.append(saved_artifact)
                     else:
