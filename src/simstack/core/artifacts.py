@@ -97,9 +97,7 @@ async def create_artifacts(
         task_id = node_registry.id
         log_string = f"create artifacts for task_id: {task_id} for {call_path}"
 
-        artifact_mappings_list = await find_artifact_mappings(
-            call_path, task_id=task_id
-        )
+        artifact_mappings_list = await find_artifact_mappings(call_path, context.db, task_id=task_id)
 
         child_nodes = await find_child_nodes(task_id)
         logger.info(

@@ -201,7 +201,7 @@ class GlobalState:
         if nodes:
             self._node_mappings = await NodeMappingTable.load(self.db)
 
-    def initialize_logging(self, connection_string: str, dn_name: str, is_test: bool, log_level: str = "INFO"):
+    def initialize_logging(self, connection_string: str, db_name: str, is_test: bool, log_level: str = "INFO"):
         if is_test:
             # For tests, use simple console logging without the database handler
             # We use force=True to ensure it overrides any existing configuration (e.g. from pytest or PyCharm)
