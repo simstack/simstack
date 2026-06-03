@@ -153,6 +153,7 @@ class GlobalState:
         is_test = kwargs.get("is_test", False)
         config_file = kwargs.get("config_file", "simstack.toml")
 
+        print(f"Initializing context with connection_string1 {connection_string} {is_test}")
         toml_reader = None
         if is_test:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
@@ -160,12 +161,13 @@ class GlobalState:
             # use toml
             toml_reader = TomlReader(project_root, config_file=Path(config_file))
             db_info = DatabaseInformation.from_config(toml_reader.config)
+
         else:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
 
         # check that the database can be reached and set logging up
         self.initialize_database(db_info, is_test)
-        self.initialize_logging(connection_string, db_name, is_test, kwargs.get("log_level", "INFO"))
+        self.initialize_logging(db_info.connection_string, db_info.db_name, is_test, kwargs.get("log_level", "INFO"))
 
         logger = logging.getLogger("Context")
         if db_info.connection_string is not None:
