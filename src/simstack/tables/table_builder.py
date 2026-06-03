@@ -286,7 +286,7 @@ class TableBuilderBase(ABC):
 
         async def _run() -> None:
             await context.initialize(log_level=level, resource="self")
-            builder = builder_cls(context.db.db, write_schema=args.write_schema)
+            builder = builder_cls(context.db, write_schema=args.write_schema)
             await builder.build(dirs=dirs, drops=args.drops, exclude=args.exclude, clear=args.clear)
             await builder.second_stage(args.drops)
         loop.run_until_complete(_run())
