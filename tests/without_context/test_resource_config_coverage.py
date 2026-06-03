@@ -86,11 +86,12 @@ def test_run_with_runner(tmp_path, config_file):
     runner = MockNodeRunner()
     
     with tempfile.TemporaryDirectory() as test_cwd:
+        expected_cwd = os.path.realpath(test_cwd)
         old_cwd = os.getcwd()
         os.chdir(test_cwd)
         try:
             rc.run(node_runner=runner)
-            runner.subprocess.assert_called_once_with("run", "orca orca.inp", cwd=test_cwd)
+            runner.subprocess.assert_called_once_with("run", "orca orca.inp", cwd=expected_cwd)
         finally:
             os.chdir(old_cwd)
 
