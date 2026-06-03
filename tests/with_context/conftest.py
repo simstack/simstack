@@ -14,11 +14,10 @@ from simstack.util.project_root_finder import find_project_root
 def pytest_report_header(config):
     import os
     db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
-    use_real_db = db_connection_string.lower() != "none"
+    use_real_db = db_connection_string.lower() != "none" and db_connection_string != ""
 
     if use_real_db:
-        conn_str = db_connection_string if db_connection_string.lower() != "none" else os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017")
-        return f"SIMSTACK: Using real MongoDB database at: {conn_str}"
+        return f"SIMSTACK: Using real MongoDB database at: {db_connection_string}"
     else:
         return "SIMSTACK: Using mock database (patched for mongomock)"
 
@@ -60,6 +59,9 @@ async def initialized_context(tmp_path_factory):
     os.environ["TEMP"] = str(working_dir)
 
     project_root = find_project_root(skip_files=())
+    # Table builders and child processes rely on the same explicit project root to
+    # avoid falling back to the package-internal marker resolution path in tests.
+    os.environ["SIMSTACK_PROJECT_ROOT"] = str(project_root)
 
 
     await context.initialize(
@@ -109,7 +111,6 @@ async def initialized_context(tmp_path_factory):
         context.db.save_all = patched_save_all
         context.db.save_unchecked = patched_save
 
-    project_root = find_project_root()
     test_workdir = Path(project_root) / "test_workdir"
     test_workdir.mkdir(parents=True, exist_ok=True)
 
@@ -125,6 +126,8 @@ async def initialized_context(tmp_path_factory):
     await context.db.save(test_resource_definition)
 
     # Initialize model and node tables for both real and mock databases
+    # The runner flow looks up node/model mappings from the DB, so the test setup
+    # has to populate those tables before any runner-backed submission happens.
     dirs = ["src/simstack/models", "src/simstack/methods", "tests"]
     await make_model_table(context.db, dirs=dirs, drops="src", clear=True, project_root=project_root)
     await make_node_table(context.db, dirs=dirs, drops="src", clear=True, project_root=project_root)
@@ -148,7 +151,10 @@ async def initialized_context(tmp_path_factory):
     allowed_resources.clear_resources()
 
 
-    # Mock TomlReader to avoid file access
+    # Rebind the config from the DB-backed resource definition so tests and the
+    # child runner agree on the same "test" resource contract.
+    # Mocking TomlReader keeps this second-stage setup independent from the repo's
+    # checked-in simstack.toml content.
     mock_toml = MagicMock()
     mock_toml.use_db.return_value = True
     context.config = await ConfigReader.create("test", context.db, mock_toml, project_root=project_root, workdir=working_dir)
@@ -189,7 +195,7 @@ async def initialized_context(tmp_path_factory):
             # Close the main database connection
             if hasattr(context, "db") and context.db:
                 await context.db.close()
-                context.db = None
+                context._db = None
 
             # Close logging handler's MongoDB connection
             if hasattr(context, "log_handler") and context.log_handler:
@@ -202,12 +208,13 @@ async def initialized_context(tmp_path_factory):
                         # Fallback: directly close the client
                         handler.client.close()
                     context.log_handler.removeHandler(handler)
-                context.log_handler = None
+                context._log_handler = None
 
             # Reset context state
             context._initialized = False
-            context.path_manager = None
-            context.config = None
+            context._path_manager = None
+            context._config = None
+            context._resource_config = None
             print("Test context cleaned up")
     except Exception as e:
         print(f"Warning: Error during context cleanup: {e}")

@@ -16,6 +16,7 @@ def reset_global_state():
     GlobalState._initialized = False
 
 @pytest.mark.asyncio
+@pytest.mark.runner_smoke
 async def test_singleton_behavior():
     # Since 'context' is imported at module level, it might already be an instance.
     # We want to ensure that ANY GlobalState() call returns the same instance as 'context'
@@ -30,6 +31,7 @@ async def test_singleton_behavior():
     assert gs1 is gs2
 
 @pytest.mark.asyncio
+@pytest.mark.runner_smoke
 async def test_initialization_flow(tmp_path):
     gs = GlobalState()
     assert gs.initialized is False
@@ -74,13 +76,19 @@ async def test_initialization_flow(tmp_path):
         assert gs.config is mock_config_instance
         assert gs.resource_config is not None
         
-        # Verify read-only properties (no setters)
+        # Verify read-only properties where the runtime does not expose setters.
+        # config remains writable because the test harness rebinds it after injecting
+        # a mocked ConfigReader result.
         with pytest.raises(AttributeError):
             gs.db = None
         with pytest.raises(AttributeError):
             gs.resource_config = None
 
+        gs.config = None
+        assert gs.config is None
+
 @pytest.mark.asyncio
+@pytest.mark.runner_smoke
 async def test_getattribute_whitelist():
     gs = GlobalState()
     # These should NOT raise RuntimeError even if not initialized
@@ -92,6 +100,7 @@ async def test_getattribute_whitelist():
         _ = gs.some_random_attribute
 
 @pytest.mark.asyncio
+@pytest.mark.runner_smoke
 async def test_reinitialization_behavior():
     gs = GlobalState()
     with patch("simstack.core.context.DatabaseInformation") as mock_db_info_class, \

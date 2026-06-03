@@ -1,114 +1,114 @@
 import os
 import queue
+import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
 
 from simstack.core.context import context
-from simstack.models.resource_definition import ResourceDefinition
 from simstack.util.project_root_finder import find_project_root
+from tests.with_context.with_runner.runner_smoke_toml import write_runner_smoke_toml
 
 
 @pytest.fixture(scope="session", autouse=True)
 def test_runner(initialized_context):
     """
-    Fixture to run and manage the test runner process.
+    Start a real runner process against the shared test MongoDB instance.
     """
-
     start_local_runner = os.environ.get("START_LOCAL_RUNNER", "True").lower()
     if start_local_runner == "false":
-        return
-
-    import subprocess
-    import platform
-    import time
-
-    import logging
-    logger = logging.getLogger("simstack-runner")
+        pytest.fail("START_LOCAL_RUNNER=false disables the required runner smoke setup.", pytrace=False)
 
     # allowed_resources.add_resource("test_resource")
-    root = Path(find_project_root())
-    command = root / "src" / "simstack" / "core" / "simstack_runner.py"
-
-    print("environment_start", context.config.environment_start)
-
-    # Cross-platform command chaining
-    system = platform.system().lower()
-    env_start = (
-        context.config.environment_start.strip()
-        if context.config.environment_start
-        else ""
+    root = Path(find_project_root(skip_files=()))
+    connection_string = os.environ["SIMSTACK_TEST_DB_CONNECTION_STRING"].strip()
+    test_database_name = os.environ.get("SIMSTACK_TEST_DB", "ui_testing").strip()
+    runner_config_path = root / "runner-test.simstack.toml"
+    runner_pid_path = root / "test_workdir" / "runner_test.pid"
+    # Keep the parent smoke bootstrap and the child runner on the same test TOML shape.
+    write_runner_smoke_toml(
+        runner_config_path,
+        project_root=root,
+        workdir_self=context.config.workdir,
+        connection_string=connection_string,
+        database_name=test_database_name,
+        use_db=True,
     )
 
-    connection_string = os.environ.get("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
-    test_database_name = os.environ.get("SIMSTACK_TEST_DB", "none")
+    command = [
+        sys.executable,
+        "-m",
+        "simstack.core.runner",
+        "--resource",
+        "test",
+        "--no-pull",
+        "--detach",
+        "false",
+        "--polling-interval",
+        "1",
+        "--connection-string",
+        connection_string,
+        "--db-name",
+        test_database_name,
+        "--config",
+        str(runner_config_path),
+    ]
 
-    logger.info(f"Test context initialized with real MongoDB database at: {connection_string} and test database: {test_database_name}")
+    env = os.environ.copy()
+    # The runner subprocess imports simstack as a plain Python process rather than
+    # via the pytest session, so we pin both the project root and Python path here
+    # to keep module discovery and config resolution identical to the parent test.
+    env["SIMSTACK_PROJECT_ROOT"] = str(root)
+    existing_pythonpath = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = str(root / "src") if not existing_pythonpath else f"{root / 'src'}{os.pathsep}{existing_pythonpath}"
 
-    shared_args = f"uv run simstack_runner --resource test --no-pull --connection-string {connection_string} --db-name {test_database_name}"
-    if system == "windows":
-        if env_start:
-            command_string = f'cmd /c "{env_start} &&  {shared_args}"'
-        else:
-            command_string = f'cmd /c "{shared_args}"'
-    else:
-        if env_start:
-            command_string = f"{env_start} && {sys.executable} {command} --resource tests --no-pull"
-        else:
-            command_string = f"{sys.executable} {command} --resource tests --no-pull"
+    print(f"Starting subprocess with command: {str(command)}")
 
-    print(f"Starting subprocess with command: {command_string}")
+    # Remove possibly stale pid file
+    try:
+        runner_pid_path.unlink()
+    except FileNotFoundError:
+        pass
 
     # Start the process with non-blocking pipes
     process = subprocess.Popen(
-        command_string,
-        shell=True,
+        command,
+        cwd=root,
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        bufsize=0,
-    )  # Unbuffered
+    )
 
     # Queues to store output
-    stdout_queue = queue.Queue()
-    stderr_queue = queue.Queue()
+    stdout_queue: queue.Queue[str] = queue.Queue()
+    stderr_queue: queue.Queue[str] = queue.Queue()
 
-
-    def read_stdout():
-        import logging
-        logger = logging.getLogger("simstack-runner")
+    def _pump_stream(stream, target_queue: queue.Queue[str], prefix: str) -> None:
         try:
-            for line in iter(process.stdout.readline, ""):
+            for line in iter(stream.readline, ""):
                 if line:
-                    line = line.strip()
-                    stdout_queue.put(line)
-                    print(f"[SUBPROCESS STDOUT]: {line}")
-        except Exception as e:
-            print(f"Error reading stdout: {e}")
+                    stripped_line = line.rstrip()
+                    target_queue.put(stripped_line)
+                    print(f"[{prefix}] {stripped_line}")
         finally:
-            if process.stdout:
-                process.stdout.close()
-
-    def read_stderr():
-        import logging
-        logger = logging.getLogger("simstack-runner")
-        try:
-            for line in iter(process.stderr.readline, ""):
-                if line:
-                    line = line.strip()
-                    stderr_queue.put(line)
-                    print(f"[SUBPROCESS STDERR]: {line}")
-        except Exception as e:
-            print(f"Error reading stderr: {e}")
-        finally:
-            if process.stderr:
-                process.stderr.close()
+            if stream:
+                stream.close()
 
     # Start threads to read output immediately
-    stdout_thread = threading.Thread(target=read_stdout, daemon=True)
-    stderr_thread = threading.Thread(target=read_stderr, daemon=True)
+    stdout_thread = threading.Thread(
+        target=_pump_stream,
+        args=(process.stdout, stdout_queue, "SUBPROCESS STDOUT"),
+        daemon=True,
+    )
+    stderr_thread = threading.Thread(
+        target=_pump_stream,
+        args=(process.stderr, stderr_queue, "SUBPROCESS STDERR"),
+        daemon=True,
+    )
     stdout_thread.start()
     stderr_thread.start()
 
@@ -116,20 +116,19 @@ def test_runner(initialized_context):
     process.stdout_queue = stdout_queue
     process.stderr_queue = stderr_queue
 
-    # Give the process a moment to start
-    time.sleep(1)
-
-    # Check if process started successfully
+    # Fail fast with the runner output if startup crashes; otherwise later node
+    # submission failures are much harder to diagnose from CI logs.
+    time.sleep(2)
     if process.poll() is not None:
-        print(f"Process exited early with code: {process.returncode}")
-        # Try to get any error output
-        time.sleep(0.5)  # Give threads time to read final output
+        runner_output = []
         while not stderr_queue.empty():
-            print(f"[SUBPROCESS STDERR]: {stderr_queue.get()}")
+            runner_output.append(stderr_queue.get())
         while not stdout_queue.empty():
-            print(f"[SUBPROCESS STDOUT]: {stdout_queue.get()}")
-    else:
-        print("Process started successfully")
+            runner_output.append(stdout_queue.get())
+        raise RuntimeError(
+            "Runner process exited during test setup.\n"
+            + "\n".join(runner_output)
+        )
 
     yield process
 
@@ -142,14 +141,25 @@ def test_runner(initialized_context):
         except subprocess.TimeoutExpired:
             print("Process didn't terminate gracefully, killing...")
             process.kill()
-            process.wait()
+            process.wait(timeout=5)
 
     # Wait for threads to finish
     stdout_thread.join(timeout=1)
     stderr_thread.join(timeout=1)
 
+    # RunnerManager writes a per-resource pid file into the resource workdir.
+    # The smoke fixture owns that lifecycle too, otherwise repeated local runs
+    # leave a stale runner_test.pid behind.
+    try:
+        runner_pid_path.unlink()
+    except FileNotFoundError:
+        pass
+
+    try:
+        runner_config_path.unlink()
+    except FileNotFoundError:
+        pass
+
     print("Subprocess cleanup complete")
     # allowed_resources.remove_resource("test_resource")
-
-
 

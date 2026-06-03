@@ -51,19 +51,16 @@ jobs:
           db['init'].insert_one({'init': True})
           print('MongoDB initialized with user testing and database testing_data')
           "
+
       - name: Run tests with runner
         shell: bash
         env:
           SIMSTACK_TEST_DB_CONNECTION_STRING: 'mongodb://testing:testpassword@localhost:27017/'
           SIMSTACK_TEST_DB: testing_data
-          SIMSTACK_PROJECT_ROOT: ${{ github.workspace }}
         run: |
-          mkdir -p simstack
-          printf '[parameters]\n[parameters.general]\nuse_db = true\nworkdir_self = "${{ github.workspace }}/simstack"\n[parameters.db]\ndatabase = "testing_data"\nconnection_string = "mongodb://testing:testpassword@localhost:27017/"\n' > simstack.toml
-          cat simstack.toml
-          uv run create_model_table --dir tests
-          uv run create_node_table --dir tests
-          uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+          # Linux runs the real runner-backed smoke path, so it needs the
+          # temporary simstack.toml/bootstrap flow owned by the smoke script.
+          bash tests/with_context/with_runner/run_runner_smoke_tests.sh
 
   test-windows:
     name: Test on windows-latest (Python ${{ matrix.python-version }})
