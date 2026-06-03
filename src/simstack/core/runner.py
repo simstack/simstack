@@ -90,7 +90,7 @@ def runner_main():
     parser.add_argument(
         "--config",
         type=str,
-        default="config.toml",
+        #default="config.toml",
         help="Path to the configuration file",
     )
 

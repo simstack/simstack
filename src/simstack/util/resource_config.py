@@ -24,7 +24,7 @@ class ResourceConfig:
         self._resource = resource
         self._program = None
 
-        actual_path = config_path
+        actual_path = Path(config_path)
         if actual_path.is_dir():
             actual_path = actual_path / "config.toml"
 

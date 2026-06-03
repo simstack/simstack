@@ -79,15 +79,6 @@ class GlobalState:
             "_initialized",
             "initialize",
             "initialized",
-            "_db",
-            "_log_handler",
-            "_path_manager",
-            "_config",
-            "_model_mappings",
-            "_node_mappings",
-            "_resource_config",
-            "__class__",
-            "__dict__",
         ):
             return object.__getattribute__(self, name)
 
@@ -138,36 +129,41 @@ class GlobalState:
             # If already initialized, we just return if not in test mode,
             if not kwargs.get("is_test", False):
                 return
-        
-        # In test mode, we might want to re-initialize, so we don't return
-        # but we set it to True here anyway
-        self._initialized = True
 
+        self._initialized = True
         project_root = kwargs.get("project_root", find_project_root())
         if project_root is None:  # maybe None was passed
             project_root = find_project_root()
         kwargs["project_root"] = project_root  # overwrite in case it was not set before
+        simstack_toml_path = project_root / "simstack.toml"
         db_name: str | None = kwargs.get("db_name", None)
         connection_string: str | None = kwargs.get("connection_string", None)
         db_type: DBType | None = kwargs.get("db_type", None)
         is_test = kwargs.get("is_test", False)
-        config_file = kwargs.get("config_file", "simstack.toml")
+        resource_config_file = kwargs.get("config_file")
+        if resource_config_file is None:
+            resource_config_file = project_root / "config.toml"
+        else:
+            resource_config_file = Path(resource_config_file)
 
-        print(f"Initializing context with connection_string1 {connection_string} {is_test}")
+
         toml_reader = None
         if is_test:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
         elif db_name is None or connection_string is None or db_type is None:
             # use toml
-            toml_reader = TomlReader(project_root, config_file=Path(config_file))
-            db_info = DatabaseInformation.from_config(toml_reader.config)
-
+            toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
+            if toml_reader.config:
+                db_info = DatabaseInformation.from_config(toml_reader.config)
+            else:
+                db_info = DatabaseInformation(db_name, connection_string, db_type)
         else:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
 
         # check that the database can be reached and set logging up
         self.initialize_database(db_info, is_test)
         self.initialize_logging(db_info.connection_string, db_info.db_name, is_test, kwargs.get("log_level", "INFO"))
+
 
         logger = logging.getLogger("Context")
         if db_info.connection_string is not None:
@@ -187,7 +183,7 @@ class GlobalState:
         if not kwargs.get("skip_config", False):
             try:
                 self._config = await ConfigReader.create(resource_str, self._db, toml_reader, **kwargs)
-                self._resource_config = ResourceConfig(project_root, resource_str)
+                self._resource_config = ResourceConfig(resource_config_file, resource_str)
             except Exception as e:
                 if is_test:
                     logger.warning(f"Failed to initialize ConfigReader in test mode: {e}")
@@ -197,11 +193,13 @@ class GlobalState:
         # Initialize memory-loaded mappings
         await self.refresh_mappings()
 
+        self._initialized = True
+
     async def refresh_mappings(self, *, models: bool = True, nodes: bool = True):
         if models:
-            self._model_mappings = await ModelMappingTable.load(self.db)
+            self._model_mappings = await ModelMappingTable.load(self._db)
         if nodes:
-            self._node_mappings = await NodeMappingTable.load(self.db)
+            self._node_mappings = await NodeMappingTable.load(self._db)
 
     def initialize_logging(self, connection_string: str, db_name: str, is_test: bool, log_level: str = "INFO"):
         if is_test:
@@ -230,9 +228,9 @@ class GlobalState:
 
         try:
             self._db = Database.from_db_info(db_info)
-            if db_info.db_type == DBType.MONGODB:
+            if self._db is not None and db_info.db_type == DBType.MONGODB:
                 # Only ping real MongoDB connections
-                self.db.client.admin.command("ping")
+                self._db.client.admin.command("ping")
 
         except ConnectionError as e:
             if not is_test:

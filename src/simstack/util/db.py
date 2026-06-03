@@ -276,7 +276,7 @@ class Database:
         Returns:
             List of matching NodeRegistry instances
         """
-        submitted_tasks = await self.engine.find(
+        submitted_tasks = await self.find(
             NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED
         )
         # Then filter them in Python by checking the resource field

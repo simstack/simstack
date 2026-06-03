@@ -106,7 +106,7 @@ async def create_artifacts(
         # Concatenate artifacts from all child nodes
         child_artifacts = []
         for child_node in child_nodes:
-            loaded_artifacts = await find_all_artifacts(child_node)
+            loaded_artifacts = await find_all_artifacts(child_node, context.db)
             if len(loaded_artifacts) == 1:
                 child_artifacts.extend(loaded_artifacts)
             elif len(loaded_artifacts) > 1:
