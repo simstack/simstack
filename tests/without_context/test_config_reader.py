@@ -13,7 +13,6 @@ from simstack.models.resource_definition import ResourceDefinition
 from simstack.util.config_reader import ConfigReader
 from simstack.util.database_information import DatabaseInformation
 from simstack.util.db import Database
-import simstack.util.project_root_finder as project_root_finder
 from simstack.util.project_root_finder import find_project_root
 from simstack.util.toml_reader import TomlReader
 from simstack.util.path_manager import path_manager

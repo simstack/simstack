@@ -78,12 +78,12 @@ async def setup_pickled_function(initialized_context):
     await context.db.delete(function_pickle)
 
 
-@pytest.mark.skip(reason="function comparison works locally but fails in pipeline")
+
 @pytest.mark.asyncio
-async def test_import_function_from_node_model(setup_node_model):
+async def test_import_function_from_node_model(setup_node_model, initialized_context):
     """Test importing a function using NodeModel."""
     # Import the test_function using import_function
-    func = await import_function("tests.core.test_import_function.node_for_testing")
+    func = await import_function("tests.core.test_import_function.node_for_testing", context.db)
 
     # Verify that the function was imported correctly
     assert func is node_for_testing
@@ -91,24 +91,6 @@ async def test_import_function_from_node_model(setup_node_model):
     # Call the function and verify it works
     result = func(StringData(value="test"))
     assert result.value == "test"
-
-
-@pytest.mark.skip(reason="pickle function tests must be fixed")
-@pytest.mark.asyncio
-async def test_import_function_from_pickle(setup_pickled_function):
-    """Test importing a function from a FunctionPickle."""
-    # Import the another_test_function using import_function
-    func = await import_function(
-        "tests.core.test_import_function.another_node_for_testing"
-    )
-
-    # Verify that the function was imported correctly
-    assert func.__name__ == "another_node_for_testing"
-
-    # Call the function and verify it works
-    result = func(StringData(value="test"))
-    assert result.value == "test"
-
 
 @pytest.mark.asyncio
 async def test_import_function_nonexistent(initialized_context):

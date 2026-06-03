@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "master", "feature_new_datasets" ]
+    branches: [ "main", "master", "feature-release-candidate" ]
   pull_request:
-    branches: [ "main", "master", "feature-new-datasets" ]
+    branches: [ "main", "master", "feature-release-candidate" ]
   workflow_dispatch:  # This line enables the manual run button
 
 jobs:
