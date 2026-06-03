@@ -137,7 +137,7 @@ class TableBuilderBase(ABC):
             if any(part in default_exclude_parts for part in p.parts):
                 return True
 
-            # If caller didn't pass any excludes, we're done.
+            # If the caller didn't pass any excludes, we're done.
             if not exclude:
                 return False
 

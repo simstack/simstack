@@ -40,10 +40,10 @@ async def setup_node_model(initialized_context):
     )
     await context.db.save(node_model)
 
-    yield context.db.engine
+    yield context.db
 
     # Clean up the node_model
-    await context.db.engine.delete(node_model)
+    await context.db.delete(node_model)
 
 
 @pytest_asyncio.fixture
@@ -72,7 +72,7 @@ async def setup_pickled_function(initialized_context):
     )
     await context.db.save(node_model)
 
-    yield context.db.engine
+    yield context.db
 
     await context.db.delete(node_model)
     await context.db.delete(function_pickle)
