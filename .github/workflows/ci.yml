@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "master", "feature-release-candidate" ]
+    branches: [ "main", "master", "feature_new_datasets", "feature-release-candidate", "fix-runner-test-setup" ]
   pull_request:
     branches: [ "main", "master", "feature-release-candidate" ]
   workflow_dispatch:  # This line enables the manual run button
