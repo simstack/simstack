@@ -38,7 +38,7 @@ async def initialized_context(tmp_path_factory):
     if use_real_db:
         logger.info(f"Test context initialized with real MongoDB")
         if not _mongodb_available(db_connection_string):
-            raise RuntimeError(f"fSIMSTACK_TEST cannot reach db at: {db_connection_string}")
+            raise RuntimeError(f"SIMSTACK_TEST cannot reach db at: {db_connection_string}")
 
         # Test actual read/write operations
         if not await _test_mongodb_connection(db_connection_string, test_database_name):
@@ -61,7 +61,10 @@ async def initialized_context(tmp_path_factory):
 
     project_root = find_project_root(skip_files=())
 
-
+    from simstack.util.db import Database
+    # IMPORTANT: Do not move Database import inside initialize unless necessary.
+    # It seems to be fine here.
+    
     await context.initialize(
         console=False,
         is_test=True,
@@ -77,8 +80,20 @@ async def initialized_context(tmp_path_factory):
         await context.db.reset_database()
     else:
         # Patch ODMantic engine to work without sessions in test mode
-        async def patched_save(instance, **kwargs):
+        async def patched_save(instance, *args, **kwargs):
             """Patched save method that doesn't use sessions"""
+            # Handle engine.save(None, model) which is how it might be called
+            if instance is None and args:
+                 instance = args[0]
+                 args = args[1:]
+
+            # If instance is still None, it might be a call to validate args
+            if instance is None:
+                from odmantic import Model
+                if not args or not isinstance(args[0], Model):
+                     raise TypeError("AIOEngine.save() missing 1 required positional argument: 'instance'")
+                return instance
+
             # Use the collection directly without transactions
             collection = context.db.get_collection(type(instance))
 
@@ -105,9 +120,28 @@ async def initialized_context(tmp_path_factory):
             return results
 
         # Apply patches only for the mock database
-        context.db.save = patched_save
+        context.db._engine.save = patched_save
+        context.db._engine.save_all = patched_save_all
+        # DO NOT patch find/find_one on _engine with the facade methods,
+        # because the facade methods call _engine.find/find_one, creating recursion.
+        
+        context.db.save = Database.save.__get__(context.db, Database)
+        context.db.find = Database.find.__get__(context.db, Database)
+        context.db.find_one = Database.find_one.__get__(context.db, Database)
         context.db.save_all = patched_save_all
-        context.db.save_unchecked = patched_save
+        context.db.save_unchecked = Database.save_unchecked.__get__(context.db, Database)
+
+        # Mock database command for stats
+        async def patched_command(command, *args, **kwargs):
+            if isinstance(command, str):
+                command = {command: 1}
+            if "dbStats" in command:
+                return {"db": "ui_testing", "collections": 10, "objects": 100}
+            if "ping" in command:
+                return {"ok": 1.0}
+            raise NotImplementedError(f"Mock command {command} not implemented")
+
+        context.db.database.command = patched_command
 
     project_root = find_project_root()
     test_workdir = Path(project_root) / "test_workdir"

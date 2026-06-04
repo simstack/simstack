@@ -9,7 +9,7 @@ from .base_types import (
     BinaryOperationInput,
     IteratorInput,
 )
-from .file_list import FileListModel
+from .file_list import FileList, FileListModel
 from .models import (
     ModelMapping,
     NodeModel,

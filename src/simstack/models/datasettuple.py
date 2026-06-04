@@ -249,14 +249,16 @@ class DataSetTupleSection(EmbeddedModel):
 
         self.data.insert(index, model_ids)
 
-    async def extend(self, models_list: List[Tuple[Model, ...]]) -> None:
+    def extend(self, models_list: List[Tuple[Model, ...]]) -> None:
         """
         Extend the section with multiple tuples of models.
 
         :param models_list: List of tuples of model instances to extend with
         """
+        # This used to be async but the requirement is to keep it sync.
+        # Note: add_model_group is NOT async, so this is fine.
         for models in models_list:
-            await self.add_model_group(models)
+            self.add_model_group(models)
 
     async def pop(self, index: int = -1) -> Tuple[Model, ...]:
         """
