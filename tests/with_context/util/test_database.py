@@ -440,6 +440,7 @@ async def test_load_waiting_tasks_for_resource_filters_submitted_matching_resour
     from simstack.core.resources import allowed_resources
     allowed_resources.add_resource("database-test-resource")
     allowed_resources.add_resource("other-resource")
+    allowed_resources.add_resource("cluster-a")
         
     db = await _restore_database_facade_methods(monkeypatch)
 
@@ -484,11 +485,11 @@ async def test_load_waiting_tasks_for_local_includes_self_resource(
         _registry(
             "database_waiting_self_for_local",
             status=TaskStatus.SUBMITTED,
-            resource="self",
+            resource="test",
         )
     )
 
-    waiting = await db.load_waiting_tasks_for_resource("local")
+    waiting = await db.load_waiting_tasks_for_resource("test")
 
     assert self_resource_entry.id in {entry.id for entry in waiting}
 

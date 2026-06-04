@@ -78,7 +78,8 @@ class TableBuilderBase(ABC):
             await context.initialize()
 
     async def _process_simstack_modules(self, drops: str) -> None:
-        for module_name in find_simstack_modules():
+        all_modules = set(find_simstack_modules())
+        for module_name in all_modules:
             self.logger.debug("Processing module: %s", module_name)
             module = self._import_package_module(module_name)
             if module is None:

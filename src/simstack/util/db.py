@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from typing import List,  TypeVar, Union, Optional
 from bson import ObjectId
-from odmantic import Model
+from odmantic import Model, EmbeddedModel
 
 from simstack.core.definitions import DBType, TaskStatus
 from simstack.models.node_registry import NodeRegistry
@@ -138,31 +138,72 @@ class Database:
             await self._apply_postprocess(model_class, result)
         return result
 
-    async def _apply_postprocess(self, model_class: type, results: Any) -> None:
+    async def _apply_postprocess(self, model_class: type, result: Model) -> None:
         """Apply db_find_postprocess to results if defined on the model class."""
         post_process = getattr(model_class, "db_find_postprocess", None)
-        if not (post_process and callable(post_process)):
+
+
+        if post_process and callable(post_process):
+            import inspect
+
+            is_async = inspect.iscoroutinefunction(post_process)
+
+            try:
+                if is_async:
+                    await post_process(result, self)
+                else:
+                    logger.warning(
+                        f"Sync db_find_postprocess on {model_class.__name__} is deprecated. "
+                        "Please make it asynchronous."
+                    )
+                    post_process(result, self)
+            except Exception as e:
+                logger.error(
+                    f"Error during post-processing {model_class.__name__}: {e}",
+                    exc_info=True
+                )
+                # Should we re-raise or just log? Usually post-processing failure is critical.
+                raise
+
+        # Recursively apply postprocess to nested Model attributes
+        if not isinstance(result, Model) or isinstance(result, EmbeddedModel):
             return
 
-        import inspect
-        is_async = inspect.iscoroutinefunction(post_process)
-
         try:
-            if is_async:
-                await post_process(results, self)
-            else:
-                logger.warning(
-                    f"Sync db_find_postprocess on {model_class.__name__} is deprecated. "
-                    "Please make it asynchronous."
-                )
-                post_process(results, self)
+            for attr_name in dir(result):
+                if attr_name.startswith('_'):
+                    continue
+
+                try:
+                    attr_value = getattr(result, attr_name, None)
+                except Exception:
+                    continue
+
+                if attr_value is None or callable(attr_value):
+                    continue
+
+                # Handle direct Model instance
+                if isinstance(attr_value, Model) or isinstance(attr_value, EmbeddedModel):
+                    await self._apply_postprocess(type(attr_value), attr_value)
+
+                # Handle list of Models
+                elif isinstance(attr_value, (list, tuple)):
+                    for item in attr_value:
+                        if isinstance(item, Model) or isinstance(item, EmbeddedModel):
+                            await self._apply_postprocess(type(item), item)
+
+                # Handle dict with Model values
+                elif isinstance(attr_value, dict):
+                    for value in attr_value.values():
+                        if isinstance(value, Model) or isinstance(value, EmbeddedModel):
+                            await self._apply_postprocess(type(value), value)
+
         except Exception as e:
             logger.error(
-                f"Error during post-processing {model_class.__name__}: {e}",
+                f"Error during recursive post-processing traversal for {model_class.__name__}: {e}",
                 exc_info=True
             )
-            # Should we re-raise or just log? Usually post-processing failure is critical.
-            raise
+
 
     async def close(self):
         if self._client is not None:
@@ -334,31 +375,21 @@ class Database:
         """
         # Try to use the engine directly if find is failing in tests
         try:
-             submitted_tasks = await self.find(
-                NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED
-            )
+             submitted_tasks = await self.find(NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED)
         except Exception as e:
              logger.warning(f"Error calling self.find in load_waiting_tasks_for_resource: {e}. Falling back to engine.find.")
-             submitted_tasks = await self._engine.find(
-                NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED
-            )
-        
-        # Mongomock might return a cursor or a list.
-        if hasattr(submitted_tasks, "all") and callable(submitted_tasks.all):
-             submitted_tasks = await submitted_tasks.all()
+             submitted_tasks = await self._engine.find(NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED)
 
         # Then filter them in Python by checking the resource field
         matching_tasks = []
         for task in submitted_tasks:
             # Check if parameters has a resource attribute and if it matches our resource
             # the local runner will also do the immidiate tasks
-            if hasattr(task.parameters, "resource") and (
-                task.parameters.resource == resource
-                or (resource == "local" and task.parameters.resource == "self")
-            ):
-                if resource == "local" and task.parameters.resource == "self":
-                    logger.info(f"local runner taking job for 'self' with  {task.id}")
+            # TODO not the local runner the default resource should pick up self but there should be no seld
+            if hasattr(task.parameters, "resource") and task.parameters.resource == resource:
                 matching_tasks.append(task)
+            if hasattr(task.parameters, "resource") and task.parameters.resource == "self":
+                logger.error("There should be tasks submitted to self")
         return matching_tasks
 
     async def reset_database(self) -> None:

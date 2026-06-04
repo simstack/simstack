@@ -228,10 +228,9 @@ class Node:
 
         :rtype: NodeRegistry
         """
-
-        function_mapping = await context.db.find_one(
-            NodeModel, NodeModel.name == self.name
-        )
+        # TODO why does this fail when nodemapping succeeds ?
+        # function_mapping = await context.db.find_one(NodeModel, NodeModel.name == self.name)
+        function_mapping = context.node_mappings.get_by_name(self.name)
         if function_mapping is None:
             logger.error(f"Could not find function mapping for name: {self.name}")
             raise ValueError(f"Could not find function mapping for name: {self.name}")
@@ -240,14 +239,11 @@ class Node:
         input_tables = []
         for arg in self._args:
             # if there is no table for an arg raise an error
-            input_table_name = await context.db.find_one(
-                ModelMapping, ModelMapping.name == arg.__class__.__name__
-            )
+            # input_table_name = await context.db.find_one(ModelMapping, ModelMapping.name == arg.__class__.__name__)
+            input_table_name = context.model_mappings.get_by_name(arg.__class__.__name__)
             if input_table_name is None:
                 logger.error(f"Could not find table name for {arg.__class__.__name__}")
-                raise ValueError(
-                    f"Could not find table name for {arg.__class__.__name__}"
-                )
+                raise ValueError(f"Could not find table name for {arg.__class__.__name__}")
             if not isinstance(arg, Model):
                 logger.error(f"{arg.__class__.__name__} is not an odmantic Model")
                 raise ValueError(f"{arg.__class__.__name__} is not an odmantic Model")
@@ -256,12 +252,8 @@ class Node:
 
             # Check if the save operation was successful and returned a valid ID
             if argument_entry is None or argument_entry.id is None:
-                logger.error(
-                    f"Failed to save argument {arg} - returned None or invalid ID"
-                )
-                raise ValueError(
-                    f"Failed to save argument of type {arg.__class__.__name__}"
-                )
+                logger.error(f"Failed to save argument {arg} - returned None or invalid ID")
+                raise ValueError(f"Failed to save argument of type {arg.__class__.__name__}")
 
             input_ids.append(argument_entry.id)
             input_tables.append(input_table_name.mapping)
@@ -632,7 +624,7 @@ class Node:
                             if self.registry_entry.info_files is None:
                                 self.registry_entry.info_files = FileList()
                             await context.db.save(file_stack)
-                            await self.registry_entry.info_files.append(file_stack)
+                            self.registry_entry.info_files.append(file_stack)
                         else:
                             logger.error(
                                 f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"

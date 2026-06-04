@@ -159,7 +159,7 @@ async def initialized_context(tmp_path_factory):
     await context.db.save(test_resource_definition)
 
     # Initialize model and node tables for both real and mock databases
-    dirs = ["src/simstack/models", "src/simstack/methods", "tests"]
+    dirs = [] # "simstack/src/simstack/models", "simstack/src/simstack/methods", "tests"]
     await make_model_table(context.db, dirs=dirs, drops="src", clear=True, project_root=project_root)
     await make_node_table(context.db, dirs=dirs, drops="src", clear=True, project_root=project_root)
 

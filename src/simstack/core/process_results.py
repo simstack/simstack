@@ -60,15 +60,10 @@ async def process_result_helper(
             for file_stack in result.files:
                 if file_stack:
                     if isinstance(file_stack, FileStack):
-                        logger.info(
-                            f"Task task_id: {task_id} saving file: {file_stack.name} {file_stack.id}"
-                        )
-                        await file_list_model.append(file_stack)
-
+                        logger.info(f"Task task_id: {task_id} saving file: {file_stack.name} {file_stack.id}")
+                        file_list_model.append(file_stack)
                     else:
-                        logger.error(
-                            f"Task task_id: {task_id} cannot save file: FileStack expected but got {file_stack}"
-                        )
+                        logger.error(f"Task task_id: {task_id} cannot save file: FileStack expected but got {file_stack}")
                         raise ValueError(
                             f"Task task_id: {task_id} cannot save file: FileStack expected but got {type(file_stack)}"
                         )
@@ -76,16 +71,10 @@ async def process_result_helper(
                     logger.error(f"Task task_id: {task_id} saving file is NONE")
                     raise ValueError("saving file is NONE")
 
-            result_table_name = await context.db.find_one(
-                ModelMapping, ModelMapping.name == FileListModel.__name__
-            )
+            result_table_name = context.model_mappings.get_by_name(FileListModel.__name__)
             if result_table_name is None:
-                logger.error(
-                    f"Task task_id: {task_id} could not find table name for {FileListModel.__name__}"
-                )
-                raise ValueError(
-                    f"Could not find table name for {FileListModel.__name__}"
-                )
+                logger.error(f"Task task_id: {task_id} could not find table name for {FileListModel.__name__}")
+                raise ValueError(f"Could not find table name for {FileListModel.__name__}")
             result_tables.append(result_table_name.mapping)
             result_names.append("files")
             saved = await context.db.save(file_list_model)
@@ -113,36 +102,22 @@ async def process_result_helper(
                         )
                     result_ids.append(result_model.id)
                     result_names.append(key)
-                    result_table_name = await context.db.find_one(
-                        ModelMapping, ModelMapping.name == value.__class__.__name__
-                    )
+                    result_table_name = context.model_mappings.get_by_name(value.__class__.__name__)
                     if result_table_name is None:
-                        logger.error(
-                            f"Task task_id: {task_id} could not find table name for {value.__class__.__name__}"
-                        )
-                        raise ValueError(
-                            f"Could not find table name for {value.__class__.__name__}"
-                        )
+                        logger.error(f"Task task_id: {task_id} could not find table name for {value.__class__.__name__}")
+                        raise ValueError(f"Could not find table name for {value.__class__.__name__}")
                     result_tables.append(result_table_name.mapping)
                 else:
-                    raise ValueError(
-                        f"task_id: {task_id} cannot save model: {key} is not a model"
-                    )
+                    raise ValueError(f"task_id: {task_id} cannot save model: {key} is not a model")
     elif is_simstack_model(result) and isinstance(result, Model):
         result_model = await context.db.save(result)
         result_models.append(result_model)
         result_ids.append(result_model.id)
         result_names.append(result.__class__.__name__)
-        result_table_name = await context.db.find_one(
-            ModelMapping, ModelMapping.name == result.__class__.__name__
-        )
+        result_table_name = context.model_mappings.get_by_name(result.__class__.__name__)
         if result_table_name is None:
-            logger.error(
-                f"Task task_id: {task_id} could not find table name for {result.__class__.__name__}"
-            )
-            raise ValueError(
-                f"Could not find table name for {result.__class__.__name__}"
-            )
+            logger.error(f"Task task_id: {task_id} could not find table name for {result.__class__.__name__}")
+            raise ValueError(f"Could not find table name for {result.__class__.__name__}")
         result_tables.append(result_table_name.mapping)
 
     return result_ids, result_tables, result_models, result_names
