@@ -1,5 +1,4 @@
 from .simstack_model import simstack_model
-from .array_list import ArrayList
 from .artifact_models import ArtifactMapping, ArtifactModel
 from .base_types import (
     IntData,
@@ -9,6 +8,8 @@ from .base_types import (
     BinaryOperationInput,
     IteratorInput,
 )
+from .base_lists import StringDataList, StringList
+from .array_list import ArrayList
 from .file_list import FileList, FileListModel
 from .models import (
     ModelMapping,
@@ -54,4 +55,6 @@ __all__ = [
     "DataSetMetadata",
     "DataSetMetadataTemplate",
     "Image2DArtifactModel",
+    "StringDataList",
+    "StringList",
 ]

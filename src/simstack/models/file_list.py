@@ -4,7 +4,7 @@ from typing import List, Optional
 from odmantic import EmbeddedModel, Field, Model, ObjectId
 
 from simstack.models import simstack_model
-from simstack.models.base_lists import ObjectListMixin
+from simstack.util.object_list_mixin import ObjectListMixin
 from simstack.models.files import FileStack
 
 
