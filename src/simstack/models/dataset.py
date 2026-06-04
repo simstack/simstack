@@ -29,7 +29,7 @@ class DataSetSection(EmbeddedModel):
 
     model_config = {"extra": "forbid"}
 
-    async def add_item(self, item: Dict[str, Optional[Model]], name: Optional[str] = None) -> None:
+    async def add_row(self, item: Dict[str, Optional[Model]], name: Optional[str] = None) -> None:
         """
         Add a dictionary of models to this section.
 
@@ -84,6 +84,7 @@ class DataSetSection(EmbeddedModel):
 
         from simstack.util.importer import import_class_by_name
         from simstack.core.context import context
+        engine = context.db
         column_defs = []
         if not self.data:
             return column_defs
@@ -96,7 +97,7 @@ class DataSetSection(EmbeddedModel):
             
             # In DataSetTuple:
             # for model_group_id, model_type in zip(self.data[0], self.model_types):
-            #     model_class = await import_class_by_name(model_type)
+            #     model_class = await import_class_by_name(model_type, engine)
             #     model_instance = await engine.find_one(model_class, model_class.id == model_group_id)
             #     model_columns = make_column_defs_instance(model_instance)
             #     column_defs.extend(model_columns)
@@ -111,7 +112,7 @@ class DataSetSection(EmbeddedModel):
             if model_group_id is None:
                 continue
                 
-            model_class = await import_class_by_name(model_type)
+            model_class = await import_class_by_name(model_type, engine)
             model_instance = await engine.find_one(model_class, model_class.id == model_group_id)
             if model_instance:
                 model_columns = make_column_defs_instance(model_instance)
@@ -152,6 +153,7 @@ class DataSetSection(EmbeddedModel):
             raise KeyError(f"Item with name '{name}' not found")
 
         row = self.data[name]
+        from simstack.core.context import context
         db = context.db
         result = {}
         for key, model_id in row.items():
@@ -181,7 +183,7 @@ class DataSetSection(EmbeddedModel):
 @simstack_model
 class DataSet(Model):
     field_name: str = Field(default="dataset")
-    metadata: DataSetMetadata = Reference()
+    metadata: DataSetMetadata
     sections: Dict[str, DataSetSection] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
@@ -190,7 +192,7 @@ class DataSet(Model):
     def dataset_type(self) -> str:
         return self.metadata.dataset_type
 
-    async def save(self, engine):
+    async def save(self, db):
         structure = self.collect_structure()
         # metadata.validate_dict currently expects Dict[str, List[str]]
         # We might need to adjust it or pass something compatible.
@@ -206,7 +208,7 @@ class DataSet(Model):
             self.sections[key].column_defs = await section.make_column_defs()
             self.sections[key].table_entries = await section.make_table_entries()
 
-        await engine.save_unchecked(self)
+        await db.save_unchecked(self)
 
     def collect_structure(self) -> Dict[str, Dict[str, str]]:
         return {
