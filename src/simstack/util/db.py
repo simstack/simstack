@@ -208,10 +208,16 @@ class Database:
 
     @staticmethod
     def _iter_save_parts(root: Any) -> Iterable[Any]:
-        try:
-            values = list(vars(root).values())
-        except TypeError:
-            return []
+        if hasattr(root, "model_dump"):
+            try:
+                values = root.model_dump().values()
+            except Exception:
+                return []
+        else:
+            try:
+                values = list(vars(root).values())
+            except TypeError:
+                return []
 
         parts: list[Any] = []
         for value in values:

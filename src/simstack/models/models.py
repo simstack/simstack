@@ -1,3 +1,5 @@
+from pydantic import PlainSerializer
+from typing_extensions import Annotated
 import base64
 from typing import Optional, List, TypeVar
 from odmantic import Model, Field, EmbeddedModel
@@ -8,6 +10,10 @@ import logging
 logger = logging.getLogger("Models")
 
 T = TypeVar("T")
+
+B64Bytes = Annotated[
+    bytes, PlainSerializer(lambda b: base64.b64encode(b).decode("ascii"), when_used="json")
+]
 
 
 class ModelMapping(Model):
@@ -43,7 +49,6 @@ class NodeModel(Model):
 
     model_config = {
         "collection": "node_model",
-        "json_encoders": {bytes: lambda b: base64.b64encode(b).decode("ascii")},
     }
 
     
