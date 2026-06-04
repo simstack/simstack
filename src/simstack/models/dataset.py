@@ -29,7 +29,19 @@ class DataSetSection(EmbeddedModel):
 
     model_config = {"extra": "forbid"}
 
-    async def add_row(self, item: Dict[str, Optional[Model]], name: Optional[str] = None) -> None:
+    def _set_cache(self, cache: Dict[str, Dict[str, Model]]):
+        object.__getattribute__(self, "__dict__")["_cache"] = cache
+        return cache
+
+    def _get_cache(self) -> Dict[str, Dict[str, Model]]:
+        self_dict = object.__getattribute__(self, "__dict__")
+        cache = self_dict.get("_cache", None)
+        if cache is None:
+            cache = {}
+            cache = self._set_cache(cache)
+        return cache
+
+    def add_row(self, item: Dict[str, Optional[Model]], name: Optional[str] = None) -> None:
         """
         Add a dictionary of models to this section.
 
@@ -66,16 +78,17 @@ class DataSetSection(EmbeddedModel):
             else:
                 self.model_types[key] = model_name
 
-        # Save all models
+        # Save all models to cache and update data with IDs
         item_ids = {}
-        from simstack.core.context import context
+        cached_items = {}
         for key, model in item.items():
             if model is None:
                 continue
-            await context.db.save_unchecked(model)
             item_ids[key] = model.id
+            cached_items[key] = model
 
         self.data[name] = item_ids
+        self._get_cache()[name] = cached_items
 
     async def make_column_defs(self):
         """
@@ -205,6 +218,13 @@ class DataSet(Model):
             raise ValueError("Metadata validation failed")
 
         for key, section in self.sections.items():
+            # Save cached models in each section
+            cache = section._get_cache()
+            for row_name, row_models in cache.items():
+                for model_key, model in row_models.items():
+                    await db.save_unchecked(model)
+            section._set_cache({})
+
             self.sections[key].column_defs = await section.make_column_defs()
             self.sections[key].table_entries = await section.make_table_entries()
 
