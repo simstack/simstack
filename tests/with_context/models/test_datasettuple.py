@@ -30,13 +30,17 @@ class TestDataSetSection:
         await context.db.save(float_data)
         await context.db.save(string_data)
 
-        section = DataSetTupleSection()
-        await section.add_model_group((float_data, string_data))
+        try:
+            section = DataSetTupleSection()
+            await section.add_model_group((float_data, string_data))
 
-        assert len(section) == 1
-        assert section.model_types == ["FloatData", "StringData"]
-        assert section.data[0] == [float_data.id, string_data.id]
-        assert bool(section)
+            assert len(section) == 1
+            assert section.model_types == ["FloatData", "StringData"]
+            assert section.data[0] == [float_data.id, string_data.id]
+            assert bool(section)
+        finally:
+            await context.db.delete(float_data)
+            await context.db.delete(string_data)
 
     @pytest.mark.asyncio
     async def test_add_multiple_model_groups_same_types(self):
@@ -47,17 +51,22 @@ class TestDataSetSection:
         string1 = StringData(value="first")
         string2 = StringData(value="second")
 
-        for model in [float1, float2, string1, string2]:
+        models = [float1, float2, string1, string2]
+        for model in models:
             await context.db.save(model)
 
-        section = DataSetTupleSection()
-        await section.add_model_group((float1, string1))
-        await section.add_model_group((float2, string2))
+        try:
+            section = DataSetTupleSection()
+            await section.add_model_group((float1, string1))
+            await section.add_model_group((float2, string2))
 
-        assert len(section) == 2
-        assert section.model_types == ["FloatData", "StringData"]
-        assert section.data[0] == [float1.id, string1.id]
-        assert section.data[1] == [float2.id, string2.id]
+            assert len(section) == 2
+            assert section.model_types == ["FloatData", "StringData"]
+            assert section.data[0] == [float1.id, string1.id]
+            assert section.data[1] == [float2.id, string2.id]
+        finally:
+            for model in models:
+                await context.db.delete(model)
 
     @pytest.mark.asyncio
     async def test_add_model_group_type_mismatch_fails(self):
@@ -65,17 +74,22 @@ class TestDataSetSection:
         float_data = FloatData(value=1.0)
         string_data = StringData(value="test")
 
-        for model in [float_data, string_data]:
+        models = [float_data, string_data]
+        for model in models:
             await context.db.save(model)
 
-        section = DataSetTupleSection()
-        await section.add_model_group((float_data, string_data))
+        try:
+            section = DataSetTupleSection()
+            await section.add_model_group((float_data, string_data))
 
-        # Should fail when adding different types
-        with pytest.raises(
-            ValueError, match="Model types .* don't match section's expected types"
-        ):
-            await section.add_model_group((float_data, float_data))
+            # Should fail when adding different types
+            with pytest.raises(
+                ValueError, match="Model types .* don't match section's expected types"
+            ):
+                await section.add_model_group((float_data, float_data))
+        finally:
+            for model in models:
+                await context.db.delete(model)
 
     @pytest.mark.asyncio
     async def test_get_model_group(self):
@@ -86,16 +100,20 @@ class TestDataSetSection:
         await context.db.save(float_data)
         await context.db.save(string_data)
 
-        section = DataSetTupleSection()
-        await section.add_model_group((float_data, string_data))
+        try:
+            section = DataSetTupleSection()
+            await section.add_model_group((float_data, string_data))
 
-        retrieved = await section.get_model_group(0)
+            retrieved = await section.get_model_group(0)
 
-        assert len(retrieved) == 2
-        assert isinstance(retrieved[0], FloatData)
-        assert isinstance(retrieved[1], StringData)
-        assert retrieved[0].value == 42.0
-        assert retrieved[1].value == "answer"
+            assert len(retrieved) == 2
+            assert isinstance(retrieved[0], FloatData)
+            assert isinstance(retrieved[1], StringData)
+            assert retrieved[0].value == 42.0
+            assert retrieved[1].value == "answer"
+        finally:
+            await context.db.delete(float_data)
+            await context.db.delete(string_data)
 
     @pytest.mark.asyncio
     async def test_get_model_group_index_error(self):
@@ -113,20 +131,25 @@ class TestDataSetSection:
         string1 = StringData(value="one")
         string2 = StringData(value="two")
 
-        for model in [float1, float2, string1, string2]:
+        models = [float1, float2, string1, string2]
+        for model in models:
             await context.db.save(model)
 
-        section = DataSetTupleSection()
-        await section.add_model_group((float1, string1))
-        await section.add_model_group((float2, string2))
+        try:
+            section = DataSetTupleSection()
+            await section.add_model_group((float1, string1))
+            await section.add_model_group((float2, string2))
 
-        all_tuples = await section.get_all_model_groups()
+            all_tuples = await section.get_all_model_groups()
 
-        assert len(all_tuples) == 2
-        assert all_tuples[0][0].value == 1.0
-        assert all_tuples[0][1].value == "one"
-        assert all_tuples[1][0].value == 2.0
-        assert all_tuples[1][1].value == "two"
+            assert len(all_tuples) == 2
+            assert all_tuples[0][0].value == 1.0
+            assert all_tuples[0][1].value == "one"
+            assert all_tuples[1][0].value == 2.0
+            assert all_tuples[1][1].value == "two"
+        finally:
+            for model in models:
+                await context.db.delete(model)
 
     @pytest.mark.asyncio
     async def test_list_like_operations(self):
@@ -138,33 +161,38 @@ class TestDataSetSection:
         string2 = StringData(value="twenty")
         string3 = StringData(value="thirty")
 
-        for model in [float1, float2, float3, string1, string2, string3]:
+        models = [float1, float2, float3, string1, string2, string3]
+        for model in models:
             await context.db.save(model)
 
-        section = DataSetTupleSection()
+        try:
+            section = DataSetTupleSection()
 
-        # Test append
-        await section.append((float1, string1))
-        await section.append((float2, string2))
-        assert len(section) == 2
+            # Test append
+            await section.append((float1, string1))
+            await section.append((float2, string2))
+            assert len(section) == 2
 
-        # Test insert
-        await section.insert(1, (float3, string3))
-        assert len(section) == 3
+            # Test insert
+            await section.insert(1, (float3, string3))
+            assert len(section) == 3
 
-        # Test __contains__
-        assert (float1, string1) in section
-        assert (float3, string3) in section
+            # Test __contains__
+            assert (float1, string1) in section
+            assert (float3, string3) in section
 
-        # Test remove
-        await section.remove((float3, string3))
-        assert len(section) == 2
-        assert (float3, string3) not in section
+            # Test remove
+            await section.remove((float3, string3))
+            assert len(section) == 2
+            assert (float3, string3) not in section
 
-        # Test clear
-        section.clear()
-        assert len(section) == 0
-        assert section.model_types == []
+            # Test clear
+            section.clear()
+            assert len(section) == 0
+            assert section.model_types == []
+        finally:
+            for model in models:
+                await context.db.delete(model)
 
 
 class TestDataSet:
@@ -182,9 +210,12 @@ class TestDataSet:
 
         await dataset.save(context.db)
 
-        assert dataset.metadata.field_name == "test_empty_with_description"
-        assert len(dataset) == 0
-        assert len(dataset.sections) == 0
+        try:
+            assert dataset.metadata.field_name == "test_empty_with_description"
+            assert len(dataset) == 0
+            assert len(dataset.sections) == 0
+        finally:
+            await context.db.delete(dataset)
 
     @pytest.mark.asyncio
     async def test_dataset_with_sections(self, node_registry):
@@ -199,26 +230,34 @@ class TestDataSet:
         float_data = FloatData(value=100.0)
         string_data = StringData(value="hundred")
 
-        for model in [float_data, string_data]:
+        models = [float_data, string_data]
+        for model in models:
             await context.db.save(model)
 
-        # Create sections
-        section1 = DataSetTupleSection()
-        await section1.add_model_group((float_data, string_data))
+        try:
+            # Create sections
+            section1 = DataSetTupleSection()
+            await section1.add_model_group((float_data, string_data))
 
-        node_registry_instance = node_registry
-        section2 = DataSetTupleSection()
-        await section2.add_model_group((node_registry_instance, float_data))
+            node_registry_instance = node_registry
+            section2 = DataSetTupleSection()
+            await section2.add_model_group((node_registry_instance, float_data))
 
-        # Create dataset
-        dataset = DataSetTuple(metadata=metadata)
-        dataset["training"] = section1
-        dataset["validation"] = section2
-        await dataset.save(context.db)
+            # Create dataset
+            dataset = DataSetTuple(metadata=metadata)
+            dataset["training"] = section1
+            dataset["validation"] = section2
+            await dataset.save(context.db)
 
-        assert len(dataset) == 2
-        assert "training" in dataset
-        assert "validation" in dataset
+            try:
+                assert len(dataset) == 2
+                assert "training" in dataset
+                assert "validation" in dataset
+            finally:
+                await context.db.delete(dataset)
+        finally:
+            for model in models:
+                await context.db.delete(model)
 
     @pytest.mark.asyncio
     async def test_dict_like_operations(self, initialized_context):
@@ -234,35 +273,41 @@ class TestDataSet:
         float_data = FloatData(value=99.9)
         await context.db.save(float_data)
 
-        section = DataSetTupleSection()
-        await section.add_model_group((float_data,))
+        try:
+            section = DataSetTupleSection()
+            await section.add_model_group((float_data,))
 
-        # Test setitem and getitem
-        dataset["test"] = section
+            # Test setitem and getitem
+            dataset["test"] = section
 
 
-        await dataset.save(context.db)
-        assert dataset["test"] == section
+            await dataset.save(context.db)
+            try:
+                assert dataset["test"] == section
 
-        # Test keys, values, items
-        assert list(dataset.keys()) == ["test"]
-        assert list(dataset.values()) == [section]
-        assert list(dataset.items()) == [("test", section)]
+                # Test keys, values, items
+                assert list(dataset.keys()) == ["test"]
+                assert list(dataset.values()) == [section]
+                assert list(dataset.items()) == [("test", section)]
 
-        # Test get with default
-        assert dataset.get("test") == section
-        assert dataset.get("nonexistent") is None
+                # Test get with default
+                assert dataset.get("test") == section
+                assert dataset.get("nonexistent") is None
 
-        # Test pop
-        popped = dataset.pop("test")
-        assert popped == section
-        assert len(dataset) == 0
+                # Test pop
+                popped = dataset.pop("test")
+                assert popped == section
+                assert len(dataset) == 0
 
-        # Test setdefault
-        new_section = DataSetTupleSection()
-        returned = dataset.setdefault("new", new_section)
-        assert returned == new_section
-        assert dataset["new"] == new_section
+                # Test setdefault
+                new_section = DataSetTupleSection()
+                returned = dataset.setdefault("new", new_section)
+                assert returned == new_section
+                assert dataset["new"] == new_section
+            finally:
+                await context.db.delete(dataset)
+        finally:
+            await context.db.delete(float_data)
 
     @pytest.mark.asyncio
     async def test_dataset_persistence(self):
@@ -280,34 +325,41 @@ class TestDataSet:
         await context.db.save(float_data)
         await context.db.save(string_data)
 
-        # Create dataset with section
-        section = DataSetTupleSection()
-        await section.add_model_group((float_data, string_data))
+        try:
+            # Create dataset with section
+            section = DataSetTupleSection()
+            await section.add_model_group((float_data, string_data))
 
-        dataset = DataSetTuple(metadata=metadata)
-        dataset["main"] = section
+            dataset = DataSetTuple(metadata=metadata)
+            dataset["main"] = section
 
-        # Save dataset
-        await context.db.save(dataset)
-        dataset_id = dataset.id
+            # Save dataset
+            await context.db.save(dataset)
+            try:
+                dataset_id = dataset.id
 
-        # Load dataset from database
-        loaded_dataset = await context.db.find_one(DataSetTuple, DataSetTuple.id == dataset_id)
+                # Load dataset from database
+                loaded_dataset = await context.db.find_one(DataSetTuple, DataSetTuple.id == dataset_id)
 
-        assert loaded_dataset is not None
-        assert loaded_dataset.metadata.field_name == "test_persistence_tuple"
-        assert len(loaded_dataset) == 1
-        assert "main" in loaded_dataset
+                assert loaded_dataset is not None
+                assert loaded_dataset.metadata.field_name == "test_persistence_tuple"
+                assert len(loaded_dataset) == 1
+                assert "main" in loaded_dataset
 
-        # Test retrieving models from the loaded section
-        loaded_section = loaded_dataset["main"]
-        retrieved_models = await loaded_section.get_model_group(0)
+                # Test retrieving models from the loaded section
+                loaded_section = loaded_dataset["main"]
+                retrieved_models = await loaded_section.get_model_group(0)
 
-        assert len(retrieved_models) == 2
-        assert isinstance(retrieved_models[0], FloatData)
-        assert isinstance(retrieved_models[1], StringData)
-        assert retrieved_models[0].value == 123.45
-        assert retrieved_models[1].value == "persistence_test"
+                assert len(retrieved_models) == 2
+                assert isinstance(retrieved_models[0], FloatData)
+                assert isinstance(retrieved_models[1], StringData)
+                assert retrieved_models[0].value == 123.45
+                assert retrieved_models[1].value == "persistence_test"
+            finally:
+                await context.db.delete(dataset)
+        finally:
+            await context.db.delete(float_data)
+            await context.db.delete(string_data)
 
     @pytest.mark.asyncio
     async def test_complex_dataset_workflow(self, initialized_context):
@@ -320,72 +372,78 @@ class TestDataSet:
 
         # Create various test models - we'll create multiple node instances
         models = []
-        for i in range(5):
-            float_model = FloatData(value=float(i * 10))
-            string_model = StringData(value=f"sample_{i}")
+        try:
+            for i in range(5):
+                float_model = FloatData(value=float(i * 10))
+                string_model = StringData(value=f"sample_{i}")
 
-            # Create a new NodeRegistry for each iteration
-            from simstack.models.parameters import Parameters
+                # Create a new NodeRegistry for each iteration
+                from simstack.models.parameters import Parameters
 
-            parameters = Parameters()
-            node_model = NodeRegistry(
-                name=f"node_{i}",
-                status="completed",
-                input_ids=[],
-                result_ids=[],
-                function_hash=f"test_function_hash_{i}",
-                arg_hash=f"test_arg_hash_{i}",
-                func_mapping="test.module.function",
-                parameters=parameters,
-            )
+                parameters = Parameters()
+                node_model = NodeRegistry(
+                    name=f"node_{i}",
+                    status="completed",
+                    input_ids=[],
+                    result_ids=[],
+                    function_hash=f"test_function_hash_{i}",
+                    arg_hash=f"test_arg_hash_{i}",
+                    func_mapping="test.module.function",
+                    parameters=parameters,
+                )
 
-            models.extend([float_model, string_model, node_model])
-            for model in [float_model, string_model, node_model]:
-                await context.db.save(model)
+                models.extend([float_model, string_model, node_model])
+                for model in [float_model, string_model, node_model]:
+                    await context.db.save(model)
 
-        # Create a dataset with multiple sections
-        dataset = DataSetTuple(metadata=metadata)
+            # Create a dataset with multiple sections
+            dataset = DataSetTuple(metadata=metadata)
 
-        # Training section: (FloatData, StringData) tuples
-        training_section = DataSetTupleSection()
-        for i in range(0, 6, 3):  # indices 0, 3
-            await training_section.add_model_group((models[i], models[i + 1]))
+            # Training section: (FloatData, StringData) tuples
+            training_section = DataSetTupleSection()
+            for i in range(0, 6, 3):  # indices 0, 3
+                await training_section.add_model_group((models[i], models[i + 1]))
 
-        # Validation section: (FloatData, StringData) tuples
-        validation_section = DataSetTupleSection()
-        for i in range(9, 15, 3):  # indices 9, 12
-            await validation_section.add_model_group((models[i], models[i + 1]))
+            # Validation section: (FloatData, StringData) tuples
+            validation_section = DataSetTupleSection()
+            for i in range(9, 15, 3):  # indices 9, 12
+                await validation_section.add_model_group((models[i], models[i + 1]))
 
-        # Node section: single NodeRegistry tuples
-        node_section = DataSetTupleSection()
-        for i in range(2, 15, 3):  # indices 2, 5, 8, 11, 14
-            await node_section.add_model_group((models[i],))
+            # Node section: single NodeRegistry tuples
+            node_section = DataSetTupleSection()
+            for i in range(2, 15, 3):  # indices 2, 5, 8, 11, 14
+                await node_section.add_model_group((models[i],))
 
-        dataset["training"] = training_section
-        dataset["validation"] = validation_section
-        dataset["nodes"] = node_section
+            dataset["training"] = training_section
+            dataset["validation"] = validation_section
+            dataset["nodes"] = node_section
 
-        # Save and verify
+            # Save and verify
 
-        await dataset.save(context.db)
+            await dataset.save(context.db)
+            try:
+                assert len(dataset) == 3
+                assert len(dataset["training"]) == 2
+                assert len(dataset["validation"]) == 2
+                assert len(dataset["nodes"]) == 5
 
-        assert len(dataset) == 3
-        assert len(dataset["training"]) == 2
-        assert len(dataset["validation"]) == 2
-        assert len(dataset["nodes"]) == 5
+                # Verify model types
+                assert dataset["training"].model_types == ["FloatData", "StringData"]
+                assert dataset["validation"].model_types == ["FloatData", "StringData"]
+                assert dataset["nodes"].model_types == ["NodeRegistry"]
 
-        # Verify model types
-        assert dataset["training"].model_types == ["FloatData", "StringData"]
-        assert dataset["validation"].model_types == ["FloatData", "StringData"]
-        assert dataset["nodes"].model_types == ["NodeRegistry"]
+                # Test retrieval from each section
+                training_tuple = await dataset["training"].get_model_group(0)
+                assert isinstance(training_tuple[0], FloatData)
+                assert isinstance(training_tuple[1], StringData)
 
-        # Test retrieval from each section
-        training_tuple = await dataset["training"].get_model_group(0)
-        assert isinstance(training_tuple[0], FloatData)
-        assert isinstance(training_tuple[1], StringData)
-
-        node_tuple = await dataset["nodes"].get_model_group(0)
-        assert isinstance(node_tuple[0], NodeRegistry)
+                node_tuple = await dataset["nodes"].get_model_group(0)
+                assert isinstance(node_tuple[0], NodeRegistry)
+            finally:
+                await context.db.delete(dataset)
+        finally:
+            for model in models:
+                await context.db.delete(model)
 
     # ---------------------------------------------------------------------
     # Additional tests for DataSet.save() structure validation
@@ -406,40 +464,50 @@ class TestDataSet:
         await context.db.save(f)
         await context.db.save(s)
 
-        # First dataset defines the structure under dataset_type "ds_struct_v1"
-        meta1 = DataSetMetadata(field_name="ds_struct_v1", data={"desc": "v1"})
-        ds1 = DataSetTuple(metadata=meta1)
+        try:
+            # First dataset defines the structure under dataset_type "ds_struct_v1"
+            meta1 = DataSetMetadata(field_name="ds_struct_v1", data={"desc": "v1"})
+            ds1 = DataSetTuple(metadata=meta1)
 
-        sec_a = DataSetTupleSection()
-        await sec_a.add_model_group((f, s))  # ["FloatData", "StringData"]
+            sec_a = DataSetTupleSection()
+            await sec_a.add_model_group((f, s))  # ["FloatData", "StringData"]
 
-        sec_b = DataSetTupleSection()
-        await sec_b.add_model_group((node,))  # ["NodeRegistry"]
+            sec_b = DataSetTupleSection()
+            await sec_b.add_model_group((node,))  # ["NodeRegistry"]
 
-        ds1["a"] = sec_a
-        ds1["b"] = sec_b
+            ds1["a"] = sec_a
+            ds1["b"] = sec_b
 
-        await ds1.save(context.db)
+            await ds1.save(context.db)
 
-        # Second dataset with SAME dataset_type but DIFFERENT section names, same structure
-        meta2 = DataSetMetadata(field_name="ds_struct_v1", data={"desc": "v1 second"})
-        ds2 = DataSetTuple(metadata=meta2)
+            try:
+                # Second dataset with SAME dataset_type but DIFFERENT section names, same structure
+                meta2 = DataSetMetadata(field_name="ds_struct_v1", data={"desc": "v1 second"})
+                ds2 = DataSetTuple(metadata=meta2)
 
-        sec_train = DataSetTupleSection()
-        await sec_train.add_model_group((f, s))  # same ["FloatData", "StringData"]
+                sec_train = DataSetTupleSection()
+                await sec_train.add_model_group((f, s))  # same ["FloatData", "StringData"]
 
-        sec_nodes = DataSetTupleSection()
-        await sec_nodes.add_model_group((node,))  # same ["NodeRegistry"]
+                sec_nodes = DataSetTupleSection()
+                await sec_nodes.add_model_group((node,))  # same ["NodeRegistry"]
 
-        ds2["training"] = sec_train
-        ds2["nodes"] = sec_nodes
+                ds2["training"] = sec_train
+                ds2["nodes"] = sec_nodes
 
-        # Should not raise
+                # Should not raise
 
-        await ds2.save(context.db)
+                await ds2.save(context.db)
 
-        assert len(ds1) == 2
-        assert len(ds2) == 2
+                try:
+                    assert len(ds1) == 2
+                    assert len(ds2) == 2
+                finally:
+                    await context.db.delete(ds2)
+            finally:
+                await context.db.delete(ds1)
+        finally:
+            await context.db.delete(f)
+            await context.db.delete(s)
 
     @pytest.mark.asyncio
     async def test_dataset_save_same_type_different_structure_fails(
@@ -456,37 +524,47 @@ class TestDataSet:
         await context.db.save(f1)
         await context.db.save(s1)
 
-        # First dataset establishes structure: {"pair": ["FloatData", "StringData"], "nodes": ["NodeRegistry"]}
-        meta1 = DataSetMetadata(field_name="ds_struct_v2", data={"desc": "baseline"})
-        ds1 = DataSetTuple(metadata=meta1)
+        try:
+            # First dataset establishes structure: {"pair": ["FloatData", "StringData"], "nodes": ["NodeRegistry"]}
+            meta1 = DataSetMetadata(field_name="ds_struct_v2", data={"desc": "baseline"})
+            ds1 = DataSetTuple(metadata=meta1)
 
-        sec_pair = DataSetTupleSection()
-        await sec_pair.add_model_group((f1, s1))
+            sec_pair = DataSetTupleSection()
+            await sec_pair.add_model_group((f1, s1))
 
-        sec_nodes = DataSetTupleSection()
-        await sec_nodes.add_model_group((node,))
+            sec_nodes = DataSetTupleSection()
+            await sec_nodes.add_model_group((node,))
 
-        ds1["pair"] = sec_pair
-        ds1["nodes"] = sec_nodes
+            ds1["pair"] = sec_pair
+            ds1["nodes"] = sec_nodes
 
-        await ds1.save(context.db)
+            await ds1.save(context.db)
 
-        # Second dataset with SAME dataset_type but DIFFERENT structure: change "pair" to only ["FloatData"]
-        f2 = FloatData(value=99.9)
-        await context.db.save(f2)
+            try:
+                # Second dataset with SAME dataset_type but DIFFERENT structure: change "pair" to only ["FloatData"]
+                f2 = FloatData(value=99.9)
+                await context.db.save(f2)
 
-        meta2 = DataSetMetadata(
-            field_name="ds_struct_v2", data={"desc": "should fail"}
-        )
-        ds2 = DataSetTuple(metadata=meta2)
+                try:
+                    meta2 = DataSetMetadata(
+                        field_name="ds_struct_v2", data={"desc": "should fail"}
+                    )
+                    ds2 = DataSetTuple(metadata=meta2)
 
-        sec_pair_changed = DataSetTupleSection()
-        await sec_pair_changed.add_model_group((f2,))  # ["FloatData"] instead of ["FloatData", "StringData"]
+                    sec_pair_changed = DataSetTupleSection()
+                    await sec_pair_changed.add_model_group((f2,))  # ["FloatData"] instead of ["FloatData", "StringData"]
 
-        ds2["pair"] = sec_pair_changed  # keep the same key to emphasize structural mismatch
-        ds2["nodes"] = sec_nodes  # keep one section same
+                    ds2["pair"] = sec_pair_changed  # keep the same key to emphasize structural mismatch
+                    ds2["nodes"] = sec_nodes  # keep one section same
 
-        with pytest.raises(
-            ValueError, match="Section pair has different content in existing structure"
-        ):
-            await ds2.save(context.db)
+                    with pytest.raises(
+                        ValueError, match="Section pair has different content in existing structure"
+                    ):
+                        await ds2.save(context.db)
+                finally:
+                    await context.db.delete(f2)
+            finally:
+                await context.db.delete(ds1)
+        finally:
+            await context.db.delete(f1)
+            await context.db.delete(s1)

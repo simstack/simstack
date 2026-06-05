@@ -240,7 +240,9 @@ async def initialized_context(tmp_path_factory):
 
             # Reset context state
             context._initialized = False
-            context.path_manager = None
+            context.model_mappings = None
+            context.node_mappings = None
+            context.resource_config = None
             context.config = None
             print("Test context cleaned up")
     except Exception as e:

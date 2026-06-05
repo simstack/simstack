@@ -1,6 +1,7 @@
 import pytest
 import os
 import asyncio
+import pytest_asyncio
 from pathlib import Path
 from odmantic import Model, ObjectId
 from simstack.core.context import context
@@ -24,6 +25,31 @@ async def async_node(data: FloatData, **kwargs) -> FloatData:
 @node
 def failing_node(data: FloatData, **kwargs) -> FloatData:
     raise RuntimeError("Intentional failure")
+
+@pytest_asyncio.fixture
+async def setup_mappings(initialized_context):
+    """Fixture to set up standard mappings for tests."""
+    node_model = NodeModel(
+        name="sync_node",
+        function_mapping="simstack_tests.with_context.core.test_node_member_functions.sync_node",
+        input_mappings=[],
+        default_parameters=Parameters()
+    )
+    await context.db.save(node_model)
+    
+    model_mapping = ModelMapping(
+        name="FloatData",
+        mapping="simstack.models.FloatData",
+        collection_name="float_data"
+    )
+    await context.db.save(model_mapping)
+    await context.refresh_mappings()
+    
+    yield
+    
+    await context.db.delete(node_model)
+    await context.db.delete(model_mapping)
+    await context.refresh_mappings()
 
 @pytest.mark.asyncio
 async def test_node_init(initialized_context):
@@ -74,35 +100,22 @@ async def test_node_properties(initialized_context):
     assert n.status == TaskStatus.SUBMITTED
 
 @pytest.mark.asyncio
-async def test_make_registry_entry_success(initialized_context):
+async def test_make_registry_entry_success(initialized_context, setup_mappings):
     """Test successful creation of registry entry."""
-    # Ensure mappings exist
-    node_model = NodeModel(
-        name="sync_node",
-        function_mapping="simstack_tests.with_context.core.test_node_member_functions.sync_node",
-        input_mappings=[],
-        default_parameters=Parameters()
-    )
-    await context.db.save(node_model)
-    
-    model_mapping = ModelMapping(
-        name="FloatData",
-        mapping="simstack.models.FloatData",
-        collection_name="float_data"
-    )
-    await context.db.save(model_mapping)
-    await context.refresh_mappings()
-    
     data = FloatData(value=1.0)
     n = Node(data, func=sync_node._inner, is_async=False, parameters=Parameters())
     
     entry = await n.make_registry_entry("func_hash", "arg_hash")
-    assert entry is not None
-    assert entry.name == "sync_node"
-    assert entry.function_hash == "func_hash"
-    assert entry.arg_hash == "arg_hash"
-    assert n.registry_entry == entry
-    assert len(entry.input_ids) == 1
+    try:
+        assert entry is not None
+        assert entry.name == "sync_node"
+        assert entry.function_hash == "func_hash"
+        assert entry.arg_hash == "arg_hash"
+        assert n.registry_entry == entry
+        assert len(entry.input_ids) == 1
+    finally:
+        await context.db.delete(entry)
+        await context.db.delete(data)
 
 @pytest.mark.asyncio
 async def test_make_registry_entry_failure(initialized_context):
@@ -133,15 +146,6 @@ async def test_make_registry_entry_failure(initialized_context):
     
     # 2. Mock context.model_mappings.get_by_name AND ensure db.find_one doesn't accidentally return None for the node mapping
     # Actually, if we use a real NodeModel in DB, we just need to mock model_mappings
-    with patch.object(context.model_mappings, "get_by_name", return_value=None):
-        with patch.object(context.db, "find_one", side_effect=[node_model, None]):
-             with pytest.raises(ValueError, match="Could not find table name"):
-                await n.make_registry_entry("h1", "h2")
-
-@pytest.mark.asyncio
-async def test_get_node_registry(initialized_context):
-    """Test get_node_registry including caching and force_rerun."""
-    # Setup mappings
     node_model = NodeModel(
         name="sync_node",
         function_mapping="simstack_tests.with_context.core.test_node_member_functions.sync_node",
@@ -149,34 +153,50 @@ async def test_get_node_registry(initialized_context):
         default_parameters=Parameters()
     )
     await context.db.save(node_model)
-    model_mapping = ModelMapping(
-        name="FloatData",
-        mapping="simstack.models.FloatData",
-        collection_name="float_data"
-    )
-    await context.db.save(model_mapping)
-    await context.refresh_mappings()
-    
+    try:
+        await context.refresh_mappings()
+        with patch.object(context.model_mappings, "get_by_name", return_value=None):
+            with patch.object(context.db, "find_one", side_effect=[node_model, None]):
+                 with pytest.raises(ValueError, match="Could not find table name"):
+                    await n.make_registry_entry("h1", "h2")
+    finally:
+        await context.db.delete(node_model)
+        await context.refresh_mappings()
+
+@pytest.mark.asyncio
+async def test_get_node_registry(initialized_context, setup_mappings):
+    """Test get_node_registry including caching and force_rerun."""
     data = FloatData(value=1.0)
     n = Node(data, func=sync_node._inner, is_async=False, parameters=Parameters())
     
     # 1. First call - should create new entry
     status = await n.get_node_registry()
-    assert status == TaskStatus.SUBMITTED
-    first_id = n.id
-    
-    # 2. Second call - should load from DB
-    n2 = Node(data, func=sync_node._inner, is_async=False, parameters=Parameters())
-    status2 = await n2.get_node_registry()
-    assert status2 == TaskStatus.SUBMITTED
-    assert n2.id == first_id
-    
-    # 3. Call with force_rerun - should create new entry
-    params_rerun = Parameters(force_rerun=True)
-    n3 = Node(data, func=sync_node._inner, is_async=False, parameters=params_rerun)
-    status3 = await n3.get_node_registry()
-    assert status3 == TaskStatus.SUBMITTED
-    assert n3.id != first_id
+    entry1 = n.registry_entry
+    try:
+        assert status == TaskStatus.SUBMITTED
+        first_id = n.id
+        
+        # 2. Second call - should load from DB
+        n2 = Node(data, func=sync_node._inner, is_async=False, parameters=Parameters())
+        status2 = await n2.get_node_registry()
+        assert status2 == TaskStatus.SUBMITTED
+        assert n2.id == first_id
+        
+        # 3. Call with force_rerun - should create new entry
+        params_rerun = Parameters(force_rerun=True)
+        n3 = Node(data, func=sync_node._inner, is_async=False, parameters=params_rerun)
+        status3 = await n3.get_node_registry()
+        entry3 = n3.registry_entry
+        try:
+            assert status3 == TaskStatus.SUBMITTED
+            assert n3.id != first_id
+        finally:
+            if entry3:
+                await context.db.delete(entry3)
+    finally:
+        if entry1:
+            await context.db.delete(entry1)
+        await context.db.delete(data)
 
 @pytest.mark.asyncio
 async def test_load_results(initialized_context):
@@ -209,75 +229,93 @@ async def test_load_results(initialized_context):
     # Re-setup mappings and refresh
     model_mapping = ModelMapping(name="FloatData", mapping="simstack.models.FloatData", collection_name="float_data")
     await context.db.save(model_mapping)
-    await context.refresh_mappings()
-    
-    entry.status = TaskStatus.COMPLETED
-    entry.result_tables = ["simstack.models.FloatData"]
-    entry.result_ids = [res_data.id]
-    entry.result_names = ["output"]
-    await context.db.save(entry) # Ensure it's saved if load_results re-loads
-    
-    loaded_res = await n.load_results()
-    assert loaded_res is not None
-    assert isinstance(loaded_res, FloatData)
-    assert loaded_res.value == 5.0
+    try:
+        await context.refresh_mappings()
+        
+        entry.status = TaskStatus.COMPLETED
+        entry.result_tables = ["simstack.models.FloatData"]
+        entry.result_ids = [res_data.id]
+        entry.result_names = ["output"]
+        await context.db.save(entry) # Ensure it's saved if load_results re-loads
+        
+        try:
+            loaded_res = await n.load_results()
+            assert loaded_res is not None
+            assert isinstance(loaded_res, FloatData)
+            assert loaded_res.value == 5.0
+        finally:
+            await context.db.delete(entry)
+    finally:
+        await context.db.delete(model_mapping)
+        await context.db.delete(res_data)
+        await context.refresh_mappings()
 
 @pytest.mark.asyncio
-async def test_execute_node_locally_sync(initialized_context):
+async def test_execute_node_locally_sync(initialized_context, setup_mappings):
     """Test local execution of a synchronous node."""
-    # Setup mappings
-    node_model = NodeModel(name="sync_node", function_mapping="simstack_tests.with_context.core.test_node_member_functions.sync_node", input_mappings=[], default_parameters=Parameters())
-    await context.db.save(node_model)
-    model_mapping = ModelMapping(name="FloatData", mapping="simstack.models.FloatData", collection_name="float_data")
-    await context.db.save(model_mapping)
-    await context.refresh_mappings()
-    
     data = FloatData(value=10.0)
     n = Node(data, func=sync_node._inner, is_async=False, parameters=Parameters())
     await n.get_node_registry()
+    entry = n.registry_entry
     
-    result = await n.execute_node_locally()
-    assert isinstance(result, FloatData)
-    assert result.value == 11.0
-    assert n.status == TaskStatus.COMPLETED
+    try:
+        result = await n.execute_node_locally()
+        assert isinstance(result, FloatData)
+        assert result.value == 11.0
+        assert n.status == TaskStatus.COMPLETED
+    finally:
+        if entry:
+            # result is also saved to DB by process_results
+            if entry.result_ids:
+                for rid in entry.result_ids:
+                    # We need to find which model it is, but we know it's FloatData here
+                    # Database has no delete_by_id, so we use find_one then delete
+                    res_to_del = await context.db.find_one(FloatData, FloatData.id == rid)
+                    if res_to_del:
+                        await context.db.delete(res_to_del)
+            await context.db.delete(entry)
+        await context.db.delete(data)
 
 @pytest.mark.asyncio
-async def test_execute_node_locally_async(initialized_context):
+async def test_execute_node_locally_async(initialized_context, setup_mappings):
     """Test local execution of an asynchronous node."""
-    # Setup mappings
-    node_model = NodeModel(name="async_node", function_mapping="simstack_tests.with_context.core.test_node_member_functions.async_node", input_mappings=[], default_parameters=Parameters())
-    await context.db.save(node_model)
-    model_mapping = ModelMapping(name="FloatData", mapping="simstack.models.FloatData", collection_name="float_data")
-    await context.db.save(model_mapping)
-    await context.refresh_mappings()
-    
     data = FloatData(value=10.0)
     n = Node(data, func=async_node._inner, is_async=True, parameters=Parameters())
     await n.get_node_registry()
+    entry = n.registry_entry
     
-    result = await n.execute_node_locally()
-    assert isinstance(result, FloatData)
-    assert result.value == 12.0
-    assert n.status == TaskStatus.COMPLETED
+    try:
+        result = await n.execute_node_locally()
+        assert isinstance(result, FloatData)
+        assert result.value == 12.0
+        assert n.status == TaskStatus.COMPLETED
+    finally:
+        if entry:
+            if entry.result_ids:
+                for rid in entry.result_ids:
+                    res_to_del = await context.db.find_one(FloatData, FloatData.id == rid)
+                    if res_to_del:
+                        await context.db.delete(res_to_del)
+            await context.db.delete(entry)
+        await context.db.delete(data)
 
 @pytest.mark.asyncio
-async def test_execute_node_locally_failure(initialized_context):
+async def test_execute_node_locally_failure(initialized_context, setup_mappings):
     """Test failure during local execution."""
-    # Setup mappings
-    node_model = NodeModel(name="failing_node", function_mapping="simstack_tests.with_context.core.test_node_member_functions.failing_node", input_mappings=[], default_parameters=Parameters())
-    await context.db.save(node_model)
-    model_mapping = ModelMapping(name="FloatData", mapping="simstack.models.FloatData", collection_name="float_data")
-    await context.db.save(model_mapping)
-    await context.refresh_mappings()
-    
     data = FloatData(value=10.0)
     n = Node(data, func=failing_node._inner, is_async=False, parameters=Parameters())
     await n.get_node_registry()
+    entry = n.registry_entry
     
-    with pytest.raises(RuntimeError, match="Intentional failure"):
-        await n.execute_node_locally()
-    
-    assert n.status == TaskStatus.FAILED
+    try:
+        with pytest.raises(RuntimeError, match="Intentional failure"):
+            await n.execute_node_locally()
+        
+        assert n.status == TaskStatus.FAILED
+    finally:
+        if entry:
+            await context.db.delete(entry)
+        await context.db.delete(data)
 
 @pytest.mark.asyncio
 async def test_set_status(initialized_context):
@@ -293,37 +331,49 @@ async def test_set_status(initialized_context):
     await context.db.save(entry)
     n.registry_entry = entry
     
-    await n.set_status(TaskStatus.RUNNING)
-    assert n.status == TaskStatus.RUNNING
-    
-    # Check DB
-    updated_entry = await context.db.find_one(NodeRegistry, NodeRegistry.id == entry.id)
-    assert updated_entry.status == TaskStatus.RUNNING
+    try:
+        await n.set_status(TaskStatus.RUNNING)
+        assert n.status == TaskStatus.RUNNING
+        
+        # Check DB
+        updated_entry = await context.db.find_one(NodeRegistry, NodeRegistry.id == entry.id)
+        assert updated_entry.status == TaskStatus.RUNNING
+    finally:
+        await context.db.delete(entry)
 
 @pytest.mark.asyncio
-async def test_run_somewhere_local(initialized_context):
+async def test_run_somewhere_local(initialized_context, setup_mappings):
     """Test run_somewhere routing to local execution."""
-    # Setup mappings
-    node_model = NodeModel(name="sync_node", function_mapping="simstack_tests.with_context.core.test_node_member_functions.sync_node", input_mappings=[], default_parameters=Parameters())
-    await context.db.save(node_model)
-    model_mapping = ModelMapping(name="FloatData", mapping="simstack.models.FloatData", collection_name="float_data")
-    await context.db.save(model_mapping)
-    await context.refresh_mappings()
-
     # Add 'local' to allowed resources
     original_resources = allowed_resources.get_resources()
     allowed_resources._resources.append("local")
+    
+    # Save original context resource
+    original_context_resource = context.config._resource_str
+    context.config._resource_str = "local"
     
     try:
         data = FloatData(value=10.0)
         n = Node(data, func=sync_node._inner, is_async=False, parameters=Parameters(resource="local"))
         await n.get_node_registry()
+        entry = n.registry_entry
 
-        # context.config.resource is "local" in tests by default usually
-        result = await n.run_somewhere()
-        assert result.value == 11.0
+        try:
+            # context.config.resource is "local" now, so it should run locally
+            result = await n.run_somewhere()
+            assert result.value == 11.0
+        finally:
+            if entry:
+                if entry.result_ids:
+                    for rid in entry.result_ids:
+                        res_to_del = await context.db.find_one(FloatData, FloatData.id == rid)
+                        if res_to_del:
+                            await context.db.delete(res_to_del)
+                await context.db.delete(entry)
+            await context.db.delete(data)
     finally:
         allowed_resources._resources = original_resources
+        context.config._resource_str = original_context_resource
 
 @pytest.mark.asyncio
 async def test_process_results_variants(initialized_context):
