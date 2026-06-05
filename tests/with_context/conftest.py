@@ -60,6 +60,12 @@ async def initialized_context(tmp_path_factory):
     os.environ["TEMP"] = str(working_dir)
 
     project_root = find_project_root(skip_files=())
+    
+    import sys
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    if str(project_root / "simstack" / "src") not in sys.path:
+        sys.path.insert(0, str(project_root / "simstack" / "src"))
 
     from simstack.util.db import Database
     # IMPORTANT: Do not move Database import inside initialize unless necessary.

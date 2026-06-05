@@ -200,7 +200,12 @@ async def import_function(
     node_model = await _find_node_model(function_path, db)
 
     if node_model is None:
-        raise LookupError(f"task_id: {task_id} Function {function_path} not found in the NodeModel Table")
+        try:
+            module_path, function_name = function_path.rsplit(".", 1)
+            module = importlib.import_module(module_path)
+            return getattr(module, function_name)
+        except (ImportError, AttributeError, ValueError):
+            raise LookupError(f"task_id: {task_id} Function {function_path} not found in the NodeModel Table")
 
     try:
         return await function_from_model(node_model, task_id)
@@ -249,8 +254,14 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
             module_path, class_name = model_mapping.mapping.rsplit(".", 1)
 
         if model_mapping is None:
-            logger.error(f"Error finding ModelMapping for {class_name}")
-            raise LookupError(f"Error finding ModelMapping for {class_name}")
+            try:
+                # Import the module
+                module = importlib.import_module(module_path)
+                # Get the class from the module
+                return getattr(module, class_name)
+            except (ImportError, AttributeError):
+                logger.error(f"Error finding ModelMapping for {class_name}")
+                raise LookupError(f"Error finding ModelMapping for {class_name}")
 
         # Import the module
         module = importlib.import_module(module_path)
