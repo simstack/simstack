@@ -81,11 +81,9 @@ async def recompute_artifacts(node_registry: NodeRegistry):
             artifact_arguments = ArtifactArguments(result, node_registry.id)
             # Reconstruct the function arguments for artifact creation
             args = []
-            for table, table_id in zip(
-                node_registry.input_tables, node_registry.input_ids
-            ):
-                model = await import_class(table)
-                arg = await db.find_one(model, model.id == table_id)
+            for ref in node_registry.input_references:
+                model = await import_class(ref.variable_mapping)
+                arg = await db.find_one(model, model.id == ref.reference)
                 if arg:
                     args.append(arg)
 

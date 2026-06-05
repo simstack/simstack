@@ -120,7 +120,7 @@ async def test_resolve_resource_assignment_matches_path_and_normalizes_slurm(
             name="master-orca",
             regex_pattern="master.*.orca",
             priority=10,
-            resource_str="cluster-a",
+            resource_str="test",
             queue="slurm-queue",
             slurm_parameters_patch=SlurmParametersPatch(nodes=4, time="04:00:00"),
         )
@@ -135,7 +135,7 @@ async def test_resolve_resource_assignment_matches_path_and_normalizes_slurm(
     assert resolution.normalized_call_path == "master.step.orca"
     assert resolution.matched_rule is not None
     assert resolution.matched_rule.name == "master-orca"
-    assert resolution.parameters.resource == "cluster-a"
+    assert resolution.parameters.resource == "test"
     assert resolution.parameters.queue == "slurm-queue"
     assert resolution.parameters.slurm_parameters.nodes == 4
     assert resolution.parameters.slurm_parameters.time == "04:00:00"

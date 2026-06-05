@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from simstack.core.context import context
 from simstack.core.definitions import DBType
@@ -62,19 +63,17 @@ async def initialized_context(tmp_path_factory):
     project_root = find_project_root(skip_files=())
 
 
-    await context.initialize(
-        console=False,
-        is_test=True,
-        resource="self",
-        connection_string=db_connection_string if use_real_db else None,
-        db_type=DBType.MONGODB if use_real_db else DBType.IN_MEMORY,
-        db_name=test_database_name,
-        workdir=working_dir,
-        project_root=project_root
-    )
+
 
     if use_real_db:
-        await context.db.reset_database()
+        client = AsyncIOMotorClient(db_connection_string)
+        db = client.get_database(test_database_name)
+        collections = await db.list_collection_names()
+
+        for collection in collections:
+            await db[collection].drop()
+
+        logger.info(f"Database {test_database_name} has been reset")
     else:
         # Patch ODMantic engine to work without sessions in test mode
         async def patched_save(instance, **kwargs):
@@ -108,6 +107,17 @@ async def initialized_context(tmp_path_factory):
         context.db.save = patched_save
         context.db.save_all = patched_save_all
         context.db.save_unchecked = patched_save
+
+    await context.initialize(
+        console=False,
+        is_test=True,
+        resource="self",
+        connection_string=db_connection_string if use_real_db else None,
+        db_type=DBType.MONGODB if use_real_db else DBType.IN_MEMORY,
+        db_name=test_database_name,
+        workdir=working_dir,
+        project_root=project_root
+    )
 
     project_root = find_project_root()
     test_workdir = Path(project_root) / "test_workdir"

@@ -16,6 +16,7 @@ from .models import (
 )
 from .parameters import Parameters
 from .node_registry import NodeRegistry
+from .named_data_reference import NamedDataReference
 from .project import Project
 from .tag import Tag
 from .resource_assignment import ResourceAssignmentRule, SlurmParametersPatch
@@ -40,6 +41,7 @@ __all__ = [
     "FileListModel",
     "Parameters",
     "NodeRegistry",
+    "NamedDataReference",
     "Project",
     "Tag",
     "ResourceAssignmentRule",

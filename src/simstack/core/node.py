@@ -34,7 +34,7 @@ from simstack.core.simstack_result import SimstackResult
 from simstack.core.task_id import set_task_id, clear_task_id
 from simstack.models import ModelMapping, Parameters
 from simstack.models import NodeModel
-from simstack.models import NodeRegistry
+from simstack.models import NodeRegistry, NamedDataReference
 from simstack.models.file_list import FileList
 from simstack.models.files import FileStack
 from simstack.models.parameters import Resource, Queue
@@ -236,8 +236,7 @@ class Node:
             logger.error(f"Could not find function mapping for name: {self.name}")
             raise ValueError(f"Could not find function mapping for name: {self.name}")
 
-        input_ids = []
-        input_tables = []
+        input_references = []
         for arg in self._args:
             # if there is no table for an arg raise an error
             input_table_name = await context.db.find_one(
@@ -263,13 +262,15 @@ class Node:
                     f"Failed to save argument of type {arg.__class__.__name__}"
                 )
 
-            input_ids.append(argument_entry.id)
-            input_tables.append(input_table_name.mapping)
+            input_references.append(NamedDataReference.from_variable(
+                argument_entry,
+                variable_name="variable",
+                task_id=str(self.id)
+            ))
 
         self.registry_entry = NodeRegistry(
             name=self.name,
-            input_tables=input_tables,
-            input_ids=input_ids,
+            input_references=input_references,
             is_async=self.is_async,
             status=TaskStatus.SUBMITTED,
             custom_name=self.custom_name,
@@ -380,34 +381,25 @@ class Node:
         try:
             if self.registry_entry.status != TaskStatus.COMPLETED:
                 return None
-            if len(self.registry_entry.result_tables) == 0:
-                logger.warning(f"Task task_id: {self.id} completed but has no outputs")
-            if len(self.registry_entry.result_tables) != len(
-                self.registry_entry.result_ids
-            ):
-                raise ValueError(f"Task task_id: {self.id} has inconsistent results")
+            
             simstack_result = SimstackResult(status=self.registry_entry.status)
             result = None
-            for result_name, table_name, table_id in zip(
-                self.registry_entry.result_names,
-                self.registry_entry.result_tables,
-                self.registry_entry.result_ids,
-            ):
-                model = await import_class(table_name, db)
-                result = await db.find_one(model, model.id == table_id)
+            for ref in self.registry_entry.results_references:
+                model = await import_class(ref.variable_mapping, db)
+                result = await db.find_one(model, model.id == ref.reference)
                 if result is None:
                     await self.set_status(TaskStatus.FAILED)
                     logger.error(
-                        f"Task task_id: {self.id} could not find result with id {table_id} in table {table_name}"
+                        f"Task task_id: {self.id} could not find result with id {ref.reference} in table {ref.variable_mapping}"
                     )
                     raise ValueError(
-                        f"Task task_id: {self.id} could not find result with id {table_id} in table {table_name}"
+                        f"Task task_id: {self.id} could not find result with id {ref.reference} in table {ref.variable_mapping}"
                     )
-                simstack_result.__setattr__(result_name, result)
+                simstack_result.__setattr__(ref.variable_name, result)
 
             logger.info(f"Task task_id: {self.id} loaded outputs")
 
-            if len(self.registry_entry.result_tables) == 1:
+            if len(self.registry_entry.results_references) == 1:
                 return result  # there is only one result, return it directly
             else:
                 return simstack_result  # return the SimstackResult with all results
@@ -653,17 +645,18 @@ class Node:
                 elif hasattr(result, "task_status"):
                     new_task_status = result.task_status
 
-            result_ids, result_tables, result_models, result_names = await process_result_helper(result, str(self.id))
+            results_references, result_models = await process_result_helper(result, str(self.id))
 
-            self.registry_entry.result_ids = result_ids
-            self.registry_entry.result_tables = result_tables
-            self.registry_entry.result_names = result_names
+            self.registry_entry.results_references = results_references
             self.registry_entry.status = new_task_status
 
-            if len(result_ids) == 1:
-                result = result_models[
-                    0
-                ]  # this is a SimstackResult with just one returned model
+            if len(results_references) == 1:
+                result = result_models[0]  # for a SimstackResult with just one returned model we return the model directly
+        else:
+            logger.warning(
+                f"Task task_id: {self.id} returned a result of type {type(result)} which is not a SimstackModel or a SimstackResult"
+            )
+            new_task_status = TaskStatus.FAILED
         return new_task_status, result
 
     async def set_status(self, status: TaskStatus) -> None:
@@ -705,14 +698,14 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
     args = []
     db = context.db
 
-    for table, table_id in zip(registry_entry.input_tables, registry_entry.input_ids):
+    for ref in registry_entry.input_references:
         try:
-            model = await import_class(table, db)
-            arg = await db.find_one(model, model.id == table_id)
+            model = await import_class(ref.variable_mapping, db)
+            arg = await db.find_one(model, model.id == ref.reference)
             args.append(arg)
         except Exception as e:
             logger.exception(
-                f"Task task_id: {registry_entry.id} failed to load input {table} with id {table_id}: {str(e)}"
+                f"Task task_id: {registry_entry.id} failed to load input {ref.variable_mapping} with id {ref.reference}: {str(e)}"
             )
             return None
 
