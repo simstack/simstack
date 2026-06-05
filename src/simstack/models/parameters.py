@@ -3,6 +3,13 @@ from typing import Optional, List, ClassVar, Dict, Any
 from odmantic import Field, EmbeddedModel
 from pydantic import field_validator, model_validator
 
+def fix_list(v: Any) -> list:
+    if v is None:
+        return []
+    if not isinstance(v, list):
+        return v
+    return [item for item in v if item is not None]
+
 from simstack.core.resources import allowed_resources
 
 
@@ -67,7 +74,6 @@ class Queue(str, Enum):
     SLURM_DOCKER = "slurm-docker"
 
 
-# TODO Fix Slurm Parameters
 class SlurmParameters(EmbeddedModel):
     # Essential Resource Allocation Parameters
     nodes: Optional[int] = Field(default=1, ge=1, description="Number of compute nodes")
@@ -147,6 +153,11 @@ class SlurmParameters(EmbeddedModel):
         default_factory=list, description="Commands to run before main job"
     )
 
+    @field_validator("startup_commands", mode="before")
+    @classmethod
+    def validate_startup_commands_before(cls, v):
+        return fix_list(v)
+
     # Working Directory
     chdir: Optional[str] = Field(
         default=None, description="Working directory for the job"
@@ -169,6 +180,12 @@ class SlurmParameters(EmbeddedModel):
     no_requeue: Optional[bool] = Field(
         default=None, description="Prevent job from being requeued"
     )
+
+    @model_validator(mode="after")
+    def ensure_startup_commands(self) -> "SlurmParameters":
+        if self.startup_commands is None:
+            self.startup_commands = []
+        return self
 
     model_config: ClassVar[Dict[str, Any]] = {
         "extra": "forbid",
@@ -297,6 +314,14 @@ class SlurmParameters(EmbeddedModel):
 
         return "\n".join(lines)
 
+class ReschedulerParameters(EmbeddedModel):
+    shouldBeRescheduled: bool = Field(default=False, description="Whether the simulation should be rescheduled")
+    max_restarts: int = Field(default=3, ge=0, description="Maximum number of restarts")
+    delay: int = Field(default=60, ge=0, description="Delay between restarts in seconds")
+
+    model_config = {
+        "extra": "forbid"
+    }
 
 class Parameters(EmbeddedModel):
     force_rerun: bool = False
@@ -306,14 +331,14 @@ class Parameters(EmbeddedModel):
         default=False, description="Recompute artifacts for this node"
     )
     docker_image: Optional[str] = Field(default=None, description="Docker image to use")
-    other_value: str = Field(default="other")
-    test_dict: Dict[str, Any] = Field(default_factory=lambda: {"test": "value"})
-
-    slurm_parameters: SlurmParameters = Field(default=None)
-    # slurm_parameters_data: Dict[str, Any] = Field(default_factory=dict)
+    slurm_parameters: SlurmParameters = Field(default_factory=SlurmParameters)
+    retries: Optional[int] = Field(
+        default=0, ge=0, description="Number of times to restart the simulation"
+    )
+    rescheduler_parameters: ReschedulerParameters = Field(default_factory=ReschedulerParameters)
 
     model_config = {
-        "extra": "forbid",
+        "extra": "allow",
         "json_schema_extra": {
             "title": "Parameters",
             "description": "Parameters for running a simulation",
@@ -332,11 +357,15 @@ class Parameters(EmbeddedModel):
     @model_validator(mode="before")
     @classmethod
     def migrate_slurm_parameters(cls, data):
+        if not isinstance(data, dict):
+            return data
         if "slurm_parameters_data" in data and "slurm_parameters" not in data:
             data["slurm_parameters"] = SlurmParameters(**data["slurm_parameters_data"])
             del data["slurm_parameters_data"]
         if "slurm_parameters" not in data or data["slurm_parameters"] is None:
             data["slurm_parameters"] = SlurmParameters()
+        if "rescheduler_parameters" not in data or data["rescheduler_parameters"] is None:
+            data["rescheduler_parameters"] = ReschedulerParameters()
         return data
 
     @field_validator("resource", mode="before")
@@ -372,31 +401,3 @@ class Parameters(EmbeddedModel):
             raise ValueError(
                 f"resource must be a string, Resource object, or dictionary, got {type(v)}"
             )
-
-    # # property getters and setters to handle the slurm_parameters
-    # @property
-    # def slurm_parameters(self) -> Optional[SlurmParameters]:
-    #     if not self.slurm_parameters_data:
-    #         default_slurm = SlurmParameters()
-    #         self.slurm_parameters_data = default_slurm.model_dump()
-    #     return SlurmParameters(**self.slurm_parameters_data)
-    #
-    # @slurm_parameters.setter
-    # def slurm_parameters(self, value: Optional[SlurmParameters]) -> None:
-    #     if value is None:
-    #         self.slurm_parameters_data = {}
-    #     else:
-    #         self.slurm_parameters_data = value.model_dump()
-    #
-    # # Add any convenience methods to work with slurm parameters
-    # def set_slurm_config(self, **kwargs):
-    #     """Update slurm parameters with the given keyword arguments."""
-    #     current = self.slurm_parameters
-    #     if current is None:
-    #         current = SlurmParameters()
-    #
-    #     for key, value in kwargs.items():
-    #         if hasattr(current, key):
-    #             setattr(current, key, value)
-    #
-    #     self.slurm_parameters = current

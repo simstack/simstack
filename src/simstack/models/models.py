@@ -3,9 +3,18 @@ from typing import Optional, List, TypeVar
 from odmantic import Model, Field, EmbeddedModel
 from simstack.models.parameters import Parameters
 from simstack.models.pickle_models import FunctionPickle
+from pydantic import model_validator, field_validator
+from typing import Any
 import logging
 
 logger = logging.getLogger("Models")
+
+def fix_list(v: Any) -> list:
+    if v is None:
+        return []
+    if not isinstance(v, list):
+        return v
+    return [item for item in v if item is not None]
 
 T = TypeVar("T")
 
@@ -30,7 +39,7 @@ class DataMapping(EmbeddedModel):
 class NodeModel(Model):
     name: str = Field(unique=True)
     function_mapping: str = Field(unique=True)
-    input_mappings: List[DataMapping]
+    input_mappings: List[DataMapping] = Field(default_factory=list)
     result_mappings: List[DataMapping] = Field(default_factory=list)
     called_nodes: List[str] = Field(default_factory=list)
     description: Optional[str] = ""
@@ -40,6 +49,30 @@ class NodeModel(Model):
         FunctionPickle
     ] = None  # Reference to FunctionPickle if available
 
+    @model_validator(mode="before")
+    @classmethod
+    def validate_lists_before(cls, data):
+        if isinstance(data, dict):
+            for field in ["input_mappings", "result_mappings"]:
+                if field in data:
+                    data[field] = fix_list(data[field])
+                else:
+                    data[field] = []
+            if "called_nodes" in data:
+                data["called_nodes"] = fix_list(data["called_nodes"])
+            else:
+                data["called_nodes"] = []
+        return data
+
+    @model_validator(mode="after")
+    def ensure_lists_not_none(self) -> "NodeModel":
+        if self.input_mappings is None:
+            self.input_mappings = []
+        if self.result_mappings is None:
+            self.result_mappings = []
+        if self.called_nodes is None:
+            self.called_nodes = []
+        return self
 
     model_config = {
         "collection": "node_model",
