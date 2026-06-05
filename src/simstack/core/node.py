@@ -717,7 +717,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
     )
     try:
         wrapped_func = await import_function(
-            registry_entry.func_mapping, registry_entry.id
+            registry_entry.func_mapping, db, task_id=registry_entry.id
         )
         if wrapped_func is None:
             logger.error(
