@@ -2,6 +2,7 @@ import sys
 from typing import Dict, Any, Union
 from simstack.core.definitions import DBType
 
+
 class DatabaseInformation:
     """
     Represents a database and its connection information.
@@ -18,12 +19,14 @@ class DatabaseInformation:
         from_config_file(config, **kwargs):
             Initialize DatabaseInformation from TOML config or a database specified in TOML.
     """
-    def __init__(self, db_name: str, connection_string: str, db_type: DBType = DBType.MONGODB):
+
+    def __init__(
+        self, db_name: str, connection_string: str, db_type: DBType = DBType.MONGODB
+    ):
         self._db_name = db_name
         self._connection_string = connection_string
         self._db_type = db_type
 
-    
     @classmethod
     def from_config(cls, config: Dict[str, Any], **kwargs):
         """
@@ -40,7 +43,9 @@ class DatabaseInformation:
             # the package simstack.toml has no db_name and connections string
             db_name = common_params.get("database")
             if db_name is None:
-                print("You must specify a database name in parameters.db in the config file")
+                print(
+                    "You must specify a database name in parameters.db in the config file"
+                )
                 sys.exit(-1)
 
         connection_string = kwargs.get("connection_string")
@@ -52,24 +57,32 @@ class DatabaseInformation:
             sys.exit(-1)
 
         # Use in-memory database for tests
-        db_type = DBType.IN_MEMORY if is_test and connection_string is None else DBType.MONGODB
+        db_type = (
+            DBType.IN_MEMORY
+            if is_test and connection_string is None
+            else DBType.MONGODB
+        )
 
-        return cls(db_name=db_name, connection_string=connection_string, db_type=db_type)
+        return cls(
+            db_name=db_name, connection_string=connection_string, db_type=db_type
+        )
 
     @classmethod
     def from_db_info(cls, db_info: "DatabaseInformation"):
         return cls(db_info._db_name, db_info._connection_string, db_info._db_type)
 
-
     @classmethod
     def from_db_info_or_db(cls, db_info: Union["DatabaseInformation", "Database"]):
         from simstack.util.db import Database
+
         if isinstance(db_info, DatabaseInformation):
             return DatabaseInformation.from_db_info(db_info)
         elif isinstance(db_info, Database):
             return cls(db_info.database_name, "None", db_info.databae_type)
         else:
-            raise TypeError("db_info must be an instance of DatabaseInformation or Database")
+            raise TypeError(
+                "db_info must be an instance of DatabaseInformation or Database"
+            )
 
     @property
     def db_type(self) -> DBType:
@@ -78,11 +91,11 @@ class DatabaseInformation:
     @property
     def db_name(self) -> str:
         return self._db_name
-    
+
     @property
     def connection_string(self) -> str:
         return self._connection_string
-    
+
     def __repr__(self) -> str:
         return f"DatabaseInformation(db_name='{self._db_name}', connection_string='{self._connection_string}', db_type={self._db_type})"
 

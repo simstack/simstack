@@ -2,6 +2,7 @@ import asyncio
 import logging
 import platform
 import subprocess
+from typing import Optional
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
@@ -27,19 +28,19 @@ async def run_node_from_registry(registry_entry: NodeRegistry) -> bool:
         registry_entry.status = TaskStatus.FAILED
         await context.db.save(registry_entry)
         return False
-    registry_entry = node.registry_entry  # it may have changed
-    assert registry_entry is not None
+    registry_entry_update: Optional[NodeRegistry] = node.registry_entry  # it may have changed
+    assert registry_entry_update is not None
     if (
         node.status == TaskStatus.RETRIEVED
         or node.status == TaskStatus.SUBMITTED
         or node.status == TaskStatus.SLURM_QUEUED
     ) or (
-        node.status == TaskStatus.COMPLETED and registry_entry.parameters.force_rerun
+        node.status == TaskStatus.COMPLETED and registry_entry_update.parameters.force_rerun
     ):
         await node.execute_node_locally()
     else:
         logger.info(
-            f"task_id: {registry_entry.id} skipping task: {registry_entry.name} with status {registry_entry.status}"
+            f"task_id: {registry_entry_update.id} skipping task: {registry_entry_update.name} with status {registry_entry_update.status}"
         )
     return bool(node.status == TaskStatus.COMPLETED)
 
@@ -50,7 +51,7 @@ class NodeExecutionService(BaseService):
         resource: Resource,
         interval: int,
         max_concurrent: int,
-        shutdown_event: asyncio.Event | None,
+        shutdown_event: Optional[asyncio.Event],
         detach: bool = True,
         is_default: bool = False,
     ) -> None:

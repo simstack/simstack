@@ -1,8 +1,8 @@
-import os
 import socket
 from pathlib import Path
 import pytest
-from simstack.models.resource_definition import ResourceDefinition, GitRepo
+from simstack.models.resource_definition import ResourceDefinition
+
 
 class TestResourceDefinition:
     @pytest.fixture
@@ -17,7 +17,7 @@ class TestResourceDefinition:
         return {
             "ssh_key": ssh_key,
             "python_path": python_path,
-            "workdir": tmp_path / "work"
+            "workdir": tmp_path / "work",
         }
 
     def test_valid_resource_definition(self, valid_paths):
@@ -30,26 +30,22 @@ class TestResourceDefinition:
             hostname=socket.gethostname(),
             python_paths=[valid_paths["python_path"]],
             environment_start="conda activate env",
-
         )
 
         assert resource.resource_str == "local"
         assert Path(resource.ssh_key) == valid_paths["ssh_key"]
         assert len(resource.python_paths) == 1
 
-
     def test_optional_ssh_key(self, valid_paths):
         """Test that ssh_key is optional."""
-
 
         resource = ResourceDefinition(
             resource_str="local",
             ssh_key=None,
-            hostname = socket.gethostname(),
+            hostname=socket.gethostname(),
             workdir=valid_paths["workdir"],
             python_paths=[valid_paths["python_path"]],
             environment_start="cmd",
-
         )
         assert resource.ssh_key is None
 
@@ -64,7 +60,6 @@ class TestResourceDefinition:
                 hostname=socket.gethostname(),
                 python_paths=[valid_paths["python_path"]],
                 environment_start="cmd",
-
             )
             resource_definition.validate_ssh_key()
 
@@ -79,7 +74,6 @@ class TestResourceDefinition:
                 hostname=socket.gethostname(),
                 python_paths=["/path/to/nowhere/lib"],
                 environment_start="cmd",
-
             )
             resource_definition.validate_python_path()
 

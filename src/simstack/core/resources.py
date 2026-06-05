@@ -1,5 +1,6 @@
 import logging
 from typing import List
+
 logger = logging.getLogger("resources")
 
 
@@ -61,7 +62,7 @@ class AllowedResources:
         if hasattr(self, "_initialized") and self._initialized:
             return resource in self._resources
         else:
-            return True # before this is initialized, any resource is allowed
+            return True  # before this is initialized, any resource is allowed
 
     def __len__(self) -> int:
         """Return the number of resources."""
@@ -86,5 +87,6 @@ class AllowedResources:
     @property
     def initialized(self):
         return hasattr(self, "_initialized")
+
 
 allowed_resources = AllowedResources()

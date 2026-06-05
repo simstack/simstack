@@ -12,6 +12,7 @@ class PathManager:
     By default travers all directories below the project root.
     Uses DirectoryPath for efficient directory traversal.
     """
+
     _instance = None
 
     def __new__(cls, *args, **kwargs):
@@ -54,7 +55,9 @@ class PathManager:
 
         self._excluded_patterns = self.default_excludes()
 
-    def add_path(self, name: str, path: Path, drops: str = "", use_pickle: bool = False) -> None:
+    def add_path(
+        self, name: str, path: Path, drops: str = "", use_pickle: bool = False
+    ) -> None:
         """
         Add a path to the manager.
 
@@ -88,7 +91,9 @@ class PathManager:
 
         return self.paths[name]
 
-    def find_python_files(self, path_name: str, excluded_patterns: Optional[List[str]] = None) -> List[str]:
+    def find_python_files(
+        self, path_name: str, excluded_patterns: Optional[List[str]] = None
+    ) -> List[str]:
         """
         Find Python files in the specified path, excluding __init__.py files.
 
@@ -116,7 +121,9 @@ class PathManager:
         # Convert Path objects to strings for compatibility with existing code
         return [str(file_path) for file_path in dir_path.get_files_list()]
 
-    def iterate_python_files(self, path_name: str, excluded_patterns: Optional[List[str]] = None) -> Iterator[Path]:
+    def iterate_python_files(
+        self, path_name: str, excluded_patterns: Optional[List[str]] = None
+    ) -> Iterator[Path]:
         """
         Iterate over Python files in the specified path, excluding __init__.py files.
 
@@ -168,13 +175,17 @@ class PathManager:
         """
         # Get use_pickle from config
 
-        use_pickle = config.get("parameters", {}).get("general", {}).get("use_pickle", False)
+        use_pickle = (
+            config.get("parameters", {}).get("general", {}).get("use_pickle", False)
+        )
 
         path_manager = cls(use_pickle=use_pickle)
 
         config_paths = config.get("paths", {})
         for path_name, path_info in config_paths.items():
-            path_manager.add_path(path_name, path_info["path"], path_info.get("drops", ""))
+            path_manager.add_path(
+                path_name, path_info["path"], path_info.get("drops", "")
+            )
 
         return path_manager
 
@@ -219,5 +230,6 @@ class PathManager:
                 continue
 
         return best_match
+
 
 path_manager = PathManager()

@@ -86,9 +86,10 @@ def mock_context(setup_test_env):
 @pytest.fixture
 def mock_job_submission():
     """Mock the job submission and status check functions."""
-    with patch("src.simstack.models.files.submit_copy_job") as mock_submit, patch(
-        "src.simstack.models.files.check_job_status"
-    ) as mock_status:
+    with (
+        patch("src.simstack.models.files.submit_copy_job") as mock_submit,
+        patch("src.simstack.models.files.check_job_status") as mock_status,
+    ):
         # Configure the mock job status to simulate completion after a few checks
         mock_status.side_effect = ["PENDING", "RUNNING", "COMPLETED"]
 
@@ -134,7 +135,9 @@ def test_filestack_get_local_in_memory(setup_test_env, mock_context):
     file_stack = FileStack(stack_ref=stack_ref, locations=[instance])
 
     # Act
-    output_path = file_stack.get(mock_context.config.resource, local_dir=setup_test_env["output_dir"])
+    output_path = file_stack.get(
+        mock_context.config.resource, local_dir=setup_test_env["output_dir"]
+    )
 
     # Assert
     assert output_path.exists(), "Output file should exist"
@@ -351,15 +354,15 @@ def test_filestack_get_multi_remote_first_fails(
         assert output_path.name == "same_name.txt", "Should have the expected filename"
 
         # Verify that both remote instances were tried
-        assert (
-            mock_submit.call_count == 2
-        ), "Both remote instances should have been tried"
-        assert (
-            "remote1" in mock_submit.call_args_list[0][1]["source_node"]
-        ), "First attempt should be remote1"
-        assert (
-            "remote2" in mock_submit.call_args_list[1][1]["source_node"]
-        ), "Second attempt should be remote2"
+        assert mock_submit.call_count == 2, (
+            "Both remote instances should have been tried"
+        )
+        assert "remote1" in mock_submit.call_args_list[0][1]["source_node"], (
+            "First attempt should be remote1"
+        )
+        assert "remote2" in mock_submit.call_args_list[1][1]["source_node"], (
+            "Second attempt should be remote2"
+        )
 
 
 @pytest.mark.skip(reason="file copy tests must be fixed")

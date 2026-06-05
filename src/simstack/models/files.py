@@ -1,6 +1,5 @@
 import logging
 import os
-import tempfile
 import zlib
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
@@ -62,7 +61,6 @@ class FileStack(Model):
 
     @classmethod
     def from_string(cls, data_string: str, file_name: str):
-
         content = zlib.compress(data_string.encode("utf-8"))
         file_hash = hash_string(data_string)
         size = len(content)
@@ -142,17 +140,29 @@ class FileStack(Model):
                 # Compress the content using zlib
                 content = zlib.compress(file_content)
                 if task_id == "":
-                    logger.debug(f"Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes")
+                    logger.debug(
+                        f"Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes"
+                    )
                 else:
-                    logger.debug(f"task_id: {task_id} Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes")
+                    logger.debug(
+                        f"task_id: {task_id} Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes"
+                    )
                 # Check if compressed content exceeds MongoDB document size limit
-                if len(content) > 0.9*MONGODB_MAX_DOCUMENT_SIZE:
+                if len(content) > 0.9 * MONGODB_MAX_DOCUMENT_SIZE:
                     if task_id == "":
-                        logger.error(f"Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}")
-                        logger.error(f"Setting in_memory to False for file {source_path} and clear content")
+                        logger.error(
+                            f"Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}"
+                        )
+                        logger.error(
+                            f"Setting in_memory to False for file {source_path} and clear content"
+                        )
                     else:
-                        logger.error(f"task_id: {task_id} Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}")
-                        logger.error(f"task_id: {task_id} Setting in_memory to False for file {source_path} and clear content")
+                        logger.error(
+                            f"task_id: {task_id} Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}"
+                        )
+                        logger.error(
+                            f"task_id: {task_id} Setting in_memory to False for file {source_path} and clear content"
+                        )
                     in_memory = False
                     content = None
             except Exception as e:
@@ -170,7 +180,9 @@ class FileStack(Model):
 
         if not in_memory:
             location = FileInstance.from_local_file(
-                path=path, file_stack_id=file_stack.id, make_copy=not secure_source and not in_memory
+                path=path,
+                file_stack_id=file_stack.id,
+                make_copy=not secure_source and not in_memory,
             )
             file_stack.locations.append(location)
 
@@ -182,10 +194,10 @@ class FileStack(Model):
                 return self.hash
             else:
                 raise ValueError("FileStack is hashable but hash is not set.")
-            #elif self.in_memory and self.content:
+            # elif self.in_memory and self.content:
             #    # If the content is in memory, hash the compressed content
             #    return complex_hash_function(zlib.decompress(self.content))
-            #else:
+            # else:
             #    temp_dir = Path(tempfile.mkdtemp())
             #    local_file = self.get(None, local_dir=temp_dir)
             #    return complex_hash_function(local_file.read_bytes())
@@ -212,6 +224,7 @@ class FileStack(Model):
         :type local_dir: Path
         """
         from simstack.core.context import context
+
         return self.get_raw(context.config.resource, local_dir)
 
     def get_raw(self, local_resource: Resource, local_dir: Path = None) -> Path:
@@ -252,6 +265,7 @@ class FileStack(Model):
             path = Path(same_resource_instance.path)
             if not path.is_absolute():
                 from simstack.core.context import context
+
                 return context.config.workdir / path
             logger.info(f"Using existing instance {path} for {self.name}")
             return path
@@ -259,19 +273,22 @@ class FileStack(Model):
             local_dir.mkdir(parents=True, exist_ok=True)
             logger.error("No suitable file instance found for copying.")
             from simstack.methods.get_file import get_file
-            return get_file(self,local_resource, local_dir / self.name)
 
+            return get_file(self, local_resource, local_dir / self.name)
 
     def str(self):
         return f"FileStack(name={self.name}, size={self.size}, is_hashable={self.is_hashable}, in_memory={self.in_memory}, locations={self.locations})"
+
 
 class FileGetterArgs(Model):
     file_stack: FileStack = Reference()
     local_resource: Resource
     local_dir: Path
 
+
 async def main():
     from simstack.core.context import context
+
     await context.initialize()
 
     # write a file test.txt
@@ -287,5 +304,6 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     logging.basicConfig(level=logging.DEBUG)
     asyncio.run(main())

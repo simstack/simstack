@@ -13,7 +13,9 @@ from simstack.models import simstack_model
 from simstack.models.files import FileStack
 
 
-def _format_df_for_console(df: pd.DataFrame, precision: int = 2, max_rows: int = 60, max_cols: int = 30) -> str:
+def _format_df_for_console(
+    df: pd.DataFrame, precision: int = 2, max_rows: int = 60, max_cols: int = 30
+) -> str:
     """
     Console-safe DataFrame formatting (no optional deps like jinja2 required).
     """
@@ -28,10 +30,14 @@ def _format_df_for_console(df: pd.DataFrame, precision: int = 2, max_rows: int =
         df_out[numeric_cols] = df_out[numeric_cols].round(precision)
 
     with pd.option_context(
-        "display.max_rows", max_rows,
-        "display.max_columns", max_cols,
-        "display.width", 0,  # auto-detect width
-        "display.max_colwidth", 200,
+        "display.max_rows",
+        max_rows,
+        "display.max_columns",
+        max_cols,
+        "display.width",
+        0,  # auto-detect width
+        "display.max_colwidth",
+        200,
     ):
         return df_out.to_string(index=False)
 
@@ -191,7 +197,8 @@ class PandasModel(Model):
             return f"PandasModel with shape {df.shape}:\n{df.head(5).to_string()}\n..."
         return f"PandasModel with shape {df.shape}:\n{df.to_string()}"
 
-#TODO move to test
+
+# TODO move to test
 async def main():
     await context.initialize()
     # Create the data structure

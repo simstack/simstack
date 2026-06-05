@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
-from typing import Optional
 
 from simstack.util.project_root_finder import find_project_root
+
 
 def transform_file_name(path_str: str | Path, project_root: Path | None = None) -> Path:
     """
@@ -29,7 +29,7 @@ def transform_file_name(path_str: str | Path, project_root: Path | None = None) 
     replacements = {
         "$HOME": os.environ.get("HOME", str(Path.home())),
         "$TEMP": os.environ.get("TEMP", os.environ.get("TMP", "/tmp")),
-        "$PROJECT": os.environ.get("PROJECT", str(project_root))
+        "$PROJECT": os.environ.get("PROJECT", str(project_root)),
     }
 
     for var, value in replacements.items():

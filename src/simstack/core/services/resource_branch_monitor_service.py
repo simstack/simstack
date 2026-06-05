@@ -9,6 +9,7 @@ from simstack.core.services.base_service import RestartService
 
 logger = logging.getLogger("NodeRunner")
 
+
 class ResourceBranchMonitorService(RestartService):
     """
     Monitors the ResourceDefinition for the current resource.
@@ -24,7 +25,7 @@ class ResourceBranchMonitorService(RestartService):
             *cmd,
             cwd=str(self._project_dir),
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await process.communicate()
         if process.returncode != 0:
@@ -35,12 +36,11 @@ class ResourceBranchMonitorService(RestartService):
     async def _get_current_branch(self) -> str:
         return await self._run_command(["git", "rev-parse", "--abbrev-ref", "HEAD"])
 
-    async def execute(self):
+    async def execute(self) -> None:
         resource_def = await context.db.find_one(
-            ResourceDefinition, 
-            ResourceDefinition.resource_str == str(self._resource)
+            ResourceDefinition, ResourceDefinition.resource_str == str(self._resource)
         )
-        
+
         if not resource_def:
             return
 
@@ -48,11 +48,13 @@ class ResourceBranchMonitorService(RestartService):
         current_branch = await self._get_current_branch()
 
         if target_branch and current_branch and target_branch != current_branch:
-            logger.info(f"Branch change detected: {current_branch} -> {target_branch}. Updating...")
-            
+            logger.info(
+                f"Branch change detected: {current_branch} -> {target_branch}. Updating..."
+            )
+
             # 1. Stash existing changes
             await self._run_command(["git", "stash"])
-            
+
             # 2. Checkout new branch
             checkout_res = await self._run_command(["git", "checkout", target_branch])
             if not checkout_res:
@@ -65,7 +67,6 @@ class ResourceBranchMonitorService(RestartService):
 
             # 4. Trigger Restart
             await self.write_resource_event(
-                RunnerEventEnum.SHUTDOWN, 
-                message=f"Branch switched to {target_branch}"
+                RunnerEventEnum.SHUTDOWN, message=f"Branch switched to {target_branch}"
             )
             await self.trigger_restart()

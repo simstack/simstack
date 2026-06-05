@@ -4,12 +4,12 @@ import logging
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.node import node_from_database
 from simstack.core.services.node_execution_service import run_node_from_registry
 
 logger = logging.getLogger("Run Node")
 
-async def run_node_from_id(node_id: str, resource_str: str):
+
+async def run_node_from_id(node_id: str, resource_str: str) -> bool:
     """Run a single node by its ID from the database"""
     await context.initialize(resource=resource_str)
     registry_entry = None
@@ -25,6 +25,7 @@ async def run_node_from_id(node_id: str, resource_str: str):
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
         return False
+
 
 def run_node_main():
     parser = argparse.ArgumentParser(description="Run nodes for a specific resource")
@@ -51,7 +52,6 @@ def run_node_main():
     )
 
     args = parser.parse_args()
-
 
     if args.node_id:
         # Run a specific node once

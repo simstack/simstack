@@ -11,7 +11,7 @@ from typing import Dict, Optional, Tuple
 
 
 def parse_spec(
-    cmd_file: Path
+    cmd_file: Path,
 ) -> Tuple[Optional[str], Dict[str, str], Optional[str], Optional[int]]:
     cwd: Optional[str] = None
     env: Dict[str, str] = {}
@@ -49,9 +49,10 @@ def run_command(
 ) -> int:
     proc_env = os.environ.copy()
     proc_env.update(env)
-    with out_file.open("w", encoding="utf-8") as out, err_file.open(
-        "w", encoding="utf-8"
-    ) as err:
+    with (
+        out_file.open("w", encoding="utf-8") as out,
+        err_file.open("w", encoding="utf-8") as err,
+    ):
         try:
             proc = subprocess.run(
                 command,

@@ -451,13 +451,13 @@ def make_column_defs_helper(
 
 
 def make_column_defs_instance(
-        model_instance: Model,
-        table_name: Optional[str] = None,
-        max_recursion_level: int = 1,
-        drop_id: bool = True,
-        current_level: int = 0,
-        visited: Optional[Set[int]] = None,
-        field_prefix: str = "",
+    model_instance: Model,
+    table_name: Optional[str] = None,
+    max_recursion_level: int = 1,
+    drop_id: bool = True,
+    current_level: int = 0,
+    visited: Optional[Set[int]] = None,
+    field_prefix: str = "",
 ) -> List[Dict[str, Any]]:
     """
     Create column definitions for AG Grid based on a model instance.

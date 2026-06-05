@@ -51,6 +51,7 @@ class DataSetTupleSection(EmbeddedModel):
 
         # Verify that all the models are already stored, otherwise store them
         from simstack.core.context import context
+
         engine = context.db
         stored_models = []
         model_ids = []
@@ -61,7 +62,6 @@ class DataSetTupleSection(EmbeddedModel):
             stored_model = await engine.save(model)
             stored_models.append(stored_model)
             model_ids.append(model.id)
-
 
         # If this is the first tuple, set the model types
         if not self.model_types:
@@ -85,15 +85,19 @@ class DataSetTupleSection(EmbeddedModel):
         if len(self.data) == 0:
             return column_defs
         from simstack.core.context import context
+
         db = context.db
         from simstack.util.importer import import_class_by_name
+
         for model_group_id, model_type in zip(self.data[0], self.model_types):
-            model_class = await import_class_by_name(model_type,db)
+            model_class = await import_class_by_name(model_type, db)
             model_instance = await db.find_one(
                 model_class, model_class.id == model_group_id
             )
             if model_instance is None:
-                raise ValueError(f"DB-Save Model of type {model_type} with id {model_group_id} not found")
+                raise ValueError(
+                    f"DB-Save Model of type {model_type} with id {model_group_id} not found"
+                )
             model_columns = make_column_defs_instance(model_instance)
             column_defs.extend(model_columns)
         return column_defs
@@ -102,6 +106,7 @@ class DataSetTupleSection(EmbeddedModel):
         all_data = []
         from simstack.core.context import context
         from simstack.util.importer import import_class_by_name
+
         db = context.db
 
         for model_group_ids in self.data:
@@ -109,7 +114,7 @@ class DataSetTupleSection(EmbeddedModel):
             for model_group_id, model_type in zip(model_group_ids, self.model_types):
                 model_class = await import_class_by_name(model_type, db)
                 model_instance = await db.find_one(
-                   model_class, model_class.id == model_group_id
+                    model_class, model_class.id == model_group_id
                 )
 
                 model_data = make_table_entries_helper(model_instance)
@@ -134,6 +139,7 @@ class DataSetTupleSection(EmbeddedModel):
 
         from simstack.util.importer import import_class_by_name
         from simstack.core.context import context
+
         db = context.db
         for model_type, model_id in zip(self.model_types, model_ids):
             model_class = await import_class_by_name(model_type, db)
@@ -141,9 +147,7 @@ class DataSetTupleSection(EmbeddedModel):
             if model_id is None:
                 models.append(None)
                 continue
-            model_instance = await db.find_one(
-                model_class, model_class.id == model_id
-            )
+            model_instance = await db.find_one(model_class, model_class.id == model_id)
             if model_instance is None:
                 raise ValueError(
                     f"Model of type {model_type} with id {model_id} not found"
@@ -365,7 +369,6 @@ class DataSetTuple(Model):
 
     model_config = {"extra": "forbid"}
 
-    
     @property
     def dataset_type(self) -> str:
         return self.metadata.dataset_type
@@ -389,7 +392,7 @@ class DataSetTuple(Model):
         """
         return {"id": str(self.id)}
 
-    def collect_structure(self) -> Dict[str, Dict[str,str]]:
+    def collect_structure(self) -> Dict[str, Dict[str, str]]:
         """
         Returns a dictionary where keys are section names and values are dictionaries mapping
         string indices to model types at those indices.
@@ -398,12 +401,17 @@ class DataSetTuple(Model):
         :rtype: Dict[str, Dict[str, str]]
         """
         return {
-            section_name: {str(i): model_type for i, model_type in enumerate(section.model_types)} if len(
-                section) > 0 else None
+            section_name: {
+                str(i): model_type for i, model_type in enumerate(section.model_types)
+            }
+            if len(section) > 0
+            else None
             for section_name, section in self.sections.items()
         }
 
-    async def clone(self, new_field_name: str = None, exclude_sections: List[str] = None) -> "DataSetTuple":
+    async def clone(
+        self, new_field_name: str = None, exclude_sections: List[str] = None
+    ) -> "DataSetTuple":
         """
         Clone the dataset with optionally a new field name and excluding specified sections.
 
@@ -416,8 +424,10 @@ class DataSetTuple(Model):
 
         # Clone the dataset with new or same field name
         cloned_dataset = DataSetTuple(
-            field_name=new_field_name if new_field_name is not None else self.field_name,
-            metadata=self.metadata
+            field_name=new_field_name
+            if new_field_name is not None
+            else self.field_name,
+            metadata=self.metadata,
         )
 
         # Clone sections, excluding those in the exclude list
@@ -428,7 +438,9 @@ class DataSetTuple(Model):
                     model_types=section.model_types.copy(),
                     data=[model_ids.copy() for model_ids in section.data],
                     column_defs=[col_def.copy() for col_def in section.column_defs],
-                    table_entries=[[entry.copy() for entry in row] for row in section.table_entries]
+                    table_entries=[
+                        [entry.copy() for entry in row] for row in section.table_entries
+                    ],
                 )
                 cloned_dataset.sections[section_name] = cloned_section
 
@@ -481,7 +493,9 @@ class DataSetTuple(Model):
         self.sections.clear()
 
     def update(
-        self, other: Union[Dict[str, DataSetTupleSection], "DataSetTuple"] = None, **kwargs
+        self,
+        other: Union[Dict[str, DataSetTupleSection], "DataSetTuple"] = None,
+        **kwargs,
     ) -> None:
         if other is not None:
             if hasattr(other, "sections"):
@@ -490,7 +504,9 @@ class DataSetTuple(Model):
                 self.sections.update(other)
         self.sections.update(kwargs)
 
-    def setdefault(self, key: str, default: DataSetTupleSection = None) -> DataSetTupleSection:
+    def setdefault(
+        self, key: str, default: DataSetTupleSection = None
+    ) -> DataSetTupleSection:
         return self.sections.setdefault(key, default)
 
     @classmethod
@@ -506,17 +522,25 @@ class DataSetTupleSelectionField(EmbeddedModel):
     section_name: str = Field(default="default")
     indices: List[int] = Field(default_factory=list)
 
+
 @simstack_model
 class DataSetTupleSelection(Model):
     field_name: str = Field(default="dataset_selection")
     dataset_id: ObjectId
-    dataset_selection_fields: List[DataSetTupleSelectionField] = Field(default_factory=list)
+    dataset_selection_fields: List[DataSetTupleSelectionField] = Field(
+        default_factory=list
+    )
 
     async def get_dataset(self):
         from simstack.core.context import context
-        return await context.db.find_one(DataSetTuple, DataSetTuple.id == self.dataset_id)
 
-    async def get_selected_elements(self, section_name: str = None) -> List[Tuple[Model, ...]]:
+        return await context.db.find_one(
+            DataSetTuple, DataSetTuple.id == self.dataset_id
+        )
+
+    async def get_selected_elements(
+        self, section_name: str = None
+    ) -> List[Tuple[Model, ...]]:
         """
         Retrieve all selected model groups from the dataset.
 
@@ -524,6 +548,7 @@ class DataSetTupleSelection(Model):
         :return: List of tuples of model instances for all selected elements
         """
         from simstack.core.context import context
+
         db = context.db
         dataset = await db.find_one(DataSetTuple, DataSetTuple.id == self.dataset_id)
 
@@ -532,12 +557,17 @@ class DataSetTupleSelection(Model):
 
         selected_elements = []
         for selection_field in self.dataset_selection_fields:
-            if section_name is not None and selection_field.section_name != section_name:
+            if (
+                section_name is not None
+                and selection_field.section_name != section_name
+            ):
                 continue
 
             section = dataset.sections.get(selection_field.section_name)
             if section is None:
-                raise ValueError(f"Section {selection_field.section_name} not found in dataset")
+                raise ValueError(
+                    f"Section {selection_field.section_name} not found in dataset"
+                )
 
             for index in selection_field.indices:
                 if index >= len(section):
@@ -557,6 +587,7 @@ class DataSetTupleSelection(Model):
         :return: Async iterator yielding tuples of model instances
         """
         from simstack.core.context import context
+
         db = context.db
         dataset = await db.find_one(DataSetTuple, DataSetTuple.id == self.dataset_id)
 
@@ -564,12 +595,17 @@ class DataSetTupleSelection(Model):
             raise ValueError(f"Dataset with id {self.dataset_id} not found")
 
         for selection_field in self.dataset_selection_fields:
-            if section_name is not None and selection_field.section_name != section_name:
+            if (
+                section_name is not None
+                and selection_field.section_name != section_name
+            ):
                 continue
 
             section = dataset.sections.get(selection_field.section_name)
             if section is None:
-                raise ValueError(f"Section {selection_field.section_name} not found in dataset")
+                raise ValueError(
+                    f"Section {selection_field.section_name} not found in dataset"
+                )
 
             for index in selection_field.indices:
                 if index >= len(section):
@@ -583,4 +619,3 @@ class DataSetTupleSelection(Model):
         return {
             "ui:field": "DataSetSelectionField",
         }
-

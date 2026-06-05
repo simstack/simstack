@@ -1,4 +1,4 @@
-from typing import Any, Tuple, List, Union
+from typing import Tuple, List, Union
 from odmantic import ObjectId, Model
 from simstack.core.simstack_result import SimstackResult
 from simstack.models import BooleanData
@@ -10,10 +10,12 @@ from simstack.models.file_list import FileListModel
 from simstack.models.simstack_model import is_simstack_model
 
 import logging
+
 logger = logging.getLogger("process_results")
 
+
 async def process_result_helper(
-    result: Union[SimstackResult,Model, bool, BooleanData], task_id: str = "NA"
+    result: Union[SimstackResult, Model, bool, BooleanData], task_id: str = "NA"
 ) -> Tuple[List[ObjectId], List[str], List[Model], List[str]]:
     """
     Computes the result_ids, result_tables and result_names and returns a List[Model].
@@ -25,7 +27,7 @@ async def process_result_helper(
     result_models: List[Model] = []
     result_names: List[str] = []
 
-    if isinstance(result, bool) or isinstance(result, BooleanData) :
+    if isinstance(result, bool) or isinstance(result, BooleanData):
         # Convert bool to BooleanData
         if isinstance(result, bool):
             boolean_data = BooleanData(value=result)
@@ -34,9 +36,7 @@ async def process_result_helper(
         result_model = await context.db.save(boolean_data)
         result_models.append(result_model)
         if result_model.id is None:
-            raise ValueError(
-                f"Task task_id: {task_id} saved BooleanData has no ID"
-            )
+            raise ValueError(f"Task task_id: {task_id} saved BooleanData has no ID")
         result_ids.append(result_model.id)
         result_names.append("value")
         result_table_name = await context.db.find_one(
@@ -46,9 +46,7 @@ async def process_result_helper(
             logger.error(
                 f"Task task_id: {task_id} could not find table name for {BooleanData.__name__}"
             )
-            raise ValueError(
-                f"Could not find table name for {BooleanData.__name__}"
-            )
+            raise ValueError(f"Could not find table name for {BooleanData.__name__}")
         result_tables.append(result_table_name.mapping)
         return result_ids, result_tables, result_models, result_names
 
@@ -90,7 +88,9 @@ async def process_result_helper(
             result_names.append("files")
             saved = await context.db.save(file_list_model)
             if saved.id is None:
-                raise ValueError(f"Task task_id: {task_id} saved FileListModel has no ID")
+                raise ValueError(
+                    f"Task task_id: {task_id} saved FileListModel has no ID"
+                )
             result_ids.append(saved.id)
             result_models.append(saved)
 

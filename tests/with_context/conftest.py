@@ -13,14 +13,20 @@ from simstack.util.project_root_finder import find_project_root
 
 def pytest_report_header(config):
     import os
+
     db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
     use_real_db = db_connection_string.lower() != "none"
 
     if use_real_db:
-        conn_str = db_connection_string if db_connection_string.lower() != "none" else os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017")
+        conn_str = (
+            db_connection_string
+            if db_connection_string.lower() != "none"
+            else os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017")
+        )
         return f"SIMSTACK: Using real MongoDB database at: {conn_str}"
     else:
         return "SIMSTACK: Using mock database (patched for mongomock)"
+
 
 @pytest_asyncio.fixture(autouse=True, scope="session", loop_scope="session")
 async def initialized_context(tmp_path_factory):
@@ -36,17 +42,22 @@ async def initialized_context(tmp_path_factory):
     logger = logging.getLogger("simstack.test")
 
     if use_real_db:
-        logger.info(f"Test context initialized with real MongoDB")
+        logger.info("Test context initialized with real MongoDB")
         if not _mongodb_available(db_connection_string):
-            raise RuntimeError(f"fSIMSTACK_TEST cannot reach db at: {db_connection_string}")
+            raise RuntimeError(
+                f"fSIMSTACK_TEST cannot reach db at: {db_connection_string}"
+            )
 
         # Test actual read/write operations
         if not await _test_mongodb_connection(db_connection_string, test_database_name):
-            pytest.exit("SIMSTACK_TEST: Failed to write and read test document from MongoDB. Terminating all tests.",
-                        returncode=1)
+            pytest.exit(
+                "SIMSTACK_TEST: Failed to write and read test document from MongoDB. Terminating all tests.",
+                returncode=1,
+            )
     else:
-        logger.info("Test context initialized with mock database (patched for mongomock)")
-
+        logger.info(
+            "Test context initialized with mock database (patched for mongomock)"
+        )
 
     working_dir = tmp_path_factory.mktemp("simstack_test")
     # set the variables such that fake dirs exist, project_root is the actual project root
@@ -61,7 +72,6 @@ async def initialized_context(tmp_path_factory):
 
     project_root = find_project_root(skip_files=())
 
-
     await context.initialize(
         console=False,
         is_test=True,
@@ -70,7 +80,7 @@ async def initialized_context(tmp_path_factory):
         db_type=DBType.MONGODB if use_real_db else DBType.IN_MEMORY,
         db_name=test_database_name,
         workdir=working_dir,
-        project_root=project_root
+        project_root=project_root,
     )
 
     if use_real_db:
@@ -114,28 +124,31 @@ async def initialized_context(tmp_path_factory):
     test_workdir.mkdir(parents=True, exist_ok=True)
 
     from simstack.models.resource_definition import ResourceDefinition
+
     test_resource_definition = ResourceDefinition(
         resource_str="test",
         workdir=str(test_workdir),  # Change Path to str
         hostname="localhost",
         is_default=False,
-        git_branch="main"
+        git_branch="main",
     )
 
     await context.db.save(test_resource_definition)
 
     # Initialize model and node tables for both real and mock databases
     dirs = ["src/simstack/models", "src/simstack/methods", "tests"]
-    await make_model_table(context.db, dirs=dirs, drops="src", clear=True, project_root=project_root)
-    await make_node_table(context.db, dirs=dirs, drops="src", clear=True, project_root=project_root)
+    await make_model_table(
+        context.db, dirs=dirs, drops="src", clear=True, project_root=project_root
+    )
+    await make_node_table(
+        context.db, dirs=dirs, drops="src", clear=True, project_root=project_root
+    )
 
     # Ensure a "test" resource exists in DB for tests
     from simstack.models.resource_definition import ResourceDefinition
+
     local_resource = ResourceDefinition(
-        resource_str="test",
-        hostname="localhost",
-        workdir=working_dir,
-        routes=[]
+        resource_str="test", hostname="localhost", workdir=working_dir, routes=[]
     )
     await context.db.save(local_resource)
 
@@ -147,11 +160,12 @@ async def initialized_context(tmp_path_factory):
     # Reset allowed_resources to allow second initialization
     allowed_resources.clear_resources()
 
-
     # Mock TomlReader to avoid file access
     mock_toml = MagicMock()
     mock_toml.use_db.return_value = True
-    context.config = await ConfigReader.create("test", context.db, mock_toml, project_root=project_root, workdir=working_dir)
+    context.config = await ConfigReader.create(
+        "test", context.db, mock_toml, project_root=project_root, workdir=working_dir
+    )
 
     if use_real_db:
         # print(f"\n[SIMSTACK] Test context initialized with real MongoDB database at: {db_connection_string}")
@@ -161,11 +175,16 @@ async def initialized_context(tmp_path_factory):
         pass
 
     import logging
+
     logger = logging.getLogger("simstack.test")
     if use_real_db:
-        logger.info(f"Test context initialized with real MongoDB database at: {db_connection_string}")
+        logger.info(
+            f"Test context initialized with real MongoDB database at: {db_connection_string}"
+        )
     else:
-        logger.info("Test context initialized with mock database (patched for mongomock)")
+        logger.info(
+            "Test context initialized with mock database (patched for mongomock)"
+        )
 
     if hasattr(context, "log_handler") and context.log_handler:
         root_logger = context.log_handler.root
@@ -177,10 +196,12 @@ async def initialized_context(tmp_path_factory):
     # Cleanup after each test
     try:
         from simstack.core.resources import allowed_resources
+
         allowed_resources.clear_resources()
         # TODO remove route table
         try:
             from simstack.tables.node_table import route_table
+
             route_table.clear_routes()
         except ImportError:
             # route_table might have been removed or moved
@@ -240,12 +261,13 @@ def test_file_stack():
     if temp_file.exists():
         temp_file.unlink()
 
+
 # Check if real MongoDB is available for tests that require it
 def _mongodb_available(conn_str: str = None):
     """Check if MongoDB is available"""
     try:
-        import os
         from urllib.parse import urlparse
+
         parsed = urlparse(conn_str)
         host = parsed.hostname or "localhost"
         port = parsed.port or 27017
@@ -275,7 +297,7 @@ async def _test_mongodb_connection(conn_str: str, db_name: str = "ui_testing"):
         # Write test document
         test_doc = {
             "test": "connection_check",
-            "timestamp": datetime.datetime.now(datetime.UTC)
+            "timestamp": datetime.datetime.now(datetime.UTC),
         }
         result = await collection.insert_one(test_doc)
 

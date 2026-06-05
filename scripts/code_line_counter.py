@@ -331,7 +331,7 @@ def main():
             print(
                 f"Excluding patterns: {', '.join(excluded_patterns[:5])}"
                 + (
-                    f" (and {len(excluded_patterns)-5} more)"
+                    f" (and {len(excluded_patterns) - 5} more)"
                     if len(excluded_patterns) > 5
                     else ""
                 )

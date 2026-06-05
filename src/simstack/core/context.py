@@ -33,6 +33,7 @@ def remove_password_from_connection_string(connection_string):
 
 async def initialize_git_list(db: "Database", toml_reader: TomlReader | None):
     from simstack.models.resource_definition import GitRepo
+
     git_list = await db.find_all(GitRepo)
     if git_list is None and toml_reader is not None:
         git_list = toml_reader.get("parameters.common.git", [])
@@ -146,13 +147,14 @@ class GlobalState:
         else:
             resource_config_file = Path(resource_config_file)
 
-
         toml_reader = None
         if is_test:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
         elif db_name is None or connection_string is None or db_type is None:
             # use toml
-            toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
+            toml_reader = TomlReader(
+                project_root, config_file=Path(simstack_toml_path).resolve()
+            )
             if toml_reader.config:
                 db_info = DatabaseInformation.from_config(toml_reader.config)
             else:
@@ -162,8 +164,12 @@ class GlobalState:
 
         # check that the database can be reached and set logging up
         self.initialize_database(db_info, is_test)
-        self.initialize_logging(db_info.connection_string, db_info.db_name, is_test, kwargs.get("log_level", "INFO"))
-
+        self.initialize_logging(
+            db_info.connection_string,
+            db_info.db_name,
+            is_test,
+            kwargs.get("log_level", "INFO"),
+        )
 
         logger = logging.getLogger("Context")
         if db_info.connection_string is not None:
@@ -180,13 +186,20 @@ class GlobalState:
         # For testing, we might want to skip ConfigReader if it causes issues
         from simstack.util.config_reader import ConfigReader
         from simstack.util.resource_config import ResourceConfig
+
         if not kwargs.get("skip_config", False):
             try:
-                self._config = await ConfigReader.create(resource_str, self._db, toml_reader, **kwargs)
-                self._resource_config = ResourceConfig(resource_config_file, resource_str)
+                self._config = await ConfigReader.create(
+                    resource_str, self._db, toml_reader, **kwargs
+                )
+                self._resource_config = ResourceConfig(
+                    resource_config_file, resource_str
+                )
             except Exception as e:
                 if is_test:
-                    logger.warning(f"Failed to initialize ConfigReader in test mode: {e}")
+                    logger.warning(
+                        f"Failed to initialize ConfigReader in test mode: {e}"
+                    )
                 else:
                     raise e
 
@@ -201,7 +214,13 @@ class GlobalState:
         if nodes:
             self._node_mappings = await NodeMappingTable.load(self._db)
 
-    def initialize_logging(self, connection_string: str, db_name: str, is_test: bool, log_level: str = "INFO"):
+    def initialize_logging(
+        self,
+        connection_string: str,
+        db_name: str,
+        is_test: bool,
+        log_level: str = "INFO",
+    ):
         if is_test:
             # For tests, use simple console logging without the database handler
             # We use force=True to ensure it overrides any existing configuration (e.g. from pytest or PyCharm)
@@ -248,7 +267,6 @@ class GlobalState:
     def config(self):
         return self._config
 
-
     @config.setter
     def config(self, value):
         self._config = value
@@ -268,7 +286,6 @@ class GlobalState:
     @property
     def initialized(self):
         return self._initialized
-
 
 
 # Create the singleton instance, but it's not initialized yet

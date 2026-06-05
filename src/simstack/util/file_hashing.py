@@ -2,6 +2,7 @@ import hashlib
 from pathlib import Path
 from typing import Union, BinaryIO
 
+
 def hash_file(
     file_path: Union[str, Path], algorithm: str = "sha256", chunk_size: int = 8192
 ) -> str:
@@ -24,10 +25,12 @@ def hash_file(
 
     return hash_obj.hexdigest()
 
+
 def hash_string(string: str, algorithm: str = "sha256") -> str:
     hash_obj = hashlib.new(algorithm)
     hash_obj.update(string.encode())
     return hash_obj.hexdigest()
+
 
 def hash_file_object(
     file_obj: BinaryIO, algorithm: str = "sha256", chunk_size: int = 8192
@@ -69,4 +72,3 @@ def hash_file_object(
             pass
 
     return hash_obj.hexdigest()
-

@@ -7,6 +7,7 @@ from simstack.core.services.base_service import RestartService
 
 logger = logging.getLogger("NodeRunner")
 
+
 class TimeoutRestartService(RestartService):
     """Service that restarts the runner after a specified timeout"""
 
@@ -16,11 +17,15 @@ class TimeoutRestartService(RestartService):
         self._timeout_minutes = timeout_minutes
         self._executed = False
 
-    async def execute(self):
+    async def execute(self) -> None:
         # Only execute once after the timeout interval
         if not self._executed:
             self._executed = True
-            logger.info(f"Timeout of {self._timeout_minutes} minutes reached. Triggering restart...")
-            await self.write_resource_event(RunnerEventEnum.SHUTDOWN,
-                                            message=f"Timeout restart after {self._timeout_minutes} minutes")
+            logger.info(
+                f"Timeout of {self._timeout_minutes} minutes reached. Triggering restart..."
+            )
+            await self.write_resource_event(
+                RunnerEventEnum.SHUTDOWN,
+                message=f"Timeout restart after {self._timeout_minutes} minutes",
+            )
             await self.trigger_restart()

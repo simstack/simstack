@@ -81,7 +81,9 @@ async def test_process_dirs_resolves_relative_dirs_against_project_root(
     # Pass a *relative* directory; TableBuilderBase should resolve it against context.config.project_root
     await builder._process_dirs([Path("pkg")], drops="", exclude=[])
 
-    processed_rel = sorted(p.relative_to(tmp_path).as_posix() for p in builder.processed_files)
+    processed_rel = sorted(
+        p.relative_to(tmp_path).as_posix() for p in builder.processed_files
+    )
     assert processed_rel == ["pkg/e.py"]
 
 

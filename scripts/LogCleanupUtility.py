@@ -8,6 +8,7 @@ from simstack.util.database_information import DatabaseInformation
 from simstack.util.db import Database
 from simstack.models.log_entry_model import LogEntry
 
+
 async def clean_logs():
     # Load configuration from simstack.toml in the project root
     project_root = find_project_root()
@@ -25,11 +26,10 @@ async def clean_logs():
     print(f'Deleting logs where message contains: "{needle}"')
 
     collection = db.engine.get_collection(LogEntry)
-    result = await collection.delete_many(
-        {"message": {"$regex": re.escape(needle)}}
-    )
+    result = await collection.delete_many({"message": {"$regex": re.escape(needle)}})
 
     print(f"Deleted {result.deleted_count} log entries.")
+
 
 if __name__ == "__main__":
     asyncio.run(clean_logs())

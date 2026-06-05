@@ -4,7 +4,6 @@ from odmantic import Model
 
 from simstack.core.context import context
 from simstack.models.models import ModelMapping
-from simstack.models.pickle_models import ClassPickle
 from simstack.util.importer import import_class
 
 
@@ -35,7 +34,7 @@ async def setup_model_mapping():
     model_mapping = ModelMapping(
         name="SampleClass",
         mapping="tests.core.test_import_class.SampleClass",
-        collection_name="test_collection"
+        collection_name="test_collection",
     )
     await context.db.save(model_mapping)
 
@@ -46,6 +45,7 @@ async def setup_model_mapping():
         await context.db.delete(model_mapping)
     except Exception:
         pass  # Ignore cleanup errors
+
 
 @pytest.mark.asyncio
 async def test_import_class_regular(initialized_context):
@@ -62,7 +62,9 @@ async def test_import_class_regular(initialized_context):
 
 
 @pytest.mark.asyncio
-async def test_import_class_from_model_mapping(setup_model_mapping, initialized_context):
+async def test_import_class_from_model_mapping(
+    setup_model_mapping, initialized_context
+):
     """Test importing a class using ModelMapping."""
     # Import the SampleClass using import_class
 

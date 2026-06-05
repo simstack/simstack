@@ -60,7 +60,9 @@ class AGRangeBarSeriesConfig(EmbeddedModel):
     xName: Optional[str] = Field(default=None, description="X axis display name")
     yName: Optional[str] = Field(default=None, description="Y axis display name")
     yLowName: Optional[str] = Field(default=None, description="Low value display name")
-    yHighName: Optional[str] = Field(default=None, description="High value display name")
+    yHighName: Optional[str] = Field(
+        default=None, description="High value display name"
+    )
     direction: Optional[Literal["horizontal", "vertical"]] = Field(
         default=None, description="Bar rendering direction"
     )
@@ -123,7 +125,9 @@ class AGHeatmapSeriesConfig(AGChartSeriesBase):
     colorKey: str = Field(..., description="Key for heatmap color values")
     xName: Optional[str] = Field(default=None, description="X axis display name")
     yName: Optional[str] = Field(default=None, description="Y axis display name")
-    colorName: Optional[str] = Field(default=None, description="Color value display name")
+    colorName: Optional[str] = Field(
+        default=None, description="Color value display name"
+    )
     colorRange: Optional[List[str]] = Field(
         default=None, description="Color interpolation range"
     )
@@ -320,7 +324,8 @@ class ChartArtifactModel(Model):
         default=None, description="Background configuration"
     )
     frame: AGChartFrameConfig = Field(
-        default=AGChartFrameConfig(enabled=False), description="Frame/border configuration"
+        default=AGChartFrameConfig(enabled=False),
+        description="Frame/border configuration",
     )
 
     # Animation
@@ -610,14 +615,16 @@ def create_simple_donut_chart(
 
 
 def create_multi_series_line_chart(
-        data: List[Dict[str, Any]],
-        x_key: str,
-        y_keys: List[str],
-        title: Optional[str] = None,
-        parent_id: Optional[ObjectId] = None,
+    data: List[Dict[str, Any]],
+    x_key: str,
+    y_keys: List[str],
+    title: Optional[str] = None,
+    parent_id: Optional[ObjectId] = None,
 ) -> ChartArtifactModel:
     """Create a line chart with multiple y-axis series."""
-    chart_title = AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
+    chart_title = (
+        AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
+    )
 
     series = []
     for y_key in y_keys:

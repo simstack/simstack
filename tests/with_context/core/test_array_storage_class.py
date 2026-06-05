@@ -37,9 +37,9 @@ def test_name_update():
     )
     array_model.name = "updated_name"
 
-    assert (
-        array_model.name == "updated_name"
-    ), "ArrayStorage name did not update correctly"
+    assert array_model.name == "updated_name", (
+        "ArrayStorage name did not update correctly"
+    )
 
 
 def test_invalid_shape():

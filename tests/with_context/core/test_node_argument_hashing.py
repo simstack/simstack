@@ -84,16 +84,17 @@ def test_compute_arg_hash_preserves_top_level_custom_hash_contract():
 from simstack.models.models import NodeModel, ModelMapping
 from simstack.models.parameters import Parameters
 
+
 @pytest.mark.asyncio
 async def test_async_parent_fanout_creates_slurm_children_with_nested_hash_traps(
-    monkeypatch,initialized_context
+    monkeypatch, initialized_context
 ):
     # Ensure model mappings for argument hashing
     for model_cls in [IntData, FanoutHashInput, FloatData]:
         mm = ModelMapping(
             name=model_cls.__name__,
             mapping=f"simstack.models:{model_cls.__name__}",
-            collection_name=model_cls.__name__.lower()
+            collection_name=model_cls.__name__.lower(),
         )
         # Check if already exists to avoid unique constraint error if conftest did it
         existing = await context.db.find_one(ModelMapping, ModelMapping.name == mm.name)
@@ -107,7 +108,7 @@ async def test_async_parent_fanout_creates_slurm_children_with_nested_hash_traps
             function_mapping=f"simstack.tests.with_context.core.test_node_argument_hashing:{node_func.__name__}",
             input_mappings=[],
             result_mappings=[],
-            default_parameters=Parameters()
+            default_parameters=Parameters(),
         )
         existing_nm = await context.db.find_one(NodeModel, NodeModel.name == nm.name)
         if not existing_nm:

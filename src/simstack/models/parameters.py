@@ -12,7 +12,9 @@ def _validate_value_on_read(v: str) -> str:
     """
     if not allowed_resources.has_resource(v):
         allowed_str = ", ".join(repr(val) for val in allowed_resources.get_resources())
-        raise ValueError(f"Invalid resource value: {v!r}. Allowed values are: {allowed_str}")
+        raise ValueError(
+            f"Invalid resource value: {v!r}. Allowed values are: {allowed_str}"
+        )
     return v
 
 

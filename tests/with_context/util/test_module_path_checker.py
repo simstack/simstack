@@ -41,7 +41,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "src.simstack.core.artifacts"
-        path_info_path = self.project_root / "src" /"simstack"
+        path_info_path = self.project_root / "src" / "simstack"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is True
@@ -63,7 +63,7 @@ class TestIsModuleSubpathOfPath:
         mock_find_root.return_value = self.project_root
 
         module_path = "tests.unit.test_artifacts"
-        path_info_path = self.project_root /"src" /"simstack"
+        path_info_path = self.project_root / "src" / "simstack"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is False
@@ -282,7 +282,9 @@ class TestIsModuleSubpathOfPathIntegration:
         project_root = find_project_root()
 
         # Test with a long module path that might exist in the project
-        module_path = "examples.science.electronic_structure.spectra.vibrational_spectra"
+        module_path = (
+            "examples.science.electronic_structure.spectra.vibrational_spectra"
+        )
         path_info_path = Path(project_root) / "examples" / "science"
 
         result = is_module_subpath_of_path(module_path, path_info_path)

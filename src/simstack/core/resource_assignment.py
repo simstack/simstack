@@ -2,7 +2,6 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from odmantic import AIOEngine
 
 from simstack.models import NodeRegistry
 from simstack.models.parameters import Parameters, Resource, SlurmParameters

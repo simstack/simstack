@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Union
 
+
 class ResourceConfig:
     """
     ResourceConfig is responsible for managing configuration settings, setup,
@@ -19,6 +20,7 @@ class ResourceConfig:
     Attributes:
         os (str): The operating system associated with the resource, with a default value of "linux".
     """
+
     def __init__(self, config_path: Path, resource: str):
         self._config: Dict[str, Any] = {}
         self._resource = resource
@@ -89,26 +91,28 @@ class ResourceConfig:
 
         params = self.get_program()
         run_command = params.get("run_command", "")
-        
+
         if input_files is None:
             input_files = params.get("input_files", [])
-        
+
         if output_files is None:
             output_files = params.get("output_files", [])
-            
+
         use_temp = params.get("use_temp", False)
-        
+
         # tmp_base_dir can come from setup or the program itself, but usually it's in setup for the resource
         setup_params = self.get_setup_params()
         tmp_base_dir = params.get("tmp_base_dir", setup_params.get("tmp_base_dir"))
-        
+
         # scratch_cleanup from postprocessing
         post_params = self.get_postprocessing_params()
-        scratch_cleanup = params.get("scratch_cleanup", post_params.get("scratch_cleanup", False))
+        scratch_cleanup = params.get(
+            "scratch_cleanup", post_params.get("scratch_cleanup", False)
+        )
 
         cwd = Path.cwd()
         tmp_dir = None
-        
+
         try:
             if use_temp:
                 if tmp_base_dir:
@@ -117,14 +121,16 @@ class ResourceConfig:
                     # Let's try to extract the path if it looks like a variable assignment.
                     base_path = tmp_base_dir
                     if "=" in tmp_base_dir:
-                        base_path = tmp_base_dir.split("=")[-1].strip().strip('"').strip("'")
-                    
+                        base_path = (
+                            tmp_base_dir.split("=")[-1].strip().strip('"').strip("'")
+                        )
+
                     if not os.path.exists(base_path):
                         os.makedirs(base_path, exist_ok=True)
                     tmp_dir = Path(tempfile.mkdtemp(dir=base_path))
                 else:
                     tmp_dir = Path(tempfile.mkdtemp())
-                
+
                 exec_dir = tmp_dir
             else:
                 exec_dir = cwd
@@ -166,9 +172,9 @@ class ResourceConfig:
         Expected structure in TOML: [resource_name.program.program_name]
         """
         try:
-            # We don't have program_name anymore in the method signature, 
-            # so we need to know what it is. 
-            # If the instruction says "remove the program_name parameter", 
+            # We don't have program_name anymore in the method signature,
+            # so we need to know what it is.
+            # If the instruction says "remove the program_name parameter",
             # maybe it refers to get_program too?
             # But how would it know WHICH program?
             # Maybe it's stored in self._program?

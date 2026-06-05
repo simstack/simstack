@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import List,  TypeVar, Union, Optional
+from typing import List, TypeVar, Union, Optional
 from bson import ObjectId
 from odmantic import Model
 
@@ -38,7 +38,9 @@ class Database:
     ) -> None:
         if engine is None:
             if client is None or database_name is None:
-                raise ValueError("client and database_name are required when engine is not provided")
+                raise ValueError(
+                    "client and database_name are required when engine is not provided"
+                )
             engine = AIOEngine(client=client, database=database_name)
 
         self._db_type = db_type or getattr(engine, "db_type", None)
@@ -59,6 +61,7 @@ class Database:
         if db_info.db_type == DBType.IN_MEMORY:
             # For tests, use in-memory MongoDB (mongomock)
             from mongomock_motor import AsyncMongoMockClient
+
             try:
                 # import mongomock
                 client = AsyncMongoMockClient()
@@ -67,7 +70,9 @@ class Database:
                 logger.warning(
                     "mongomock not installed, falling back to localhost MongoDB"
                 )
-                raise ValueError("mongomock not installed, cannot use in-memory MongoDB")
+                raise ValueError(
+                    "mongomock not installed, cannot use in-memory MongoDB"
+                )
 
         elif db_info.db_type == DBType.MONGODB:
             connection_string = db_info.connection_string
@@ -76,12 +81,13 @@ class Database:
             client = AsyncIOMotorClient(connection_string)
             logger.info("Connected to MongoDB")
         else:
-            raise ValueError(f"Unsupported database type for MongoDB: {db_info.db_type}")
+            raise ValueError(
+                f"Unsupported database type for MongoDB: {db_info.db_type}"
+            )
 
         # Create engine
         engine = AIOEngine(client=client, database=db_info.db_name)
         return cls(engine=engine, client=client, database_name=db_info.db_name)
-
 
     @property
     def core_engine(self) -> Any:
@@ -156,16 +162,26 @@ class Database:
     #     finally:
     #         self.reset_core_context(token)
 
-    async def apply_resource_assignment_to_node_registry(self, node_registry: Any) -> Any:
-        from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
+    async def apply_resource_assignment_to_node_registry(
+        self, node_registry: Any
+    ) -> Any:
+        from simstack.core.resource_assignment import (
+            apply_resource_assignment_to_node_registry,
+        )
+
         return await apply_resource_assignment_to_node_registry(self, node_registry)
 
-    async def find_artifact_mappings(self, node_registry_path: str,) -> Any:
+    async def find_artifact_mappings(
+        self,
+        node_registry_path: str,
+    ) -> Any:
         from simstack.core.artifacts import find_artifact_mappings
+
         return await find_artifact_mappings(node_registry_path, self)
 
     async def find_all_artifacts(self, node_registry: Any) -> Any:
         from simstack.core.artifacts import find_all_artifacts
+
         return await find_all_artifacts(node_registry, self)
 
     async def ping(self) -> Any:
@@ -222,7 +238,6 @@ class Database:
                 parts.extend(value.values())
         return parts
 
-
     async def load_task(
         self, name: str, arg_hash: str, function_hash: str
     ) -> Optional["NodeRegistry"]:
@@ -244,6 +259,7 @@ class Database:
             & (NodeRegistry.function_hash == function_hash),
         )
         return result
+
     # TODO legacy functions
     # load_waiting_tasks_for_resource DONE
     # reset_database                  DONE
@@ -262,7 +278,6 @@ class Database:
 
     # count
     # aggregate
-
 
     async def load_waiting_tasks_for_resource(
         self, resource: str
@@ -305,7 +320,6 @@ class Database:
 
         logger.info(f"Database {self.database_name} has been reset")
 
-
     async def load_task_by_id(
         self, task_id: Union[str, ObjectId]
     ) -> Optional[NodeRegistry]:
@@ -340,14 +354,19 @@ class Database:
 #     current_engine_context.reset(token)
 #
 
+
 # TODO engines
-async def find_all_artifacts_for_database(database: Database, node_registry: Any) -> Any:
+async def find_all_artifacts_for_database(
+    database: Database, node_registry: Any
+) -> Any:
     find_all = getattr(database, "find_all_artifacts", None)
     if callable(find_all):
         return await database.find(node_registry)
 
     from simstack.core.artifacts import find_all_artifacts
+
     return await find_all_artifacts(node_registry, database)
+
 
 #
 # class DatabaseOld(DatabaseInformation):

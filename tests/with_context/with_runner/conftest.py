@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from simstack.core.context import context
-from simstack.models.resource_definition import ResourceDefinition
 from simstack.util.project_root_finder import find_project_root
 
 
@@ -26,6 +25,7 @@ def test_runner(initialized_context):
     import time
 
     import logging
+
     logger = logging.getLogger("simstack-runner")
 
     # allowed_resources.add_resource("test_resource")
@@ -45,7 +45,9 @@ def test_runner(initialized_context):
     connection_string = os.environ.get("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
     test_database_name = os.environ.get("SIMSTACK_TEST_DB", "none")
 
-    logger.info(f"Test context initialized with real MongoDB database at: {connection_string} and test database: {test_database_name}")
+    logger.info(
+        f"Test context initialized with real MongoDB database at: {connection_string} and test database: {test_database_name}"
+    )
 
     shared_args = f"uv run simstack_runner --resource test --no-pull --connection-string {connection_string} --db-name {test_database_name}"
     if system == "windows":
@@ -55,7 +57,9 @@ def test_runner(initialized_context):
             command_string = f'cmd /c "{shared_args}"'
     else:
         if env_start:
-            command_string = f"{env_start} && {sys.executable} {command} --resource tests --no-pull"
+            command_string = (
+                f"{env_start} && {sys.executable} {command} --resource tests --no-pull"
+            )
         else:
             command_string = f"{sys.executable} {command} --resource tests --no-pull"
 
@@ -75,9 +79,9 @@ def test_runner(initialized_context):
     stdout_queue = queue.Queue()
     stderr_queue = queue.Queue()
 
-
     def read_stdout():
         import logging
+
         logger = logging.getLogger("simstack-runner")
         try:
             for line in iter(process.stdout.readline, ""):
@@ -93,6 +97,7 @@ def test_runner(initialized_context):
 
     def read_stderr():
         import logging
+
         logger = logging.getLogger("simstack-runner")
         try:
             for line in iter(process.stderr.readline, ""):
@@ -150,6 +155,3 @@ def test_runner(initialized_context):
 
     print("Subprocess cleanup complete")
     # allowed_resources.remove_resource("test_resource")
-
-
-

@@ -14,7 +14,6 @@ from simstack.util.import_module import import_module_from_file
 from simstack.util.path_manager import path_manager
 
 
-
 class TableBuilderBase(ABC):
     """
     Shared pipeline for building "tables" by scanning:
@@ -24,7 +23,12 @@ class TableBuilderBase(ABC):
     Subclasses only implement `_process_module(module, drops)`.
     """
 
-    def __init__(self, db: Database, write_schema: bool = False, project_root: Optional[Path] = None):
+    def __init__(
+        self,
+        db: Database,
+        write_schema: bool = False,
+        project_root: Optional[Path] = None,
+    ):
         self.db = db
         self.write_schema = write_schema
         self._project_root = project_root
@@ -36,6 +40,7 @@ class TableBuilderBase(ABC):
         if context.config:
             return context.config.project_root
         from simstack.util.project_root_finder import find_project_root
+
         return find_project_root()
 
     @property
@@ -106,30 +111,37 @@ class TableBuilderBase(ABC):
         for file_path in path_manager.find_python_files(path_name):
             await self._process_file(file_path, drops)
 
-    async def _process_dirs(self, dirs: list[Path], *, drops: str, exclude: list[str]) -> None:
+    async def _process_dirs(
+        self, dirs: list[Path], *, drops: str, exclude: list[str]
+    ) -> None:
         for base_dir in dirs:
             self.logger.info("Processing CLI dir: %s", base_dir)
 
             base_dir = Path(base_dir)
 
             # Accept either absolute paths or paths relative to project root.
-            base_dir_path = base_dir if base_dir.is_absolute() else (self.project_root / base_dir)
+            base_dir_path = (
+                base_dir if base_dir.is_absolute() else (self.project_root / base_dir)
+            )
 
-            for py_file in self._iter_python_files_under_dir(base_dir_path, exclude=exclude):
+            for py_file in self._iter_python_files_under_dir(
+                base_dir_path, exclude=exclude
+            ):
                 await self._process_file(py_file, drops)
 
-    def _iter_python_files_under_dir(self, base_dir: Path, *, exclude: list[str]) -> Iterable[Path]:
+    def _iter_python_files_under_dir(
+        self, base_dir: Path, *, exclude: list[str]
+    ) -> Iterable[Path]:
         default_exclude_parts = {
             ".git",
             ".hg",
             ".svn",
             ".venv",
             "venv",
-            "__init__.py"
-            "__pycache__",
+            "__init__.py__pycache__",
             ".mypy_cache",
             ".pytest_cache",
-            ".ipynb_checkpoints"
+            ".ipynb_checkpoints",
         }
 
         def _should_exclude(p: Path) -> bool:
@@ -163,13 +175,16 @@ class TableBuilderBase(ABC):
                 #      --exclude "src/simstack/models"
                 #      --exclude "**/generated/**"
                 #      --exclude "*.generated.py"
-                if fnmatch.fnmatch(rel_posix, ex) or fnmatch.fnmatch(rel_posix, ex.rstrip("/") + "/*"):
+                if fnmatch.fnmatch(rel_posix, ex) or fnmatch.fnmatch(
+                    rel_posix, ex.rstrip("/") + "/*"
+                ):
                     return True
 
                 # 3) Also allow Windows-ish inputs like "a\\b\\c" by normalizing to posix.
                 ex_posix = ex.replace("\\", "/")
                 if ex_posix != ex and (
-                    fnmatch.fnmatch(rel_posix, ex_posix) or fnmatch.fnmatch(rel_posix, ex_posix.rstrip("/") + "/*")
+                    fnmatch.fnmatch(rel_posix, ex_posix)
+                    or fnmatch.fnmatch(rel_posix, ex_posix.rstrip("/") + "/*")
                 ):
                     return True
 
@@ -198,7 +213,9 @@ class TableBuilderBase(ABC):
         self.logger.debug("Processing file: %s", file_path)
         module = import_module_from_file(file_path, self.project_root)
         if not module:
-            self.logger.debug("Skipping %s because module import returned None", file_path)
+            self.logger.debug(
+                "Skipping %s because module import returned None", file_path
+            )
             return
         await self._process_module(module, drops)
 
@@ -208,15 +225,17 @@ class TableBuilderBase(ABC):
         raise NotImplementedError
 
     async def second_stage(self, drops: str) -> None:
-        """ an optional hook to run after all modules have been processed"""
+        """an optional hook to run after all modules have been processed"""
         pass
 
     async def clear_table(self) -> None:
-        """ an optional hook to clear the table before building """
+        """an optional hook to clear the table before building"""
         pass
 
     @classmethod
-    def cli_main(cls, builder_cls: Type["TableBuilderBase"], write_schema: bool = False) -> None:
+    def cli_main(
+        cls, builder_cls: Type["TableBuilderBase"], write_schema: bool = False
+    ) -> None:
         """
         Reusable CLI entry point.
 
@@ -242,7 +261,6 @@ class TableBuilderBase(ABC):
             default=[],
             help=(
                 "Exclude a directory/name/glob from scanning (repeatable). "
-          
                 "Examples: --exclude .venv --exclude __pycache__ --exclude src/simstack/models --exclude '*.generated.py'"
             ),
         )
@@ -287,7 +305,10 @@ class TableBuilderBase(ABC):
         async def _run() -> None:
             await context.initialize(log_level=level, resource="self")
             builder = builder_cls(context.db, write_schema=args.write_schema)
-            await builder.build(dirs=dirs, drops=args.drops, exclude=args.exclude, clear=args.clear)
+            await builder.build(
+                dirs=dirs, drops=args.drops, exclude=args.exclude, clear=args.clear
+            )
             await builder.second_stage(args.drops)
+
         loop.run_until_complete(_run())
         loop.close()

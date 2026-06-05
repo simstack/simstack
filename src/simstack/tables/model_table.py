@@ -166,7 +166,7 @@ class CreateModelTable(TableBuilderBase):
 
 # Public API preserved for existing callers (e.g. tests)
 async def make_model_table(
-    db : Database,
+    db: Database,
     dirs: list[str] = None,
     drops: str = "",
     write_schema: bool = False,

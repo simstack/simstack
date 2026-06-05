@@ -1,8 +1,9 @@
-from typing import Optional, Literal, Dict, Any, Union
+from typing import Optional, Literal, Dict, Any
 import base64
 import os
 from odmantic import Model, Field, ObjectId
 from simstack.models.simstack_model import simstack_model
+
 
 @simstack_model
 class Image2DArtifactModel(Model):
@@ -17,7 +18,9 @@ class Image2DArtifactModel(Model):
     data: bytes = Field(..., description="Binary image data")
     width: Optional[int] = Field(None, description="Image width in pixels")
     height: Optional[int] = Field(None, description="Image height in pixels")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
     def to_base64(self) -> str:
         """Convert binary data to base64 string."""
@@ -41,7 +44,9 @@ class Image2DArtifactModel(Model):
         return {
             "name": self.name,
             "format": self.format,
-            "size": f"{self.width}x{self.height}" if self.width and self.height else "unknown"
+            "size": f"{self.width}x{self.height}"
+            if self.width and self.height
+            else "unknown",
         }
 
     def make_column_defs_instance(
@@ -58,6 +63,7 @@ class Image2DArtifactModel(Model):
             {"field": "format", "headerName": "Format"},
             {"field": "size", "headerName": "Size"},
         ]
+
 
 def create_image_artifact(
     name: str,
@@ -81,6 +87,7 @@ def create_image_artifact(
         metadata=metadata or {},
     )
 
+
 def create_image_artifact_from_file(
     path: str,
     name: Optional[str] = None,
@@ -99,7 +106,7 @@ def create_image_artifact_from_file(
     _, ext = os.path.splitext(filename)
     format = ext.lstrip(".").lower()
     if not format:
-         format = "png" # Default
+        format = "png"  # Default
 
     with open(path, "rb") as f:
         data = f.read()
@@ -109,5 +116,5 @@ def create_image_artifact_from_file(
         data=data,
         format=format,
         description=description,
-        parent_id=parent_id
+        parent_id=parent_id,
     )
