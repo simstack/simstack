@@ -6,6 +6,10 @@ from simstack.core.node import node, node_from_database
 from simstack.models import FloatData, BinaryOperationInput, NodeRegistry, Parameters, ModelMapping, NodeModel
 from simstack.core.definitions import TaskStatus
 
+# Get current module path for dynamic function mapping
+CURRENT_MODULE = __name__
+
+
 @node()
 def helper_node_func(args: FloatData, **kwargs) -> FloatData:
     return FloatData(value=args.value + 1)
@@ -13,9 +17,10 @@ def helper_node_func(args: FloatData, **kwargs) -> FloatData:
 @pytest_asyncio.fixture
 async def setup_helper_node_model(initialized_context):
     """Fixture to ensure helper_node_func mapping exists."""
+
     node_model = NodeModel(
         name="helper_node_func",
-        function_mapping="simstack_tests.with_context.core.test_node_from_database.helper_node_func",
+        function_mapping=f"{CURRENT_MODULE}.helper_node_func",
         input_mappings=[],
         default_parameters=Parameters()
     )
@@ -46,7 +51,7 @@ async def test_node_from_database_basic(initialized_context, setup_helper_node_m
             input_ids=[input_data.id],
             function_hash="NOT INITIALIZED",
             arg_hash="NOT INITIALIZED",
-            func_mapping="simstack_tests.with_context.core.test_node_from_database.helper_node_func",
+            func_mapping=f"{CURRENT_MODULE}.helper_node_func",
             parameters=parameters,
             is_async=False
         )
@@ -88,7 +93,7 @@ async def test_node_from_database_signature_fix(initialized_context, setup_helpe
             input_ids=[input_data.id],
             function_hash="NOT INITIALIZED",
             arg_hash="NOT INITIALIZED",
-            func_mapping="simstack_tests.with_context.core.test_node_from_database.helper_node_func",
+            func_mapping=f"{CURRENT_MODULE}.helper_node_func",
             parameters=Parameters(),
             is_async=False
         )
@@ -131,7 +136,7 @@ async def test_node_from_database_duplicate(initialized_context, setup_helper_no
             input_ids=[input_data.id],
             function_hash=func_hash,
             arg_hash=arg_hash,
-            func_mapping="simstack_tests.with_context.core.test_node_from_database.helper_node_func",
+            func_mapping=f"{CURRENT_MODULE}.helper_node_func",
             parameters=parameters,
             is_async=False
         )
@@ -146,7 +151,7 @@ async def test_node_from_database_duplicate(initialized_context, setup_helper_no
                 input_ids=[input_data.id],
                 function_hash="NOT INITIALIZED",
                 arg_hash="NOT INITIALIZED",
-                func_mapping="simstack_tests.with_context.core.test_node_from_database.helper_node_func",
+                func_mapping=f"{CURRENT_MODULE}.helper_node_func",
                 parameters=parameters,
                 is_async=False
             )
@@ -197,7 +202,7 @@ async def test_node_from_database_invalid_mapping_with_duplicate(initialized_con
             input_ids=[input_data.id],
             function_hash=func_hash,
             arg_hash=arg_hash,
-            func_mapping="simstack_tests.with_context.core.test_node_from_database.helper_node_func",
+            func_mapping=f"{CURRENT_MODULE}.helper_node_func",
             parameters=Parameters(),
             is_async=False
         )
