@@ -34,7 +34,7 @@ async def setup_model_mapping():
     # Create a ModelMapping entry for SampleClass
     model_mapping = ModelMapping(
         name="SampleClass",
-        mapping="simstack_tests.with_context.core.test_import_class.SampleClass",
+        mapping="tests.with_context.core.test_import_class.SampleClass",
         collection_name="test_collection"
     )
     await context.db.save(model_mapping)
@@ -53,7 +53,7 @@ async def setup_model_mapping():
 async def test_import_class_regular(initialized_context):
     """Test importing a class using regular Python import."""
     # Import the SampleClass using import_class
-    cls = await import_class("simstack_tests.with_context.core.test_import_class.SampleClass", context.db)
+    cls = await import_class("tests.with_context.core.test_import_class.SampleClass", context.db)
 
     # Verify that the class was imported correctly
     assert cls.__name__ == SampleClass.__name__
@@ -68,7 +68,7 @@ async def test_import_class_from_model_mapping(setup_model_mapping, initialized_
     """Test importing a class using ModelMapping."""
     # Import the SampleClass using import_class
 
-    cls = await import_class("simstack_tests.with_context.core.test_import_class.SampleClass", context.db)
+    cls = await import_class("xxxxtests.with_context.core.test_import_class.SampleClass", context.db)
 
     # Verify that the class was imported correctly
     assert cls.__name__ == SampleClass.__name__
