@@ -52,7 +52,10 @@ def _lookup_node_cache(node_mappings, function_path: str) -> Optional[NodeModel]
         return None
     node_model = node_mappings.get_by_mapping(function_path)
     if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
-        _, function_name = function_path.rsplit(".", 1)
+        if "." in function_path:
+            _, function_name = function_path.rsplit(".", 1)
+        else:
+            function_name = function_path
         node_model = node_mappings.get_by_name(function_name)
     return node_model
 
@@ -74,7 +77,10 @@ async def _find_node_model(function_path: str, db: Database) -> Optional[NodeMod
         NodeModel, NodeModel.function_mapping == function_path
     )
     if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
-        _, function_name = function_path.rsplit(".", 1)
+        if "." in function_path:
+            _, function_name = function_path.rsplit(".", 1)
+        else:
+            function_name = function_path
         node_model = await db.find_one(
             NodeModel, NodeModel.name == function_name
         )
@@ -164,6 +170,16 @@ async def _function_from_model(node_model: NodeModel, task_id: ObjectId = None) 
         module = importlib.import_module(module_path)
         return getattr(module, function_name)
     except (ImportError, AttributeError, ValueError) as e:
+        if NODES_SEARCH_BY_NAME_FALLBACK:
+            try:
+                # Try to load by the name field which might contain the correct path
+                # if it was a name-only search that found this model.
+                if "." in node_model.name:
+                    module_path, function_name = node_model.name.rsplit(".", 1)
+                    module = importlib.import_module(module_path)
+                    return getattr(module, function_name)
+            except (ImportError, AttributeError, ValueError):
+                pass
         logger.error(f"task_id: {task_id} Error importing function {function_path}: {e}")
         raise e
     
