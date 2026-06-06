@@ -82,12 +82,13 @@ async def setup_pickled_function(initialized_context):
     await context.refresh_mappings()
 
 
+CURRENT_MODULE = __name__
 
 @pytest.mark.asyncio
 async def test_import_function_from_node_model(setup_node_model, initialized_context):
     """Test importing a function using NodeModel."""
     # Import the test_function using import_function
-    func = await import_function("simstack_tests.with_context.core.test_import_function.node_for_testing", context.db)
+    func = await import_function(f"{CURRENT_MODULE}.node_for_testing", context.db)
 
     # Verify that the function was imported correctly
     assert func.__name__ == node_for_testing.__name__
