@@ -174,3 +174,58 @@ async def test_node_from_database_duplicate(initialized_context, setup_helper_no
             await context.db.delete(existing_entry)
     finally:
         await context.db.delete(input_data)
+
+@pytest.mark.asyncio
+async def test_node_from_database_invalid_mapping_with_duplicate(initialized_context, setup_helper_node_model):
+    """Test that node_from_database can still recover a duplicate even if the mapping is invalid."""
+    
+    input_data = FloatData(value=30.0)
+    await context.db.save(input_data)
+    
+    try:
+        from simstack.core.node import compute_arg_hash
+        from simstack.core.hash import complex_hash_function
+        
+        arg_hash = compute_arg_hash([input_data])
+        func_hash = complex_hash_function(helper_node_func._inner)
+        
+        # Create an EXISTING entry that is COMPLETED
+        existing_entry = NodeRegistry(
+            name="helper_node_func",
+            status=TaskStatus.COMPLETED,
+            input_tables=["simstack.models.FloatData"],
+            input_ids=[input_data.id],
+            function_hash=func_hash,
+            arg_hash=arg_hash,
+            func_mapping="simstack_tests.with_context.core.test_node_from_database.helper_node_func",
+            parameters=Parameters(),
+            is_async=False
+        )
+        await context.db.save(existing_entry)
+        
+        try:
+            # Now create a NEW entry with an INVALID mapping but CORRECT hashes
+            new_registry_entry = NodeRegistry(
+                name="helper_node_func",
+                status=TaskStatus.SUBMITTED,
+                input_tables=["simstack.models.FloatData"],
+                input_ids=[input_data.id],
+                function_hash=func_hash, # Pre-initialized hashes
+                arg_hash=arg_hash,
+                func_mapping="non_existent_module.func", # INVALID MAPPING
+                parameters=Parameters(),
+                is_async=False
+            )
+            await context.db.save(new_registry_entry)
+            
+            # Call node_from_database
+            # This is expected to fail currently because import_function will raise ModuleNotFoundError
+            reconstructed_node = await node_from_database(new_registry_entry)
+            
+            assert reconstructed_node is not None
+            assert reconstructed_node.registry_entry.id == existing_entry.id
+            
+        finally:
+            await context.db.delete(existing_entry)
+    finally:
+        await context.db.delete(input_data)

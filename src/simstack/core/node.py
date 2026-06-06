@@ -715,26 +715,35 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
     logger.debug(
         f"Task task_id: {registry_entry.id} {registry_entry.name} loaded {len(args)} inputs in Node:node_from_database status: {registry_entry.status}"
     )
+    func = None
     try:
         wrapped_func = await import_function(
             registry_entry.func_mapping, db, task_id=registry_entry.id
         )
-        if wrapped_func is None:
+        if wrapped_func is not None:
+            # for nodes the mapping points to the wrapped func to we use that
+            func = (
+                wrapped_func if not hasattr(wrapped_func, "_inner") else wrapped_func._inner
+            )
+            logger.debug(
+                f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
+            )
+            if registry_entry.function_hash == "NOT INITIALIZED":
+                registry_entry.function_hash = cast(str, complex_hash_function(func))
+                registry_entry.is_async = asyncio.iscoroutinefunction(func)
+        else:
             logger.error(
                 f"Task task_id: {registry_entry.id} could not import function {registry_entry.func_mapping}"
             )
-            return None
-        # for nodes the mapping points to the wrapped func to we use that
-        func = (
-            wrapped_func if not hasattr(wrapped_func, "_inner") else wrapped_func._inner
+    except Exception as e:
+        logger.error(
+            f"Task task_id: {registry_entry.id} failed to import function {registry_entry.func_mapping} {str(e)}"
         )
-        logger.debug(
-            f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
-        )
-        if registry_entry.function_hash == "NOT INITIALIZED":
-            registry_entry.function_hash = cast(str, complex_hash_function(func))
-            registry_entry.is_async = asyncio.iscoroutinefunction(func)
 
+    if func is None and registry_entry.function_hash == "NOT INITIALIZED":
+        return None
+
+    try:
         duplicate_entry = await db.find_one(
             NodeRegistry,
             (NodeRegistry.name == registry_entry.name)
@@ -766,9 +775,29 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 await db.delete(registry_entry)
                 registry_entry = duplicate_entry
 
+            if func is None:
+                # we recovered a duplicate, let's try to import the function from the duplicate's mapping
+                try:
+                    wrapped_func = await import_function(
+                        registry_entry.func_mapping, db, task_id=registry_entry.id
+                    )
+                    if wrapped_func is not None:
+                        func = (
+                            wrapped_func
+                            if not hasattr(wrapped_func, "_inner")
+                            else wrapped_func._inner
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"Task task_id: {registry_entry.id} failed to import function from duplicate {registry_entry.func_mapping} {str(e)}"
+                    )
+
+        if func is None:
+            return None
+
     except Exception as e:
         logger.exception(
-            f"Task task_id: {registry_entry.id} failed to import function {registry_entry.func_mapping} {str(e)}"
+            f"Task task_id: {registry_entry.id} failed during duplicate detection or secondary import {str(e)}"
         )
         return None
 
