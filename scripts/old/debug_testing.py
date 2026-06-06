@@ -24,7 +24,7 @@ if sys.platform == "win32":
 
 # Add the project root and simstack/src to sys.path to ensure simstack can be
 # imported when running/debugging this script directly from the IDE.
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
