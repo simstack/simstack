@@ -88,6 +88,7 @@ CURRENT_MODULE = __name__
 async def test_import_function_from_node_model(setup_node_model, initialized_context):
     """Test importing a function using NodeModel."""
     # Import the test_function using import_function
+    logger.info(f"Current module: {CURRENT_MODULE}")
     func = await import_function(f"{CURRENT_MODULE}.node_for_testing", context.db)
 
     # Verify that the function was imported correctly
