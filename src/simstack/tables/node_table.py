@@ -444,7 +444,7 @@ class CreateNodeTable(TableBuilderBase):
                     favorite=existing_favorite,
                 )
 
-                logger.info(
+                logger.debug(
                     f"NodeModel: {node_model.name}, {node_model.function_mapping}, {node_model.input_mappings}"
                 )
                 await self.engine.save(node_model)

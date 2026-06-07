@@ -270,15 +270,16 @@ class FileStack(Model):
                 )
 
         # If in-memory instance not found or decompression failed, try finding instance on same resource
-        if same_resource_instance := next(
+        same_resource_instance = next(
             (
                 f
                 for f in self.locations
                 if resource_name(f.resource) == resource_name(local_resource)
                 and getattr(f, "status", "available") == "available"
             ),
-            None,
-        ):
+            None)
+
+        if same_resource_instance is not None:
             same_resource_instance.last_accessed_at = datetime.now()
             # Return the absolute path by joining with the resource's workdir if it's relative
             path = Path(same_resource_instance.path)
@@ -289,9 +290,7 @@ class FileStack(Model):
             logger.info(f"Using existing instance {path} for {self.name}")
             return path
 
-        remote_instance = first_available_remote_location(
-            self.locations, local_resource
-        )
+        remote_instance = first_available_remote_location(self.locations, local_resource)
         if remote_instance is None:
             logger.error("No suitable file instance found for copying.")
             raise ValueError(
