@@ -19,7 +19,6 @@ def get_git_status(repo_path: Path) -> Dict[str, Optional[object]]:
     """
 
     def run_git(args, check=False):
-        
         return subprocess.run(
             ["git", "-C", str(repo_path), *args],
             capture_output=True,

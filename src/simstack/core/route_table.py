@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List
 
 
 class RouteTable:
@@ -10,7 +10,7 @@ class RouteTable:
         self.targets = {}
 
     @classmethod
-    def get_instance(cls) -> 'RouteTable':
+    def get_instance(cls) -> "RouteTable":
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -20,5 +20,6 @@ class RouteTable:
 
     def clear_routes(self) -> None:
         self.targets.clear()
+
 
 route_table = RouteTable.get_instance()

@@ -161,9 +161,9 @@ def test_filestack_hash_different_content_same_name():
         hash2 = complex_hash_function(filestack2)
 
         # Verify that hashes are different despite same name and attributes
-        assert (
-            hash1 != hash2
-        ), f"Hashes should be different for different content, but got: {hash1} == {hash2}"
+        assert hash1 != hash2, (
+            f"Hashes should be different for different content, but got: {hash1} == {hash2}"
+        )
 
         # Verify hashes are consistent (calling multiple times gives the same result)
         hash1_repeat = complex_hash_function(filestack1)
@@ -218,9 +218,9 @@ def test_filestack_hash_same_content_same_hash():
         hash2 = complex_hash_function(filestack2)
 
         # Should produce same hash for identical content
-        assert (
-            hash1 == hash2
-        ), f"Identical content should produce same hash: {hash1} vs {hash2}"
+        assert hash1 == hash2, (
+            f"Identical content should produce same hash: {hash1} vs {hash2}"
+        )
 
     finally:
         # Clean up the test directory

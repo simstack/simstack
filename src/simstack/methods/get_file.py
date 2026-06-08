@@ -1,8 +1,7 @@
-from pathlib import Path
 
 from simstack.core.node import node
 from simstack.models.files import FileStack, FileGetterArgs
-from simstack.models.parameters import Resource
+
 
 @node
 def get_file(file_getter_args: FileGetterArgs) -> FileStack:

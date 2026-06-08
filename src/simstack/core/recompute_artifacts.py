@@ -32,11 +32,15 @@ async def recompute_artifacts(node_registry: NodeRegistry):
         return
 
     if node.status != TaskStatus.COMPLETED:
-        logger.error(f"Cannot recompute artifacts for task_id: {node_registry.id} name: {node.name} status: {node.status}")
+        logger.error(
+            f"Cannot recompute artifacts for task_id: {node_registry.id} name: {node.name} status: {node.status}"
+        )
         return
 
     # Find all children of this node
-    children = await db.find(NodeRegistry, NodeRegistry.parent_ids.in_([node_registry.id]))
+    children = await db.find(
+        NodeRegistry, NodeRegistry.parent_ids.in_([node_registry.id])
+    )
 
     # Recursively recompute artifacts for all children first
     for child_registry in children:
@@ -56,13 +60,13 @@ async def recompute_artifacts(node_registry: NodeRegistry):
         await db.delete(chart_artifact)
 
     if node_registry.artifact_ids:
-        logger.info(f"Removing {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}")
+        logger.info(
+            f"Removing {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}"
+        )
 
         # Delete artifacts from the database
         for artifact_id in node_registry.artifact_ids:
-            instance = await db.find_one(
-                ArtifactModel, ArtifactModel.id == artifact_id
-            )
+            instance = await db.find_one(ArtifactModel, ArtifactModel.id == artifact_id)
             if instance:
                 await db.delete(instance)
             else:
@@ -73,7 +77,9 @@ async def recompute_artifacts(node_registry: NodeRegistry):
 
     # Recompute artifacts for this node
     if node_registry.status == TaskStatus.COMPLETED:
-        logger.info(f"Recomputing artifacts for node {node_registry.id} {node_registry.name}")
+        logger.info(
+            f"Recomputing artifacts for node {node_registry.id} {node_registry.name}"
+        )
 
         # Load the result to create new artifacts
         result = await node.load_results()
@@ -106,7 +112,9 @@ async def recompute_artifacts(node_registry: NodeRegistry):
             }
 
             artifact_arguments.add_attributes(func, *args, **node_kwargs)
-            node_registry.artifact_ids = await create_artifacts(artifact_arguments, node_registry)
+            node_registry.artifact_ids = await create_artifacts(
+                artifact_arguments, node_registry
+            )
 
             # Save the updated registry
             await db.save(node_registry)

@@ -70,28 +70,28 @@ class ArtifactModel(Model):
 
 
 # class IntArtifactModel(ArtifactModel):
-#     type: Literal["int"] = "int"  # Fixed value for this subclass
+#     v_type: str = "int"  # Fixed value for this subclass
 #     value: int
 #
 # class FloatArtifactModel(ArtifactModel):
-#     type: Literal["float"] = "float"  # Fixed value for this subclass
+#     v_type: str = "float"  # Fixed value for this subclass
 #     value: float
 #
 # class StringArtifactModel(ArtifactModel):
-#     type: Literal["string"] = "string"  # Fixed value for this subclass
+#     v_type: str = "string"  # Fixed value for this subclass
 #     value: str
 #
 # class ImageArtifactModel(ArtifactModel):
-#     type: Literal["image"] = "image"  # Fixed value for this subclass
+#     v_type: str = "image"  # Fixed value for this subclass
 #     value: str  # the image is stored as a base64 string or a file path
 #
 # # Forward reference for type hints
-# ArtifactType = Union[ArtifactModel, IntArtifactModel, FloatArtifactModel, StringArtifactModel, 'ArtifactModelList', ImageArtifactModel]
+# ArtifactType = Union[ArtifactModel, "IntArtifactModel", "FloatArtifactModel", "StringArtifactModel", 'ArtifactModelList', "ImageArtifactModel"]
 #
 # # List subclass - can contain other items
 # class ArtifactModelList(ArtifactModel):
-#     type: Literal["list"] = "list"
-#     items: List[ArtifactType] = Field(default_factory=list)  # List of Item objects
+#     v_type: str = "list"
+#     items: List["ArtifactType"] = Field(default_factory=list)  # List of Item objects
 
 
 class ArtifactMapping(Model):

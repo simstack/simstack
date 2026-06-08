@@ -4,9 +4,9 @@ import os
 import subprocess
 import uuid
 from pathlib import Path
-from typing import Set, List, Tuple, Union
+from typing import Set
 
-from odmantic import ObjectId, Model
+from odmantic import ObjectId
 
 from simstack.core.definitions import TaskStatus
 from simstack.core.simstack_result import SimstackResult
@@ -32,7 +32,6 @@ class NodeRunner(SimstackResult):
         info_file_patterns (Set[str]): File patterns used to collect information files
     """
 
-
     def __init__(self, name: str, task_id: str | ObjectId, logger=None, **kwargs):
         """
         Initialize the NodeRunner instance.
@@ -52,7 +51,6 @@ class NodeRunner(SimstackResult):
         self.log_string = ""
         self.info_file_patterns = {"*.in", "*.out", "*.err", "*.log"}
         self.info("started")
-
 
     @classmethod
     def from_kwargs(cls, **kwargs):

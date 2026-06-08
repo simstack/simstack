@@ -8,6 +8,7 @@ import subprocess
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 from odmantic import ObjectId
 
 from simstack.core.context import context
@@ -17,16 +18,23 @@ from simstack.util.runner_utils import make_git_status_list
 
 logger = logging.getLogger("NodeRunner")
 
+
 class BaseService(ABC):
     """A managed periodic service that can be stopped gracefully"""
 
-    def __init__(self, name: str, resource: Resource, interval: int, shutdown_event: asyncio.Event = None):
+    def __init__(
+        self,
+        name: str,
+        resource: Resource,
+        interval: int,
+        shutdown_event: Optional[asyncio.Event] = None,
+    ):
         self._name = name
         self._resource = resource
         self._interval: int = interval
         self._stop_event = asyncio.Event()
         self._shutdown_event = shutdown_event
-        self._task = None
+        self._task: Optional[asyncio.Task] = None
 
         # Common identity attributes
         self._pid = os.getpid()
@@ -42,8 +50,11 @@ class BaseService(ABC):
         minutes, seconds = divmod(remainder, 60)
         return f"{days}d {hours}h {minutes}m {seconds}s"
 
-    async def write_node_event(self, event: RunnerEventEnum, node_id: ObjectId, message: str = None):
+    async def write_node_event(
+        self, event: RunnerEventEnum, node_id: ObjectId, message: Optional[str] = None
+    ) -> None:
         runner_event = RunnerEvent(
+            id=ObjectId(),
             runner_type=RunnerType.NODE_RUNNER,
             event=event,
             pid=self._pid,
@@ -55,7 +66,9 @@ class BaseService(ABC):
         )
         await context.db.save(runner_event)
 
-    async def write_resource_event(self, event: RunnerEventEnum, message: str = None):
+    async def write_resource_event(
+        self, event: RunnerEventEnum, message: Optional[str] = None
+    ) -> None:
         git_list = make_git_status_list()
         if event == RunnerEventEnum.ALIVE:
             uptime = self._get_uptime_string()
@@ -76,6 +89,7 @@ class BaseService(ABC):
                 return
 
         runner_event = RunnerEvent(
+            id=ObjectId(),
             runner_type=RunnerType.RESOURCE_RUNNER,
             pid=self._pid,
             hostname=self._hostname,
@@ -88,7 +102,7 @@ class BaseService(ABC):
         )
         await context.db.save(runner_event)
 
-    async def _run_loop(self):
+    async def _run_loop(self) -> None:
         """Internal loop that respects the stop event"""
         logger.info(f"Service {self._name} started.")
         while not self._stop_event.is_set():
@@ -112,16 +126,16 @@ class BaseService(ABC):
         logger.info(f"Service {self._name} stopped.")
 
     @abstractmethod
-    async def execute(self):
+    async def execute(self) -> None:
         raise NotImplementedError("Services must implement execute()")
 
-    def start(self):
+    def start(self) -> Optional[asyncio.Task]:
         if self._task is None or self._task.done():
             self._stop_event.clear()
             self._task = asyncio.create_task(self._run_loop())
         return self._task
 
-    async def stop(self):
+    async def stop(self) -> None:
         self._stop_event.set()
         if self._task:
             await self._task
@@ -136,7 +150,7 @@ class RestartService(BaseService, ABC):
         super().__init__(name, resource, interval)
         self._pid_file = context.config.workdir / "runner.pid"
 
-    async def trigger_restart(self):
+    async def trigger_restart(self) -> None:
         """Spawns an independent process to kill current PID and start new one"""
         current_pid = os.getpid()
 
@@ -151,7 +165,7 @@ class RestartService(BaseService, ABC):
         # But actually Path(__file__).resolve() in the original runner.py was used.
         # We should probably pass the runner script path or rely on how it was invoked.
         # In runner.py it was: script_path = Path(__file__).resolve()
-        
+
         # Let's try to find runner.py relative to this file.
         script_path = (Path(__file__).parent.parent / "runner.py").resolve()
 
@@ -165,12 +179,14 @@ class RestartService(BaseService, ABC):
         if platform.system() == "Windows":
             # Windows 'start' command handles detachment well
             # Use ping for a 2-second delay as 'timeout' fails in non-interactive shells
-            cmd = f"taskkill /F /PID {current_pid} && ping 127.0.0.1 -n 3 > nul && {' '.join(args)} >> \"{log_file}\" 2>&1"
-            subprocess.Popen(cmd, shell=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+            cmd = f'taskkill /F /PID {current_pid} && ping 127.0.0.1 -n 3 > nul && {" ".join(args)} >> "{log_file}" 2>&1'
+            subprocess.Popen(
+                cmd, shell=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+            )
         else:
             # Linux: use a subshell that nohup/disowns
             # Kill, wait, and start
-            cmd = f"kill -9 {current_pid} && sleep 2 && {' '.join(args)} >> \"{log_file}\" 2>&1"
+            cmd = f'kill -9 {current_pid} && sleep 2 && {" ".join(args)} >> "{log_file}" 2>&1'
             subprocess.Popen(["/bin/bash", "-c", cmd], start_new_session=True)
 
         # The above commands kill us, so this line might not even log

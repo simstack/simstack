@@ -1,11 +1,9 @@
-from simstack.core.context import context
 from simstack.core.node import node
 from simstack.core.resources import allowed_resources
 from simstack.models import Parameters, StringData
 import pytest
 import logging
 
-from simstack.util.project_root_finder import find_project_root
 
 
 @node

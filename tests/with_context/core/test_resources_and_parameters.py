@@ -1,5 +1,4 @@
 import pytest
-from pygments.lexers import resource
 
 from simstack.models.parameters import Resource, Parameters, SlurmParameters
 from simstack.core.resources import allowed_resources
@@ -15,7 +14,12 @@ class TestResource:
         original_resources = allowed_resources.get_resources()
 
         # Set test resources
-        allowed_resources._resources = ["cpu_cluster", "gpu_cluster", "high_memory", "self"]
+        allowed_resources._resources = [
+            "cpu_cluster",
+            "gpu_cluster",
+            "high_memory",
+            "self",
+        ]
 
         yield
 
@@ -107,7 +111,12 @@ class TestParameters:
         original_resources = allowed_resources.get_resources()
 
         # Set test resources
-        allowed_resources._resources = ["cpu_cluster", "gpu_cluster", "high_memory", "self"]
+        allowed_resources._resources = [
+            "cpu_cluster",
+            "gpu_cluster",
+            "high_memory",
+            "self",
+        ]
         yield
 
         # Restore original state

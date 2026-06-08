@@ -1,16 +1,19 @@
-
 from pathlib import Path
 from typing import List, TYPE_CHECKING, Union
 from simstack.core.resources import allowed_resources
 from simstack.models.parameters import Resource
 from simstack.models.resource_definition import ResourceDefinition
 from simstack.util.transform_file_name import transform_file_name
-from simstack.util.init_data_source import initialize_resource_from_db, initialize_paths_from_db
+from simstack.util.init_data_source import (
+    initialize_resource_from_db,
+    initialize_paths_from_db,
+)
 from simstack.util.toml_reader import TomlReader
 from simstack.util.database_information import DatabaseInformation
 
 if TYPE_CHECKING:
     from simstack.util.db import Database
+
 
 class ConfigReader(DatabaseInformation):
     """
@@ -20,7 +23,7 @@ class ConfigReader(DatabaseInformation):
 
     def __init__(
         self,
-        db_info: Union[DatabaseInformation , "Database"],
+        db_info: Union[DatabaseInformation, "Database"],
         resource_definition: ResourceDefinition,
         *,
         project_root: Path,
@@ -42,10 +45,19 @@ class ConfigReader(DatabaseInformation):
         **kwargs,
     ):
         import logging
-        logger = logging.getLogger("config-reader")  # do this here because the calling function sets the logger up
 
-        required_keys = ["resource", "python_path", "ssh_key", "allowed_resources",
-                         "workdir", "environment_start"]
+        logger = logging.getLogger(
+            "config-reader"
+        )  # do this here because the calling function sets the logger up
+
+        required_keys = [
+            "resource",
+            "python_path",
+            "ssh_key",
+            "allowed_resources",
+            "workdir",
+            "environment_start",
+        ]
         init_done = False
         config = {"project_root": project_root}
         for key in required_keys:
@@ -66,13 +78,17 @@ class ConfigReader(DatabaseInformation):
                 if workdir_self is None:
                     workdir_self = toml_reader.get("resources.self.workdir", None)
             if workdir_self is None:
-                raise ValueError("No workdir for self specified in config file or keyword arguments.")
+                raise ValueError(
+                    "No workdir for self specified in config file or keyword arguments."
+                )
             else:
                 workdir_self = Path(workdir_self)
 
             logger.info(f"toml-file read, use_db_for_init: {use_db_for_init}")
             if use_db_for_init:  # get all data from the simstack.toml file
-                resource_definition = await initialize_resource_from_db(resource_str, db, workdir_self)
+                resource_definition = await initialize_resource_from_db(
+                    resource_str, db, workdir_self
+                )
                 await initialize_paths_from_db(db)
             else:
                 allowed_resources_list = toml_reader.get_allowed_resources()
@@ -94,8 +110,9 @@ class ConfigReader(DatabaseInformation):
         project_root = config.pop("project_root")
 
         if config:
-            logger.warning(f"Ignoring unused ConfigReader init keys: {sorted(config.keys())}")
-
+            logger.warning(
+                f"Ignoring unused ConfigReader init keys: {sorted(config.keys())}"
+            )
 
         log_msg = f"Resource: {resource_definition.resource_str}"
         for key, value in resource_definition.__dict__.items():

@@ -3,10 +3,12 @@ import urllib.parse
 import socket
 import re
 from pathlib import Path
-from odmantic import Model, Field, EmbeddedModel
-from pydantic import field_validator, model_serializer
+from odmantic import Model, Field
+from pydantic import field_validator
 
 from simstack.util.transform_file_name import transform_file_name
+
+
 class GitRepo(Model):
     """
     Represents a Git repository with relevant attributes such as its URL, branch,
@@ -26,8 +28,9 @@ class GitRepo(Model):
     :ivar is_submodule: Indicates whether the repository is a submodule. Defaults to False.
     :type is_submodule: bool
     """
+
     url: str
-    branch: Optional[str]  
+    branch: Optional[str]
     is_submodule: bool = Field(default=False)
 
     @field_validator("url", mode="after")
@@ -41,11 +44,14 @@ class GitRepo(Model):
             raise ValueError("Invalid URL format")
         return v
 
+
 class ResourceDefinition(Model):
     resource_str: str = Field(unique=True)
     workdir: str  # Change Path to str
     hostname: str
-    python_paths: List[str] = Field(default_factory=list)  # Change List[Path] to List[str]
+    python_paths: List[str] = Field(
+        default_factory=list
+    )  # Change List[Path] to List[str]
     environment_start: Optional[str] = None
     ssh_key: Optional[str] = None  # Change Optional[Path] to Optional[str]
     routes: Optional[List[str]] = []
@@ -54,7 +60,7 @@ class ResourceDefinition(Model):
 
     @staticmethod
     def _convert_backslashes(path_str: str) -> str:
-        return re.sub(r'\\+', '/', path_str)
+        return re.sub(r"\\+", "/", path_str)
 
     @field_validator("workdir", mode="before")
     @classmethod
@@ -77,15 +83,18 @@ class ResourceDefinition(Model):
             return None
         return str(cls._convert_backslashes(str(v)))
 
-
     def validate_hostname(self):
         current_hostname = socket.gethostname()
         if self.hostname != current_hostname:
-            raise ValueError(f"Hostname must match current host. Expected: {current_hostname}, got: {self.hostname}")
+            raise ValueError(
+                f"Hostname must match current host. Expected: {current_hostname}, got: {self.hostname}"
+            )
 
     def validate_ssh_key(self):
         if self.ssh_key is not None:
-            file_path = transform_file_name(Path(self.ssh_key)) # Convert to Path for utility
+            file_path = transform_file_name(
+                Path(self.ssh_key)
+            )  # Convert to Path for utility
             if not file_path:
                 raise ValueError(f"SSH key path does not exist: {self.ssh_key}")
 

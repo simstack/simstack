@@ -67,12 +67,17 @@ def node_returns_bool(arg: IntData, **kwargs) -> bool:
 
 
 def test_failing_node():
-    with pytest.raises(RuntimeError, match=r"Task task_id: .* This is a test exception"):
+    with pytest.raises(
+        RuntimeError, match=r"Task task_id: .* This is a test exception"
+    ):
         failing_node(IntData(value=1))
 
 
 def test_calling_failing_node():
-    with pytest.raises(RuntimeError, match=r"Task task_id: .* node: failing_node terminated with status TaskStatus.FAILED"):
+    with pytest.raises(
+        RuntimeError,
+        match=r"Task task_id: .* node: failing_node terminated with status TaskStatus.FAILED",
+    ):
         calling_failing_node(IntData(value=1))
 
 

@@ -17,7 +17,8 @@ from simstack.models.parameters import Resource
 # Define a TypeVar for classes
 T = TypeVar("T", bound=Type)
 
-#TODO why do filetests not use the context fixture from conftest?
+# TODO why do filetests not use the context fixture from conftest?
+
 
 @pytest.fixture
 def setup_test_env(initialized_context, monkeypatch):
@@ -295,7 +296,6 @@ def test_get_same_resource(file_stack, file_instance, setup_test_env):
         user_dir = Path(context.config.workdir) / "testuser" / str(file_stack.id)
         os.makedirs(user_dir, exist_ok=True)
 
-
         result_path = file_stack.get(user_dir)
 
         # Verify
@@ -315,7 +315,7 @@ def test_get_no_suitable_instance(file_stack, setup_test_env):
         user_dir = Path(context.config.workdir) / "testuser" / str(file_stack.id)
         os.makedirs(user_dir, exist_ok=True)
 
-    # Test
+        # Test
         with pytest.raises(ValueError):
             file_stack.get(user_dir)
 

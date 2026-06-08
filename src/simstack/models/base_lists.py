@@ -1,11 +1,19 @@
 import re
-from typing import Union, List, Any, Optional, TypeVar, Generic, Iterator, Iterable, Type
+from typing import (
+    Union,
+    List,
+    Any,
+    Optional,
+    TypeVar,
+    Generic,
+    Iterator,
+    Type,
+)
 
 from odmantic import Field, Model, ObjectId
 
 
 from simstack.models import simstack_model, StringData
-from simstack.models.files import FileStack
 
 
 T = TypeVar("T")
@@ -119,7 +127,10 @@ class GenericListMixin(Generic[T]):
     def filter_by_property(self, property_name: str, value: Any) -> List[T]:
         results: List[T] = []
         for elements in self.elements:
-            if hasattr(elements, property_name) and getattr(elements, property_name) == value:
+            if (
+                hasattr(elements, property_name)
+                and getattr(elements, property_name) == value
+            ):
                 results.append(elements)
         return results
 
@@ -138,6 +149,7 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
 
     def _get_db(self):
         from simstack.core.context import context
+
         db = context.db
         if db is None:
             raise RuntimeError("No database found in context")
@@ -152,7 +164,9 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
         # Fallback for StringDataList which explicitly inherits
         if self.__class__.__name__ == "StringDataList":
             return StringData
-        raise RuntimeError(f"Could not determine model class for {self.__class__.__name__}")
+        raise RuntimeError(
+            f"Could not determine model class for {self.__class__.__name__}"
+        )
 
     async def append(self, element: T):
         if not isinstance(element, Model):
@@ -227,7 +241,9 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
 @simstack_model
 class StringDataList(Model, ObjectListMixin[StringData]):
     field_name: str = "string_data_list"
-    elements: List[ObjectId] = Field(default_factory=list, description="List of StringData ObjectIDs")
+    elements: List[ObjectId] = Field(
+        default_factory=list, description="List of StringData ObjectIDs"
+    )
 
     # def items(self) -> Iterator[tuple[Optional[str], T]]:
     #     """
@@ -250,4 +266,3 @@ class StringList(Model, GenericListMixin[str]):
 
     def __len__(self) -> int:
         return len(self.elements)
-

@@ -1,6 +1,6 @@
-from contextvars import ContextVar
-from typing import Optional, Any, Iterable
+from typing import Any, Iterable
 from odmantic import AIOEngine
+
 
 # TDOD engine remove AIOEngineProxy
 class AIOEngineProxy(AIOEngine):
@@ -103,6 +103,7 @@ class AIOEngineProxy(AIOEngine):
                 any_saved = True
 
         return any_saved
+
 
 #
 # current_engine_context: ContextVar[Optional[AIOEngineProxy]] = ContextVar(

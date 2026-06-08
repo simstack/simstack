@@ -1,4 +1,3 @@
-import pytest
 import pytest_asyncio
 from simstack.core.context import context
 from simstack.models.parameters import Parameters

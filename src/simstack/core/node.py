@@ -14,7 +14,7 @@ from typing import (
     List,
     ParamSpec,
     Union,
-    overload, Tuple,
+    overload,
 )
 
 import coolname  # type: ignore[import-untyped]
@@ -638,7 +638,9 @@ class Node:
                                 f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
                             )
                     else:
-                        logger.error(f"Task task_id: {self.id} saving info-file is NONE")
+                        logger.error(
+                            f"Task task_id: {self.id} saving info-file is NONE"
+                        )
                         raise ValueError("saving info file is NONE")
 
                 if result.error_message is not None and result.error_message != "":
@@ -653,7 +655,12 @@ class Node:
                 elif hasattr(result, "task_status"):
                     new_task_status = result.task_status
 
-            result_ids, result_tables, result_models, result_names = await process_result_helper(result, str(self.id))
+            (
+                result_ids,
+                result_tables,
+                result_models,
+                result_names,
+            ) = await process_result_helper(result, str(self.id))
 
             self.registry_entry.result_ids = result_ids
             self.registry_entry.result_tables = result_tables
@@ -675,7 +682,9 @@ class Node:
             logger.warning(f"Task task_id: {self.id} {status} is not a TaskStatus")
             self.registry_entry.status = TaskStatus(status)
         await context.db.save(self.registry_entry)
-        logger.info(f"Task task_id: {self.id} {self.name} is set to {status}, id is: {self.id}")
+        logger.info(
+            f"Task task_id: {self.id} {self.name} is set to {status}, id is: {self.id}"
+        )
 
 
 async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None]:
@@ -830,8 +839,7 @@ P = ParamSpec("P")
 
 
 @overload
-def node(_func: Callable[P, T]) -> Callable[..., T]:
-    ...
+def node(_func: Callable[P, T]) -> Callable[..., T]: ...
 
 
 @overload
@@ -842,8 +850,7 @@ def node(
     version: Optional[str] = None,
     cache: bool = True,
     **kwargs_node: Any,
-) -> Callable[[Callable[P, T]], Callable[..., T]]:
-    ...
+) -> Callable[[Callable[P, T]], Callable[..., T]]: ...
 
 
 def node(

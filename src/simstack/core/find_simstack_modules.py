@@ -16,7 +16,7 @@ def walk_packages(package_name, all_modules):
         # print(f"Path: {package_path}")
 
         for importer, modname, ispkg in pkgutil.walk_packages(
-                package_path, prefix=f"{package_name}."
+            package_path, prefix=f"{package_name}."
         ):
             if ispkg:
                 logger.debug(f"  Subpackage: {modname}")

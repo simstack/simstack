@@ -10,7 +10,7 @@ class TestDatabaseInformation:
             "parameters": {
                 "db": {
                     "database": "test_db",
-                    "connection_string": "mongodb://test_connection_string"
+                    "connection_string": "mongodb://test_connection_string",
                 }
             }
         }
@@ -26,11 +26,14 @@ class TestDatabaseInformation:
             "parameters": {
                 "common": {
                     "database": "test_db",
-                    "connection_string": "mongodb://test_connection_string"
+                    "connection_string": "mongodb://test_connection_string",
                 }
             }
         }
-        kwargs = {"db_name": "override_db", "connection_string": "override_connection_string"}
+        kwargs = {
+            "db_name": "override_db",
+            "connection_string": "override_connection_string",
+        }
         db_info = DatabaseInformation.from_config(config, **kwargs)
 
         assert db_info.db_name == "override_db"
@@ -38,7 +41,7 @@ class TestDatabaseInformation:
         assert db_info.db_type == DBType.MONGODB
 
     def test_from_config_with_in_memory_db(self):
-        config = { "parameters" : {"db":  { "database" : "test_db"}}}
+        config = {"parameters": {"db": {"database": "test_db"}}}
         kwargs = {"is_test": True}
         db_info = DatabaseInformation.from_config(config, **kwargs)
 
@@ -49,9 +52,7 @@ class TestDatabaseInformation:
     def test_from_config_missing_db_name(self):
         config = {
             "parameters": {
-                "db": {
-                    "connection_string": "mongodb://test_connection_string"
-                }
+                "db": {"connection_string": "mongodb://test_connection_string"}
             }
         }
         kwargs = {}
@@ -60,13 +61,7 @@ class TestDatabaseInformation:
             mock_exit.assert_called_once_with(-1)
 
     def test_from_config_missing_connection_string(self):
-        config = {
-            "parameters": {
-                "db": {
-                    "database": "test_db"
-                }
-            }
-        }
+        config = {"parameters": {"db": {"database": "test_db"}}}
         kwargs = {}
         with patch("sys.exit") as mock_exit:
             DatabaseInformation.from_config(config, **kwargs)

@@ -19,13 +19,19 @@ from simstack.util.path_manager import path_manager
 
 
 def validate_routes():
-    assert route_table.targets == {'local': ['uploads'], 'self': ['local', 'uploads'], 'uploads': []}
+    assert route_table.targets == {
+        "local": ["uploads"],
+        "self": ["local", "uploads"],
+        "uploads": [],
+    }
+
 
 @pytest.fixture(autouse=True)
 def reset_resources():
     allowed_resources.clear_resources()
     yield
     allowed_resources.clear_resources()
+
 
 class TestConfigReader:
     """Test suite for the TomlReader class."""
@@ -38,11 +44,13 @@ class TestConfigReader:
             # Patch path_manager to use the temp_path as root
             original_root = path_manager.root_dir
             path_manager.root_dir = temp_path
-            
+
             # Save original paths and use a copy of project_root to avoid modifying it
             original_paths = path_manager.paths.copy()
             if "project_root" in path_manager.paths:
-                path_manager.paths["project_root"] = path_manager.paths["project_root"].copy()
+                path_manager.paths["project_root"] = path_manager.paths[
+                    "project_root"
+                ].copy()
                 path_manager.paths["project_root"]["path"] = temp_path
 
             # Create dummy files/dirs for validation
@@ -130,7 +138,9 @@ tests = {{ path = "tests", drops = "", use_pickle = false }}
     @pytest.fixture
     def toml_file_path_for_db_init(self, monkeypatch):
         with tempfile.TemporaryDirectory() as temp_dir:
-            monkeypatch.setattr("simstack.util.project_root_finder.find_project_root", lambda: temp_path)
+            monkeypatch.setattr(
+                "simstack.util.project_root_finder.find_project_root", lambda: temp_path
+            )
             temp_path = Path(temp_dir)
             config_file = temp_path / "simstack.toml"
             config_file.write_text(r"""
@@ -145,7 +155,7 @@ use_db = true
             yield temp_path
 
     @pytest.fixture
-    def toml_reader(self,toml_file_path:Path):
+    def toml_reader(self, toml_file_path: Path):
         reader = TomlReader(config_path=toml_file_path)
         yield reader
 
@@ -160,7 +170,7 @@ use_db = true
 
     @pytest.fixture
     def mock_db_info(self, toml_reader):
-        kwargs = { 'is_test' : True }
+        kwargs = {"is_test": True}
         toml_reader.config["parameters"]["db"]["connection_string"] = None
         db_info = DatabaseInformation.from_config(toml_reader.config, **kwargs)
         return db_info
@@ -221,7 +231,11 @@ use_db = true
             db.close()
 
     def test_reader(self, toml_reader):
-        assert toml_reader.get("resources.allowed_resources") == ["local", "self", "uploads"]
+        assert toml_reader.get("resources.allowed_resources") == [
+            "local",
+            "self",
+            "uploads",
+        ]
 
     def test_resource_definitions(self, resource_definitions):
         assert len(resource_definitions) == 3
@@ -231,12 +245,16 @@ use_db = true
         assert resource_definitions[2].resource_str == "uploads"
 
     @pytest.mark.asyncio
-    async def test_init_datasource_no_db(self,toml_reader):
+    async def test_init_datasource_no_db(self, toml_reader):
         assert toml_reader.use_db() == False
-        kwargs_dict = {"resource" : "local", "is_test" : False}
+        kwargs_dict = {"resource": "local", "is_test": False}
         project_root = find_project_root(skip_files=())
-        db_info = DatabaseInformation(connection_string="mongo_db",db_name="test_db",db_type=DBType.IN_MEMORY)
-        self.config_reader = await ConfigReader.create("local", db_info, toml_reader,project_root,**kwargs_dict)
+        db_info = DatabaseInformation(
+            connection_string="mongo_db", db_name="test_db", db_type=DBType.IN_MEMORY
+        )
+        self.config_reader = await ConfigReader.create(
+            "local", db_info, toml_reader, project_root, **kwargs_dict
+        )
         self.validate_config_reader(toml_reader)
 
     def validate_config_reader(self, toml_reader):
@@ -250,7 +268,6 @@ use_db = true
         assert self.config_reader.db_type == DBType.IN_MEMORY
         validate_routes()
 
-
     @pytest.mark.asyncio
     async def test_overwrite_workdir_in_toml(self, toml_reader):
         assert toml_reader.use_db() == False
@@ -259,22 +276,36 @@ use_db = true
             temp_workdir = Path(temp_dir) / "workdir"
             temp_workdir.mkdir()
 
-            kwargs_dict = {"resource": "local", "is_test": False, "workdir": str(temp_workdir)}
+            kwargs_dict = {
+                "resource": "local",
+                "is_test": False,
+                "workdir": str(temp_workdir),
+            }
 
-            db_info = DatabaseInformation(connection_string="mongo_db", db_name="test_db", db_type=DBType.IN_MEMORY)
+            db_info = DatabaseInformation(
+                connection_string="mongo_db",
+                db_name="test_db",
+                db_type=DBType.IN_MEMORY,
+            )
             project_root = find_project_root(skip_files=())
-            config_reader = await ConfigReader.create("local", db_info, toml_reader, project_root,**kwargs_dict)
+            config_reader = await ConfigReader.create(
+                "local", db_info, toml_reader, project_root, **kwargs_dict
+            )
             assert config_reader.workdir == temp_workdir
 
     @pytest.mark.asyncio
-    async def test_init_datasource_with_db(self,mock_db, toml_reader, resource_definitions):
+    async def test_init_datasource_with_db(
+        self, mock_db, toml_reader, resource_definitions
+    ):
         assert mock_db.database_name == "user_data"
         toml_reader.config["parameters"]["general"]["use_db"] = True
 
         for resource_def in resource_definitions:
             await mock_db.save(resource_def)
         project_root = find_project_root(skip_files=())
-        config_reader = await ConfigReader.create("local", mock_db, toml_reader, project_root)
+        config_reader = await ConfigReader.create(
+            "local", mock_db, toml_reader, project_root
+        )
         assert config_reader.db_name == "user_data"
         validate_routes()
 
@@ -282,14 +313,18 @@ use_db = true
     async def test_resource_property_restrictions(self, toml_reader, mock_db):
         """Test that the resource property is read-only."""
         project_root = find_project_root(skip_files=())
-        config_reader = await ConfigReader.create("local", mock_db, toml_reader, project_root)
+        config_reader = await ConfigReader.create(
+            "local", mock_db, toml_reader, project_root
+        )
 
         # Test getter
         assert isinstance(config_reader.resource, Resource)
         assert config_reader.resource.value == "local"
 
         # Test setter raises ValueError
-        with pytest.raises(ValueError, match="ConfigReader: Resource cannot be set directly"):
+        with pytest.raises(
+            ValueError, match="ConfigReader: Resource cannot be set directly"
+        ):
             config_reader.resource = "new_value"
 
     @pytest.mark.asyncio
@@ -298,7 +333,9 @@ use_db = true
         # 'non_existent' is not in allowed_resources ["local", "self", "uploads"]
         project_root = find_project_root(skip_files=())
         with pytest.raises(ValueError):
-            await ConfigReader.create("non_existent", mock_db, toml_reader, project_root)
+            await ConfigReader.create(
+                "non_existent", mock_db, toml_reader, project_root
+            )
 
     @pytest.mark.asyncio
     async def test_missing_resource_definition(self, toml_reader, mock_db):
@@ -306,7 +343,9 @@ use_db = true
         # Remove the resource definition from the TOML config
         del toml_reader.config["resources"]["local"]
         project_root = find_project_root(skip_files=())
-        with pytest.raises(ValueError, match="Resource definition for local not found."):
+        with pytest.raises(
+            ValueError, match="Resource definition for local not found."
+        ):
             await ConfigReader.create("local", mock_db, toml_reader, project_root)
 
     @pytest.mark.asyncio
@@ -316,7 +355,9 @@ use_db = true
         project_root = find_project_root(skip_files=())
         for invalid_resource in invalid_resources:
             with pytest.raises(ValueError):
-                await ConfigReader.create(invalid_resource, mock_db, toml_reader, project_root)
+                await ConfigReader.create(
+                    invalid_resource, mock_db, toml_reader, project_root
+                )
 
     @pytest.mark.asyncio
     async def test_override_ssh_key(self, toml_reader, mock_db):
@@ -328,8 +369,9 @@ use_db = true
 
             kwargs = {"ssh_key": tmp_ssh_key.name}
             project_root = find_project_root(skip_files=())
-            config_reader = await ConfigReader.create("local", mock_db, toml_reader, project_root,**kwargs)
+            config_reader = await ConfigReader.create(
+                "local", mock_db, toml_reader, project_root, **kwargs
+            )
 
             assert Path(config_reader.ssh_key).exists()
             assert config_reader.ssh_key == Path(tmp_ssh_key.name)
-

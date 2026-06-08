@@ -11,8 +11,7 @@ T = TypeVar("T")
 
 
 @overload
-def simstack_model(cls: Type[T]) -> Type[T]:
-    ...
+def simstack_model(cls: Type[T]) -> Type[T]: ...
 
 
 def simstack_model(cls: T) -> T:

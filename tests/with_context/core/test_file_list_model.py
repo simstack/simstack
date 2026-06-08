@@ -165,9 +165,10 @@ class TestFileList:
         assert file_list.elements == []
         assert len(file_list) == 0
 
-
     @pytest.mark.asyncio
-    async def test_file_list_initialization_with_data(self, initialized_context, sample_file_stacks):
+    async def test_file_list_initialization_with_data(
+        self, initialized_context, sample_file_stacks
+    ):
         """Test creating FileList with initial data"""
         file_list = FileList()
         await file_list.extend(sample_file_stacks)
@@ -185,7 +186,9 @@ class TestFileListModel:
         assert file_list_model.id is not None  # Model should have an ID
 
     @pytest.mark.asyncio
-    async def test_file_list_model_initialization_with_data(self, initialized_context, sample_file_stacks):
+    async def test_file_list_model_initialization_with_data(
+        self, initialized_context, sample_file_stacks
+    ):
         """Test creating FileListModel with initial data"""
         for fs in sample_file_stacks:
             await context.db.save(fs)
@@ -441,9 +444,17 @@ async def test_file_list_len_parametrized(initialized_context, file_count):
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "pattern,expected_count",
-    [(r"file1\.txt$", 1), (r"file2\.py$", 1), (r"^test", 1), (r"file", 2), (r"\.exe$", 0)],
+    [
+        (r"file1\.txt$", 1),
+        (r"file2\.py$", 1),
+        (r"^test", 1),
+        (r"file", 2),
+        (r"\.exe$", 0),
+    ],
 )
-async def test_find_all_patterns(initialized_context, pattern, expected_count, sample_file_stacks):
+async def test_find_all_patterns(
+    initialized_context, pattern, expected_count, sample_file_stacks
+):
     """Parametrized test for find_all with different patterns"""
     file_list = FileList()
     for fs in sample_file_stacks:

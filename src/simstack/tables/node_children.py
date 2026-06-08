@@ -1,14 +1,15 @@
 import ast
 import importlib
 import inspect
-import os
 from typing import Optional, Callable, List, Dict
 from simstack.models import NodeModel
 from simstack.util.importer import import_function
 from simstack.util.docstring_parser import DocstringParser
 
 import logging
+
 logger = logging.getLogger("node_children")
+
 
 def _import_callable_from_mapping(function_mapping: str) -> Optional[Callable]:
     """
@@ -17,7 +18,9 @@ def _import_callable_from_mapping(function_mapping: str) -> Optional[Callable]:
     try:
         module_path, _, attr = function_mapping.rpartition(".")
         if not module_path or not attr:
-            logger.warning(f"Invalid function_mapping '{function_mapping}' (expected 'module.func').")
+            logger.warning(
+                f"Invalid function_mapping '{function_mapping}' (expected 'module.func')."
+            )
             return None
 
         module = importlib.import_module(module_path)
@@ -30,6 +33,7 @@ def _import_callable_from_mapping(function_mapping: str) -> Optional[Callable]:
     except Exception as e:
         logger.warning(f"Could not import '{function_mapping}': {e}")
         return None
+
 
 def _extract_called_functions(func: Callable) -> List[str]:
     """
@@ -54,7 +58,9 @@ def _extract_called_functions(func: Callable) -> List[str]:
                 elif isinstance(node.func, ast.Attribute):
                     # Attribute function call: obj.method()
                     if isinstance(node.func.value, ast.Name):
-                        called_functions.append(f"{node.func.value.id}.{node.func.attr}")
+                        called_functions.append(
+                            f"{node.func.value.id}.{node.func.attr}"
+                        )
                     else:
                         called_functions.append(node.func.attr)
 
@@ -66,28 +72,39 @@ def _extract_called_functions(func: Callable) -> List[str]:
                             called_functions.append(task_call.func.id)
                         elif isinstance(task_call.func, ast.Attribute):
                             if isinstance(task_call.func.value, ast.Name):
-                                called_functions.append(f"{task_call.func.value.id}.{task_call.func.attr}")
+                                called_functions.append(
+                                    f"{task_call.func.value.id}.{task_call.func.attr}"
+                                )
                             else:
                                 called_functions.append(task_call.func.attr)
 
-                elif isinstance(node.func, ast.Attribute) and node.func.attr in task_creators:
+                elif (
+                    isinstance(node.func, ast.Attribute)
+                    and node.func.attr in task_creators
+                ):
                     if node.args and isinstance(node.args[0], ast.Call):
                         task_call = node.args[0]
                         if isinstance(task_call.func, ast.Name):
                             called_functions.append(task_call.func.id)
                         elif isinstance(task_call.func, ast.Attribute):
                             if isinstance(task_call.func.value, ast.Name):
-                                called_functions.append(f"{task_call.func.value.id}.{task_call.func.attr}")
+                                called_functions.append(
+                                    f"{task_call.func.value.id}.{task_call.func.attr}"
+                                )
                             else:
                                 called_functions.append(task_call.func.attr)
 
     except Exception as e:
-        logger.warning(f"Could not extract called functions from {getattr(func, '__name__', '<unknown>')}: {e}")
+        logger.warning(
+            f"Could not extract called functions from {getattr(func, '__name__', '<unknown>')}: {e}"
+        )
 
     return called_functions
 
+
 def normalize_text(s: str) -> str:
     return s.encode("utf-8", errors="replace").decode("utf-8")
+
 
 async def update_node_children(engine, drops: str) -> None:
     """
@@ -99,7 +116,9 @@ async def update_node_children(engine, drops: str) -> None:
     node_models: List[NodeModel] = await engine.find(NodeModel)
 
     # Build lookup tables to resolve extracted names -> NodeModel.function_mapping
-    mapping_by_node_name: Dict[str, str] = { nm.name: nm.function_mapping for nm in node_models}
+    mapping_by_node_name: Dict[str, str] = {
+        nm.name: nm.function_mapping for nm in node_models
+    }
     mapping_set: set[str] = set(nm.function_mapping for nm in node_models)
 
     for nm in node_models:
@@ -163,53 +182,59 @@ async def update_node_children(engine, drops: str) -> None:
 
             # Write formatted NodeModel information
             outfile.write(f"{'=' * 80}\n")
-            
+
             outfile.write(f"Node: {nm.name if nm.name else 'WARNING: Missing name'}\n")
             outfile.write(
-                f"Function Mapping: {nm.function_mapping if nm.function_mapping else 'WARNING: Missing function_mapping'}\n")
+                f"Function Mapping: {nm.function_mapping if nm.function_mapping else 'WARNING: Missing function_mapping'}\n"
+            )
 
-            if hasattr(nm, 'description') and nm.description:
+            if hasattr(nm, "description") and nm.description:
                 try:
                     cleaned_description = normalize_text(nm.description)
                     outfile.write(f"Description: {cleaned_description}\n")
                 except Exception as e:
-                    logger.warning(f"Could not normalize description for {nm.name}: {e}")
+                    logger.warning(
+                        f"Could not normalize description for {nm.name}: {e}"
+                    )
             else:
-
-                outfile.write(f"Description: WARNING: Missing description\n")
+                outfile.write("Description: WARNING: Missing description\n")
 
             # Write input_mappings in table format
-            outfile.write(f"\nInput Mappings:\n")
-            if hasattr(nm, 'input_mappings') and nm.input_mappings:
+            outfile.write("\nInput Mappings:\n")
+            if hasattr(nm, "input_mappings") and nm.input_mappings:
                 outfile.write(f"  {'Arg Name':<20} | {'Model':<50} | {'Field':<20}\n")
                 outfile.write(f"  {'-' * 20}-+-{'-' * 50}-+-{'-' * 20}\n")
                 for mapping in nm.input_mappings:
-                    arg_name = getattr(mapping, 'name', 'N/A')
-                    model = getattr(mapping, 'mapping', 'N/A')
-                    field = getattr(mapping, 'description', 'N/A')
-                    outfile.write(f"  {str(arg_name):<20} | {str(model):<50} | {str(field):<20}\n")
+                    arg_name = getattr(mapping, "name", "N/A")
+                    model = getattr(mapping, "mapping", "N/A")
+                    field = getattr(mapping, "description", "N/A")
+                    outfile.write(
+                        f"  {str(arg_name):<20} | {str(model):<50} | {str(field):<20}\n"
+                    )
             else:
-                outfile.write(f"  (none)\n")
+                outfile.write("  (none)\n")
 
             # Write result_mappings in table format
-            outfile.write(f"\nResult Mappings:\n")
-            if hasattr(nm, 'result_mappings') and nm.result_mappings:
+            outfile.write("\nResult Mappings:\n")
+            if hasattr(nm, "result_mappings") and nm.result_mappings:
                 outfile.write(f"  {'Arg Name':<20} | {'Model':<50} | {'Field':<20}\n")
                 outfile.write(f"  {'-' * 20}-+-{'-' * 50}-+-{'-' * 20}\n")
                 for mapping in nm.result_mappings:
-                    arg_name = getattr(mapping, 'name', 'N/A')
-                    model = getattr(mapping, 'mapping', 'N/A')
-                    field = getattr(mapping, 'description', 'N/A')
-                    outfile.write(f"  {str(arg_name):<20} | {str(model):<50} | {str(field):<20}\n")
+                    arg_name = getattr(mapping, "name", "N/A")
+                    model = getattr(mapping, "mapping", "N/A")
+                    field = getattr(mapping, "description", "N/A")
+                    outfile.write(
+                        f"  {str(arg_name):<20} | {str(model):<50} | {str(field):<20}\n"
+                    )
             else:
-                outfile.write(f"  (none)\n")
+                outfile.write("  (none)\n")
 
             # Write called_nodes (node children)
-            outfile.write(f"\nCalled Nodes (Children):\n")
-            if hasattr(nm, 'called_nodes') and nm.called_nodes:
+            outfile.write("\nCalled Nodes (Children):\n")
+            if hasattr(nm, "called_nodes") and nm.called_nodes:
                 for called_node in nm.called_nodes:
                     outfile.write(f"  - {called_node}\n")
             else:
-                outfile.write(f"  (none)\n")
+                outfile.write("  (none)\n")
 
             outfile.write(f"{'-' * 80}\n\n")

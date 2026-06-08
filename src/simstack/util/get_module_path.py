@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 
 from simstack.core.context import context
-from simstack.util.project_root_finder import find_project_root
 
 
 # Get the module name from the current file path

@@ -1,5 +1,15 @@
 import uuid
-from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List, Optional
+from typing import (
+    Dict,
+    Iterator,
+    Union,
+    Tuple,
+    KeysView,
+    ValuesView,
+    ItemsView,
+    List,
+    Optional,
+)
 from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
 from simstack.core.asnyc_helper import async_helper
 from simstack.models import simstack_model
@@ -29,7 +39,9 @@ class DataSetSection(EmbeddedModel):
 
     model_config = {"extra": "forbid"}
 
-    async def add_item(self, item: Dict[str, Optional[Model]], name: Optional[str] = None) -> None:
+    async def add_item(
+        self, item: Dict[str, Optional[Model]], name: Optional[str] = None
+    ) -> None:
         """
         Add a dictionary of models to this section.
 
@@ -69,6 +81,7 @@ class DataSetSection(EmbeddedModel):
         # Save all models
         item_ids = {}
         from simstack.core.context import context
+
         for key, model in item.items():
             if model is None:
                 continue
@@ -83,43 +96,45 @@ class DataSetSection(EmbeddedModel):
         """
 
         from simstack.util.importer import import_class_by_name
-        from simstack.core.context import context
+
         column_defs = []
         if not self.data:
             return column_defs
 
-        # Use model_types to determine columns. 
+        # Use model_types to determine columns.
         # Since it's a dict, we might want to order them or just iterate.
         for key, model_type in self.model_types.items():
             # Find the first instance of this key in data to get an ID for make_column_defs_instance if needed
             # Actually make_column_defs_instance might just need the class, let's check how it's used in DataSetTuple
-            
+
             # In DataSetTuple:
             # for model_group_id, model_type in zip(self.data[0], self.model_types):
             #     model_class = await import_class_by_name(model_type)
             #     model_instance = await engine.find_one(model_class, model_class.id == model_group_id)
             #     model_columns = make_column_defs_instance(model_instance)
             #     column_defs.extend(model_columns)
-            
+
             # We do something similar but we need an instance for each key.
             model_group_id = None
             for row in self.data.values():
                 if key in row:
                     model_group_id = row[key]
                     break
-            
+
             if model_group_id is None:
                 continue
-                
+
             model_class = await import_class_by_name(model_type)
-            model_instance = await engine.find_one(model_class, model_class.id == model_group_id)
+            model_instance = await engine.find_one(
+                model_class, model_class.id == model_group_id
+            )
             if model_instance:
                 model_columns = make_column_defs_instance(model_instance)
-                # Maybe prefix column headers with the key? 
+                # Maybe prefix column headers with the key?
                 # DataSetTuple doesn't seem to prefix, but it's a tuple so order matters.
                 # In a dict, we might have many models.
                 column_defs.extend(model_columns)
-        
+
         return column_defs
 
     async def make_table_entries(self):
@@ -127,6 +142,7 @@ class DataSetSection(EmbeddedModel):
 
         from simstack.core.context import context
         from simstack.util.importer import import_class_by_name
+
         for row in self.data.values():
             row_data = []
             for key, model_type in self.model_types.items():
@@ -135,17 +151,17 @@ class DataSetSection(EmbeddedModel):
                     # How to handle missing values in make_table_entries?
                     # DataSetTuple assumes all models in the tuple are present (or at least zip handles it)
                     # Let's see what make_table_entries_helper does with None.
-                    row_data.append({}) # Or some empty representation
+                    row_data.append({})  # Or some empty representation
                     continue
 
-
                 model_class = await import_class_by_name(model_type, context.db)
-                model_instance = await context.db.find_one(model_class, model_class.id == model_group_id)
+                model_instance = await context.db.find_one(
+                    model_class, model_class.id == model_group_id
+                )
                 model_data = make_table_entries_helper(model_instance)
                 row_data.append(model_data)
             all_data.append(row_data)
         return all_data
-
 
     async def get_item(self, name: str) -> Dict[str, Model]:
         if name not in self.data:
@@ -157,10 +173,13 @@ class DataSetSection(EmbeddedModel):
         for key, model_id in row.items():
             model_type = self.model_types[key]
             from simstack.util.importer import import_class_by_name
+
             model_class = await import_class_by_name(model_type, db)
             model_instance = await db.find_one(model_class, model_class.id == model_id)
             if model_instance is None:
-                 raise ValueError(f"Model with id {model_id} of type {model_type} not found")
+                raise ValueError(
+                    f"Model with id {model_id} of type {model_type} not found"
+                )
             result[key] = model_instance
         return result
 
@@ -211,7 +230,8 @@ class DataSet(Model):
     def collect_structure(self) -> Dict[str, Dict[str, str]]:
         return {
             section_name: section.model_types if len(section) > 0 else {}
-            for section_name, section in self.sections.items() if len(section) > 0
+            for section_name, section in self.sections.items()
+            if len(section) > 0
         }
 
     def __getitem__(self, key: str) -> DataSetSection:
@@ -280,6 +300,7 @@ class DataSetSelectionField(EmbeddedModel):
     section_name: str = Field(default="default")
     indices: List[int] = Field(default_factory=list)
 
+
 @simstack_model
 class DataSetSelection(Model):
     field_name: str = Field(default="dataset_selection")
@@ -288,10 +309,13 @@ class DataSetSelection(Model):
 
     async def get_dataset(self):
         from simstack.core.context import context
+
         return await context.db.find_one(DataSet, DataSet.id == self.dataset_id)
 
     @async_helper
-    async def get_selected_elements(self, section_name: str = None) -> List[Tuple[Model, ...]]:
+    async def get_selected_elements(
+        self, section_name: str = None
+    ) -> List[Tuple[Model, ...]]:
         """
         Retrieve all selected model groups from the dataset.
 
@@ -299,6 +323,7 @@ class DataSetSelection(Model):
         :return: List of tuples of model instances for all selected elements
         """
         from simstack.core.context import context
+
         db = context.db
         dataset = await db.find_one(DataSet, DataSet.id == self.dataset_id)
 
@@ -307,12 +332,17 @@ class DataSetSelection(Model):
 
         selected_elements = []
         for selection_field in self.dataset_selection_fields:
-            if section_name is not None and selection_field.section_name != section_name:
+            if (
+                section_name is not None
+                and selection_field.section_name != section_name
+            ):
                 continue
 
             section = dataset.sections.get(selection_field.section_name)
             if section is None:
-                raise ValueError(f"Section {selection_field.section_name} not found in dataset")
+                raise ValueError(
+                    f"Section {selection_field.section_name} not found in dataset"
+                )
 
             for index in selection_field.indices:
                 if index >= len(section):
@@ -332,6 +362,7 @@ class DataSetSelection(Model):
         :return: Async iterator yielding tuples of model instances
         """
         from simstack.core.context import context
+
         db = context.db
         dataset = await db.find_one(DataSet, DataSet.id == self.dataset_id)
 
@@ -339,12 +370,17 @@ class DataSetSelection(Model):
             raise ValueError(f"Dataset with id {self.dataset_id} not found")
 
         for selection_field in self.dataset_selection_fields:
-            if section_name is not None and selection_field.section_name != section_name:
+            if (
+                section_name is not None
+                and selection_field.section_name != section_name
+            ):
                 continue
 
             section = dataset.sections.get(selection_field.section_name)
             if section is None:
-                raise ValueError(f"Section {selection_field.section_name} not found in dataset")
+                raise ValueError(
+                    f"Section {selection_field.section_name} not found in dataset"
+                )
 
             for index in selection_field.indices:
                 if index >= len(section):
@@ -358,4 +394,3 @@ class DataSetSelection(Model):
         return {
             "ui:field": "DataSetSelectionField",
         }
-

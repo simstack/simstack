@@ -13,6 +13,7 @@ from simstack.util.transform_file_name import transform_file_name
 
 logger = logging.getLogger(__name__)
 
+
 class TomlReader:
     def __init__(self, config_path: Path, config_file: Path = Path("simstack.toml")):
         try:
@@ -61,8 +62,11 @@ class TomlReader:
         Sets the allowed resources list from the config file.
         """
         from simstack.models.resource_definition import ResourceDefinition
+
         if not allowed_resources.has_resource(resource_str):
-            raise ValueError(f"Illegal resource {resource_str}. Allowed resources are: {allowed_resources.get_resources()}.")
+            raise ValueError(
+                f"Illegal resource {resource_str}. Allowed resources are: {allowed_resources.get_resources()}."
+            )
 
         resource_definition = self.get(f"resources.{resource_str}", None)
         if resource_definition is None:
@@ -70,31 +74,44 @@ class TomlReader:
 
         resource_definition["resource_str"] = resource_str
 
-        if not "workdir" in resource_definition:
+        if "workdir" not in resource_definition:
             raise ValueError(f"No workdir specified for resource {resource_str}.")
         else:
-            resource_definition["workdir"] = transform_file_name(resource_definition["workdir"])
+            resource_definition["workdir"] = transform_file_name(
+                resource_definition["workdir"]
+            )
 
-        if not "python_paths" in resource_definition:
+        if "python_paths" not in resource_definition:
             logger.warning(f"No python paths specified for resource {resource_str}.")
         else:
-            resource_definition["python_paths"] = [transform_file_name(p) for p in resource_definition["python_paths"]]
+            resource_definition["python_paths"] = [
+                transform_file_name(p) for p in resource_definition["python_paths"]
+            ]
 
-        if not "ssh_key" in resource_definition:
+        if "ssh_key" not in resource_definition:
             logger.warning(f"No ssh key path specified for resource {resource_str}.")
         else:
-            resource_definition["ssh_key"] = transform_file_name(resource_definition["ssh_key"])
+            resource_definition["ssh_key"] = transform_file_name(
+                resource_definition["ssh_key"]
+            )
 
-        if not "environment_start" in resource_definition:
-            logger.warning(f"No environment start command specified for resource {resource_str}.")
-        if not "routes" in resource_definition:
+        if "environment_start" not in resource_definition:
+            logger.warning(
+                f"No environment start command specified for resource {resource_str}."
+            )
+        if "routes" not in resource_definition:
             logger.warning(f"No routes specified for resource {resource_str}.")
             resource_definition["routes"] = []
-        if not "hostname" in resource_definition:
+        if "hostname" not in resource_definition:
             raise ValueError(f"No hostname specified for resource {resource_str}.")
-        elif resource_definition["hostname"] == "test_hostname" or resource_definition["hostname"] == "localhost":
+        elif (
+            resource_definition["hostname"] == "test_hostname"
+            or resource_definition["hostname"] == "localhost"
+        ):
             resource_definition["hostname"] = socket.gethostname()
-            logger.info(f"Overriding hostname for tests: {resource_definition['hostname']} ")
+            logger.info(
+                f"Overriding hostname for tests: {resource_definition['hostname']} "
+            )
 
         return ResourceDefinition.model_validate(resource_definition)
 

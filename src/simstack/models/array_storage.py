@@ -17,11 +17,11 @@ class ArrayStorage(BytesB64Mixin, Model):
     field_name: Optional[str] = None  # Store flattened array data as compressed JSON
     data_json: Optional[str] = None
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def copy_name_to_field_name(cls, values):
-        if isinstance(values, dict) and 'name' in values and 'field_name' not in values:
-            values['field_name'] = values['name']
+        if isinstance(values, dict) and "name" in values and "field_name" not in values:
+            values["field_name"] = values["name"]
         return values
 
     def set_array(self, array):
@@ -29,7 +29,6 @@ class ArrayStorage(BytesB64Mixin, Model):
         self.shape = ",".join(str(dim) for dim in array.shape)
         data_str = json.dumps(array.flatten().tolist())
         self.data_json = self._compress_bytes(data_str.encode())
-
 
     def get_array(self):
         """Retrieve the numpy array"""

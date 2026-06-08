@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Any, Union, List
+from typing import Dict, Any, Union
 
 from odmantic import Model, EmbeddedModel, Field
 
@@ -59,16 +59,14 @@ class DataSetMetadata(EmbeddedModel):
         return _get_json_schema(self.data)
 
     async def validate_dict(self, new_structure: Dict[str, Dict[str, str]]) -> bool:
-
         from simstack.core.context import context
+
         reference_metadata = await context.db.find_one(
             DataSetMetadataTemplate,
             DataSetMetadataTemplate.dataset_type == self.field_name,
         )
         # remove empty sections without mutating the dict during iteration
-        new_structure = {
-            key: value for key, value in new_structure.items() if value
-        }
+        new_structure = {key: value for key, value in new_structure.items() if value}
 
         if reference_metadata is None:
             metadata_template = DataSetMetadataTemplate(
@@ -107,8 +105,12 @@ class DataSetMetadata(EmbeddedModel):
             # For string types, allow the format field to differ or be missing
             if ref_type == "string":
                 # Compare all fields except 'format'
-                ref_without_format = {k: v for k, v in ref_prop.items() if k != "format"}
-                new_without_format = {k: v for k, v in new_prop.items() if k != "format"}
+                ref_without_format = {
+                    k: v for k, v in ref_prop.items() if k != "format"
+                }
+                new_without_format = {
+                    k: v for k, v in new_prop.items() if k != "format"
+                }
                 if ref_without_format != new_without_format:
                     raise ValueError(
                         f"Property '{key}' schema mismatch (excluding format). Reference: {ref_without_format}, Current: {new_without_format}"
@@ -147,6 +149,7 @@ class DataSetMetadata(EmbeddedModel):
     @async_helper
     async def freeze(self, new_structure: Dict[str, Dict[str, str]]) -> bool:
         from simstack.core.context import context
+
         db = context.db
         reference_metadata = await db.find_one(
             DataSetMetadataTemplate,

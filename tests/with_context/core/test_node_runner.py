@@ -36,9 +36,7 @@ class TestNodeRunner:
 
     def test_init_custom_values(self, mock_logger):
         """Test NodeRunner initialization with custom values"""
-        runner = NodeRunner(
-            "custom_node", "custom_123", logger=mock_logger
-        )
+        runner = NodeRunner("custom_node", "custom_123", logger=mock_logger)
 
         assert runner.name == "custom_node"
         assert runner.task_id == "custom_123"
@@ -254,9 +252,7 @@ class TestNodeRunnerIntegration:
         os.chdir(tmp_path)
 
         try:
-            runner = NodeRunner(
-                "integration_test", "int_123", logger=mock_logger
-            )
+            runner = NodeRunner("integration_test", "int_123", logger=mock_logger)
 
             # Test subprocess with real command
             result = runner.subprocess("test_echo", "echo 'Hello World'")
@@ -290,9 +286,7 @@ class TestNodeRunnerIntegration:
         os.chdir(tmp_path)
 
         try:
-            runner = NodeRunner(
-                "integration_fail", "fail_123", logger=mock_logger
-            )
+            runner = NodeRunner("integration_fail", "fail_123", logger=mock_logger)
 
             # Test subprocess with failing command
             result = runner.subprocess("test_fail", "exit 1")

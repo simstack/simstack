@@ -149,7 +149,9 @@ async def test_import_function_by_name_refreshes_stale_node_mapping_cache():
         await context.db.save(node_model)
         assert context.node_mappings.get_by_name(function_name) is None
 
-        imported_function = await import_function_by_name(function_name, db=context.db, task_id=None)
+        imported_function = await import_function_by_name(
+            function_name, db=context.db, task_id=None
+        )
 
         assert imported_function is function
         assert imported_function("fresh") == "fresh"

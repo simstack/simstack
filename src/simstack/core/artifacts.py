@@ -1,4 +1,3 @@
-import importlib
 import inspect
 import logging
 import re
@@ -13,7 +12,6 @@ from simstack.models.node_registry import find_child_nodes, NodeRegistry
 from simstack.models.table_artifact import TableArtifactModel
 from simstack.util.db import Database
 from simstack.util.importer import function_from_model
-from simstack.util.module_path_checker import is_module_subpath_of_path
 
 logger = logging.getLogger("artifacts")
 
@@ -38,8 +36,12 @@ class ArtifactArguments:
             setattr(self, param_name, arg_value)
 
 
-async def find_artifact_mappings(node_registry_path: str, db: Database, task_id: Optional[str] = None) -> List[ArtifactMapping]:
-    logger.debug(f"task_id: {task_id} Loading artifacts with regex pattern: {node_registry_path} ")
+async def find_artifact_mappings(
+    node_registry_path: str, db: Database, task_id: Optional[str] = None
+) -> List[ArtifactMapping]:
+    logger.debug(
+        f"task_id: {task_id} Loading artifacts with regex pattern: {node_registry_path} "
+    )
     all_mappings = await db.find(ArtifactMapping)
 
     # Filter them manually to find those whose patterns match your path
@@ -77,12 +79,19 @@ async def register_artifact_mapping(artifact_mapping: ArtifactMapping):
             # Import the function to verify it exists
             func = await function_from_model(artifact_mapping, task_id=None)
             if not func:
-                logger.warning("Could not import function {artifact_mapping.function_mapping}")
+                logger.warning(
+                    "Could not import function {artifact_mapping.function_mapping}"
+                )
         except Exception as e:
-            logger.error(f"Error processing function {artifact_mapping.function_mapping}: {e}")
+            logger.error(
+                f"Error processing function {artifact_mapping.function_mapping}: {e}"
+            )
     return await context.db.save(artifact_mapping)
 
-async def find_all_artifacts(node_registry: NodeRegistry, db: Database) -> List[ArtifactModel]:
+
+async def find_all_artifacts(
+    node_registry: NodeRegistry, db: Database
+) -> List[ArtifactModel]:
     return [
         await db.find_one(ArtifactModel, ArtifactModel.id == artifact_id)
         for artifact_id in node_registry.artifact_ids
@@ -97,7 +106,9 @@ async def create_artifacts(
         task_id = node_registry.id
         log_string = f"create artifacts for task_id: {task_id} for {call_path}"
 
-        artifact_mappings_list = await find_artifact_mappings(call_path, context.db, task_id=task_id)
+        artifact_mappings_list = await find_artifact_mappings(
+            call_path, context.db, task_id=task_id
+        )
 
         child_nodes = await find_child_nodes(task_id)
         logger.info(
@@ -126,7 +137,6 @@ async def create_artifacts(
         artifact_arguments.call_path = call_path
 
         artifact_list = []
-
 
         if len(artifact_mappings_list) > 0:
             for artifact_mapping in artifact_mappings_list:
@@ -174,23 +184,31 @@ async def create_artifacts(
 
                 for artifact in artifact_result:
                     if artifact is None:
-                        logger.warning(f"{log_string_mapping} Artifact is None, skipping.")
+                        logger.warning(
+                            f"{log_string_mapping} Artifact is None, skipping."
+                        )
                         continue
                     if isinstance(artifact, TableArtifactModel):
                         artifact.parent_id = node_registry.id
                         saved_artifact = await context.db.save(artifact)
-                        logger.debug(f"{log_string_mapping} new table: {saved_artifact}")
+                        logger.debug(
+                            f"{log_string_mapping} new table: {saved_artifact}"
+                        )
                     elif isinstance(artifact, ChartArtifactModel):
                         artifact.parent_id = node_registry.id
                         saved_artifact = await context.db.save(artifact)
-                        logger.debug(f"{log_string_mapping} new table: {saved_artifact}")
+                        logger.debug(
+                            f"{log_string_mapping} new table: {saved_artifact}"
+                        )
                     elif isinstance(artifact, ArtifactModel):
                         artifact.path = call_path
                         saved_artifact = await context.db.save(artifact)
                         logger.debug(f"{log_string_mapping} new: {saved_artifact}")
                         artifact_list.append(saved_artifact)
                     else:
-                        raise ValueError(f"{log_string_mapping} not an ArtifactModel object. Got {artifact} instead.")
+                        raise ValueError(
+                            f"{log_string_mapping} not an ArtifactModel object. Got {artifact} instead."
+                        )
         else:
             artifact_list = child_artifacts
             logger.debug(f"{log_string} passing child artifacts")

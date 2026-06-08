@@ -1,9 +1,11 @@
 from pathlib import Path
 import pytest
-from simstack.util.path_manager import PathManager, path_manager
+from simstack.util.path_manager import PathManager
 from simstack.util.project_root_finder import find_project_root
 
-pytestmark = pytest.mark.skip(reason="PathManager tests disabled: class is no longer used.")
+pytestmark = pytest.mark.skip(
+    reason="PathManager tests disabled: class is no longer used."
+)
 
 
 @pytest.fixture
@@ -99,6 +101,7 @@ def test_get_drops(path_manager_fixture):
     # Test getting drops for a non-existent path
     with pytest.raises(KeyError):
         path_manager.get_drops("non_existent_path")
+
 
 @pytest.mark.skip(reason="pathmanager is a singleton, from_config makes no sense ")
 def test_from_config(path_manager_fixture):

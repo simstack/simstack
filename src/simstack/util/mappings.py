@@ -2,6 +2,7 @@ from typing import Dict, Optional, List
 from simstack.models.models import ModelMapping, NodeModel
 from odmantic import AIOEngine
 
+
 class ModelMappingTable:
     def __init__(self, mappings: List[ModelMapping]):
         self._by_name: Dict[str, ModelMapping] = {m.name: m for m in mappings}
@@ -17,6 +18,7 @@ class ModelMappingTable:
     async def load(cls, engine: AIOEngine):
         mappings = await engine.find(ModelMapping)
         return cls(list(mappings))
+
 
 class NodeMappingTable:
     def __init__(self, nodes: List[NodeModel]):

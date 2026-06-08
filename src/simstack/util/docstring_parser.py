@@ -16,7 +16,14 @@ class DocstringParser:
       - Raises:
     """
 
-    _SECTION_NAMES = ("Args:", "Parameters:", "Returns:", "SimstackResult:", "CalledNodes:", "Raises:")
+    _SECTION_NAMES = (
+        "Args:",
+        "Parameters:",
+        "Returns:",
+        "SimstackResult:",
+        "CalledNodes:",
+        "Raises:",
+    )
 
     def __init__(self, docstring: Optional[str]) -> None:
         self._raw = docstring or ""
@@ -62,9 +69,14 @@ class DocstringParser:
         if "params" in self._cache:
             return self._cache["params"]
 
-        param_text = self._section("Args:", ("Returns:", "SimstackResult:", "CalledNodes:", "Raises:"))
+        param_text = self._section(
+            "Args:", ("Returns:", "SimstackResult:", "CalledNodes:", "Raises:")
+        )
         if param_text is None:
-            param_text = self._section("Parameters:", ("Returns:", "SimstackResult:", "CalledNodes:", "Raises:"))
+            param_text = self._section(
+                "Parameters:",
+                ("Returns:", "SimstackResult:", "CalledNodes:", "Raises:"),
+            )
 
         if not param_text:
             self._cache["params"] = None
@@ -89,7 +101,9 @@ class DocstringParser:
         if "returns" in self._cache:
             return self._cache["returns"]
 
-        return_text = self._section("Returns:", ("SimstackResult:", "CalledNodes:", "Raises:"))
+        return_text = self._section(
+            "Returns:", ("SimstackResult:", "CalledNodes:", "Raises:")
+        )
         if not return_text:
             self._cache["returns"] = None
             return None
@@ -116,7 +130,11 @@ class DocstringParser:
             result_name = match.group(1)
             result_type = match.group(2).strip()
             result_desc = match.group(3).strip()
-            simstack_results[result_name] = {"name": result_name, "type": result_type, "description": result_desc}
+            simstack_results[result_name] = {
+                "name": result_name,
+                "type": result_type,
+                "description": result_desc,
+            }
 
         self._cache["simstack_results"] = simstack_results if simstack_results else None
         return self._cache["simstack_results"]
@@ -125,7 +143,7 @@ class DocstringParser:
         if "called_nodes" in self._cache:
             return self._cache["called_nodes"]
 
-        called_nodes_text = self._section("Called Nodes:", ("Raises:","Notes"))
+        called_nodes_text = self._section("Called Nodes:", ("Raises:", "Notes"))
         if not called_nodes_text:
             self._cache["called_nodes"] = None
             return None

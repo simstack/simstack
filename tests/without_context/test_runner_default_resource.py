@@ -73,7 +73,7 @@ async def test_initialize_default_resource_builds_model_table_before_node_table(
 
 @pytest.mark.asyncio
 async def test_async_main_uses_false_is_default_when_default_resource_init_returns_none(
-    monkeypatch
+    monkeypatch,
 ):
     captured: dict[str, object] = {}
 

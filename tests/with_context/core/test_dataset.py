@@ -240,7 +240,6 @@ class TestDataSet:
         # Test setitem and getitem
         dataset["test"] = section
 
-
         await dataset.save(context.db)
         assert dataset["test"] == section
 
@@ -292,7 +291,9 @@ class TestDataSet:
         dataset_id = dataset.id
 
         # Load dataset from database
-        loaded_dataset = await context.db.find_one(DataSetTuple, DataSetTuple.id == dataset_id)
+        loaded_dataset = await context.db.find_one(
+            DataSetTuple, DataSetTuple.id == dataset_id
+        )
 
         assert loaded_dataset is not None
         assert loaded_dataset.metadata.field_name == "test_persistence"
@@ -475,15 +476,17 @@ class TestDataSet:
         f2 = FloatData(value=99.9)
         await context.db.save(f2)
 
-        meta2 = DataSetMetadata(
-            field_name="ds_struct_v2", data={"desc": "should fail"}
-        )
+        meta2 = DataSetMetadata(field_name="ds_struct_v2", data={"desc": "should fail"})
         ds2 = DataSetTuple(metadata=meta2)
 
         sec_pair_changed = DataSetTupleSection()
-        await sec_pair_changed.add_model_group((f2,))  # ["FloatData"] instead of ["FloatData", "StringData"]
+        await sec_pair_changed.add_model_group(
+            (f2,)
+        )  # ["FloatData"] instead of ["FloatData", "StringData"]
 
-        ds2["pair"] = sec_pair_changed  # keep the same key to emphasize structural mismatch
+        ds2["pair"] = (
+            sec_pair_changed  # keep the same key to emphasize structural mismatch
+        )
         ds2["nodes"] = sec_nodes  # keep one section same
 
         with pytest.raises(

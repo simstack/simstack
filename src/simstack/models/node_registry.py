@@ -7,6 +7,7 @@ from simstack.core.definitions import TaskStatus
 from simstack.models.file_list import FileList
 from simstack.models.parameters import Parameters
 
+
 class NodeRegistry(Model):
     """
     Represents a registry for nodes with associated metadata, configurations, and status
@@ -106,4 +107,5 @@ class NodeRegistry(Model):
 
 async def find_child_nodes(task_id: str) -> List[NodeRegistry]:
     from simstack.core.context import context
+
     return await context.db.find(NodeRegistry, {"parent_ids": {"$in": [task_id]}})

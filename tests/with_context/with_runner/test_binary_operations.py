@@ -8,9 +8,12 @@ from simstack.models import FloatData, Parameters
 def simstack_test_adder(arg1: FloatData, arg2: FloatData, **kwargs) -> FloatData:
     return FloatData(value=arg1.value + arg2.value)
 
+
 @pytest.mark.asyncio
 def test_adder():
-    parameters = Parameters(resource="test",force_rerun=True)
-    result = simstack_test_adder(FloatData(value=1), FloatData(value=2), parameters=parameters)
+    parameters = Parameters(resource="test", force_rerun=True)
+    result = simstack_test_adder(
+        FloatData(value=1), FloatData(value=2), parameters=parameters
+    )
     assert result.value == 3
     assert isinstance(result, FloatData)

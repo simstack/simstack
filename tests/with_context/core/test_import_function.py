@@ -78,12 +78,13 @@ async def setup_pickled_function(initialized_context):
     await context.db.delete(function_pickle)
 
 
-
 @pytest.mark.asyncio
 async def test_import_function_from_node_model(setup_node_model, initialized_context):
     """Test importing a function using NodeModel."""
     # Import the test_function using import_function
-    func = await import_function("tests.core.test_import_function.node_for_testing", context.db)
+    func = await import_function(
+        "tests.core.test_import_function.node_for_testing", context.db
+    )
 
     # Verify that the function was imported correctly
     assert func is node_for_testing
@@ -91,6 +92,7 @@ async def test_import_function_from_node_model(setup_node_model, initialized_con
     # Call the function and verify it works
     result = func(StringData(value="test"))
     assert result.value == "test"
+
 
 @pytest.mark.asyncio
 async def test_import_function_nonexistent(initialized_context):
@@ -101,7 +103,9 @@ async def test_import_function_nonexistent(initialized_context):
         LookupError,
         match="Function tests.core.test_import_function.nonexistent_function not found in the NodeModel Table",
     ):
-        await import_function("tests.core.test_import_function.nonexistent_function", context.db)
+        await import_function(
+            "tests.core.test_import_function.nonexistent_function", context.db
+        )
 
 
 if __name__ == "__main__":

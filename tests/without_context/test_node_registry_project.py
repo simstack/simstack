@@ -5,7 +5,9 @@ from simstack.models.node_registry import NodeRegistry
 from simstack.models.parameters import Parameters
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def _build_node_registry(**overrides) -> NodeRegistry:
     values = {
