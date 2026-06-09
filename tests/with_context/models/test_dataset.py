@@ -79,7 +79,7 @@ class TestDataSetSection:
         section.add_row({"f": float_data}, name="test_item")
 
         from simstack.core.context import context
-        retrieved = await section.get_item("test_item")
+        retrieved = section.get_item("test_item")
         assert isinstance(retrieved["f"], FloatData)
         assert retrieved["f"].value == 42.0
         assert retrieved["f"].id == float_data.id
@@ -162,5 +162,5 @@ class TestDataSet:
         assert "data" in loaded
         assert len(loaded["data"]) == 1
         
-        item = await loaded["data"].get_item("item1")
+        item = loaded["data"].get_item("item1")
         assert item["f"].value == 123.45

@@ -18,7 +18,11 @@ class DataSetSection(EmbeddedModel):
     :ivar model_types: Dictionary mapping keys to model class names.
     :type model_types: Dict[str, str]
     :ivar data: Dictionary mapping names to dictionaries mapping keys to ObjectIds.
-    :type data: Dict[str, Dict[str, ObjectId]]
+    :type data: Dict[str, Dict[str, ObjectId]] stores the ids, the actual data is in the cache
+
+
+
+
     """
 
     model_types: Dict[str, str] = Field(default_factory=dict)
@@ -54,6 +58,12 @@ class DataSetSection(EmbeddedModel):
         if name is None:
             name = str(uuid.uuid4())
 
+        if name in self.data:
+            raise ValueError(f"Item with name '{name}' already exists in section")
+        
+        if not isinstance(item, dict):
+            raise TypeError("Item must be a dictionary")
+        
         # Type check: raise TypeError if an item which is not None is not a Model
         for key, value in item.items():
             if value is not None and not isinstance(value, Model):
@@ -138,7 +148,6 @@ class DataSetSection(EmbeddedModel):
 
     async def make_table_entries(self):
         all_data = []
-
         from simstack.core.context import context
         from simstack.util.importer import import_class_by_name
         for row in self.data.values():
@@ -161,33 +170,51 @@ class DataSetSection(EmbeddedModel):
         return all_data
 
 
-    async def get_item(self, name: str) -> Dict[str, Model]:
+    def get_item(self, name: str) -> Dict[str, Model]:
         if name not in self.data:
             raise KeyError(f"Item with name '{name}' not found")
 
         row = self.data[name]
+        # Use cache if available
+        cache = self._get_cache()
+        return cache.get(name, None)
+
+    async def db_find_postprocess(self, db: "Database"):
+        await self.load_to_cache(db)
+
+    async def load_to_cache(self, db: "Database") -> None:
+        """
+        Load all items from the database into the cache assuming that data is already loaded.
+        """
         from simstack.core.context import context
-        db = context.db
-        result = {}
-        for key, model_id in row.items():
-            model_type = self.model_types[key]
-            from simstack.util.importer import import_class_by_name
-            model_class = await import_class_by_name(model_type, db)
-            model_instance = await db.find_one(model_class, model_class.id == model_id)
-            if model_instance is None:
-                 raise ValueError(f"Model with id {model_id} of type {model_type} not found")
-            result[key] = model_instance
-        return result
+        if db is None:
+            db = context.db
+        cached_row = {}
+        cache = self._get_cache()
+        for name, row in self.data.items():
+            for key, model_id in row.items():
+                model_type = self.model_types[key]
+                from simstack.util.importer import import_class_by_name
+                model_class = await import_class_by_name(model_type, db)
+                model_instance = await db.find_one(model_class, model_class.id == model_id)
+                if model_instance is None:
+                    raise ValueError(f"Model with id {model_id} of type {model_type} not found")
+                cached_row[key] = model_instance
+
+            # Update cache
+            cache[name] = cached_row
+        self._set_cache(cache)
 
     def __len__(self) -> int:
         return len(self.data)
 
-    async def __aiter__(self):
-        for name, row_data in self.data.items():
-            yield name, await self.get_item(name)
+    def __iter__(self):
+        cache = self._get_cache()
+        return iter(cache)
 
     def __getitem__(self, name: str):
-        return self.data[name]
+        cache = self._get_cache()
+        return cache[name]
 
     def __repr__(self) -> str:
         return f"DataSetSection(keys={list(self.model_types.keys())}, length={len(self.data)})"
