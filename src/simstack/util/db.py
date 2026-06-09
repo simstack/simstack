@@ -23,8 +23,8 @@ class Database(DatabaseInformation):
     Provides a cleaner interface for database operations.
     """
 
-    def __init__(self, db_type: DBType, db_name: str = "simstack", connection_string: str = ""):
-        super().__init__(db_name, connection_string, db_type)
+    def __init__(self, db_type: DBType, db_name: str = "simstack", connection_string: str = "", server_url: str = None, server_token: str = None):
+        super().__init__(db_name, connection_string, db_type, server_url, server_token)
         """
         Initialize the MongoDB connection
 
@@ -62,10 +62,9 @@ class Database(DatabaseInformation):
         # this will set the engine for all functions that are either called from the core package or the server
         current_engine_context.set(self.engine)
 
-
     @classmethod
     def from_db_info(cls, db_info: DatabaseInformation):
-        return cls(db_info.db_type, db_info.db_name, db_info.connection_string)
+        return cls(db_info.db_type, db_info.db_name, db_info.connection_string, db_info.server_url, db_info.server_token)
 
     async def list_collections(self):
         """

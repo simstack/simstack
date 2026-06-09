@@ -1,3 +1,4 @@
+import os
 import sys
 from typing import Dict, Any
 from simstack.core.definitions import DBType
@@ -19,12 +20,21 @@ class DatabaseInformation:
         from_config_file(config, **kwargs):
             Initialize DatabaseInformation from TOML config or a database specified in TOML.
     """
-    def __init__(self, db_name: str, connection_string: str, db_type: DBType = DBType.MONGODB):
+    def __init__(self, db_name: str, connection_string: str, db_type: DBType = DBType.MONGODB, server_url: str = None, server_token: str = None):
         self._db_name = db_name
         self._connection_string = connection_string
         self._db_type = db_type
+        self._server_url = server_url
+        self._server_token = server_token
 
-    
+    @property
+    def server_url(self) -> str:
+        return self._server_url
+
+    @property
+    def server_token(self) -> str:
+        return self._server_token
+
     @classmethod
     def from_config(cls, config: Dict[str, Any], **kwargs):
         """
@@ -52,14 +62,21 @@ class DatabaseInformation:
             print("You must specify a connection string in the config file")
             sys.exit(-1)
 
+        server_url = config.get("parameters",{}).get("server",{}).get("url", None)
+        if server_url is None:
+            server_url = os.environ.get("SIMSTACK_SERVER_URL")
+        server_token = config.get("parameters",{}).get("server",{}).get("token", None)
+        if server_token is None:
+            server_token = os.environ.get("SIMSTACK_SERVER_TOKEN")
+
         # Use in-memory database for tests
         db_type = DBType.IN_MEMORY if is_test and connection_string is None else DBType.MONGODB
 
-        return cls(db_name=db_name, connection_string=connection_string, db_type=db_type)
+        return cls(db_name=db_name, connection_string=connection_string, db_type=db_type, server_url=server_url, server_token=server_token)
 
     @classmethod
     def from_db_info(cls, db_info: "DatabaseInformation"):
-        return cls(db_info._db_name, db_info._connection_string, db_info._db_type)
+        return cls(db_info._db_name, db_info._connection_string, db_info._db_type, db_info._server_url, db_info._server_token)
     
     @property
     def db_type(self) -> DBType:
@@ -83,4 +100,4 @@ class DatabaseInformation:
         Returns:
             tuple: (db_name, connection_string, db_type)
         """
-        return self._db_name, self._connection_string, self._db_type
+        return self._db_name, self._connection_string, self._db_type, self._server_url, self._server_token

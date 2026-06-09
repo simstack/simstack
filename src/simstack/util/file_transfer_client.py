@@ -74,7 +74,7 @@ class FileTransferClient:
         )
         runner_token = (
             os.environ.get("SIMSTACK_RUNNER_TOKEN")
-            or getattr(config, "runner_token", None)
+            or getattr(config, "server_token", None)
             or getattr(config, "simstack_runner_token", None)
         )
         timeout_seconds = int(

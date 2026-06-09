@@ -1,4 +1,4 @@
-
+import os
 from pathlib import Path
 from typing import List, TYPE_CHECKING
 from simstack.core.resources import allowed_resources
@@ -33,6 +33,7 @@ class ConfigReader(DatabaseInformation):
         self._git_list = list(git_list or [])
         self._resource_str = resource_definition.resource_str
 
+
     @classmethod
     async def create(
         cls,
@@ -55,6 +56,10 @@ class ConfigReader(DatabaseInformation):
                 logger.info(f"Init from kwargs: {key}: {kwargs.get(key)}")
             else:
                 init_done = False
+        for key in ["server_url","server_token"]: # these are optional
+            if key in kwargs:
+                config[key] = kwargs.get(key)
+                logger.info(f"Init from kwargs: {key}: {kwargs.get(key)}")
 
         resource_definition = None
         git_list = []
@@ -71,6 +76,7 @@ class ConfigReader(DatabaseInformation):
                 raise ValueError("No workdir for self specified in config file or keyword arguments.")
             else:
                 workdir_self = Path(workdir_self)
+
 
             logger.info(f"toml-file read, use_db_for_init: {use_db_for_init}")
             if use_db_for_init:  # get all data from the simstack.toml file
@@ -104,7 +110,15 @@ class ConfigReader(DatabaseInformation):
         for key, value in resource_definition.__dict__.items():
             logger.info(f"resource_definition.{key}: {value}")
 
-        return cls(db, resource_definition, project_root=project_root, git_list=git_list_final)
+        return cls(db, resource_definition, project_root=project_root)
+
+    @property
+    def server_url(self) -> str:
+        return self._server_url
+
+    @property
+    def server_token(self) -> str:
+        return self._server_token
 
     @property
     def git_list(self) -> List[GitRepo]:
