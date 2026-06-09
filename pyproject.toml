@@ -60,7 +60,6 @@ dev = [
     "pre-commit-hooks>=5.0.0",
     "typos>=1.23.1,<2",
     "mypy",
-    "cruft",
     "build",
     "twine",
     "pytest-mock>=3.15.1",
@@ -150,5 +149,4 @@ explicit = true
 
 [tool.uv.sources]
 simstack = { path = "simstack", editable = true }
-
 
