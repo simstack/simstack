@@ -164,3 +164,129 @@ class TestDataSet:
         
         item = loaded["data"].get_item("item1")
         assert item["f"].value == 123.45
+
+
+class TestDataSetSectionDict:
+    """Test cases for dictionary-like functionality of DataSetSection."""
+
+    @pytest.mark.asyncio
+    async def test_getitem_setitem(self, initialized_context):
+        section = DataSetSection()
+        f1 = FloatData(value=1.0)
+
+        # Test __setitem__
+        section["item1"] = {"f": f1}
+        assert "item1" in section
+        assert len(section) == 1
+
+        # Test __getitem__
+        retrieved = section["item1"]
+        assert retrieved["f"] is f1
+
+        # Test overwrite
+        f2 = FloatData(value=2.0)
+        section["item1"] = {"f": f2}
+        assert section["item1"]["f"] is f2
+        assert len(section) == 1
+
+    @pytest.mark.asyncio
+    async def test_delitem(self, initialized_context):
+        section = DataSetSection()
+        f1 = FloatData(value=1.0)
+        section["item1"] = {"f": f1}
+
+        del section["item1"]
+        assert "item1" not in section
+        assert len(section) == 0
+
+        with pytest.raises(KeyError):
+            del section["nonexistent"]
+
+    @pytest.mark.asyncio
+    async def test_keys_values_items(self, initialized_context):
+        section = DataSetSection()
+        f1 = FloatData(value=1.0)
+        f2 = FloatData(value=2.0)
+        section["i1"] = {"f": f1}
+        section["i2"] = {"f": f2}
+
+        assert set(section.keys()) == {"i1", "i2"}
+        assert len(section.values()) == 2
+
+        items = dict(section.items())
+        assert items["i1"]["f"] is f1
+        assert items["i2"]["f"] is f2
+
+    @pytest.mark.asyncio
+    async def test_get_pop_clear(self, initialized_context):
+        section = DataSetSection()
+        f1 = FloatData(value=1.0)
+        section["i1"] = {"f": f1}
+
+        # get
+        assert section.get("i1")["f"] is f1
+        assert section.get("nonexistent", "default") == "default"
+
+        # pop
+        val = section.pop("i1")
+        assert val["f"] is f1
+        assert "i1" not in section
+
+        with pytest.raises(KeyError):
+            section.pop("nonexistent")
+        assert section.pop("nonexistent", "default") == "default"
+
+        # clear
+        section["i2"] = {"f": f1}
+        section.clear()
+        assert len(section) == 0
+        assert "i2" not in section
+
+    @pytest.mark.asyncio
+    async def test_update_popitem_setdefault(self, initialized_context):
+        section = DataSetSection()
+        f1 = FloatData(value=1.0)
+        f2 = FloatData(value=2.0)
+
+        # setdefault
+        section.setdefault("i1", {"f": f1})
+        assert section["i1"]["f"] is f1
+        section.setdefault("i1", {"f": f2})
+        assert section["i1"]["f"] is f1  # unchanged
+
+        # popitem
+        name, item = section.popitem()
+        assert name == "i1"
+        assert item["f"] is f1
+        assert len(section) == 0
+
+        # update from dict
+        section.update({"i2": {"f": f2}})
+        assert section["i2"]["f"] is f2
+
+        # update from another DataSetSection
+        other = DataSetSection()
+        f3 = FloatData(value=3.0)
+        other["i3"] = {"f": f3}
+        section.update(other)
+        assert section["i3"]["f"] is f3
+
+    @pytest.mark.asyncio
+    async def test_load_to_cache(self, initialized_context):
+        f1 = FloatData(value=10.0)
+        await context.db.save(f1)
+
+        section = DataSetSection()
+        # Manually populate data to simulate loading from DB without cache
+        section.data["item1"] = {"f": f1.id}
+        section.model_types["f"] = "FloatData"
+
+        # Cache should be empty
+        assert "item1" not in section._get_cache()
+
+        # Load to cache
+        await section.load_to_cache(context.db)
+
+        assert "item1" in section._get_cache()
+        assert section["item1"]["f"].id == f1.id
+        assert section["item1"]["f"].value == 10.0

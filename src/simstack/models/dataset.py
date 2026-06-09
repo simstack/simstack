@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List, Optional
+from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List, Optional, Any
 from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
 from simstack.core.asnyc_helper import async_helper
 from simstack.models import simstack_model
@@ -212,9 +212,101 @@ class DataSetSection(EmbeddedModel):
         cache = self._get_cache()
         return iter(cache)
 
-    def __getitem__(self, name: str):
+    def __getitem__(self, name: str) -> Dict[str, Model]:
         cache = self._get_cache()
-        return cache[name]
+        if name in cache:
+            return cache[name]
+        
+        # If it's in data but not in cache, we don't have the models loaded.
+        # However, DataSetSection.get_item does similar logic.
+        if name in self.data:
+            # We can't easily load it here because it's async in get_item/load_to_cache
+            # and __getitem__ is sync. 
+            # But previous task added load_to_cache.
+            # If it's in data but not cache, we should probably raise KeyError 
+            # or try to return what's in cache if it was partially loaded.
+            return cache[name] # This will raise KeyError if not in cache
+        
+        raise KeyError(f"Item with name '{name}' not found")
+
+    def __setitem__(self, name: str, value: Dict[str, Optional[Model]]) -> None:
+        if name in self.data:
+             # If it already exists, we might want to allow overwriting or not.
+             # add_row raises ValueError if name exists.
+             # Let's remove it first to allow overwrite via __setitem__
+             self.pop(name, None)
+        
+        self.add_row(value, name=name)
+
+    def __delitem__(self, name: str) -> None:
+        if name not in self.data:
+            raise KeyError(f"Item with name '{name}' not found")
+        del self.data[name]
+        cache = self._get_cache()
+        if name in cache:
+            del cache[name]
+
+    def __contains__(self, name: str) -> bool:
+        return name in self.data
+
+    def get(self, name: str, default: Any = None) -> Any:
+        try:
+            return self[name]
+        except KeyError:
+            return default
+
+    def keys(self) -> KeysView[str]:
+        return self.data.keys()
+
+    def values(self) -> ValuesView[Dict[str, Model]]:
+        cache = self._get_cache()
+        # Note: values() might be misleading if cache is not fully populated.
+        # But according to the task "datasetsection acts like a dict operating on cache"
+        return cache.values()
+
+    def items(self) -> ItemsView[str, Dict[str, Model]]:
+        cache = self._get_cache()
+        return cache.items()
+
+    def clear(self) -> None:
+        self.data.clear()
+        self._set_cache({})
+
+    def pop(self, name: str, default: Any = ...) -> Any:
+        if name not in self.data:
+            if default is ...:
+                raise KeyError(f"Item with name '{name}' not found")
+            return default
+        
+        del self.data[name]
+        cache = self._get_cache()
+        return cache.pop(name, None)
+
+    def popitem(self) -> Tuple[str, Dict[str, Model]]:
+        if not self.data:
+            raise KeyError("popitem(): dictionary is empty")
+        name, _ = self.data.popitem()
+        cache = self._get_cache()
+        item = cache.pop(name, None)
+        return name, item
+
+    def update(self, other: Union[Dict[str, Dict[str, Optional[Model]]], "DataSetSection"]) -> None:
+        if isinstance(other, DataSetSection):
+            # We should probably iterate over its data and cache
+            # This is tricky because other might not have cache loaded.
+            # But if it's "acting like a dict operating on cache", 
+            # then it should probably use the cache of the 'other' section.
+            other_cache = other._get_cache()
+            for name, row in other_cache.items():
+                self[name] = row
+        else:
+            for name, row in other.items():
+                self[name] = row
+
+    def setdefault(self, name: str, default: Dict[str, Optional[Model]] = None) -> Dict[str, Model]:
+        if name not in self.data:
+            self[name] = default
+        return self[name]
 
     def __repr__(self) -> str:
         return f"DataSetSection(keys={list(self.model_types.keys())}, length={len(self.data)})"
