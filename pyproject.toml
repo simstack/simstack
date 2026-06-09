@@ -137,9 +137,9 @@ warn_unused_ignores = true
 exclude = ["tests", "doc", "docs"]
 
 [project.entry-points."simstack.modules"]
-example_modules = "simstack.models"
-applicatio_modules = "simstack.methods"
-test_modules = "tests"
+simstack_models = "simstack.models"
+simstack_nodes  = "simstack.methods"
+sismtack_tests  = "tests"
 
 [[tool.uv.index]]
 name = "testpypi"

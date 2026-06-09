@@ -248,7 +248,6 @@ class GlobalState:
     def config(self):
         return self._config
 
-
     @config.setter
     def config(self, value):
         self._config = value
@@ -257,9 +256,17 @@ class GlobalState:
     def model_mappings(self):
         return self._model_mappings
 
+    @model_mappings.setter
+    def model_mappings(self, value):
+        self._model_mappings = value
+
     @property
     def node_mappings(self):
         return self._node_mappings
+
+    @node_mappings.setter
+    def node_mappings(self, value):
+        self._node_mappings = value
 
     @property
     def resource_config(self) -> "ResourceConfig":

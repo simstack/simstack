@@ -120,7 +120,7 @@ async def test_resolve_resource_assignment_matches_path_and_normalizes_slurm(
             name="master-orca",
             regex_pattern="master.*.orca",
             priority=10,
-            resource_str="cluster-a",
+            resource_str="test",
             queue="slurm-queue",
             slurm_parameters_patch=SlurmParametersPatch(nodes=4, time="04:00:00"),
         )
@@ -135,7 +135,7 @@ async def test_resolve_resource_assignment_matches_path_and_normalizes_slurm(
     assert resolution.normalized_call_path == "master.step.orca"
     assert resolution.matched_rule is not None
     assert resolution.matched_rule.name == "master-orca"
-    assert resolution.parameters.resource == "cluster-a"
+    assert resolution.parameters.resource == "test"
     assert resolution.parameters.queue == "slurm-queue"
     assert resolution.parameters.slurm_parameters.nodes == 4
     assert resolution.parameters.slurm_parameters.time == "04:00:00"
@@ -330,9 +330,10 @@ async def test_apply_resource_assignment_sets_trace_fields(odmantic_engine):
 
 
 @pytest.mark.asyncio
-async def test_node_registry_creation_applies_resource_assignment(odmantic_engine):
+async def test_node_registry_creation_applies_resource_assignment(odmantic_engine, initialized_context):
     await _delete_all(odmantic_engine, ResourceAssignmentRule)
     await _ensure_probe_node_model(odmantic_engine)
+    context = initialized_context
 
     await odmantic_engine.save(
         ResourceAssignmentRule(
@@ -350,6 +351,19 @@ async def test_node_registry_creation_applies_resource_assignment(odmantic_engin
         parameters=Parameters(),
         call_path=".workflow.resource_assignment_probe_in_tests",
     )
+
+    # Create and register NodeMapping for the probe function
+    from simstack.models import NodeModel
+    probe_mapping = NodeModel(
+        name="resource_assignment_probe_in_tests",
+        function_mapping="workflow.resource_assignment_probe_in_tests",
+        input_mappings=[],
+        default_parameters=Parameters(),
+    )
+    node_mappings = context.node_mappings
+    node_mappings._by_name["resource_assignment_probe_in_tests"] = probe_mapping
+    node_mappings._by_mapping["workflow.resource_assignment_probe_in_tests"] = probe_mapping
+
 
     registry_entry = await probe_node.make_registry_entry(
         function_hash="probe-function-hash",
@@ -370,8 +384,9 @@ async def test_node_registry_creation_applies_resource_assignment(odmantic_engin
 
 @pytest.mark.asyncio
 async def test_direct_node_creation_uses_default_call_path_and_syncs_assignment(
-    odmantic_engine,
+    odmantic_engine, initialized_context
 ):
+    context = initialized_context
     await _delete_all(odmantic_engine, ResourceAssignmentRule)
     await _ensure_probe_node_model(odmantic_engine)
 
@@ -379,7 +394,7 @@ async def test_direct_node_creation_uses_default_call_path_and_syncs_assignment(
         ResourceAssignmentRule(
             name="direct-probe-slurm",
             regex_pattern="resource_assignment_probe_in_tests",
-            resource_str="cluster-a",
+            resource_str="test",
             queue="slurm-queue",
             slurm_parameters_patch=SlurmParametersPatch(nodes=3, time="03:00:00"),
         )
@@ -391,6 +406,23 @@ async def test_direct_node_creation_uses_default_call_path_and_syncs_assignment(
         parameters=Parameters(),
     )
 
+    # Create and register NodeMapping for the probe function
+    from simstack.models import NodeModel
+    probe_mapping = NodeModel(
+        name="resource_assignment_probe_in_tests",
+        function_mapping="workflow.resource_assignment_probe_in_tests",
+        input_mappings=[],
+        default_parameters=Parameters(),
+    )
+    node_mappings = context.node_mappings
+    node_mappings._by_name["resource_assignment_probe_in_tests"] = probe_mapping
+    node_mappings._by_mapping["workflow.resource_assignment_probe_in_tests"] = probe_mapping
+
+    registry_entry = await probe_node.make_registry_entry(
+        function_hash="probe-function-hash",
+        arg_hash="probe-arg-hash",
+    )
+
     registry_entry = await probe_node.make_registry_entry(
         function_hash="direct-probe-function-hash",
         arg_hash="direct-probe-arg-hash",
@@ -398,11 +430,11 @@ async def test_direct_node_creation_uses_default_call_path_and_syncs_assignment(
 
     assert registry_entry.call_path == ".resource_assignment_probe_in_tests"
     assert registry_entry.assignment_rule_name == "direct-probe-slurm"
-    assert registry_entry.parameters.resource == "cluster-a"
+    assert registry_entry.parameters.resource == "test"
     assert registry_entry.parameters.queue == "slurm-queue"
     assert registry_entry.parameters.slurm_parameters.nodes == 3
     assert registry_entry.parameters.slurm_parameters.time == "03:00:00"
-    assert probe_node.parameters.resource == "cluster-a"
+    assert probe_node.parameters.resource == "test"
     assert probe_node.parameters.queue == "slurm-queue"
     assert probe_node.parameters.slurm_parameters.nodes == 3
 

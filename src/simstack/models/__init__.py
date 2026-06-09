@@ -1,5 +1,4 @@
 from .simstack_model import simstack_model
-from .array_list import ArrayList
 from .artifact_models import ArtifactMapping, ArtifactModel
 from .base_types import (
     IntData,
@@ -9,7 +8,9 @@ from .base_types import (
     BinaryOperationInput,
     IteratorInput,
 )
-from .file_list import FileListModel
+from .base_lists import StringDataList, StringList
+from .array_list import ArrayList
+from .file_list import FileList, FileListModel
 from .models import (
     ModelMapping,
     NodeModel,
@@ -19,7 +20,7 @@ from .node_registry import NodeRegistry
 from .project import Project
 from .tag import Tag
 from .resource_assignment import ResourceAssignmentRule, SlurmParametersPatch
-from .datasettuple import DataSetTuple, DataSetTupleSection, DataSetTupleSelection, DataSetTupleSelectionField
+from .datasettuple import DataSet, DataSetSection, DataSetSelection, DataSetTupleSelectionField
 from .dataset import DataSet, DataSetSection
 from .dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
 from .images2d import Image2DArtifactModel
@@ -45,13 +46,15 @@ __all__ = [
     "ResourceAssignmentRule",
     "SlurmParametersPatch",
     "simstack_model",
-    "DataSetTuple",
-    "DataSetTupleSection",
-    "DataSetTupleSelection",
+    "DataSet",
+    "DataSetSection",
+    "DataSetSelection",
     "DataSetTupleSelectionField",
     "DataSet",
     "DataSetSection",
     "DataSetMetadata",
     "DataSetMetadataTemplate",
     "Image2DArtifactModel",
+    "StringDataList",
+    "StringList",
 ]

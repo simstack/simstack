@@ -12,7 +12,7 @@ from simstack.models.charts_artifact import ChartArtifactModel
 from simstack.models.node_registry import find_child_nodes, NodeRegistry
 from simstack.models.table_artifact import TableArtifactModel
 from simstack.util.db import Database
-from simstack.util.importer import function_from_model
+from simstack.util.importer import _function_from_model, import_function
 from simstack.util.module_path_checker import is_module_subpath_of_path
 
 logger = logging.getLogger("artifacts")
@@ -75,7 +75,7 @@ async def register_artifact_mapping(artifact_mapping: ArtifactMapping):
     ):
         try:
             # Import the function to verify it exists
-            func = await function_from_model(artifact_mapping, task_id=None)
+            func = await import_function(artifact_mapping.function_mapping, context.db, task_id=None)
             if not func:
                 logger.warning("Could not import function {artifact_mapping.function_mapping}")
         except Exception as e:
@@ -139,8 +139,8 @@ async def create_artifacts(
                 )
                 logging.info(log_string_mapping)
                 if artifact_mapping.function_mapping != "CODE":
-                    func = await function_from_model(
-                        artifact_mapping, artifact_arguments.task_id
+                    func = await import_function(
+                        artifact_mapping.function_mapping, context.db, artifact_arguments.task_id
                     )
                     if not func:
                         logger.error(

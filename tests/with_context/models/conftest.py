@@ -23,4 +23,10 @@ async def node_registry():
     )
 
     await context.db.save(node_data)
-    return node_data
+    
+    yield node_data
+    
+    try:
+        await context.db.delete(node_data)
+    except Exception:
+        pass

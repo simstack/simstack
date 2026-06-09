@@ -52,7 +52,10 @@ def _lookup_node_cache(node_mappings, function_path: str) -> Optional[NodeModel]
         return None
     node_model = node_mappings.get_by_mapping(function_path)
     if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
-        _, function_name = function_path.rsplit(".", 1)
+        if "." in function_path:
+            _, function_name = function_path.rsplit(".", 1)
+        else:
+            function_name = function_path
         node_model = node_mappings.get_by_name(function_name)
     return node_model
 
@@ -74,7 +77,10 @@ async def _find_node_model(function_path: str, db: Database) -> Optional[NodeMod
         NodeModel, NodeModel.function_mapping == function_path
     )
     if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
-        _, function_name = function_path.rsplit(".", 1)
+        if "." in function_path:
+            _, function_name = function_path.rsplit(".", 1)
+        else:
+            function_name = function_path
         node_model = await db.find_one(
             NodeModel, NodeModel.name == function_name
         )
@@ -106,26 +112,26 @@ def _lookup_model_cache(model_mappings, class_path: str, class_name: str) -> Opt
         model_mapping = model_mappings.get_by_mapping(class_path)
     return model_mapping
 
-async def _find_model_mapping(class_path: str, db: Database) -> Optional[ModelMapping]:
-    _, class_name = class_path.rsplit(".", 1)
+async def _find_model_mapping(model_path: str, db: Database) -> Optional[ModelMapping]:
+    _, model_name = model_path.rsplit(".", 1)
 
     if context.model_mappings is None:
         await context.refresh_mappings(models=True, nodes=False)
 
-    model_mapping = _lookup_model_cache(context.model_mappings, class_path, class_name)
+    model_mapping = _lookup_model_cache(context.model_mappings, model_path, model_name)
     if model_mapping is not None:
         return model_mapping
 
     await context.refresh_mappings(models=True, nodes=False)
-    model_mapping = _lookup_model_cache(context.model_mappings, class_path, class_name)
+    model_mapping = _lookup_model_cache(context.model_mappings, model_path, model_name)
     if model_mapping is not None:
         return model_mapping
 
     model_mapping = None
     if MODELS_SEARCH_BY_NAME_FALLBACK:
-        model_mapping = await db.find_one(ModelMapping, ModelMapping.name == class_name)
+        model_mapping = await db.find_one(ModelMapping, ModelMapping.name == model_name)
     if model_mapping is None:
-        model_mapping = await db.find_one(ModelMapping, ModelMapping.mapping == class_path)
+        model_mapping = await db.find_one(ModelMapping, ModelMapping.mapping == model_path)
     return model_mapping
 
 # TODO engines remove: duplicate of find_class_mapping_by_name
@@ -145,36 +151,39 @@ async def _find_model_mapping_by_name(class_name: str, db: Database) -> Optional
 
     return await db.find_one(ModelMapping, ModelMapping.name == class_name)
 
-
-async def function_from_model(model, task_id: Optional[ObjectId] = None) -> Optional[Callable]:
+async def _function_from_model(node_model: NodeModel, task_id: ObjectId = None) -> Callable:
     """
-    Loads and retrieves a callable function from a specified model using dynamic import.
-    If a task ID is specified, additional logging information is provided regarding the
-    function retrieval process.
+    Get the function from the NodeModel. Here the mapping may already be fixed if the original mapping was wrong
+    Otherwise, it is imported from the function_mapping.
 
     Args:
-        model: The model containing the function mapping which specifies the path to the
-               desired function in dot notation.
-        task_id (Optional[ObjectId]): Optional parameter specifying the task ID for logging
-                                      purposes. Default is None.
+        node_model: NodeModel object
+        task_id: Optional task id
 
     Returns:
-        Optional[Callable]: The loaded callable function if successful, or None if the
-                            function cannot be found.
+        The function object
     """
-    function_path = model.function_mapping
-    module_path, function_name = function_path.rsplit(".", 1)
 
-    if task_id:
-        logger.debug(
-            f"task_id: {task_id} loading function {function_path} using regular import"
-        )
-    # Import the module
-    module = importlib.import_module(module_path)
-    # Get the function from the module
-    function = getattr(module, function_name)
-    return function
-
+    function_path = node_model.function_mapping
+    try:
+        module_path, function_name = function_path.rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        return getattr(module, function_name)
+    except (ImportError, AttributeError, ValueError) as e:
+        if NODES_SEARCH_BY_NAME_FALLBACK:
+            try:
+                # Try to load by the name field which might contain the correct path
+                # if it was a name-only search that found this model.
+                if "." in node_model.name:
+                    module_path, function_name = node_model.name.rsplit(".", 1)
+                    module = importlib.import_module(module_path)
+                    return getattr(module, function_name)
+            except (ImportError, AttributeError, ValueError):
+                pass
+        logger.error(f"task_id: {task_id} Error importing function {function_path}: {e}")
+        raise e
+    
+    
 
 async def import_function(
     function_path: str,
@@ -200,10 +209,15 @@ async def import_function(
     node_model = await _find_node_model(function_path, db)
 
     if node_model is None:
-        raise LookupError(f"task_id: {task_id} Function {function_path} not found in the NodeModel Table")
+        try:
+            module_path, function_name = function_path.rsplit(".", 1)
+            module = importlib.import_module(module_path)
+            return getattr(module, function_name)
+        except (ImportError, AttributeError, ValueError):
+            raise LookupError(f"task_id: {task_id} Function {function_path} not found in the NodeModel Table")
 
     try:
-        return await function_from_model(node_model, task_id)
+        return await _function_from_model(node_model, task_id)
     except Exception as e:
         if tolerate_missing_function:
             return None
@@ -218,7 +232,7 @@ async def import_function_by_name(function_name: str, db: Database, task_id: Obj
         logger.error(f"Could not find function mapping for name: {function_name}")
         raise ValueError(f"Could not find function mapping for name: {function_name}")
 
-    return await function_from_model(node_model, task_id)
+    return await _function_from_model(node_model, task_id)
 
 
 async def import_class(class_path: str, db: Database) -> Type[Model] | None:
@@ -249,8 +263,14 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
             module_path, class_name = model_mapping.mapping.rsplit(".", 1)
 
         if model_mapping is None:
-            logger.error(f"Error finding ModelMapping for {class_name}")
-            raise LookupError(f"Error finding ModelMapping for {class_name}")
+            try:
+                # Import the module
+                module = importlib.import_module(module_path)
+                # Get the class from the module
+                return getattr(module, class_name)
+            except (ImportError, AttributeError):
+                logger.error(f"Error finding ModelMapping for {class_name}")
+                raise LookupError(f"Error finding ModelMapping for {class_name}")
 
         # Import the module
         module = importlib.import_module(module_path)

@@ -228,10 +228,9 @@ class Node:
 
         :rtype: NodeRegistry
         """
-
-        function_mapping = await context.db.find_one(
-            NodeModel, NodeModel.name == self.name
-        )
+        # TODO why does this fail when nodemapping succeeds ?
+        # function_mapping = await context.db.find_one(NodeModel, NodeModel.name == self.name)
+        function_mapping = context.node_mappings.get_by_name(self.name)
         if function_mapping is None:
             logger.error(f"Could not find function mapping for name: {self.name}")
             raise ValueError(f"Could not find function mapping for name: {self.name}")
@@ -240,14 +239,11 @@ class Node:
         input_tables = []
         for arg in self._args:
             # if there is no table for an arg raise an error
-            input_table_name = await context.db.find_one(
-                ModelMapping, ModelMapping.name == arg.__class__.__name__
-            )
+            # input_table_name = await context.db.find_one(ModelMapping, ModelMapping.name == arg.__class__.__name__)
+            input_table_name = context.model_mappings.get_by_name(arg.__class__.__name__)
             if input_table_name is None:
                 logger.error(f"Could not find table name for {arg.__class__.__name__}")
-                raise ValueError(
-                    f"Could not find table name for {arg.__class__.__name__}"
-                )
+                raise ValueError(f"Could not find table name for {arg.__class__.__name__}")
             if not isinstance(arg, Model):
                 logger.error(f"{arg.__class__.__name__} is not an odmantic Model")
                 raise ValueError(f"{arg.__class__.__name__} is not an odmantic Model")
@@ -256,12 +252,8 @@ class Node:
 
             # Check if the save operation was successful and returned a valid ID
             if argument_entry is None or argument_entry.id is None:
-                logger.error(
-                    f"Failed to save argument {arg} - returned None or invalid ID"
-                )
-                raise ValueError(
-                    f"Failed to save argument of type {arg.__class__.__name__}"
-                )
+                logger.error(f"Failed to save argument {arg} - returned None or invalid ID")
+                raise ValueError(f"Failed to save argument of type {arg.__class__.__name__}")
 
             input_ids.append(argument_entry.id)
             input_tables.append(input_table_name.mapping)
@@ -632,7 +624,7 @@ class Node:
                             if self.registry_entry.info_files is None:
                                 self.registry_entry.info_files = FileList()
                             await context.db.save(file_stack)
-                            await self.registry_entry.info_files.append(file_stack)
+                            self.registry_entry.info_files.append(file_stack)
                         else:
                             logger.error(
                                 f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
@@ -723,59 +715,89 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
     logger.debug(
         f"Task task_id: {registry_entry.id} {registry_entry.name} loaded {len(args)} inputs in Node:node_from_database status: {registry_entry.status}"
     )
+    func = None
     try:
         wrapped_func = await import_function(
-            registry_entry.func_mapping, registry_entry.id
+            registry_entry.func_mapping, db, task_id=registry_entry.id
         )
-        if wrapped_func is None:
+        if wrapped_func is not None:
+            # for nodes the mapping points to the wrapped func to we use that
+            func = (
+                wrapped_func if not hasattr(wrapped_func, "_inner") else wrapped_func._inner
+            )
+            logger.debug(
+                f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
+            )
+            if registry_entry.function_hash == "NOT INITIALIZED":
+                registry_entry.function_hash = cast(str, complex_hash_function(func))
+                registry_entry.is_async = asyncio.iscoroutinefunction(func)
+        else:
             logger.error(
                 f"Task task_id: {registry_entry.id} could not import function {registry_entry.func_mapping}"
             )
-            return None
-        # for nodes the mapping points to the wrapped func to we use that
-        func = (
-            wrapped_func if not hasattr(wrapped_func, "_inner") else wrapped_func._inner
+    except Exception as e:
+        logger.error(
+            f"Task task_id: {registry_entry.id} failed to import function {registry_entry.func_mapping} {str(e)}"
         )
-        logger.debug(
-            f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
+
+    if func is None and registry_entry.function_hash == "NOT INITIALIZED":
+        return None
+
+    try:
+        duplicate_entry = await db.find_one(
+            NodeRegistry,
+            (NodeRegistry.name == registry_entry.name)
+            & (NodeRegistry.arg_hash == registry_entry.arg_hash)
+            & (NodeRegistry.function_hash == registry_entry.function_hash),
         )
-        if registry_entry.function_hash == "NOT INITIALIZED":
-            registry_entry.function_hash = cast(str, complex_hash_function(func))
-            registry_entry.is_async = asyncio.iscoroutinefunction(func)
-            duplicate_entry = await db.find_one(
-                NodeRegistry,
-                (NodeRegistry.name == registry_entry.name)
-                & (NodeRegistry.arg_hash == registry_entry.arg_hash)
-                & (NodeRegistry.function_hash == registry_entry.function_hash),
+        await db.save(
+            registry_entry
+        )  # save the fixed entry AFTER checking for duplicates
+        # the calling function may have the originial entry unsaved !
+        if duplicate_entry is not None:
+            logger.info(
+                f"Original Entry: {duplicate_entry.id} {duplicate_entry.arg_hash} {duplicate_entry.function_hash}"
             )
-            await db.save(
-                registry_entry
-            )  # save the fixed entry AFTER checking for duplicates
-            # the calling function may have the originial entry unsaved !
-            if duplicate_entry is not None:
-                logger.info(
-                    f"Original Entry: {duplicate_entry.id} {duplicate_entry.arg_hash} {duplicate_entry.function_hash}"
+            logger.info(
+                f"Current Entry: {registry_entry.id} {registry_entry.arg_hash} {registry_entry.function_hash} "
+            )
+            logger.info(
+                f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}"
+            )
+            if duplicate_entry.id == registry_entry.id:
+                logger.error(
+                    f"Task task_id: {registry_entry.id} recovered itself. This should not happen"
                 )
-                logger.info(
-                    f"Current Entry: {registry_entry.id} {registry_entry.arg_hash} {registry_entry.function_hash} "
-                )
-                logger.info(
-                    f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}"
-                )
-                if duplicate_entry.id == registry_entry.id:
+
+            if duplicate_entry.id != registry_entry.id:
+                # the parameters of the new job may be different
+                duplicate_entry.parameters = registry_entry.parameters
+                await db.delete(registry_entry)
+                registry_entry = duplicate_entry
+
+            if func is None:
+                # we recovered a duplicate, let's try to import the function from the duplicate's mapping
+                try:
+                    wrapped_func = await import_function(
+                        registry_entry.func_mapping, db, task_id=registry_entry.id
+                    )
+                    if wrapped_func is not None:
+                        func = (
+                            wrapped_func
+                            if not hasattr(wrapped_func, "_inner")
+                            else wrapped_func._inner
+                        )
+                except Exception as e:
                     logger.error(
-                        f"Task task_id: {registry_entry.id} recovered itself. This should not happen"
+                        f"Task task_id: {registry_entry.id} failed to import function from duplicate {registry_entry.func_mapping} {str(e)}"
                     )
 
-                if duplicate_entry.id != registry_entry.id:
-                    # the parameters of the new job may be different
-                    duplicate_entry.parameters = registry_entry.parameters
-                    await db.delete(registry_entry)
-                    registry_entry = duplicate_entry
+        if func is None:
+            return None
 
     except Exception as e:
         logger.exception(
-            f"Task task_id: {registry_entry.id} failed to import function {registry_entry.func_mapping} {str(e)}"
+            f"Task task_id: {registry_entry.id} failed during duplicate detection or secondary import {str(e)}"
         )
         return None
 
