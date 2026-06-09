@@ -20,8 +20,8 @@ from .node_registry import NodeRegistry
 from .project import Project
 from .tag import Tag
 from .resource_assignment import ResourceAssignmentRule, SlurmParametersPatch
-from .datasettuple import DataSet, DataSetSection, DataSetSelection, DataSetTupleSelectionField
-from .dataset import DataSet, DataSetSection
+from .datasettuple import DataSet, DataSetSection, DataSetTupleSelection, DataSetTupleSelectionField
+from .dataset import DataSet, DataSetSection, DataSetSelection, DataSetSelectionField
 from .dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
 from .images2d import Image2DArtifactModel
 
@@ -53,6 +53,9 @@ __all__ = [
     "DataSet",
     "DataSetSection",
     "DataSetMetadata",
+    "DataSetSelectionField",
+    "DataSetTupleSelection",
+    "FileList",
     "DataSetMetadataTemplate",
     "Image2DArtifactModel",
     "StringDataList",

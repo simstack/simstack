@@ -509,7 +509,7 @@ class DataSetTupleSelectionField(EmbeddedModel):
     indices: List[int] = Field(default_factory=list)
 
 @simstack_model
-class DataSetSelection(Model):
+class DataSetTupleSelection(Model):
     field_name: str = Field(default="dataset_selection")
     dataset_id: ObjectId
     dataset_selection_fields: List[DataSetTupleSelectionField] = Field(default_factory=list)
