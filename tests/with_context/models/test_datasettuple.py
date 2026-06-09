@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 
 from simstack.core.context import context
-from simstack.models.datasettuple import DataSetTuple, DataSetTupleSection
+from simstack.models.datasettuple import DataSet, DataSetSection
 from simstack.models.dataset_metadata import DataSetMetadata
 from simstack.models import FloatData, StringData
 from simstack.models.node_registry import NodeRegistry
@@ -14,7 +14,7 @@ class TestDataSetSection:
     @pytest.mark.asyncio
     async def test_empty_section_initialization(self):
         """Test creating an empty DataSetSection."""
-        section = DataSetTupleSection()
+        section = DataSetSection()
 
         assert section.model_types == []
         assert section.data == []
@@ -31,7 +31,7 @@ class TestDataSetSection:
         await context.db.save(string_data)
 
         try:
-            section = DataSetTupleSection()
+            section = DataSetSection()
             await section.add_model_group((float_data, string_data))
 
             assert len(section) == 1
@@ -56,7 +56,7 @@ class TestDataSetSection:
             await context.db.save(model)
 
         try:
-            section = DataSetTupleSection()
+            section = DataSetSection()
             await section.add_model_group((float1, string1))
             await section.add_model_group((float2, string2))
 
@@ -79,7 +79,7 @@ class TestDataSetSection:
             await context.db.save(model)
 
         try:
-            section = DataSetTupleSection()
+            section = DataSetSection()
             await section.add_model_group((float_data, string_data))
 
             # Should fail when adding different types
@@ -101,7 +101,7 @@ class TestDataSetSection:
         await context.db.save(string_data)
 
         try:
-            section = DataSetTupleSection()
+            section = DataSetSection()
             await section.add_model_group((float_data, string_data))
 
             retrieved = await section.get_model_group(0)
@@ -118,7 +118,7 @@ class TestDataSetSection:
     @pytest.mark.asyncio
     async def test_get_model_group_index_error(self):
         """Test IndexError when accessing invalid index."""
-        section = DataSetTupleSection()
+        section = DataSetSection()
 
         with pytest.raises(IndexError, match="Index 0 out of range"):
             await section.get_model_group(0)
@@ -136,7 +136,7 @@ class TestDataSetSection:
             await context.db.save(model)
 
         try:
-            section = DataSetTupleSection()
+            section = DataSetSection()
             await section.add_model_group((float1, string1))
             await section.add_model_group((float2, string2))
 
@@ -166,7 +166,7 @@ class TestDataSetSection:
             await context.db.save(model)
 
         try:
-            section = DataSetTupleSection()
+            section = DataSetSection()
 
             # Test append
             await section.append((float1, string1))
@@ -206,7 +206,7 @@ class TestDataSet:
             data={"description": "Empty test dataset"},
         )
 
-        dataset = DataSetTuple(metadata=metadata)
+        dataset = DataSet(metadata=metadata)
 
         await dataset.save(context.db)
 
@@ -236,15 +236,15 @@ class TestDataSet:
 
         try:
             # Create sections
-            section1 = DataSetTupleSection()
+            section1 = DataSetSection()
             await section1.add_model_group((float_data, string_data))
 
             node_registry_instance = node_registry
-            section2 = DataSetTupleSection()
+            section2 = DataSetSection()
             await section2.add_model_group((node_registry_instance, float_data))
 
             # Create dataset
-            dataset = DataSetTuple(metadata=metadata)
+            dataset = DataSet(metadata=metadata)
             dataset["training"] = section1
             dataset["validation"] = section2
             await dataset.save(context.db)
@@ -267,14 +267,14 @@ class TestDataSet:
             data={"description": "Dictionary operations test"},
         )
 
-        dataset = DataSetTuple(metadata=metadata)
+        dataset = DataSet(metadata=metadata)
 
         # Create a test section
         float_data = FloatData(value=99.9)
         await context.db.save(float_data)
 
         try:
-            section = DataSetTupleSection()
+            section = DataSetSection()
             await section.add_model_group((float_data,))
 
             # Test setitem and getitem
@@ -300,7 +300,7 @@ class TestDataSet:
                 assert len(dataset) == 0
 
                 # Test setdefault
-                new_section = DataSetTupleSection()
+                new_section = DataSetSection()
                 returned = dataset.setdefault("new", new_section)
                 assert returned == new_section
                 assert dataset["new"] == new_section
@@ -327,10 +327,10 @@ class TestDataSet:
 
         try:
             # Create dataset with section
-            section = DataSetTupleSection()
+            section = DataSetSection()
             await section.add_model_group((float_data, string_data))
 
-            dataset = DataSetTuple(metadata=metadata)
+            dataset = DataSet(metadata=metadata)
             dataset["main"] = section
 
             # Save dataset
@@ -339,7 +339,7 @@ class TestDataSet:
                 dataset_id = dataset.id
 
                 # Load dataset from database
-                loaded_dataset = await context.db.find_one(DataSetTuple, DataSetTuple.id == dataset_id)
+                loaded_dataset = await context.db.find_one(DataSet, DataSet.id == dataset_id)
 
                 assert loaded_dataset is not None
                 assert loaded_dataset.metadata.field_name == "test_persistence_tuple"
@@ -397,20 +397,20 @@ class TestDataSet:
                     await context.db.save(model)
 
             # Create a dataset with multiple sections
-            dataset = DataSetTuple(metadata=metadata)
+            dataset = DataSet(metadata=metadata)
 
             # Training section: (FloatData, StringData) tuples
-            training_section = DataSetTupleSection()
+            training_section = DataSetSection()
             for i in range(0, 6, 3):  # indices 0, 3
                 await training_section.add_model_group((models[i], models[i + 1]))
 
             # Validation section: (FloatData, StringData) tuples
-            validation_section = DataSetTupleSection()
+            validation_section = DataSetSection()
             for i in range(9, 15, 3):  # indices 9, 12
                 await validation_section.add_model_group((models[i], models[i + 1]))
 
             # Node section: single NodeRegistry tuples
-            node_section = DataSetTupleSection()
+            node_section = DataSetSection()
             for i in range(2, 15, 3):  # indices 2, 5, 8, 11, 14
                 await node_section.add_model_group((models[i],))
 
@@ -467,12 +467,12 @@ class TestDataSet:
         try:
             # First dataset defines the structure under dataset_type "ds_struct_v1"
             meta1 = DataSetMetadata(field_name="ds_struct_v1", data={"desc": "v1"})
-            ds1 = DataSetTuple(metadata=meta1)
+            ds1 = DataSet(metadata=meta1)
 
-            sec_a = DataSetTupleSection()
+            sec_a = DataSetSection()
             await sec_a.add_model_group((f, s))  # ["FloatData", "StringData"]
 
-            sec_b = DataSetTupleSection()
+            sec_b = DataSetSection()
             await sec_b.add_model_group((node,))  # ["NodeRegistry"]
 
             ds1["a"] = sec_a
@@ -483,12 +483,12 @@ class TestDataSet:
             try:
                 # Second dataset with SAME dataset_type but DIFFERENT section names, same structure
                 meta2 = DataSetMetadata(field_name="ds_struct_v1", data={"desc": "v1 second"})
-                ds2 = DataSetTuple(metadata=meta2)
+                ds2 = DataSet(metadata=meta2)
 
-                sec_train = DataSetTupleSection()
+                sec_train = DataSetSection()
                 await sec_train.add_model_group((f, s))  # same ["FloatData", "StringData"]
 
-                sec_nodes = DataSetTupleSection()
+                sec_nodes = DataSetSection()
                 await sec_nodes.add_model_group((node,))  # same ["NodeRegistry"]
 
                 ds2["training"] = sec_train
@@ -527,12 +527,12 @@ class TestDataSet:
         try:
             # First dataset establishes structure: {"pair": ["FloatData", "StringData"], "nodes": ["NodeRegistry"]}
             meta1 = DataSetMetadata(field_name="ds_struct_v2", data={"desc": "baseline"})
-            ds1 = DataSetTuple(metadata=meta1)
+            ds1 = DataSet(metadata=meta1)
 
-            sec_pair = DataSetTupleSection()
+            sec_pair = DataSetSection()
             await sec_pair.add_model_group((f1, s1))
 
-            sec_nodes = DataSetTupleSection()
+            sec_nodes = DataSetSection()
             await sec_nodes.add_model_group((node,))
 
             ds1["pair"] = sec_pair
@@ -549,9 +549,9 @@ class TestDataSet:
                     meta2 = DataSetMetadata(
                         field_name="ds_struct_v2", data={"desc": "should fail"}
                     )
-                    ds2 = DataSetTuple(metadata=meta2)
+                    ds2 = DataSet(metadata=meta2)
 
-                    sec_pair_changed = DataSetTupleSection()
+                    sec_pair_changed = DataSetSection()
                     await sec_pair_changed.add_model_group((f2,))  # ["FloatData"] instead of ["FloatData", "StringData"]
 
                     ds2["pair"] = sec_pair_changed  # keep the same key to emphasize structural mismatch

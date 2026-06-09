@@ -20,7 +20,7 @@ from .node_registry import NodeRegistry
 from .project import Project
 from .tag import Tag
 from .resource_assignment import ResourceAssignmentRule, SlurmParametersPatch
-from .datasettuple import DataSetTuple, DataSetTupleSection, DataSetTupleSelection, DataSetTupleSelectionField
+from .datasettuple import DataSet, DataSetSection, DataSetSelection, DataSetTupleSelectionField
 from .dataset import DataSet, DataSetSection
 from .dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
 from .images2d import Image2DArtifactModel
@@ -46,9 +46,9 @@ __all__ = [
     "ResourceAssignmentRule",
     "SlurmParametersPatch",
     "simstack_model",
-    "DataSetTuple",
-    "DataSetTupleSection",
-    "DataSetTupleSelection",
+    "DataSet",
+    "DataSetSection",
+    "DataSetSelection",
     "DataSetTupleSelectionField",
     "DataSet",
     "DataSetSection",
