@@ -82,8 +82,7 @@ RUN micromamba run -n base pip install --no-cache-dir \
     "pre-commit>=3.7.1,<4" \
     "pre-commit-hooks>=4.6.0,<5" \
     "typos>=1.23.1,<2" \
-    python-build \
-    cruft
+    python-build
 
 # Install the project in editable mode
 RUN micromamba run -n base pip install -e .
