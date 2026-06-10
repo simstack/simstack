@@ -55,7 +55,7 @@ class NodeExecutionService(BaseService):
         is_default: bool = False,
     ) -> None:
         super().__init__(
-            "JobPolling", resource, interval, shutdown_event=shutdown_event
+            "^NodeExecutionService", resource, interval, shutdown_event=shutdown_event
         )
         self._resource_name = str(resource)
         self._semaphore = asyncio.Semaphore(max_concurrent)
@@ -152,22 +152,30 @@ class NodeExecutionService(BaseService):
                 await context.db.save(registry_entry)
             return False
 
+    def _cleanup_running_tasks(self) -> None:
+        """Clean up the completed tasks from the running tasks set"""
+        completed_tasks = {task for task in self._running_tasks if task.done()}
+        for task in completed_tasks:
+            try:
+                # Use result() or exception() to avoid warning if task finished with error
+                if not task.cancelled():
+                    task.result()
+            except Exception as e:
+                logger.exception(f"Task completed with error: {e}")
+            self._running_tasks.remove(task)
+
     async def execute(self) -> None:
         if not self._started:
             await self.write_resource_event(RunnerEventEnum.RUNNER_STARTED)
             self._started = True
 
         # Clean up the completed tasks
-        completed_tasks = {task for task in self._running_tasks if task.done()}
-        for task in completed_tasks:
-            try:
-                await task
-            except Exception as e:
-                logger.exception(f"Task completed with error: {e}")
-            self._running_tasks.remove(task)
+        self._cleanup_running_tasks()
 
-        # Load tasks
-        registry_entry_list = await context.db.load_waiting_tasks_for_resource(self._resource_name)
+        # Periodically check for any missed tasks (safety net)
+        registry_entry_list = await context.db.load_waiting_tasks_for_resource(
+            self._resource_name
+        )
 
         if registry_entry_list:
             logger.info(
@@ -178,6 +186,81 @@ class NodeExecutionService(BaseService):
                     continue
                 task = asyncio.create_task(self._run_with_semaphore(entry))
                 self._running_tasks.add(task)
+
+    async def _run_watch_loop(self) -> None:
+        """Watch for new tasks using MongoDB change streams"""
+        logger.info(f"Starting watch loop for resource {self._resource_name}")
+        try:
+            collection = context.db.get_collection(NodeRegistry)
+            pipeline = [
+                {
+                    "$match": {
+                        "operationType": {"$in": ["insert", "replace", "update"]},
+                        "fullDocument.status": TaskStatus.SUBMITTED.value,
+                        "fullDocument.parameters.resource.value": self._resource_name,
+                    }
+                }
+            ]
+
+            async with collection.watch(
+                pipeline, full_document="updateLookup"
+            ) as stream:
+                async for change in stream:
+                    if self._stop_event.is_set():
+                        break
+
+                    full_doc = change.get("fullDocument")
+                    if not full_doc:
+                        continue
+
+                    # Convert raw doc to NodeRegistry instance
+                    # odmantic doesn't have a direct from_dict, but we can use the engine's internal logic
+                    # or just load it by ID to be safe and use existing logic.
+                    task_id = full_doc.get("_id")
+                    if not task_id:
+                        continue
+
+                    entry = await context.db.load_task_by_id(task_id)
+                    if not entry:
+                        continue
+
+                    if not await claim_submitted_node(entry):
+                        continue
+
+                    logger.info(
+                        f"Change stream triggered task_id: {entry.id} for {self._resource_name}"
+                    )
+                    task = asyncio.create_task(self._run_with_semaphore(entry))
+                    self._running_tasks.add(task)
+
+                    # Periodically clean up completed tasks from the set
+                    self._cleanup_running_tasks()
+
+        except Exception as e:
+            if self._stop_event.is_set():
+                return
+            logger.error(f"Error in watch loop: {e}")
+            # If watch fails, we might want to fall back or just let it die and be restarted if BaseService handles it
+            # But here we are in a separate task.
+            await asyncio.sleep(5)
+            # Restart watch loop
+            self._watch_task = asyncio.create_task(self._run_watch_loop())
+
+    def start(self):
+        # We still want the periodic execute for cleanup and initial load
+        task = super().start()
+        # Also start the watch loop
+        self._watch_task = asyncio.create_task(self._run_watch_loop())
+        return task
+
+    async def stop(self):
+        await super().stop()
+        if hasattr(self, "_watch_task"):
+            self._watch_task.cancel()
+            try:
+                await self._watch_task
+            except asyncio.CancelledError:
+                pass
 
     async def _run_with_semaphore(self, entry: NodeRegistry) -> bool:
         async with self._semaphore:
