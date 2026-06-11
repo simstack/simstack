@@ -55,7 +55,7 @@ class NodeExecutionService(BaseService):
         is_default: bool = False,
     ) -> None:
         super().__init__(
-            "JobPolling", resource, interval, shutdown_event=shutdown_event
+            "NodeExecutionService", resource, interval, shutdown_event=shutdown_event
         )
         self._resource_name = str(resource)
         self._semaphore = asyncio.Semaphore(max_concurrent)
@@ -66,6 +66,7 @@ class NodeExecutionService(BaseService):
 
     async def run_node(self, registry_entry: NodeRegistry) -> bool:
         """Run a single node by its ID from the database"""
+
 
         await self.write_node_event(RunnerEventEnum.NODE_STARTED, registry_entry.id)
         try:

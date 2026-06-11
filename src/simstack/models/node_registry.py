@@ -1,7 +1,14 @@
 from datetime import datetime
-from typing import Optional, List
-
+from typing import Optional, List, Any
 from odmantic import Model, Field, ObjectId, Reference
+from pydantic import model_validator, field_validator
+
+def fix_list(v: Any) -> list:
+    if v is None:
+        return []
+    if not isinstance(v, list):
+        return v
+    return [item for item in v if item is not None]
 
 from simstack.core.definitions import TaskStatus
 from simstack.models.file_list import FileList
@@ -76,23 +83,27 @@ class NodeRegistry(Model):
     error: Optional[str] = None
     message: Optional[str] = None
 
-    input_names: List[str] = Field(default_factory=list)
-    input_tables: List[str] = Field(
-        default_factory=list
-    )  # The model mappings the input classes
-    input_ids: List[ObjectId] = Field(
-        default_factory=list
-    )  # The ID of the specific workflow instance
-    result_tables: List[str] = Field(
-        default_factory=list
-    )  # The model mappings of the result classes
-    result_ids: List[ObjectId] = Field(default_factory=list)
-    result_names: List[str] = Field(default_factory=list)
+    input_names: List[str] = []
+    input_tables: List[str] = []  # The model mappings the input classes
+    input_ids: List[ObjectId] = []  # The ID of the specific workflow instance
+    result_tables: List[str] = []  # The model mappings of the result classes
+    result_ids: List[ObjectId] = []
+    result_names: List[str] = []
 
     info_files: FileList = Field(default_factory=FileList)
 
-    parent_ids: List[ObjectId] = Field(default_factory=list)
-    artifact_ids: List[ObjectId] = Field(default_factory=list)
+    parent_ids: List[ObjectId] = []
+    artifact_ids: List[ObjectId] = []
+
+    @field_validator(
+        "input_names", "input_tables", "input_ids",
+        "result_tables", "result_ids", "result_names",
+        "parent_ids", "artifact_ids",
+        mode="before"
+    )
+    @classmethod
+    def validate_lists_before(cls, v):
+        return fix_list(v)
     created_at: datetime = Field(default_factory=datetime.now)
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
@@ -102,6 +113,19 @@ class NodeRegistry(Model):
     func_mapping: str
     is_async: bool = False
     parameters: Parameters = Reference()
+
+    @model_validator(mode="after")
+    def ensure_lists_not_none(self) -> "NodeRegistry":
+        list_fields = [
+            "input_names", "input_tables", "input_ids",
+            "result_tables", "result_ids", "result_names",
+            "parent_ids", "artifact_ids"
+        ]
+        for field in list_fields:
+            val = getattr(self, field)
+            if val is None:
+                setattr(self, field, [])
+        return self
 
 
 async def find_child_nodes(task_id: str) -> List[NodeRegistry]:

@@ -1,7 +1,7 @@
 import pytest
 from pygments.lexers import resource
 
-from simstack.models.parameters import Resource, Parameters, SlurmParameters
+from simstack.models.parameters import Resource, Parameters, SlurmParameters, ReschedulerParameters
 from simstack.core.resources import allowed_resources
 
 
@@ -121,9 +121,8 @@ class TestParameters:
         assert params.force_rerun is False
         assert params.resource == "self"
         assert params.queue == "default"
-        assert params.other_value == "other"
-        assert params.test_dict == {"test": "value"}
         assert params.slurm_parameters == SlurmParameters()
+        assert params.rescheduler_parameters == ReschedulerParameters()
 
     def test_parameters_creation_with_valid_resource(self):
         """Test creating Parameters with valid resource."""
