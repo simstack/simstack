@@ -1,8 +1,7 @@
-import importlib
 import inspect
 import logging
 import re
-from typing import Optional, List
+from typing import Any, Callable, Optional, List
 
 from odmantic import ObjectId
 
@@ -12,19 +11,21 @@ from simstack.models.charts_artifact import ChartArtifactModel
 from simstack.models.node_registry import find_child_nodes, NodeRegistry
 from simstack.models.table_artifact import TableArtifactModel
 from simstack.util.db import Database
-from simstack.util.importer import _function_from_model, import_function
-from simstack.util.module_path_checker import is_module_subpath_of_path
+from simstack.util.importer import import_function
 
 logger = logging.getLogger("artifacts")
 
 
 class ArtifactArguments:
-    def __init__(self, result, task_id: ObjectId = None):
+    def __init__(self, result: Any, task_id: ObjectId | None = None) -> None:
         self.task_id = task_id
         self.result = result
-        self.child_artifacts = []
+        self.child_artifacts: list[ArtifactModel] = []
+        self.call_path: str | None = None
 
-    def add_attributes(self, func, *args, **kwargs):
+    def add_attributes(
+        self, func: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> None:
         if not callable(func):
             raise ValueError("func must be callable")
         # Get function parameter names
@@ -38,8 +39,12 @@ class ArtifactArguments:
             setattr(self, param_name, arg_value)
 
 
-async def find_artifact_mappings(node_registry_path: str, db: Database, task_id: Optional[str] = None) -> List[ArtifactMapping]:
-    logger.debug(f"task_id: {task_id} Loading artifacts with regex pattern: {node_registry_path} ")
+async def find_artifact_mappings(
+    node_registry_path: str, db: Database, task_id: Optional[str] = None
+) -> List[ArtifactMapping]:
+    logger.debug(
+        f"task_id: {task_id} Loading artifacts with regex pattern: {node_registry_path} "
+    )
     all_mappings = await db.find(ArtifactMapping)
 
     # Filter them manually to find those whose patterns match your path
@@ -56,9 +61,11 @@ async def find_artifact_mappings(node_registry_path: str, db: Database, task_id:
     return matching_mappings
 
 
-async def register_artifact_mapping(artifact_mapping: ArtifactMapping):
+async def register_artifact_mapping(
+    artifact_mapping: ArtifactMapping,
+) -> ArtifactMapping:
     # Check if an artifact with the same name already exists
-    existing = await context.db.engine.find_one(
+    existing = await context.db.find_one(
         ArtifactMapping, ArtifactMapping.name == artifact_mapping.name
     )
     if existing:
@@ -75,14 +82,23 @@ async def register_artifact_mapping(artifact_mapping: ArtifactMapping):
     ):
         try:
             # Import the function to verify it exists
-            func = await import_function(artifact_mapping.function_mapping, context.db, task_id=None)
+            func = await import_function(
+                artifact_mapping.function_mapping, context.db, task_id=None
+            )
             if not func:
-                logger.warning("Could not import function {artifact_mapping.function_mapping}")
+                logger.warning(
+                    "Could not import function {artifact_mapping.function_mapping}"
+                )
         except Exception as e:
-            logger.error(f"Error processing function {artifact_mapping.function_mapping}: {e}")
+            logger.error(
+                f"Error processing function {artifact_mapping.function_mapping}: {e}"
+            )
     return await context.db.save(artifact_mapping)
 
-async def find_all_artifacts(node_registry: NodeRegistry, db: Database) -> List[ArtifactModel]:
+
+async def find_all_artifacts(
+    node_registry: NodeRegistry, db: Database
+) -> List[ArtifactModel]:
     return [
         await db.find_one(ArtifactModel, ArtifactModel.id == artifact_id)
         for artifact_id in node_registry.artifact_ids
@@ -97,14 +113,16 @@ async def create_artifacts(
         task_id = node_registry.id
         log_string = f"create artifacts for task_id: {task_id} for {call_path}"
 
-        artifact_mappings_list = await find_artifact_mappings(call_path, context.db, task_id=task_id)
+        artifact_mappings_list = await find_artifact_mappings(
+            call_path, context.db, task_id=task_id
+        )
 
         child_nodes = await find_child_nodes(task_id)
         logger.info(
             f"{log_string} Found {len(artifact_mappings_list)} artifact mappings for path: {call_path} and {len(child_nodes)} child nodes."
         )
         # Concatenate artifacts from all child nodes
-        child_artifacts = []
+        child_artifacts: list[ArtifactModel] = []
         for child_node in child_nodes:
             loaded_artifacts = await find_all_artifacts(child_node, context.db)
             if len(loaded_artifacts) == 1:
@@ -125,8 +143,7 @@ async def create_artifacts(
         artifact_arguments.child_artifacts = child_artifacts
         artifact_arguments.call_path = call_path
 
-        artifact_list = []
-
+        artifact_list: list[ArtifactModel] = []
 
         if len(artifact_mappings_list) > 0:
             for artifact_mapping in artifact_mappings_list:
@@ -140,7 +157,9 @@ async def create_artifacts(
                 logging.info(log_string_mapping)
                 if artifact_mapping.function_mapping != "CODE":
                     func = await import_function(
-                        artifact_mapping.function_mapping, context.db, artifact_arguments.task_id
+                        artifact_mapping.function_mapping,
+                        context.db,
+                        artifact_arguments.task_id,
                     )
                     if not func:
                         logger.error(
@@ -174,23 +193,31 @@ async def create_artifacts(
 
                 for artifact in artifact_result:
                     if artifact is None:
-                        logger.warning(f"{log_string_mapping} Artifact is None, skipping.")
+                        logger.warning(
+                            f"{log_string_mapping} Artifact is None, skipping."
+                        )
                         continue
                     if isinstance(artifact, TableArtifactModel):
                         artifact.parent_id = node_registry.id
                         saved_artifact = await context.db.save(artifact)
-                        logger.debug(f"{log_string_mapping} new table: {saved_artifact}")
+                        logger.debug(
+                            f"{log_string_mapping} new table: {saved_artifact}"
+                        )
                     elif isinstance(artifact, ChartArtifactModel):
                         artifact.parent_id = node_registry.id
                         saved_artifact = await context.db.save(artifact)
-                        logger.debug(f"{log_string_mapping} new table: {saved_artifact}")
+                        logger.debug(
+                            f"{log_string_mapping} new table: {saved_artifact}"
+                        )
                     elif isinstance(artifact, ArtifactModel):
                         artifact.path = call_path
                         saved_artifact = await context.db.save(artifact)
                         logger.debug(f"{log_string_mapping} new: {saved_artifact}")
                         artifact_list.append(saved_artifact)
                     else:
-                        raise ValueError(f"{log_string_mapping} not an ArtifactModel object. Got {artifact} instead.")
+                        raise ValueError(
+                            f"{log_string_mapping} not an ArtifactModel object. Got {artifact} instead."
+                        )
         else:
             artifact_list = child_artifacts
             logger.debug(f"{log_string} passing child artifacts")
@@ -219,7 +246,7 @@ async def save_artifact_model(artifact: ArtifactModel) -> ArtifactModel:
         artifact.items = saved_items
 
     # Get the model's collection
-    collection = context.db.engine.get_collection(ArtifactModel)
+    collection = context.db.collection(ArtifactModel)
 
     # Convert model to dict
     item_dict = artifact.model_dump(by_alias=True)
@@ -249,13 +276,13 @@ async def save_artifact_model(artifact: ArtifactModel) -> ArtifactModel:
 
 
 async def find_artifacts(
-    model_class: type[ArtifactModel], **kwargs
+    model_class: type[ArtifactModel], **kwargs: Any
 ) -> List[ArtifactModel]:
     """
     Custom find function for polymorphic models
     """
     # Get the collection
-    collection = context.db.engine.get_collection(ArtifactModel)
+    collection = context.db.collection(ArtifactModel)
 
     # Add item_type filter for subclasses
     if model_class != ArtifactModel:
@@ -313,9 +340,6 @@ async def find_artifacts(
 #     Returns:
 #         An instance of the appropriate ArtifactModel subclass, or None if not found
 #     """
-#     # Get the collection
-#     collection = context.db.engine.get_collection(ArtifactModel)
-#
 #     # Find the document by ID
 #     doc = await collection.find_one({"_id": artifact_id})
 #

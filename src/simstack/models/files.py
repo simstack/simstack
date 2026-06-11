@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import logging
 import os
-import tempfile
 import zlib
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
 
@@ -10,6 +12,12 @@ from odmantic import Model, Field, ObjectId, Reference
 from simstack.models import simstack_model
 from simstack.models.file_instance import FileInstance
 from simstack.models.parameters import Resource
+from simstack.util.file_transfer_client import (
+    FileTransferClient,
+    first_available_remote_location,
+    path_for_file_instance,
+    transfer_resource_name,
+)
 from simstack.util.file_hashing import hash_file, hash_string
 
 logger = logging.getLogger(__name__)
@@ -39,19 +47,19 @@ class FileStack(Model):
         default_factory=list, description="List of file locations"
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"FileStack(name={self.name}, size={self.size}, is_hashable={self.is_hashable}, in_memory={self.in_memory}, locations={self.locations})"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"FileStack(name={self.name}, size={self.size}, is_hashable={self.is_hashable}, in_memory={self.in_memory}, locations={self.locations})"
 
-    async def custom_model_dump(self, **kwargs) -> Dict[str, Any]:
-        dumped_data = self.model_dump()
+    async def custom_model_dump(self, **kwargs: Any) -> Dict[str, Any]:
+        dumped_data: Dict[str, Any] = self.model_dump()
         del dumped_data["content"]  # Exclude content from the dumped data
         return dumped_data
 
     @classmethod
-    def ui_base_schema(cls, **kwargs) -> Dict[str, Any]:
+    def ui_base_schema(cls, **kwargs: Any) -> Dict[str, Any]:
         # TODO get the model programatically
         return {
             "ui:field": "FileField",
@@ -61,8 +69,7 @@ class FileStack(Model):
         }
 
     @classmethod
-    def from_string(cls, data_string: str, file_name: str):
-
+    def from_string(cls, data_string: str, file_name: str) -> FileStack:
         content = zlib.compress(data_string.encode("utf-8"))
         file_hash = hash_string(data_string)
         size = len(content)
@@ -93,7 +100,7 @@ class FileStack(Model):
         in_memory: bool = True,
         secure_source: bool = False,
         task_id: str = "",
-    ):
+    ) -> FileStack:
         """
         Creates a FileStack object from a local file path.
 
@@ -142,17 +149,29 @@ class FileStack(Model):
                 # Compress the content using zlib
                 content = zlib.compress(file_content)
                 if task_id == "":
-                    logger.debug(f"Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes")
+                    logger.debug(
+                        f"Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes"
+                    )
                 else:
-                    logger.debug(f"task_id: {task_id} Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes")
+                    logger.debug(
+                        f"task_id: {task_id} Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes"
+                    )
                 # Check if compressed content exceeds MongoDB document size limit
-                if len(content) > 0.9*MONGODB_MAX_DOCUMENT_SIZE:
+                if len(content) > 0.9 * MONGODB_MAX_DOCUMENT_SIZE:
                     if task_id == "":
-                        logger.error(f"Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}")
-                        logger.error(f"Setting in_memory to False for file {source_path} and clear content")
+                        logger.error(
+                            f"Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}"
+                        )
+                        logger.error(
+                            f"Setting in_memory to False for file {source_path} and clear content"
+                        )
                     else:
-                        logger.error(f"task_id: {task_id} Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}")
-                        logger.error(f"task_id: {task_id} Setting in_memory to False for file {source_path} and clear content")
+                        logger.error(
+                            f"task_id: {task_id} Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}"
+                        )
+                        logger.error(
+                            f"task_id: {task_id} Setting in_memory to False for file {source_path} and clear content"
+                        )
                     in_memory = False
                     content = None
             except Exception as e:
@@ -170,7 +189,9 @@ class FileStack(Model):
 
         if not in_memory:
             location = FileInstance.from_local_file(
-                path=path, file_stack_id=file_stack.id, make_copy=not secure_source and not in_memory
+                path=path,
+                file_stack_id=file_stack.id,
+                make_copy=not secure_source and not in_memory,
             )
             file_stack.locations.append(location)
 
@@ -182,10 +203,10 @@ class FileStack(Model):
                 return self.hash
             else:
                 raise ValueError("FileStack is hashable but hash is not set.")
-            #elif self.in_memory and self.content:
+            # elif self.in_memory and self.content:
             #    # If the content is in memory, hash the compressed content
             #    return complex_hash_function(zlib.decompress(self.content))
-            #else:
+            # else:
             #    temp_dir = Path(tempfile.mkdtemp())
             #    local_file = self.get(None, local_dir=temp_dir)
             #    return complex_hash_function(local_file.read_bytes())
@@ -195,7 +216,7 @@ class FileStack(Model):
             )
             return str(ObjectId())
 
-    def append(self, file_instance: FileInstance):
+    def append(self, file_instance: FileInstance) -> None:
         """
         Appends a FileInstance to the file stack.
 
@@ -204,7 +225,7 @@ class FileStack(Model):
         """
         self.locations.append(file_instance)
 
-    def get(self, local_dir: Path = None) -> Path:
+    def get(self, local_dir: Path | None = None) -> Path:
         """
         Copies the file stack to a local directory. This is the version to be used in applications
 
@@ -212,9 +233,10 @@ class FileStack(Model):
         :type local_dir: Path
         """
         from simstack.core.context import context
+
         return self.get_raw(context.config.resource, local_dir)
 
-    def get_raw(self, local_resource: Resource, local_dir: Path = None) -> Path:
+    def get_raw(self, local_resource: Resource, local_dir: Path | None = None) -> Path:
         """
         Copies the file stack to a local directory, assumes no context.
 
@@ -232,46 +254,150 @@ class FileStack(Model):
         if self.in_memory:
             local_dir.mkdir(parents=True, exist_ok=True)
             try:
+                if self.content is None:
+                    raise ValueError("FileStack is in-memory but content is missing.")
+                file_name = self.name or "file"
                 # Decompress the content
                 decompressed_content = zlib.decompress(self.content)
                 # Write the decompressed content to the local directory
-                with open(local_dir / self.name, "wb") as f:
+                with open(local_dir / file_name, "wb") as f:
                     f.write(decompressed_content)
-                return local_dir / self.name
+                return local_dir / file_name
             except Exception as e:
                 logger.error(f"Failed to decompress and write file {self.name}: {e}")
                 raise ValueError(
                     f"Failed to decompress and write file {self.name}: {e}"
                 )
 
+        local_resource_name = transfer_resource_name(local_resource)
+        local_transfer_resource = Resource(value=local_resource_name)
+
         # If in-memory instance not found or decompression failed, try finding instance on same resource
-        if same_resource_instance := next(
-            (f for f in self.locations if f.resource == local_resource), None
-        ):
+        same_resource_instance = next(
+            (
+                f
+                for f in self.locations
+                if transfer_resource_name(f.resource) == local_resource_name
+                and getattr(f, "status", "available") == "available"
+            ),
+            None,
+        )
+
+        if same_resource_instance is not None:
+            same_resource_instance.last_accessed_at = datetime.now()
             # Return the absolute path by joining with the resource's workdir if it's relative
             path = Path(same_resource_instance.path)
             if not path.is_absolute():
                 from simstack.core.context import context
-                return context.config.workdir / path
+
+                return Path(context.config.workdir) / path
             logger.info(f"Using existing instance {path} for {self.name}")
             return path
-        else:
-            local_dir.mkdir(parents=True, exist_ok=True)
+
+        remote_instance = first_available_remote_location(
+            self.locations, local_transfer_resource
+        )
+        if remote_instance is None:
             logger.error("No suitable file instance found for copying.")
-            from simstack.methods.get_file import get_file
-            return get_file(self,local_resource, local_dir / self.name)
+            raise ValueError(
+                f"FileStack {self.id} is unavailable: no accessible file instance for resource {local_transfer_resource}."
+            )
 
+        local_dir.mkdir(parents=True, exist_ok=True)
+        return self._get_via_server_transfer(
+            remote_instance, local_transfer_resource, local_dir
+        )
 
-    def str(self):
+    def _get_via_server_transfer(
+        self,
+        remote_instance: FileInstance,
+        local_resource: Resource,
+        local_dir: Path,
+    ) -> Path:
+        from simstack.core.context import context
+
+        client = FileTransferClient.from_context(required=True)
+        assert client is not None
+
+        transfer = client.create_transfer(
+            file_stack_id=str(self.id),
+            source_file_instance_id=getattr(remote_instance, "id", None),
+            source_resource_name=transfer_resource_name(remote_instance.resource),
+            target_resource_name=transfer_resource_name(local_resource),
+        )
+        transfer_id = str(transfer["transfer_id"])
+        logger.info(
+            "Created FileStack transfer %s for file_stack=%s from resource=%s to resource=%s",
+            transfer_id,
+            self.id,
+            transfer_resource_name(remote_instance.resource),
+            transfer_resource_name(local_resource),
+        )
+
+        try:
+            client.wait_until_uploaded(transfer_id)
+        except Exception as exc:
+            try:
+                client.fail_transfer(
+                    transfer_id,
+                    error_message=str(exc),
+                    error_code="SOURCE_RUNNER_UNAVAILABLE",
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to report failed FileStack transfer %s", transfer_id
+                )
+            raise
+        target_path = local_dir / (self.name or Path(str(remote_instance.path)).name)
+        downloaded = client.download_file(transfer_id, target_path)
+        instance_path = path_for_file_instance(downloaded.path, context.config.workdir)
+        completed = client.complete_transfer(
+            transfer_id=transfer_id,
+            target_resource_name=transfer_resource_name(local_resource),
+            target_path=instance_path,
+            size_bytes=downloaded.size_bytes,
+            checksum_sha256=downloaded.checksum_sha256,
+        )
+
+        file_instance_id = completed.get("file_instance_id")
+        existing = next(
+            (
+                location
+                for location in self.locations
+                if getattr(location, "id", None) == file_instance_id
+            ),
+            None,
+        )
+        if existing is None:
+            self.locations.append(
+                FileInstance(
+                    id=str(file_instance_id) if file_instance_id else None,
+                    path=instance_path,
+                    resource=local_resource,
+                    created_at=datetime.now(),
+                    size_bytes=downloaded.size_bytes,
+                    checksum_sha256=downloaded.checksum_sha256,
+                    location_type="local_path",
+                    is_cached=True,
+                    status="available",
+                )
+            )
+
+        return downloaded.path
+
+    def str(self) -> str:
         return f"FileStack(name={self.name}, size={self.size}, is_hashable={self.is_hashable}, in_memory={self.in_memory}, locations={self.locations})"
+
 
 class FileGetterArgs(Model):
     file_stack: FileStack = Reference()
     local_resource: Resource
     local_dir: Path
 
-async def main():
+
+async def main() -> None:
     from simstack.core.context import context
+
     await context.initialize()
 
     # write a file test.txt
@@ -287,5 +413,6 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     logging.basicConfig(level=logging.DEBUG)
     asyncio.run(main())

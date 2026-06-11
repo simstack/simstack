@@ -24,7 +24,9 @@ async def test_initialize_default_resource_keeps_resource_when_config_toml_missi
     tmp_path, monkeypatch
 ):
     resource_def = SimpleNamespace(is_default=True)
-    db = SimpleNamespace(find_one=AsyncMock(return_value=resource_def), engine=object())
+    db = SimpleNamespace(
+        find_one=AsyncMock(return_value=resource_def), core_engine=object()
+    )
     config = SimpleNamespace(resource="docker", project_root=tmp_path)
 
     make_node_table = AsyncMock()
@@ -46,7 +48,9 @@ async def test_initialize_default_resource_builds_model_table_before_node_table(
 ):
     resource_def = SimpleNamespace(is_default=True)
     engine = object()
-    db = SimpleNamespace(find_one=AsyncMock(return_value=resource_def), engine=engine)
+    db = SimpleNamespace(
+        find_one=AsyncMock(return_value=resource_def), core_engine=engine
+    )
     config = SimpleNamespace(resource="docker", project_root=tmp_path)
     (tmp_path / "config.toml").write_text('active_dirs = ["src/simstack/models"]\n')
     call_order = []

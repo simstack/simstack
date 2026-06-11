@@ -1,23 +1,29 @@
 import os
 import shutil
 import zlib
-from datetime import datetime
+import base64
+import json
+from datetime import datetime, timedelta
 from pathlib import Path
 import pytest
 from unittest.mock import patch
 from typing import Type, TypeVar
 import tempfile
 
+from odmantic import ObjectId as OdmanticObjectId
 from mongomock.object_id import ObjectId
 
+from simstack.core.resources import allowed_resources
 from simstack.models.files import FileStack
 from simstack.models.file_instance import FileInstance
 from simstack.models.parameters import Resource
+from simstack.util.file_transfer_client import DownloadResult
 
 # Define a TypeVar for classes
 T = TypeVar("T", bound=Type)
 
-#TODO why do filetests not use the context fixture from conftest?
+# TODO why do filetests not use the context fixture from conftest?
+
 
 @pytest.fixture
 def setup_test_env(initialized_context, monkeypatch):
@@ -50,6 +56,13 @@ def test_file(tmp_path):
 
 
 # FileInstance Tests
+
+
+def _runner_token_for_resource(resource: str) -> str:
+    payload = base64.urlsafe_b64encode(
+        json.dumps({"res": resource}).encode("utf-8")
+    ).rstrip(b"=")
+    return f"header.{payload.decode('ascii')}.signature"
 
 
 @pytest.fixture
@@ -131,6 +144,31 @@ def test_from_local_file_no_copy(test_file, setup_test_env):
             shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+def test_from_local_file_resolves_self_resource_from_runner_token(
+    test_file, setup_test_env, monkeypatch
+):
+    """External file instances should never be stored under symbolic self."""
+    context = setup_test_env
+    original_resource = context.config._resource_str
+    original_allowed_resources = allowed_resources.get_resources()
+    monkeypatch.setattr(context.config, "_resource_str", "self")
+    allowed_resources.add_resource("local")
+    monkeypatch.setenv("SIMSTACK_RUNNER_TOKEN", _runner_token_for_resource("local"))
+
+    try:
+        temp_path = Path(context.config.workdir) / "self_resource_file.txt"
+        temp_path.write_text("test content")
+
+        instance = FileInstance.from_local_file(
+            path=temp_path, file_stack_id=ObjectId(), make_copy=False
+        )
+
+        assert instance.resource.value == "local"
+    finally:
+        monkeypatch.setattr(context.config, "_resource_str", original_resource)
+        allowed_resources._resources = original_allowed_resources
+
+
 def test_from_local_file_error(tmp_path):
     """Test error handling in from_local_file"""
     non_existent_file = tmp_path / "non_existent.txt"
@@ -159,6 +197,31 @@ def test_file_stack_creation():
     assert stack.is_hashable is True
     assert stack.in_memory is False
     assert stack.locations == []
+
+
+def test_file_stack_document_without_location_id_migrates():
+    """Old FileStack documents without FileInstance ids should still load."""
+    stack = FileStack.model_validate_doc(
+        {
+            "_id": OdmanticObjectId(),
+            "name": "legacy.txt",
+            "size": 12,
+            "is_hashable": True,
+            "hash": "abc",
+            "in_memory": False,
+            "locations": [
+                {
+                    "path": "legacy/path.txt",
+                    "resource": {"value": "local"},
+                    "created_at": datetime(2026, 1, 1, 12, 0, 0),
+                }
+            ],
+        }
+    )
+
+    assert stack.locations[0].id
+    assert stack.locations[0].location_type == "local_path"
+    assert stack.locations[0].status == "available"
 
 
 @pytest.mark.asyncio
@@ -295,7 +358,6 @@ def test_get_same_resource(file_stack, file_instance, setup_test_env):
         user_dir = Path(context.config.workdir) / "testuser" / str(file_stack.id)
         os.makedirs(user_dir, exist_ok=True)
 
-
         result_path = file_stack.get(user_dir)
 
         # Verify
@@ -315,9 +377,205 @@ def test_get_no_suitable_instance(file_stack, setup_test_env):
         user_dir = Path(context.config.workdir) / "testuser" / str(file_stack.id)
         os.makedirs(user_dir, exist_ok=True)
 
-    # Test
+        # Test
         with pytest.raises(ValueError):
             file_stack.get(user_dir)
+
+
+def test_get_remote_instance_uses_token_transfer_client(
+    file_stack, setup_test_env, monkeypatch
+):
+    """Remote FileInstance should be materialized through the server transfer API."""
+    context = setup_test_env
+    payload = b"remote payload"
+
+    remote_instance = FileInstance(
+        path="remote/job/output.txt",
+        resource=Resource(value="remote"),
+        created_at=datetime.now(),
+        size_bytes=len(payload),
+        checksum_sha256="remote-checksum",
+    )
+    file_stack.name = "output.txt"
+    file_stack.in_memory = False
+    file_stack.locations = [remote_instance]
+
+    class FakeTransferClient:
+        def __init__(self):
+            self.created = None
+            self.completed = None
+
+        def create_transfer(self, **kwargs):
+            self.created = kwargs
+            return {"transfer_id": "transfer-1"}
+
+        def wait_until_uploaded(self, transfer_id):
+            assert transfer_id == "transfer-1"
+            return {"status": "uploaded"}
+
+        def download_file(self, transfer_id, target_path):
+            assert transfer_id == "transfer-1"
+            target_path.write_bytes(payload)
+            return DownloadResult(
+                path=target_path,
+                size_bytes=len(payload),
+                checksum_sha256="downloaded-checksum",
+            )
+
+        def complete_transfer(self, **kwargs):
+            self.completed = kwargs
+            return {
+                "transfer_id": kwargs["transfer_id"],
+                "status": "completed",
+                "file_instance_id": "local-instance",
+            }
+
+    fake_client = FakeTransferClient()
+    monkeypatch.setattr(
+        "simstack.models.files.FileTransferClient.from_context",
+        lambda required=True: fake_client,
+    )
+
+    output_dir = Path(context.config.workdir) / "target"
+    result_path = file_stack.get(output_dir)
+
+    assert result_path == output_dir / "output.txt"
+    assert result_path.read_bytes() == payload
+    assert fake_client.created == {
+        "file_stack_id": str(file_stack.id),
+        "source_file_instance_id": remote_instance.id,
+        "source_resource_name": "remote",
+        "target_resource_name": str(context.config.resource),
+    }
+    assert fake_client.completed == {
+        "transfer_id": "transfer-1",
+        "target_resource_name": str(context.config.resource),
+        "target_path": str(result_path.relative_to(Path(context.config.workdir))),
+        "size_bytes": len(payload),
+        "checksum_sha256": "downloaded-checksum",
+    }
+    local_instances = [
+        location
+        for location in file_stack.locations
+        if getattr(location, "id", None) == "local-instance"
+    ]
+    assert len(local_instances) == 1
+    assert local_instances[0].path == str(
+        result_path.relative_to(Path(context.config.workdir))
+    )
+    assert local_instances[0].is_cached is True
+
+
+def test_get_remote_instance_resolves_self_target_from_runner_token(
+    file_stack, setup_test_env, monkeypatch
+):
+    """The transfer API should receive a concrete target resource, not self."""
+    context = setup_test_env
+    original_resource = context.config._resource_str
+    original_allowed_resources = allowed_resources.get_resources()
+    monkeypatch.setattr(context.config, "_resource_str", "self")
+    allowed_resources.add_resource("local")
+    monkeypatch.setenv("SIMSTACK_RUNNER_TOKEN", _runner_token_for_resource("local"))
+    payload = b"remote payload"
+
+    remote_instance = FileInstance(
+        path="remote/job/output.txt",
+        resource=Resource(value="remote"),
+        created_at=datetime.now(),
+        size_bytes=len(payload),
+        checksum_sha256="remote-checksum",
+    )
+    file_stack.name = "output.txt"
+    file_stack.in_memory = False
+    file_stack.locations = [remote_instance]
+
+    class FakeTransferClient:
+        def __init__(self):
+            self.created = None
+            self.completed = None
+
+        def create_transfer(self, **kwargs):
+            self.created = kwargs
+            return {"transfer_id": "transfer-1"}
+
+        def wait_until_uploaded(self, transfer_id):
+            assert transfer_id == "transfer-1"
+            return {"status": "uploaded"}
+
+        def download_file(self, transfer_id, target_path):
+            assert transfer_id == "transfer-1"
+            target_path.write_bytes(payload)
+            return DownloadResult(
+                path=target_path,
+                size_bytes=len(payload),
+                checksum_sha256="downloaded-checksum",
+            )
+
+        def complete_transfer(self, **kwargs):
+            self.completed = kwargs
+            return {
+                "transfer_id": kwargs["transfer_id"],
+                "status": "completed",
+                "file_instance_id": "local-instance",
+            }
+
+    fake_client = FakeTransferClient()
+    monkeypatch.setattr(
+        "simstack.models.files.FileTransferClient.from_context",
+        lambda required=True: fake_client,
+    )
+
+    try:
+        output_dir = Path(context.config.workdir) / "target-self"
+        result_path = file_stack.get(output_dir)
+
+        assert result_path == output_dir / "output.txt"
+        assert fake_client.created["target_resource_name"] == "local"
+        assert fake_client.completed["target_resource_name"] == "local"
+        assert file_stack.locations[-1].resource.value == "local"
+    finally:
+        monkeypatch.setattr(context.config, "_resource_str", original_resource)
+        allowed_resources._resources = original_allowed_resources
+
+
+@pytest.mark.asyncio
+async def test_runner_cleanup_deletes_expired_cached_file(setup_test_env, monkeypatch):
+    from simstack.core.services.runner_cleanup_service import RunnerCleanupService
+
+    context = setup_test_env
+    monkeypatch.setenv("SIMSTACK_FILE_CACHE_TTL_DAYS", "14")
+
+    for existing in await context.db.find_all(FileStack):
+        await context.db.delete(existing)
+
+    cached_path = Path(context.config.workdir) / "cache" / "result.dat"
+    cached_path.parent.mkdir(parents=True, exist_ok=True)
+    cached_path.write_bytes(b"cached payload")
+
+    cached_instance = FileInstance(
+        path=str(cached_path.relative_to(Path(context.config.workdir))),
+        resource=context.config.resource,
+        created_at=datetime.now() - timedelta(days=30),
+        last_accessed_at=datetime.now() - timedelta(days=30),
+        is_cached=True,
+        status="available",
+    )
+    file_stack = await context.db.save(
+        FileStack(
+            name="result.dat",
+            in_memory=False,
+            is_hashable=False,
+            locations=[cached_instance],
+        )
+    )
+
+    service = RunnerCleanupService(context.config.resource, interval=300)
+    await service._cleanup_file_cache()
+
+    updated = await context.db.find_one(FileStack, FileStack.id == file_stack.id)
+    assert updated is not None
+    assert not cached_path.exists()
+    assert updated.locations[0].status == "deleted"
 
 
 def test_str_representation(file_stack):

@@ -1,23 +1,22 @@
 from __future__ import annotations
+
 import logging
-from typing import List,  TypeVar, Union, Optional
+from typing import Any, Iterable, List, Optional, TypeVar, Union
+
 from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorClient
+from odmantic import AIOEngine
 from odmantic import Model, EmbeddedModel
 
 from simstack.core.definitions import DBType, TaskStatus
 from simstack.models.node_registry import NodeRegistry
 from simstack.util.database_information import DatabaseInformation
+
 # from simstack.util.importer import import_class
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=Model)
-
-
-from typing import Any, Iterable
-
-from motor.motor_asyncio import AsyncIOMotorClient
-from odmantic import AIOEngine
 
 
 class Database:
@@ -35,16 +34,22 @@ class Database:
         database_name: str | None = None,
         engine: Any | None = None,
         db_type: DBType | None = None,
+        server_url: str | None = None,
+        server_token: str | None = None,
     ) -> None:
         if engine is None:
             if client is None or database_name is None:
-                raise ValueError("client and database_name are required when engine is not provided")
+                raise ValueError(
+                    "client and database_name are required when engine is not provided"
+                )
             engine = AIOEngine(client=client, database=database_name)
 
         self._db_type = db_type or getattr(engine, "db_type", None)
         self._engine = engine
         self._client = client or getattr(engine, "client", None)
         self._database_name = database_name or getattr(engine, "database_name", None)
+        self._server_url = server_url
+        self._server_token = server_token
 
         if self._database_name is None:
             database = getattr(engine, "database", None)
@@ -55,10 +60,11 @@ class Database:
         return self._db_type
 
     @classmethod
-    def from_db_info(cls, db_info: DatabaseInformation):
+    def from_db_info(cls, db_info: DatabaseInformation) -> "Database":
         if db_info.db_type == DBType.IN_MEMORY:
             # For tests, use in-memory MongoDB (mongomock)
             from mongomock_motor import AsyncMongoMockClient
+
             try:
                 # import mongomock
                 client = AsyncMongoMockClient()
@@ -67,7 +73,9 @@ class Database:
                 logger.warning(
                     "mongomock not installed, falling back to localhost MongoDB"
                 )
-                raise ValueError("mongomock not installed, cannot use in-memory MongoDB")
+                raise ValueError(
+                    "mongomock not installed, cannot use in-memory MongoDB"
+                )
 
         elif db_info.db_type == DBType.MONGODB:
             connection_string = db_info.connection_string
@@ -76,12 +84,20 @@ class Database:
             client = AsyncIOMotorClient(connection_string)
             logger.info("Connected to MongoDB")
         else:
-            raise ValueError(f"Unsupported database type for MongoDB: {db_info.db_type}")
+            raise ValueError(
+                f"Unsupported database type for MongoDB: {db_info.db_type}"
+            )
 
         # Create engine
         engine = AIOEngine(client=client, database=db_info.db_name)
-        return cls(engine=engine, client=client, database_name=db_info.db_name)
-
+        return cls(
+            engine=engine,
+            client=client,
+            database_name=db_info.db_name,
+            db_type=db_info.db_type,
+            server_url=db_info.server_url,
+            server_token=db_info.server_token,
+        )
 
     @property
     def core_engine(self) -> Any:
@@ -89,36 +105,50 @@ class Database:
         return self._engine
 
     @property
+    def server_url(self) -> str | None:
+        return self._server_url
+
+    @property
+    def server_token(self) -> str | None:
+        return self._server_token
+
+    @property
     def client(self) -> AsyncIOMotorClient:
+        if self._client is None:
+            raise RuntimeError("Database client is not initialized")
         return self._client
 
     @property
     def database_name(self) -> str:
+        if self._database_name is None:
+            raise RuntimeError("Database name is not initialized")
         return self._database_name
 
     @property
-    def raw_database(self):
+    def raw_database(self) -> Any:
         if self._client is not None and self._database_name is not None:
             return self._client[self._database_name]
         return getattr(self._engine, "database")
 
     @property
-    def database(self):
+    def database(self) -> Any:
         return getattr(self._engine, "database", self.raw_database)
 
-    def collection(self, model_or_name: Any):
+    def collection(self, model_or_name: Any) -> Any:
         if isinstance(model_or_name, str):
             return self.raw_database[model_or_name]
         return self._engine.get_collection(model_or_name)
 
-    def get_collection(self, model_or_name: Any):
+    def get_collection(self, model_or_name: Any) -> Any:
         """Temporary compatibility alias for code still being migrated."""
         return self.collection(model_or_name)
 
     async def find(self, *args: Any, **kwargs: Any) -> Any:
         if not args:
             # Re-raise TypeError as expected by tests if no args provided
-            raise TypeError("AIOEngine.find() missing 1 required positional argument: 'model'")
+            raise TypeError(
+                "AIOEngine.find() missing 1 required positional argument: 'model'"
+            )
 
         model_class = args[0]
         results = await self._engine.find(*args, **kwargs)
@@ -126,10 +156,15 @@ class Database:
             await self._apply_postprocess(model_class, result)
         return results
 
+    async def find_all(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.find(*args, **kwargs)
+
     async def find_one(self, *args: Any, **kwargs: Any) -> Any:
         if not args:
             # Re-raise TypeError as expected by tests if no args provided
-            raise TypeError("Database.find_one() missing 1 required positional argument: 'model'")
+            raise TypeError(
+                "Database.find_one() missing 1 required positional argument: 'model'"
+            )
 
         model_class = args[0]
         result = await self._engine.find_one(*args, **kwargs)
@@ -138,10 +173,39 @@ class Database:
             await self._apply_postprocess(model_class, result)
         return result
 
+    async def find_one_by_model_name(
+        self, model_mapping: str, item_id: str | ObjectId
+    ) -> Optional[Any]:
+        if "." in model_mapping:
+            from simstack.util.importer import import_class
+
+            model_class = await import_class(model_mapping, self)
+        else:
+            from simstack.util.importer import import_class_by_name
+
+            model_class = await import_class_by_name(model_mapping, self)
+
+        if model_class is None:
+            raise ValueError(
+                f"DB: model class {model_mapping} not found in the available modules"
+            )
+
+        if isinstance(item_id, str):
+            item_id = ObjectId(item_id)
+
+        instance = await self.find_one(model_class, model_class.id == item_id)
+        if instance is None:
+            logger.error(
+                f"Instance of '{model_class.__name__}' with id '{item_id}' does not exist"
+            )
+            raise ValueError(
+                f"Instance of '{model_class.__name__}' with id '{item_id}' does not exist"
+            )
+        return instance
+
     async def _apply_postprocess(self, model_class: type, result: Model) -> None:
         """Apply db_find_postprocess to results if defined on the model class."""
         post_process = getattr(model_class, "db_find_postprocess", None)
-
 
         if post_process and callable(post_process):
             import inspect
@@ -160,7 +224,7 @@ class Database:
             except Exception as e:
                 logger.error(
                     f"Error during post-processing {model_class.__name__}: {e}",
-                    exc_info=True
+                    exc_info=True,
                 )
                 # Should we re-raise or just log? Usually post-processing failure is critical.
                 raise
@@ -171,7 +235,7 @@ class Database:
 
         try:
             for attr_name in dir(result):
-                if attr_name.startswith('_'):
+                if attr_name.startswith("_"):
                     continue
 
                 try:
@@ -183,7 +247,9 @@ class Database:
                     continue
 
                 # Handle direct Model instance
-                if isinstance(attr_value, Model) or isinstance(attr_value, EmbeddedModel):
+                if isinstance(attr_value, Model) or isinstance(
+                    attr_value, EmbeddedModel
+                ):
                     await self._apply_postprocess(type(attr_value), attr_value)
 
                 # Handle list of Models
@@ -201,18 +267,19 @@ class Database:
         except Exception as e:
             logger.error(
                 f"Error during recursive post-processing traversal for {model_class.__name__}: {e}",
-                exc_info=True
+                exc_info=True,
             )
 
-
-    async def close(self):
+    async def close(self) -> None:
         if self._client is not None:
             self._client.close()
 
     async def save(self, *args: Any, **kwargs: Any) -> Any:
         if not args:
             # Re-raise TypeError as expected by tests if no args provided
-            raise TypeError("AIOEngine.save() missing 1 required positional argument: 'instance'")
+            raise TypeError(
+                "AIOEngine.save() missing 1 required positional argument: 'instance'"
+            )
 
         obj = args[0]
         rest_args = args[1:]
@@ -233,16 +300,26 @@ class Database:
     async def delete(self, *args: Any, **kwargs: Any) -> Any:
         return await self._engine.delete(*args, **kwargs)
 
-    async def apply_resource_assignment_to_node_registry(self, node_registry: Any) -> Any:
-        from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
+    async def apply_resource_assignment_to_node_registry(
+        self, node_registry: Any
+    ) -> Any:
+        from simstack.core.resource_assignment import (
+            apply_resource_assignment_to_node_registry,
+        )
+
         return await apply_resource_assignment_to_node_registry(self, node_registry)
 
-    async def find_artifact_mappings(self, node_registry_path: str,) -> Any:
+    async def find_artifact_mappings(
+        self,
+        node_registry_path: str,
+    ) -> Any:
         from simstack.core.artifacts import find_artifact_mappings
+
         return await find_artifact_mappings(node_registry_path, self)
 
     async def find_all_artifacts(self, node_registry: Any) -> Any:
         from simstack.core.artifacts import find_all_artifacts
+
         return await find_all_artifacts(node_registry, self)
 
     async def ping(self) -> Any:
@@ -275,7 +352,7 @@ class Database:
         save_attr = getattr(target, "save", None)
         if not callable(save_attr):
             return False
-        
+
         # Avoid recursion if custom save is called
         if getattr(target, "_currently_saving", False):
             return False
@@ -283,7 +360,7 @@ class Database:
         # Set a flag to prevent recursion if custom save calls db.save(self)
         object.__setattr__(target, "_currently_saving", True)
         try:
-            await save_attr( self)
+            await save_attr(self)
         finally:
             object.__setattr__(target, "_currently_saving", False)
         return True
@@ -319,8 +396,9 @@ class Database:
                 parts.extend(value.values())
         return parts
 
-
-    async def load_task(self, name: str, arg_hash: str, function_hash: str) -> Optional["NodeRegistry"]:
+    async def load_task(
+        self, name: str, arg_hash: str, function_hash: str
+    ) -> Optional["NodeRegistry"]:
         """
         Load a task based on name, arg_hash and function_hash
 
@@ -339,9 +417,8 @@ class Database:
             & (NodeRegistry.function_hash == function_hash),
         )
         return result
-    
-    
-    # legacy functions ... these are functions in the old database class which we do not want to migrate if possible 
+
+    # legacy functions ... these are functions in the old database class which we do not want to migrate if possible
     #
     # load_waiting_tasks_for_resource DONE
     # reset_database                  DONE
@@ -360,7 +437,6 @@ class Database:
     # count
     # aggregate
 
-
     async def load_waiting_tasks_for_resource(
         self, resource: str
     ) -> List["NodeRegistry"]:
@@ -375,10 +451,16 @@ class Database:
         """
         # Try to use the engine directly if find is failing in tests
         try:
-             submitted_tasks = await self.find(NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED)
+            submitted_tasks = await self.find(
+                NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED
+            )
         except Exception as e:
-             logger.warning(f"Error calling self.find in load_waiting_tasks_for_resource: {e}. Falling back to engine.find.")
-             submitted_tasks = await self._engine.find(NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED)
+            logger.warning(
+                f"Error calling self.find in load_waiting_tasks_for_resource: {e}. Falling back to engine.find."
+            )
+            submitted_tasks = await self._engine.find(
+                NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED
+            )
 
         # Then filter them in Python by checking the resource field
         matching_tasks = []
@@ -386,9 +468,15 @@ class Database:
             # Check if parameters has a resource attribute and if it matches our resource
             # the local runner will also do the immidiate tasks
             # TODO not the local runner the default resource should pick up self but there should be no seld
-            if hasattr(task.parameters, "resource") and task.parameters.resource == resource:
+            if (
+                hasattr(task.parameters, "resource")
+                and task.parameters.resource == resource
+            ):
                 matching_tasks.append(task)
-            if hasattr(task.parameters, "resource") and task.parameters.resource == "self":
+            if (
+                hasattr(task.parameters, "resource")
+                and task.parameters.resource == "self"
+            ):
                 logger.error("There should be tasks submitted to self")
         return matching_tasks
 
@@ -403,7 +491,6 @@ class Database:
             await db[collection].drop()
 
         logger.info(f"Database {self.database_name} has been reset")
-
 
     async def load_task_by_id(
         self, task_id: Union[str, ObjectId]
@@ -439,14 +526,19 @@ class Database:
 #     current_engine_context.reset(token)
 #
 
+
 # TODO engines
-async def find_all_artifacts_for_database(database: Database, node_registry: Any) -> Any:
+async def find_all_artifacts_for_database(
+    database: Database, node_registry: Any
+) -> Any:
     find_all = getattr(database, "find_all_artifacts", None)
     if callable(find_all):
         return await database.find(node_registry)
 
     from simstack.core.artifacts import find_all_artifacts
+
     return await find_all_artifacts(node_registry, database)
+
 
 #
 # class DatabaseOld(DatabaseInformation):
