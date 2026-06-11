@@ -32,7 +32,7 @@ def _slurm_registry(name: str, parameters: Parameters, parent_ids=None) -> NodeR
 
 @pytest.mark.asyncio
 async def test_submit_node_does_not_persist_generated_startup_commands(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, initialized_context
 ):
     project_root = tmp_path / "project"
     python_path = tmp_path / "simstack-model"
@@ -52,8 +52,6 @@ async def test_submit_node_does_not_persist_generated_startup_commands(
             resource="local",
         ),
     )
-    fake_db = FakeDatabase()
-    monkeypatch.setattr(context, "db", fake_db)
     monkeypatch.setattr(
         "simstack.core.submit_node.subprocess.run",
         lambda *args, **kwargs: SimpleNamespace(

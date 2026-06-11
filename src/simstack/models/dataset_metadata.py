@@ -4,7 +4,6 @@ from typing import Dict, Any, Union, List
 from odmantic import Model, EmbeddedModel, Field
 
 from simstack.core.asnyc_helper import async_helper
-from simstack.core.engine import current_engine_context
 from simstack.models import simstack_model
 
 
@@ -44,7 +43,7 @@ def _get_json_schema(data: Dict) -> dict:
 class DataSetMetadataTemplate(Model):
     dataset_type: str
     model_json: dict[str, Any]
-    structure: Dict[str, List[str]] = Field(default_factory=dict)
+    structure: Dict[str, Dict[str, str]] = Field(default_factory=dict)
 
 
 @simstack_model
@@ -54,20 +53,21 @@ class DataSetMetadata(EmbeddedModel):
         default_factory=dict
     )
     is_validated: bool = False
-    structure: Dict[str, List[str]] = Field(default_factory=dict)
+    structure: Dict[str, Dict[str, str]] = Field(default_factory=dict)
 
     def get_json_schema(self):
         return _get_json_schema(self.data)
 
-    async def validate_dict(self, new_structure: Dict[str, List[str]]) -> bool:
-        engine = current_engine_context.get()
-        reference_metadata = await engine.find_one(
+    async def validate_dict(self, new_structure: Dict[str, Dict[str, str]]) -> bool:
+
+        from simstack.core.context import context
+        reference_metadata = await context.db.find_one(
             DataSetMetadataTemplate,
             DataSetMetadataTemplate.dataset_type == self.field_name,
         )
         # remove empty sections without mutating the dict during iteration
         new_structure = {
-            key: value for key, value in new_structure.items() if value is not None
+            key: value for key, value in new_structure.items() if value
         }
 
         if reference_metadata is None:
@@ -76,8 +76,7 @@ class DataSetMetadata(EmbeddedModel):
                 model_json=_get_json_schema(self.data),
                 structure=new_structure,
             )
-            engine = current_engine_context.get()
-            await engine.save(metadata_template)
+            await context.db.save(metadata_template)
             return True  # first model of this type
 
         new_data_json = _get_json_schema(self.data)
@@ -121,32 +120,35 @@ class DataSetMetadata(EmbeddedModel):
                         f"Property '{key}' schema mismatch. Reference: {ref_prop}, Current: {new_prop}"
                     )
 
-        # Check if lists in existing sections match
+        # Check if model types in existing sections match, and add new keys
         save_template = False
-        for section, content in new_structure.items():
-            if content:  # if there are no elements in a section this should be None
-                if section in reference_metadata.structure:
-                    if content != reference_metadata.structure[section]:
-                        raise ValueError(
-                            f"Section {section} has different content in existing structure"
-                        )
-                else:
-                    save_template = True
-                    self.structure[section] = content
-            else:
-                new_structure[section] = reference_metadata.structure[section]
+        updated_structure = reference_metadata.structure.copy()
 
+        for section_name, new_section_content in new_structure.items():
+            if section_name in updated_structure:
+                ref_section_content = updated_structure[section_name]
+                # Check if the structure of the section matches exactly
+                if ref_section_content != new_section_content:
+                    raise ValueError(
+                        f"Section {section_name} has different content in existing structure. "
+                        f"Reference: {ref_section_content}, Current: {new_section_content}"
+                    )
+            else:
+                # Completely new section
+                updated_structure[section_name] = new_section_content
+                save_template = True
 
         if save_template:
             reference_metadata.structure = new_structure
-            await engine.save(reference_metadata)
+            await context.db.save(reference_metadata)
         self.structure = new_structure
         return True
 
     @async_helper
-    async def freeze(self, new_structure: Dict[str, Dict[str, Any]]) -> bool:
-        engine = current_engine_context.get()
-        reference_metadata = await engine.find_one(
+    async def freeze(self, new_structure: Dict[str, Dict[str, str]]) -> bool:
+        from simstack.core.context import context
+        db = context.db
+        reference_metadata = await db.find_one(
             DataSetMetadataTemplate,
             DataSetMetadataTemplate.dataset_type == self.field_name,
         )
@@ -157,7 +159,7 @@ class DataSetMetadata(EmbeddedModel):
         if self.structure == {}:
             self.structure = new_structure
             reference_metadata.structure = new_structure
-            await engine.save(reference_metadata)
+            await db.save(reference_metadata)
         # some structure exists already
         return new_structure == self.structure
 

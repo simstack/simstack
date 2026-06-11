@@ -1,10 +1,11 @@
 import pytest
+import pytest_asyncio
 from simstack.core.context import context
 from simstack.models.parameters import Parameters
 from simstack.models.node_registry import NodeRegistry
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def node_registry():
     """Create a properly configured NodeRegistry instance for testing."""
     # Create a proper Parameters instance
@@ -22,4 +23,10 @@ async def node_registry():
     )
 
     await context.db.save(node_data)
-    return node_data
+    
+    yield node_data
+    
+    try:
+        await context.db.delete(node_data)
+    except Exception:
+        pass

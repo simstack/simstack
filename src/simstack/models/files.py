@@ -280,7 +280,8 @@ class FileStack(Model):
                 if transfer_resource_name(f.resource) == local_resource_name
                 and getattr(f, "status", "available") == "available"
             ),
-            None)
+            None,
+        )
 
         if same_resource_instance is not None:
             same_resource_instance.last_accessed_at = datetime.now()

@@ -4,13 +4,14 @@ import os
 import subprocess
 import uuid
 from pathlib import Path
-from typing import Set
+from typing import Set, List, Tuple, Union
 
-from odmantic import ObjectId
+from odmantic import ObjectId, Model
 
 from simstack.core.definitions import TaskStatus
 from simstack.core.simstack_result import SimstackResult
 from simstack.models.files import FileStack
+
 
 local_logger = logging.getLogger("NodeRunner")
 
@@ -31,19 +32,19 @@ class NodeRunner(SimstackResult):
         info_file_patterns (Set[str]): File patterns used to collect information files
     """
 
-    def __init__(self, name: str = "node", logger=None, **kwargs):
+
+    def __init__(self, name: str, task_id: str | ObjectId, logger=None, **kwargs):
         """
         Initialize the NodeRunner instance.
 
         Args:
-            name (str, optional): Name for this task runner. Defaults to "node".
+            name (str): Name for this task runner.
+            task_id (str | ObjectId): Unique identifier for the task.
             logger (optional): Logger instance to use. If None, uses local_logger.
-            **kwargs: Additional keyword arguments. 'task_id' can be provided here.
+            **kwargs: Additional keyword arguments.
         """
         super().__init__()
-        self.task_id = kwargs.get("task_id", "NA")
-        if isinstance(self.task_id, ObjectId):
-            self.task_id = str(self.task_id)
+        self.task_id = str(task_id) if isinstance(task_id, ObjectId) else task_id
         self.name = name
         self.logger = logger or local_logger
         self.last_stdout = ""
@@ -51,6 +52,19 @@ class NodeRunner(SimstackResult):
         self.log_string = ""
         self.info_file_patterns = {"*.in", "*.out", "*.err", "*.log"}
         self.info("started")
+
+
+    @classmethod
+    def from_kwargs(cls, **kwargs):
+        node_runner = kwargs.get("node_runner")
+        if isinstance(node_runner, cls):
+            return node_runner
+
+        return cls(
+            name=kwargs["name"],
+            task_id=kwargs["task_id"],
+            logger=kwargs.get("logger"),
+        )
 
     async def make_info_files(self, *args):
         """
@@ -70,8 +84,6 @@ class NodeRunner(SimstackResult):
         """
         try:
             files_set: Set[str] = set()
-
-
             # Process args for patterns and files
             for value in args:
                 if isinstance(value, str):

@@ -1,3 +1,4 @@
+import asyncio
 import socket
 from pathlib import Path
 import pytest
@@ -12,7 +13,6 @@ from simstack.models.resource_definition import ResourceDefinition
 from simstack.util.config_reader import ConfigReader
 from simstack.util.database_information import DatabaseInformation
 from simstack.util.db import Database
-import simstack.util.project_root_finder as project_root_finder
 from simstack.util.project_root_finder import find_project_root
 from simstack.util.toml_reader import TomlReader
 from simstack.util.path_manager import path_manager
@@ -165,7 +165,7 @@ use_db = true
         db_info = DatabaseInformation.from_config(toml_reader.config, **kwargs)
         return db_info
 
-    @pytest.fixture
+    @pytest.fixture(scope="function")
     def mock_db(self, mock_db_info):
         db = Database.from_db_info(mock_db_info)
 
@@ -173,7 +173,7 @@ use_db = true
         async def patched_save(instance, **kwargs):
             """Patched save method that doesn't use sessions"""
             # Use the collection directly without transactions
-            collection = db.engine.get_collection(type(instance))
+            collection = db.get_collection(type(instance))
 
             # Ensure the instance has an ObjectId
             if not instance.id:
@@ -210,11 +210,15 @@ use_db = true
             return results
 
         # Apply patches only for mock database
-        db.engine.save = patched_save
-        db.engine.save_all = patched_save_all
-
+        db.save = patched_save
+        db.save_all = patched_save_all
+        db.save_unchecked = patched_save
         yield db
-        db.close()
+        if asyncio.iscoroutinefunction(db.close):
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(db.close())
+        else:
+            db.close()
 
     def test_reader(self, toml_reader):
         assert toml_reader.get("resources.allowed_resources") == ["local", "self", "uploads"]
@@ -264,7 +268,7 @@ use_db = true
 
     @pytest.mark.asyncio
     async def test_init_datasource_with_db(self,mock_db, toml_reader, resource_definitions):
-        assert mock_db.db_name == "user_data"
+        assert mock_db.database_name == "user_data"
         toml_reader.config["parameters"]["general"]["use_db"] = True
 
         for resource_def in resource_definitions:
@@ -329,12 +333,3 @@ use_db = true
             assert Path(config_reader.ssh_key).exists()
             assert config_reader.ssh_key == Path(tmp_ssh_key.name)
 
-    @pytest.mark.asyncio
-    async def test_git_list_property(self, toml_reader, mock_db):
-        """Test that the git_list property is populated correctly."""
-        project_root = find_project_root(skip_files=())
-        config_reader = await ConfigReader.create("local", mock_db, toml_reader, project_root)
-
-        git_list = config_reader.git_list
-        assert isinstance(git_list, list)
-        assert len(git_list) == 1

@@ -12,6 +12,7 @@ import tempfile
 
 from mongomock.object_id import ObjectId
 
+from simstack.core.resources import allowed_resources
 from simstack.models.files import FileStack
 from simstack.models.file_instance import FileInstance
 from simstack.models.parameters import Resource
@@ -77,12 +78,12 @@ def test_file_instance_creation():
     """Test basic FileInstance creation"""
     instance = FileInstance(
         path="test/path/file.txt",
-        resource=Resource(value="local"),
+        resource=Resource(value="test"),
         created_at=datetime(2023, 1, 1, 12, 0, 0),
     )
 
     assert instance.path == "test/path/file.txt"
-    assert instance.resource.value == "local"
+    assert instance.resource.value == "test"
     assert instance.created_at == datetime(2023, 1, 1, 12, 0, 0)
 
 
@@ -148,7 +149,9 @@ def test_from_local_file_resolves_self_resource_from_runner_token(
     """External file instances should never be stored under symbolic self."""
     context = setup_test_env
     original_resource = context.config._resource_str
+    original_allowed_resources = allowed_resources.get_resources()
     monkeypatch.setattr(context.config, "_resource_str", "self")
+    allowed_resources.add_resource("local")
     monkeypatch.setenv("SIMSTACK_RUNNER_TOKEN", _runner_token_for_resource("local"))
 
     try:
@@ -162,6 +165,7 @@ def test_from_local_file_resolves_self_resource_from_runner_token(
         assert instance.resource.value == "local"
     finally:
         monkeypatch.setattr(context.config, "_resource_str", original_resource)
+        allowed_resources._resources = original_allowed_resources
 
 
 def test_from_local_file_error(tmp_path):
@@ -442,7 +446,9 @@ def test_get_remote_instance_resolves_self_target_from_runner_token(
     """The transfer API should receive a concrete target resource, not self."""
     context = setup_test_env
     original_resource = context.config._resource_str
+    original_allowed_resources = allowed_resources.get_resources()
     monkeypatch.setattr(context.config, "_resource_str", "self")
+    allowed_resources.add_resource("local")
     monkeypatch.setenv("SIMSTACK_RUNNER_TOKEN", _runner_token_for_resource("local"))
     payload = b"remote payload"
 
@@ -503,6 +509,7 @@ def test_get_remote_instance_resolves_self_target_from_runner_token(
         assert file_stack.locations[-1].resource.value == "local"
     finally:
         monkeypatch.setattr(context.config, "_resource_str", original_resource)
+        allowed_resources._resources = original_allowed_resources
 
 
 @pytest.mark.asyncio

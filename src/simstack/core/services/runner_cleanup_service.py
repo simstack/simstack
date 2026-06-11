@@ -63,7 +63,7 @@ class RunnerCleanupService(BaseService):
         cutoff_time = datetime.now() - timedelta(minutes=30)
 
         # Find and delete events matching the criteria
-        old_events = await context.db.find_many(
+        old_events = await context.db.find(
             RunnerEvent,
             (RunnerEvent.runner_type == RunnerType.RESOURCE_RUNNER)
             & (RunnerEvent.resource == self._resource)

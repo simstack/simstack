@@ -69,15 +69,34 @@ A basic model definition look like:
 
 **Standard Models**
 
-:mod:`simstack.models.models` provides basic models:
+:mod:`simstack.models.base_types` provides basic models:
 
 - IntData
 - StrData
 - FloatData
-- ArrayStorage
-- ArrayList = List[ArrayStorage]
+- BooleanData
 
-:class:`simstack.models.models.ArrayStorage` is an example of a class which
+And :mod:`simstack.models.array_storage`:
+
+- ArrayStorage
+- ArrayList
+
+And the list mixins for creating custom list models (see :doc:`lists`):
+
+- GenericListMixin
+- ObjectListMixin
+
+And for file management (see :doc:`files`):
+
+- FileStack
+- FileList
+- FileListModel
+
+And the parallel execution utility (see :doc:`mass_runner`):
+
+- MassRunner
+
+:class:`simstack.models.array_storage.ArrayStorage` is an example of a class which
 packs its content by serializing and deserializing it. This is the
 recommended procedure for all content which MongoDB cannot natively store. To
 interact with such classes, the developer has to provide access functions and

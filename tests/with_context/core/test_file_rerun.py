@@ -20,7 +20,7 @@ def run_file_argument(file_stack: FileStack, **kwargs):
     """
     task_id = kwargs.get("task_id", None)
 
-    node_runner = NodeRunner(name="run_file_argument", **kwargs)
+    node_runner = NodeRunner("run_file_argument", **kwargs)
 
     node_runner.info(f"Processing file stack: {file_stack.id} with task_id: {task_id}")
     node_runner.value = StringData(value="str(self.id")

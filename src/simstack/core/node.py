@@ -14,7 +14,7 @@ from typing import (
     List,
     ParamSpec,
     Union,
-    overload,
+    overload, Tuple,
 )
 
 import coolname  # type: ignore[import-untyped]
@@ -25,17 +25,17 @@ from pydantic import BaseModel
 from simstack.core.artifacts import create_artifacts, ArtifactArguments
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.engine import current_engine_context
 from simstack.core.hash import complex_hash_function
 from simstack.core.node_claim import claim_submitted_node
 from simstack.core.node_runner import NodeRunner
+from simstack.core.process_results import process_result_helper
 from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.task_id import set_task_id, clear_task_id
 from simstack.models import ModelMapping, Parameters
 from simstack.models import NodeModel
 from simstack.models import NodeRegistry
-from simstack.models.file_list import FileListModel
+from simstack.models.file_list import FileList
 from simstack.models.files import FileStack
 from simstack.models.parameters import Resource, Queue
 from simstack.models.simstack_model import is_simstack_model
@@ -178,6 +178,8 @@ class Node:
         self.is_async = kwargs.pop("is_async")
         self.parent_id = kwargs.pop("parent_id", None)
         self.call_path = kwargs.pop("call_path", "") or "." + self.name
+        self._arg_hash = None
+        self._function_hash = None
 
         # Get function signature to identify argument names
         sig = inspect.signature(self._func)
@@ -226,10 +228,9 @@ class Node:
 
         :rtype: NodeRegistry
         """
-
-        function_mapping = await context.db.find_one(
-            NodeModel, NodeModel.name == self.name
-        )
+        # TODO why does this fail when nodemapping succeeds ?
+        # function_mapping = await context.db.find_one(NodeModel, NodeModel.name == self.name)
+        function_mapping = context.node_mappings.get_by_name(self.name)
         if function_mapping is None:
             logger.error(f"Could not find function mapping for name: {self.name}")
             raise ValueError(f"Could not find function mapping for name: {self.name}")
@@ -238,28 +239,21 @@ class Node:
         input_tables = []
         for arg in self._args:
             # if there is no table for an arg raise an error
-            input_table_name = await context.db.find_one(
-                ModelMapping, ModelMapping.name == arg.__class__.__name__
-            )
+            # input_table_name = await context.db.find_one(ModelMapping, ModelMapping.name == arg.__class__.__name__)
+            input_table_name = context.model_mappings.get_by_name(arg.__class__.__name__)
             if input_table_name is None:
                 logger.error(f"Could not find table name for {arg.__class__.__name__}")
-                raise ValueError(
-                    f"Could not find table name for {arg.__class__.__name__}"
-                )
+                raise ValueError(f"Could not find table name for {arg.__class__.__name__}")
             if not isinstance(arg, Model):
                 logger.error(f"{arg.__class__.__name__} is not an odmantic Model")
                 raise ValueError(f"{arg.__class__.__name__} is not an odmantic Model")
 
-            argument_entry = await context.db.upsert(arg)
+            argument_entry = await context.db.save(arg)
 
-            # Check if the upsert operation was successful and returned a valid ID
+            # Check if the save operation was successful and returned a valid ID
             if argument_entry is None or argument_entry.id is None:
-                logger.error(
-                    f"Failed to upsert argument {arg} - returned None or invalid ID"
-                )
-                raise ValueError(
-                    f"Failed to upsert argument of type {arg.__class__.__name__}"
-                )
+                logger.error(f"Failed to save argument {arg} - returned None or invalid ID")
+                raise ValueError(f"Failed to save argument of type {arg.__class__.__name__}")
 
             input_ids.append(argument_entry.id)
             input_tables.append(input_table_name.mapping)
@@ -282,14 +276,14 @@ class Node:
         registry_entry = self.registry_entry
         assert registry_entry is not None
         await apply_resource_assignment_to_node_registry(
-            context.db.engine,
+            context.db,
             registry_entry,
             parent_parameters=parent_parameters
             if isinstance(parent_parameters, Parameters)
             else None,
         )
         self.parameters = registry_entry.parameters
-        await context.db.upsert(registry_entry)
+        await context.db.save(registry_entry)
         logger.info(
             f"Task task_id: {self.id} with name {self.name} created for resource: {registry_entry.parameters.resource} queue: {registry_entry.parameters.queue} with id: {self.id}"
         )
@@ -313,7 +307,9 @@ class Node:
             raise ValueError("Database is not connected")
 
         arg_hash = compute_arg_hash(self._args)
-        function_hash = cast(str, complex_hash_function(self._func))
+        function_hash = complex_hash_function(self._func)
+        self._arg_hash = arg_hash
+        self._function_hash = function_hash
 
         self.registry_entry = (
             await context.db.load_task(self.name, arg_hash, function_hash)
@@ -368,7 +364,7 @@ class Node:
 
         :return: The retrieved task outputs from the database.
         """
-        engine = current_engine_context.get()
+        db = context.db
         assert self.registry_entry is not None
         logger.info(
             f"Task task_id: {self.id} loading results with task status {self.status}"
@@ -389,8 +385,8 @@ class Node:
                 self.registry_entry.result_tables,
                 self.registry_entry.result_ids,
             ):
-                model = await import_class(table_name)
-                result = await engine.find_one(model, model.id == table_id)
+                model = await import_class(table_name, db)
+                result = await db.find_one(model, model.id == table_id)
                 if result is None:
                     await self.set_status(TaskStatus.FAILED)
                     logger.error(
@@ -524,7 +520,7 @@ class Node:
         )
         original_dir = Path.cwd()
         try:
-            node_runner = NodeRunner(self._func.__name__, None, task_id=self.id)
+            node_runner = NodeRunner(self._func.__name__, self.id)
             node_kwargs = {
                 "node_runner": node_runner,
                 "parent_id": self.id,
@@ -535,6 +531,8 @@ class Node:
                 # the child nodes
                 "recompute_artifacts": self.recompute_artifacts,
                 "custom_name": self.custom_name,
+                "arg_hash": self._arg_hash,
+                "function_hash": self._function_hash,
             }
 
             if self.parameters.force_rerun:
@@ -611,124 +609,49 @@ class Node:
             if not result:
                 new_task_status = TaskStatus.FAILED
                 result = None
-        elif is_simstack_model(result):  # backward compatibility
-            result_model = await context.db.upsert(result)
-            result_table_name = await context.db.find_one(
-                ModelMapping, ModelMapping.name == result.__class__.__name__
-            )
-            if result_table_name is None:
-                logger.error(
-                    f"Task task_id: {self.id} could not find table name for {result.__class__.__name__}"
-                )
-                raise ValueError(
-                    f"Could not find table name for {result.__class__.__name__}"
-                )
-            self.registry_entry.result_ids = [result_model.id]
-            self.registry_entry.result_tables = [result_table_name.mapping]
-            self.registry_entry.result_names = [result.__class__.__name__]
-            if hasattr(result, "task_status"):
-                new_task_status = result.task_status
-        elif isinstance(result, SimstackResult):
-            # it is possible that the task failed internally but returned logging info which we process anyway
-            new_task_status = result.status
-            result_ids = []
-            result_tables = []
-            result_models = []
-            result_names = []
+        elif is_simstack_model(result) or isinstance(result, SimstackResult):
+            if isinstance(result, SimstackResult):
+                new_task_status = result.status
+                if hasattr(result, "custom_name"):
+                    self.registry_entry.custom_name = result.custom_name
 
-            if hasattr(result, "custom_name"):
-                self.registry_entry.custom_name = result.custom_name
-
-            # check if there are files in the result
-            if len(result.files) > 0:
-                file_list_model = (
-                    FileListModel()
-                )  # this goes into the results must be a model
-                for file_stack in result.files:
+                for file_stack in result.info_files:
                     if file_stack:
                         if isinstance(file_stack, FileStack):
                             logger.info(
-                                f"Task task_id: {self.id} saving file: {file_stack.name} {file_stack.id}"
+                                f"Task task_id: {self.id} saving info file: {file_stack.name} {file_stack.id}"
                             )
-                            saved = await context.db.save(file_stack)
-                            file_list_model.append(saved)
+                            if self.registry_entry.info_files is None:
+                                self.registry_entry.info_files = FileList()
+                            await context.db.save(file_stack)
+                            self.registry_entry.info_files.append(file_stack)
                         else:
                             logger.error(
-                                f"Task task_id: {self.id} cannot save file: FileStack expected but got {file_stack}"
-                            )
-                            raise ValueError(
-                                f"Task task_id: {self.id} cannot save file: FileStack expected but got {type(file_stack)}"
+                                f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
                             )
                     else:
-                        logger.error(f"Task task_id: {self.id} saving file is NONE")
-                        raise ValueError("saving file is NONE")
+                        logger.error(f"Task task_id: {self.id} saving info-file is NONE")
+                        raise ValueError("saving info file is NONE")
 
-                result_table_name = await context.db.find_one(
-                    ModelMapping, ModelMapping.name == FileListModel.__name__
-                )
-                if result_table_name is None:
+                if result.error_message is not None and result.error_message != "":
                     logger.error(
-                        f"Task task_id: {self.id} could not find table name for {FileListModel.__name__}"
+                        f"Task task_id: {self.id} returned with error: {result.error_message}"
                     )
-                    raise ValueError(
-                        f"Could not find table name for {FileListModel.__name__}"
-                    )
-                result_tables.append(result_table_name.mapping)
-                result_names.append("files")
-                saved = await context.db.save(file_list_model)
-                result_ids.append(saved.id)
-                result_models.append(saved)
+                if result.message is not None and result.message != "":
+                    logger.info(f"Task task_id: {self.id} message: {result.message}")
+            else:
+                if hasattr(result, "status"):
+                    new_task_status = result.status
+                elif hasattr(result, "task_status"):
+                    new_task_status = result.task_status
 
-            for file_stack in result.info_files:
-                if file_stack:
-                    if isinstance(file_stack, FileStack):
-                        saved = await context.db.save(file_stack)
-                        logger.info(
-                            f"Task task_id: {self.id} saving info file: {file_stack.name} {file_stack.id}"
-                        )
-                        self.registry_entry.info_files.append(saved)
-                    else:
-                        logger.error(
-                            f"Task task_id: {self.id} cannot save info_file: FileStack expected but got {type(file_stack)}"
-                        )
-                else:
-                    logger.error(f"Task task_id: {self.id} saving info-file is NONE")
-                    raise ValueError("saving info file is NONE")
-
-            for key, value in getattr(result, "__pydantic_extra__", {}).items():
-                if not callable(value) and is_simstack_model(value):
-                    if isinstance(value, Model):
-                        result_model = await context.db.upsert(value)
-                        result_models.append(result_model)
-                        result_ids.append(result_model.id)
-                        result_names.append(key)
-                        result_table_name = await context.db.find_one(
-                            ModelMapping, ModelMapping.name == value.__class__.__name__
-                        )
-                        if result_table_name is None:
-                            logger.error(
-                                f"Task task_id: {self.id} could not find table name for {value.__class__.__name__}"
-                            )
-                            raise ValueError(
-                                f"Could not find table name for {value.__class__.__name__}"
-                            )
-                        result_tables.append(result_table_name.mapping)
-                    else:
-                        raise ValueError(
-                            f"task_id: {self.id} cannot save model: {key} is not a model"
-                        )
+            result_ids, result_tables, result_models, result_names = await process_result_helper(result, str(self.id))
 
             self.registry_entry.result_ids = result_ids
             self.registry_entry.result_tables = result_tables
             self.registry_entry.result_names = result_names
             self.registry_entry.status = new_task_status
 
-            if result.error_message is not None and result.error_message != "":
-                logger.error(
-                    f"Task task_id: {self.id} returned with error: {result.error_message}"
-                )
-            if result.message is not None and result.message != "":
-                logger.info(f"Task task_id: {self.id} message: {result.message}")
             if len(result_ids) == 1:
                 result = result_models[
                     0
@@ -743,8 +666,7 @@ class Node:
         else:
             logger.warning(f"Task task_id: {self.id} {status} is not a TaskStatus")
             self.registry_entry.status = TaskStatus(status)
-        engine = current_engine_context.get()
-        await engine.save(self.registry_entry)
+        await context.db.save(self.registry_entry)
         logger.info(f"Task task_id: {self.id} {self.name} is set to {status}, id is: {self.id}")
 
 
@@ -773,12 +695,12 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
     :rtype: Optional[Node]
     """
     args = []
-    engine = current_engine_context.get()
+    db = context.db
 
     for table, table_id in zip(registry_entry.input_tables, registry_entry.input_ids):
         try:
-            model = await import_class(table)
-            arg = await engine.find_one(model, model.id == table_id)
+            model = await import_class(table, db)
+            arg = await db.find_one(model, model.id == table_id)
             args.append(arg)
         except Exception as e:
             logger.exception(
@@ -793,59 +715,89 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
     logger.debug(
         f"Task task_id: {registry_entry.id} {registry_entry.name} loaded {len(args)} inputs in Node:node_from_database status: {registry_entry.status}"
     )
+    func = None
     try:
         wrapped_func = await import_function(
-            registry_entry.func_mapping, registry_entry.id
+            registry_entry.func_mapping, db, task_id=registry_entry.id
         )
-        if wrapped_func is None:
+        if wrapped_func is not None:
+            # for nodes the mapping points to the wrapped func to we use that
+            func = (
+                wrapped_func if not hasattr(wrapped_func, "_inner") else wrapped_func._inner
+            )
+            logger.debug(
+                f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
+            )
+            if registry_entry.function_hash == "NOT INITIALIZED":
+                registry_entry.function_hash = cast(str, complex_hash_function(func))
+                registry_entry.is_async = asyncio.iscoroutinefunction(func)
+        else:
             logger.error(
                 f"Task task_id: {registry_entry.id} could not import function {registry_entry.func_mapping}"
             )
-            return None
-        # for nodes the mapping points to the wrapped func to we use that
-        func = (
-            wrapped_func if not hasattr(wrapped_func, "_inner") else wrapped_func._inner
+    except Exception as e:
+        logger.error(
+            f"Task task_id: {registry_entry.id} failed to import function {registry_entry.func_mapping} {str(e)}"
         )
-        logger.debug(
-            f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
+
+    if func is None and registry_entry.function_hash == "NOT INITIALIZED":
+        return None
+
+    try:
+        duplicate_entry = await db.find_one(
+            NodeRegistry,
+            (NodeRegistry.name == registry_entry.name)
+            & (NodeRegistry.arg_hash == registry_entry.arg_hash)
+            & (NodeRegistry.function_hash == registry_entry.function_hash),
         )
-        if registry_entry.function_hash == "NOT INITIALIZED":
-            registry_entry.function_hash = cast(str, complex_hash_function(func))
-            registry_entry.is_async = asyncio.iscoroutinefunction(func)
-            duplicate_entry = await engine.find_one(
-                NodeRegistry,
-                (NodeRegistry.name == registry_entry.name)
-                & (NodeRegistry.arg_hash == registry_entry.arg_hash)
-                & (NodeRegistry.function_hash == registry_entry.function_hash),
+        await db.save(
+            registry_entry
+        )  # save the fixed entry AFTER checking for duplicates
+        # the calling function may have the originial entry unsaved !
+        if duplicate_entry is not None:
+            logger.info(
+                f"Original Entry: {duplicate_entry.id} {duplicate_entry.arg_hash} {duplicate_entry.function_hash}"
             )
-            await engine.save(
-                registry_entry
-            )  # save the fixed entry AFTER checking for duplicates
-            # the calling function may have the originial entry unsaved !
-            if duplicate_entry is not None:
-                logger.info(
-                    f"Original Entry: {duplicate_entry.id} {duplicate_entry.arg_hash} {duplicate_entry.function_hash}"
+            logger.info(
+                f"Current Entry: {registry_entry.id} {registry_entry.arg_hash} {registry_entry.function_hash} "
+            )
+            logger.info(
+                f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}"
+            )
+            if duplicate_entry.id == registry_entry.id:
+                logger.error(
+                    f"Task task_id: {registry_entry.id} recovered itself. This should not happen"
                 )
-                logger.info(
-                    f"Current Entry: {registry_entry.id} {registry_entry.arg_hash} {registry_entry.function_hash} "
-                )
-                logger.info(
-                    f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}"
-                )
-                if duplicate_entry.id == registry_entry.id:
+
+            if duplicate_entry.id != registry_entry.id:
+                # the parameters of the new job may be different
+                duplicate_entry.parameters = registry_entry.parameters
+                await db.delete(registry_entry)
+                registry_entry = duplicate_entry
+
+            if func is None:
+                # we recovered a duplicate, let's try to import the function from the duplicate's mapping
+                try:
+                    wrapped_func = await import_function(
+                        registry_entry.func_mapping, db, task_id=registry_entry.id
+                    )
+                    if wrapped_func is not None:
+                        func = (
+                            wrapped_func
+                            if not hasattr(wrapped_func, "_inner")
+                            else wrapped_func._inner
+                        )
+                except Exception as e:
                     logger.error(
-                        f"Task task_id: {registry_entry.id} recovered itself. This should not happen"
+                        f"Task task_id: {registry_entry.id} failed to import function from duplicate {registry_entry.func_mapping} {str(e)}"
                     )
 
-                if duplicate_entry.id != registry_entry.id:
-                    # the parameters of the new job may be different
-                    duplicate_entry.parameters = registry_entry.parameters
-                    await engine.delete(registry_entry)
-                    registry_entry = duplicate_entry
+        if func is None:
+            return None
 
     except Exception as e:
         logger.exception(
-            f"Task task_id: {registry_entry.id} failed to import function {registry_entry.func_mapping} {str(e)}"
+            f"Task task_id: {registry_entry.id} failed during duplicate detection or secondary import {str(e)}"
         )
         return None
 

@@ -10,6 +10,7 @@ from simstack.models.resource_assignment import (
     ResourceAssignmentRule,
     SlurmParametersPatch,
 )
+from simstack.util.db import Database
 
 logger = logging.getLogger("resource_assignment")
 
@@ -159,7 +160,7 @@ def _select_matching_rule(
 
 
 async def resolve_resource_assignment(
-    engine: AIOEngine,
+    db: Database,
     *,
     call_path: Optional[str],
     base_parameters: Optional[Parameters],
@@ -176,7 +177,7 @@ async def resolve_resource_assignment(
             matched_rule=None,
         )
 
-    rules = await engine.find(ResourceAssignmentRule)
+    rules = await db.find(ResourceAssignmentRule)
     matched_rule = _select_matching_rule(normalized_call_path, list(rules))
     effective_parameters = _apply_assignment_patch(effective_base, matched_rule)
     normalize_and_validate_effective_parameters(effective_parameters)
@@ -196,13 +197,13 @@ async def resolve_resource_assignment(
 
 
 async def apply_resource_assignment_to_node_registry(
-    engine: AIOEngine,
+    db: Database,
     node_registry: NodeRegistry,
     *,
     parent_parameters: Optional[Parameters] = None,
 ) -> ResourceAssignmentResolution:
     resolution = await resolve_resource_assignment(
-        engine,
+        db,
         call_path=getattr(node_registry, "call_path", None),
         base_parameters=getattr(node_registry, "parameters", None),
         parent_parameters=parent_parameters,

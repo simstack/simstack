@@ -40,7 +40,7 @@ def hello_world_file():
 
 
 @node
-def failing_node_with_runner(
+async def failing_node_with_runner(
     info_file: FileStack, hello_world_file: FileStack, **kwargs
 ) -> IntData:
     node_runner: NodeRunner | None = kwargs.get("node_runner", None)
@@ -67,17 +67,12 @@ def node_returns_bool(arg: IntData, **kwargs) -> bool:
 
 
 def test_failing_node():
-    with pytest.raises(
-        RuntimeError, match=r"Task task_id: .* This is a test exception"
-    ):
+    with pytest.raises(RuntimeError, match=r"Task task_id: .* This is a test exception"):
         failing_node(IntData(value=1))
 
 
-@pytest.mark.skip(reason="works locally but not in gitlab ci/cd")
 def test_calling_failing_node():
-    with pytest.raises(
-        RuntimeError, match=r"Task task_id: .* This is a test exception"
-    ):
+    with pytest.raises(RuntimeError, match=r"Task task_id: .* node: failing_node terminated with status TaskStatus.FAILED"):
         calling_failing_node(IntData(value=1))
 
 
@@ -99,7 +94,7 @@ def test_node_returns_nothing():
 @pytest.mark.asyncio
 async def test_failing_node_with_runner(info_file, hello_world_file):
     with pytest.raises(RuntimeError) as exc_info:
-        failing_node_with_runner(info_file, hello_world_file)
+        await failing_node_with_runner(info_file, hello_world_file)
 
         # Extract task_id from the error message
     error_message = str(exc_info.value)

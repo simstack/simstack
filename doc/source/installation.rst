@@ -11,7 +11,7 @@ UI Setup
    * a database password
 
    (This is not automated yet.)
-3. Go to your profile and upload your resources configuration (no substitutions needed in the uploaded file).
+3. Go to your profile and upload your resources configuration.
 
 Example resources configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -105,12 +105,12 @@ Add the following to your ``~/.bashrc``:
 
 .. code-block:: bash
 
-   export PATH=XXXX/gcc-12.3/bin:$PATH
-   export LD_LIBRARY_PATH=XXXX/gcc-12.3/lib64:$LD_LIBRARY_PATH
-   export CC=XXXX/gcc-12.3/bin/gcc
-   export CXX=XXXX/gcc-12.3/bin/g++
+   export PATH=/path/to/gcc-12.3/bin:$PATH
+   export LD_LIBRARY_PATH=/path/to/gcc-12.3/lib64:$LD_LIBRARY_PATH
+   export CC=/path/to/gcc-12.3/bin/gcc
+   export CXX=/path/to/gcc-12.3/bin/g++
 
-Set ``XXXX`` to something like ``/shared/user/ww`` or ``/home/ws/<user>`` (exact value depends on your account).
+Set the paths to the location where gcc-12.3 is installed (e.g. ``/shared/user/ww`` or ``/home/ws/<user>``).
 It is unclear what you need on other systems.
 
 On ``justus`` you may need:
@@ -128,6 +128,10 @@ Sync dependencies
    source ~/.bashrc
    uv sync --locked
 
+Note: This will install all required dependencies, including ``mongomock`` and ``mongomock-motor``, which are used for in-memory database support during testing.
+
+
+.. _configuration-file:
 
 Create ``simstack.toml``
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -146,12 +150,14 @@ Create a ``simstack.toml`` file (placeholders shown below):
    database = "<NAME>_data"
    test_database = "<NAME>_test"
    connection_string = "mongodb://<USER>:<PASSWORD>@<HOST>:27017/"
+   mongodump_path = "<PATH_TO_MONGODUMP_EXE>"
 
 Where:
 
 * ``<PATH_TO_SIMSTACK_DATA_DIR>`` is the path to the data directory created above (e.g. ``$HOME/simstack``)
 * ``<NAME>`` is your database name (often your first name in lower case)
 * ``<PASSWORD>`` is the database password
+* ``<PATH_TO_MONGODUMP_EXE>`` is the path to the ``mongodump`` executable (required for database backups)
 
 
 Initialize the system

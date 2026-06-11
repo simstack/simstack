@@ -23,7 +23,7 @@ def walk_packages(package_name, all_modules):
             else:
                 logger.debug(f"  Module: {modname}")
                 # Split module name by periods
-                all_modules.append(modname)
+            all_modules.append(modname)
 
     except Exception as e:
         logger.error(f"Error walking {package_name}: {e}")

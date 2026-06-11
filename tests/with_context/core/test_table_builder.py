@@ -11,8 +11,8 @@ from simstack.tables.table_builder import TableBuilderBase
 class RecordingTableBuilder(TableBuilderBase):
     """Concrete TableBuilderBase for tests: records which files were 'processed'."""
 
-    def __init__(self, engine=None, write_schema: bool = False):
-        super().__init__(engine=engine, write_schema=write_schema)
+    def __init__(self, db=None, write_schema: bool = False):
+        super().__init__(db=db, write_schema=write_schema)
         self.processed_files: list[Path] = []
 
     @property

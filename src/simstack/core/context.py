@@ -1,13 +1,14 @@
 import logging
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse, urlunparse
-from simstack.models.resource_definition import GitRepo
+
 from simstack.util.database_information import DatabaseInformation
-from simstack.util.db import DBType, current_engine_context
+from simstack.util.db import DBType
 from simstack.util.project_root_finder import find_project_root
 from simstack.util.toml_reader import TomlReader
-from simstack.util.config_reader import ConfigReader
+
 from simstack.util.setup_logging import setup_logging
 from simstack.util.mappings import ModelMappingTable, NodeMappingTable
 
@@ -31,6 +32,7 @@ def remove_password_from_connection_string(connection_string):
 
 
 async def initialize_git_list(db: "Database", toml_reader: TomlReader | None):
+    from simstack.models.resource_definition import GitRepo
     git_list = await db.find_all(GitRepo)
     if git_list is None and toml_reader is not None:
         git_list = toml_reader.get("parameters.common.git", [])
@@ -44,14 +46,14 @@ class GlobalState:
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super().__new__(cls)
-            # TODO the DB used in simstack applications is fixed and comes from the config file, the db in the server changes by user
-            cls._instance.db = None
-            cls._instance.log_handler = None
-            cls._instance.path_manager = None
-            cls._instance.config = None
-            cls._instance.model_mappings: ModelMappingTable = None
-            cls._instance.node_mappings: NodeMappingTable = None
-
+            cls._instance._initialized = False
+            cls._instance._db = None
+            cls._instance._log_handler = None
+            cls._instance._path_manager = None
+            cls._instance._config = None
+            cls._instance._model_mappings = None
+            cls._instance._node_mappings = None
+            cls._instance._resource_config = None
         return cls._instance
 
     def __init__(self, **kwargs):
@@ -60,21 +62,24 @@ class GlobalState:
         This method only runs once due to the singleton pattern.
         Use the initialize() method to set up the instance with database settings.
         """
-        if not hasattr(self, "_initialized"):
-            self._initialized = True
+        # We don't call self.initialize(**kwargs) here because it is async
+        # and __init__ must be sync. The user should call initialize() explicitly.
 
-            self.db = None
-            self.log_handler = None
-            self.path_manager = None
-            self.config = None
-            self.model_mappings = None
-            self.node_mappings = None
-
-            self.initialize(**kwargs)
+        self._db = None
+        self._log_handler = None
+        self._path_manager = None
+        self._config = None
+        self._model_mappings = None
+        self._node_mappings = None
+        self._resource_config = None
 
     def __getattribute__(self, name):
         # These special attributes should always be accessible
-        if name in ("_initialized", "initialize", "initialized"):
+        if name in (
+            "_initialized",
+            "initialize",
+            "initialized",
+        ):
             return object.__getattribute__(self, name)
 
         # For other attributes, check initialization
@@ -85,21 +90,9 @@ class GlobalState:
 
         return object.__getattribute__(self, name)
 
-    # @async_helper
-    # async def remake_models_and_nodes(self,path: str):
-    #     if path is not None:  # rescan all files in the path if pickling is needed
-    #         parent_path = self.path_manager.find_parent_path(path)
-    #         if not parent_path:
-    #             raise ValueError(f"Path '{path}' not found in paths. Please check your configuration.")
-    #         await make_models_for_path(parent_path, self.path_manager, context.db.engine)
-    #         await make_nodes_for_path(parent_path, self.path_manager, context.db.engine)
-
     async def initialize(self, **kwargs):
         """
         Initializes the global state with the given configuration parameters.
-
-        Raises:
-            RuntimeError: If the global state is already initialized.
 
         Args:
             **kwargs: Arbitrary keyword arguments for configuration. The following keys are expected:
@@ -116,6 +109,7 @@ class GlobalState:
                 - log_level (str, optional): Specifies the logging level. Defaults to `"INFO"`.
                 - resource (str, optional): Specifies the resource identifier for the configuration reader.
                   Defaults to `"self"`.
+                - config_file (str, optional): Specifies the path to the configuration file, defaults to simstack.toml
 
         Logic:
             if all values for the DB are provided in the kwargs, use the provided values
@@ -132,31 +126,44 @@ class GlobalState:
 
         """
         if self._initialized:
-            raise RuntimeError("GlobalState already initialized")
-        self._initialized = True
+            # If already initialized, we just return if not in test mode,
+            if not kwargs.get("is_test", False):
+                return
 
+        self._initialized = True
         project_root = kwargs.get("project_root", find_project_root())
         if project_root is None:  # maybe None was passed
             project_root = find_project_root()
         kwargs["project_root"] = project_root  # overwrite in case it was not set before
+        simstack_toml_path = project_root / "simstack.toml"
         db_name: str | None = kwargs.get("db_name", None)
         connection_string: str | None = kwargs.get("connection_string", None)
         db_type: DBType | None = kwargs.get("db_type", None)
         is_test = kwargs.get("is_test", False)
+        resource_config_file = kwargs.get("config_file")
+        if resource_config_file is None:
+            resource_config_file = project_root / "config.toml"
+        else:
+            resource_config_file = Path(resource_config_file)
+
 
         toml_reader = None
         if is_test:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
         elif db_name is None or connection_string is None or db_type is None:
             # use toml
-            toml_reader = TomlReader(project_root)
-            db_info = DatabaseInformation.from_config(toml_reader.config)
+            toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
+            if toml_reader.config:
+                db_info = DatabaseInformation.from_config(toml_reader.config)
+            else:
+                db_info = DatabaseInformation(db_name, connection_string, db_type)
         else:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
 
         # check that the database can be reached and set logging up
         self.initialize_database(db_info, is_test)
-        self.initialize_logging(is_test, kwargs.get("log_level", "INFO"))
+        self.initialize_logging(db_info.connection_string, db_info.db_name, is_test, kwargs.get("log_level", "INFO"))
+
 
         logger = logging.getLogger("Context")
         if db_info.connection_string is not None:
@@ -171,40 +178,48 @@ class GlobalState:
         # here we have a db, we may or may not have a toml reader
         resource_str: str = kwargs.get("resource", "self")
         # For testing, we might want to skip ConfigReader if it causes issues
+        from simstack.util.config_reader import ConfigReader
+        from simstack.util.resource_config import ResourceConfig
         if not kwargs.get("skip_config", False):
             try:
-                self.config = await ConfigReader.create(
-                    resource_str, self.db, toml_reader, **kwargs
-                )
+                self._config = await ConfigReader.create(resource_str, self._db, toml_reader, **kwargs)
+                self._resource_config = ResourceConfig(resource_config_file, resource_str)
             except Exception as e:
                 if is_test:
-                    logger.warning(
-                        f"Failed to initialize ConfigReader in test mode: {e}"
-                    )
+                    logger.warning(f"Failed to initialize ConfigReader in test mode: {e}")
                 else:
                     raise e
 
         # Initialize memory-loaded mappings
         await self.refresh_mappings()
 
+        self._initialized = True
+
     async def refresh_mappings(self, *, models: bool = True, nodes: bool = True):
         if models:
-            self.model_mappings = await ModelMappingTable.load(self.db.engine)
+            self._model_mappings = await ModelMappingTable.load(self._db)
         if nodes:
-            self.node_mappings = await NodeMappingTable.load(self.db.engine)
+            self._node_mappings = await NodeMappingTable.load(self._db)
 
-    def initialize_logging(self, is_test: bool, log_level: str = "INFO"):
+    def initialize_logging(self, connection_string: str, db_name: str, is_test: bool, log_level: str = "INFO"):
         if is_test:
             # For tests, use simple console logging without the database handler
+            # We use force=True to ensure it overrides any existing configuration (e.g. from pytest or PyCharm)
+            # We also ensure the stream is sys.stderr so PyCharm/pytest can capture it properly if configured
             logging.basicConfig(
                 level=log_level,
                 format="%(asctime)s - %(name)-15s - %(levelname)-10s - %(filename)-20s:%(lineno)4d - %(message)s",
+                stream=sys.stderr,
+                force=True,
             )
-            self.log_handler = logging.getLogger()
+            self._log_handler = logging.getLogger()
+            # Flush stdout and stderr to ensure logs are not buffered
+            sys.stdout.flush()
+            sys.stderr.flush()
         else:
-            self.log_handler = setup_logging(
-                self.db.connection_string,
-                self.db.db_name,
+            self._log_handler = setup_logging(
+                connection_string,
+                db_name,
                 log_level,
             )
 
@@ -212,11 +227,10 @@ class GlobalState:
         from simstack.util.db import Database
 
         try:
-            self.db = Database.from_db_info(db_info)
-            if db_info.db_type == DBType.MONGODB:
+            self._db = Database.from_db_info(db_info)
+            if self._db is not None and db_info.db_type == DBType.MONGODB:
                 # Only ping real MongoDB connections
-                self.db.client.admin.command("ping")
-            current_engine_context.set(self.db.engine)
+                self._db.client.admin.command("ping")
 
         except ConnectionError as e:
             if not is_test:
@@ -227,8 +241,41 @@ class GlobalState:
                 print(f"Warning: Database connection failed in test mode: {e}")
 
     @property
+    def db(self):
+        return self._db
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, value):
+        self._config = value
+
+    @property
+    def model_mappings(self):
+        return self._model_mappings
+
+    @model_mappings.setter
+    def model_mappings(self, value):
+        self._model_mappings = value
+
+    @property
+    def node_mappings(self):
+        return self._node_mappings
+
+    @node_mappings.setter
+    def node_mappings(self, value):
+        self._node_mappings = value
+
+    @property
+    def resource_config(self) -> "ResourceConfig":
+        return self._resource_config
+
+    @property
     def initialized(self):
         return self._initialized
+
 
 
 # Create the singleton instance, but it's not initialized yet

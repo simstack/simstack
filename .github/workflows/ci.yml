@@ -2,18 +2,75 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "feature-release-candidate" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "feature-release-candidate" ]
+  workflow_dispatch:  # This line enables the manual run button
 
 jobs:
-  test:
-    name: Test on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+  test-linux:
+    name: Test on ubuntu-latest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12"]
+
+    services:
+      mongodb:
+        image: mongodb/mongodb-community-server:latest
+        ports:
+          - 27017:27017
+        env:
+          MONGODB_INITDB_ROOT_USERNAME: root
+          MONGODB_INITDB_ROOT_PASSWORD: rootpassword
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: "Set up Python ${{ matrix.python-version }}"
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Set up MongoDB for testing
+        run: |
+          uv run python -c "
+          from pymongo import MongoClient
+          client = MongoClient('mongodb://root:rootpassword@localhost:27017/')
+          db = client['admin']
+          db.command('createUser', 'testing', pwd='testpassword', roles=[{'role': 'readWrite', 'db': 'testing_data'}])
+          db = client['testing_data']
+          db['init'].insert_one({'init': True})
+          print('MongoDB initialized with user testing and database testing_data')
+          "
+      - name: Run tests with runner
+        shell: bash
+        env:
+          SIMSTACK_TEST_DB_CONNECTION_STRING: 'mongodb://testing:testpassword@localhost:27017/'
+          SIMSTACK_TEST_DB: testing_data
+          SIMSTACK_PROJECT_ROOT: ${{ github.workspace }}
+        run: |
+          mkdir -p simstack
+          printf '[parameters]\n[parameters.general]\nuse_db = true\nworkdir_self = "${{ github.workspace }}/simstack"\n[parameters.db]\ndatabase = "testing_data"\nconnection_string = "mongodb://testing:testpassword@localhost:27017/"\n' > simstack.toml
+          cat simstack.toml
+          uv run create_model_table --dir tests
+          uv run create_node_table --dir tests
+          uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+
+  test-windows:
+    name: Test on windows-latest (Python ${{ matrix.python-version }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
         python-version: ["3.12"]
 
     steps:
@@ -31,8 +88,25 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
-      - name: Run tests without context
-        # Runs pytest with coverage, skipping 'local_runner' tests as per previous configuration
-        run: uv run python -m pytest tests/without_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml -m "not local_runner"
-      - name: Run tests with context
-        run: uv run python -m pytest tests/with_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml -m "not local_runner"
+      - name: Run tests with runner
+        shell: pwsh
+        env:
+          SIMSTACK_TEST_DB_CONNECTION_STRING: ''
+          SIMSTACK_TEST_DB: testing_data
+          SIMSTACK_PROJECT_ROOT: ${{ github.workspace }}
+        run: |
+          New-Item -ItemType Directory -Force -Path simstack
+          $tomlContent = @"
+          [parameters]
+          [parameters.general]
+          use_db = false
+          workdir_self = "$($env:GITHUB_WORKSPACE -replace '\\', '\\')\\simstack"
+          [parameters.db]
+          database = "testing_data"
+          connection_string = ""
+          "@
+          Set-Content -Path simstack.toml -Value $tomlContent
+          Get-Content simstack.toml
+          uv run create_model_table --dir tests
+          uv run create_node_table --dir tests
+          uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml

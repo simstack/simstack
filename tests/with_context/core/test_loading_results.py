@@ -1,19 +1,19 @@
 import logging
 import pytest
 
-from tests.with_context.core.test_simple_nodes import adder_in_tests
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.node import node
 from simstack.core.node_runner import NodeRunner
 from simstack.models import BinaryOperationInput, FloatData
 from simstack.models.files import FileStack
+from tests.with_context.core.test_simple_nodes import adder_in_tests
 
 logger = logging.getLogger("TestNode")
 
 
 @node
 def node_with_simstack_results(arg: BinaryOperationInput, **kwargs) -> SimstackResult:
-    node_runner = NodeRunner(name="test_node", logger=logger)
+    node_runner = NodeRunner("test_node", kwargs.get("task_id", "NA"), logger=logger)
     result1 = FloatData(value=arg.arg1.value + arg.arg2.value)
     result2 = FloatData(value=arg.arg1.value * arg.arg2.value)
     node_runner.info(f"Computed results: {result1.value}, {result2.value}")
@@ -26,7 +26,7 @@ def node_with_simstack_results(arg: BinaryOperationInput, **kwargs) -> SimstackR
 def node_with_files(
     arg: BinaryOperationInput, test_file: FileStack, **kwargs
 ) -> SimstackResult:
-    node_runner = NodeRunner(name="test_node", logger=logger)
+    node_runner = NodeRunner("test_node", kwargs.get("task_id", "NA"), logger=logger)
     result1 = FloatData(value=arg.arg1.value + arg.arg2.value)
     result2 = FloatData(value=arg.arg1.value * arg.arg2.value)
     node_runner.info(f"Computed results: {result1.value}, {result2.value}")

@@ -1,6 +1,7 @@
 import inspect
 import json
 import logging
+from pathlib import Path
 
 from odmantic.exceptions import DocumentParsingError
 from pydantic import ValidationError
@@ -8,6 +9,7 @@ from pydantic import ValidationError
 from simstack.core.context import context
 from simstack.models.models import ModelMapping
 from simstack.models.simstack_model import is_simstack_model
+from simstack.util.db import Database
 from simstack.util.path_manager import path_manager
 from simstack.tables.table_builder import TableBuilderBase
 
@@ -19,7 +21,7 @@ class CreateModelTable(TableBuilderBase):
     Helper class to build the model table without passing around many parameters.
 
     Usage:
-        creator = CreateModelTable(engine)
+        creator = CreateModelTable(db)
         await creator.make_model_table()
     """
 
@@ -76,7 +78,7 @@ class CreateModelTable(TableBuilderBase):
             # Remove any existing ModelMapping entry for this class
 
             try:
-                existing_entries = await self.engine.find(
+                existing_entries = await self.db.find(
                     ModelMapping, ModelMapping.name == class_name
                 )
             except (ValidationError, NameError, DocumentParsingError) as e:
@@ -98,7 +100,7 @@ class CreateModelTable(TableBuilderBase):
                         f"old mapping '{existing_mapping}' -> new mapping '{full_mapping}'"
                     )
 
-                await self.engine.delete(existing_entries[0])
+                await self.db.delete(existing_entries[0])
                 logger.debug(f"Deleted ModelMapping entry for {class_name}")
 
             # EmbeddedModels have no collection by may be simstack_models. They are never saved/retrieved
@@ -124,7 +126,7 @@ class CreateModelTable(TableBuilderBase):
                 )
                 # open a file in a subdirectory of the current file schema/model.json
                 if self.write_schema:
-                    project_root = context.config.project_root
+                    project_root = self.project_root
                     json_file_dir = project_root / "schema"
                     json_file_dir.mkdir(parents=True, exist_ok=True)
 
@@ -144,7 +146,7 @@ class CreateModelTable(TableBuilderBase):
                     f"Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}"
                 )
 
-            await self.engine.save(model_entry)
+            await self.db.save(model_entry)
 
     async def _make_models_for_path(self, path_name: str):
         """Build model mappings for all Python files under a configured path."""
@@ -159,23 +161,24 @@ class CreateModelTable(TableBuilderBase):
 
     async def clear_table(self) -> None:
         self.logger.info("Clearing ModelMapping collection")
-        await self.engine.get_collection(ModelMapping).drop()
+        await self.db.get_collection(ModelMapping).drop()
 
 
 # Public API preserved for existing callers (e.g. tests)
 async def make_model_table(
-    engine,
+    db : Database,
     dirs: list[str] = None,
     drops: str = "",
     write_schema: bool = False,
     clear: bool = False,
+    project_root: Path = None,
 ):
     """
-    Rebuild the model table using the given engine.
+    Rebuild the model table using the given database.
 
     This is a thin wrapper around CreateModelTable for backward compatibility.
     """
-    creator = CreateModelTable(engine, write_schema=write_schema)
+    creator = CreateModelTable(db, write_schema=write_schema, project_root=project_root)
     await creator.build(dirs=dirs, drops=drops, clear=clear)
 
 

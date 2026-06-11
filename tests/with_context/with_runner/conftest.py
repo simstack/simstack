@@ -1,3 +1,4 @@
+import os
 import queue
 import sys
 import threading
@@ -6,17 +7,26 @@ from pathlib import Path
 import pytest
 
 from simstack.core.context import context
+from simstack.models.resource_definition import ResourceDefinition
 from simstack.util.project_root_finder import find_project_root
 
 
-@pytest.fixture(scope="session")
-def test_runner():
+@pytest.fixture(scope="session", autouse=True)
+def test_runner(initialized_context):
     """
     Fixture to run and manage the test runner process.
     """
+
+    start_local_runner = os.environ.get("START_LOCAL_RUNNER", "True").lower()
+    if start_local_runner == "false":
+        return
+
     import subprocess
     import platform
     import time
+
+    import logging
+    logger = logging.getLogger("simstack-runner")
 
     # allowed_resources.add_resource("test_resource")
     root = Path(find_project_root())
@@ -32,18 +42,22 @@ def test_runner():
         else ""
     )
 
+    connection_string = os.environ.get("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
+    test_database_name = os.environ.get("SIMSTACK_TEST_DB", "none")
+
+    logger.info(f"Test context initialized with real MongoDB database at: {connection_string} and test database: {test_database_name}")
+
+    shared_args = f"uv run simstack_runner --resource test --no-pull --connection-string {connection_string} --db-name {test_database_name}"
     if system == "windows":
         if env_start:
-            command_string = f'cmd /c "{env_start} && {sys.executable} {command} --resource tests --db-name samira_test"'
+            command_string = f'cmd /c "{env_start} &&  {shared_args}"'
         else:
-            command_string = f'cmd /c "{sys.executable} {command} --resource tests --db-name samira_test"'
+            command_string = f'cmd /c "{shared_args}"'
     else:
         if env_start:
-            command_string = f"{env_start} && {sys.executable} {command} --resource tests --db-name samira_test"
+            command_string = f"{env_start} && {sys.executable} {command} --resource tests --no-pull"
         else:
-            command_string = (
-                f"{sys.executable} {command} --resource tests --db-name samira_test"
-            )
+            command_string = f"{sys.executable} {command} --resource tests --no-pull"
 
     print(f"Starting subprocess with command: {command_string}")
 
@@ -61,7 +75,10 @@ def test_runner():
     stdout_queue = queue.Queue()
     stderr_queue = queue.Queue()
 
+
     def read_stdout():
+        import logging
+        logger = logging.getLogger("simstack-runner")
         try:
             for line in iter(process.stdout.readline, ""):
                 if line:
@@ -75,6 +92,8 @@ def test_runner():
                 process.stdout.close()
 
     def read_stderr():
+        import logging
+        logger = logging.getLogger("simstack-runner")
         try:
             for line in iter(process.stderr.readline, ""):
                 if line:
@@ -131,4 +150,6 @@ def test_runner():
 
     print("Subprocess cleanup complete")
     # allowed_resources.remove_resource("test_resource")
+
+
 

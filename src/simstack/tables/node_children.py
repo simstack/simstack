@@ -44,7 +44,7 @@ def _extract_called_functions(func: Callable) -> List[str]:
         source = inspect.getsource(func)
         tree = ast.parse(source)
 
-        task_creators = {"create_task", "ensure_future"}
+        task_creators = {"create_tasks", "ensure_future"}
 
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
@@ -58,7 +58,7 @@ def _extract_called_functions(func: Callable) -> List[str]:
                     else:
                         called_functions.append(node.func.attr)
 
-                # Detect async task creation: create_task(func()), ensure_future(func()), etc.
+                # Detect async task creation: create_tasks(func()), ensure_future(func()), etc.
                 if isinstance(node.func, ast.Name) and node.func.id in task_creators:
                     if node.args and isinstance(node.args[0], ast.Call):
                         task_call = node.args[0]
@@ -151,7 +151,7 @@ async def update_node_children(engine, drops: str) -> None:
                 #     continue
 
         if len(resolved) != 0:
-            logger.info(f"Resolved children of {nm.name} to {resolved}")
+            logger.debug(f"Resolved children of {nm.name} to {resolved}")
         nm.called_nodes = sorted(resolved)
 
         await engine.save(nm)

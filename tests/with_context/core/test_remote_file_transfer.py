@@ -13,7 +13,7 @@ from src.simstack.models.files import FileStack
 from simstack.models.file_instance import FileInstance
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Sample file content for testing

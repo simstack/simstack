@@ -21,12 +21,12 @@ class SlurmStatusService(BaseService):
             # logger.info(f"Running clean_slurm_info for {self._resource} and user {self._username}")
             await clean_slurm_info(self._resource, user=self._username)
 
-            running_tasks = await context.db.engine.find(
+            running_tasks = await context.db.find(
                 NodeRegistry,
                 (NodeRegistry.status == TaskStatus.RUNNING)
                 & (NodeRegistry.parameters.resource == self._resource),
             )
-            queued_tasks = await context.db.engine.find(
+            queued_tasks = await context.db.find(
                 NodeRegistry,
                 (NodeRegistry.status == TaskStatus.SLURM_QUEUED)
                 & (NodeRegistry.parameters.resource == self._resource),

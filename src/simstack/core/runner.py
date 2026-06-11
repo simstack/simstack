@@ -3,6 +3,8 @@ import asyncio
 import logging
 import os
 
+from simstack.core.definitions import DBType
+
 try:
     import tomllib  # Python 3.11+
 except ImportError:
@@ -61,7 +63,10 @@ async def initialize_default_resource():
 
 async def async_main(args):
     """Async entry point"""
-    await context.initialize(resource=args.resource, db_name=args.db_name)
+    if args.connection_string == "none" or args.db_name == "none":
+        await context.initialize(resource=args.resource, config_file=args.config)
+    else:
+        await context.initialize(resource=args.resource, db_name=args.db_name, connection_string=args.connection_string, db_type=DBType.MONGODB, config_file=args.config)
 
     # Initialize tables if this is the default resource
     resource_def = await initialize_default_resource()
@@ -83,6 +88,13 @@ async def async_main(args):
 def runner_main():
     parser = argparse.ArgumentParser(description="Run nodes for a specific resource")
     parser.add_argument(
+        "--config",
+        type=str,
+        #default="config.toml",
+        help="Path to the configuration file",
+    )
+
+    parser.add_argument(
         "--resource",
         type=str,
         default="local",
@@ -92,7 +104,15 @@ def runner_main():
     parser.add_argument(
         "--db-name",
         type=str,
+        default="none",
         help="Specify a non-standard database",
+    )
+
+    parser.add_argument(
+        "--connection-string",
+        type=str,
+        default="none",
+        help="Specify a non-standard connection string",
     )
 
     parser.add_argument(

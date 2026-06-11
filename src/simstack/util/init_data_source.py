@@ -9,13 +9,12 @@ import logging
 logger = logging.getLogger("init_resource")
 
 async def initialize_resource_from_db(resource_str: str, db: Database, workdir_self: Path) -> ResourceDefinition:
-    resource_records = await db.find_all(ResourceDefinition)
+    resource_records = await db.find(ResourceDefinition)
     if resource_records is not None:
         # this is the sign that we can initialize from the database
         allowed_resources_list = [r.resource_str for r in resource_records]
         if "self" not in allowed_resources_list:
             allowed_resources_list.append("self")
-        logger.info(f"Initializing ConfigReader from database, allowed resources: {allowed_resources_list}")
         if resource_str not in allowed_resources_list:
             raise ValueError(f"Resource {resource_str} not found in the list of allowed resources")
 
@@ -41,5 +40,4 @@ async def initialize_resource_from_db(resource_str: str, db: Database, workdir_s
         raise ValueError("No resources found in the database")
 
 async def initialize_paths_from_db(db:Database):
-    logger.warning("Initializing paths from database is not yet implemented")
     pass

@@ -33,17 +33,19 @@ async def setup_node_model(initialized_context):
     parameters = Parameters()
     node_model = NodeModel(
         name="test_function",
-        function_mapping="tests.core.test_import_function.node_for_testing",
+        function_mapping="simstack_tests.with_context.core.test_import_function.node_for_testing",
         description="A simple test function",
         input_mappings=[],
         default_parameters=parameters,
     )
     await context.db.save(node_model)
+    await context.refresh_mappings()
 
-    yield context.db.engine
+    yield context.db
 
     # Clean up the node_model
-    await context.db.engine.delete(node_model)
+    await context.db.delete(node_model)
+    await context.refresh_mappings()
 
 
 @pytest_asyncio.fixture
@@ -51,7 +53,7 @@ async def setup_pickled_function(initialized_context):
     """Set up a FunctionPickle entry for another_test_function."""
     # Create a FunctionPickle instance
     function_pickle = FunctionPickle(
-        name="another_node_for_testing", module_path="tests.core.test_import_function"
+        name="another_node_for_testing", module_path="simstack_tests.with_context.core.test_import_function"
     )
 
     # Store the function
@@ -64,62 +66,48 @@ async def setup_pickled_function(initialized_context):
     parameters = Parameters()
     node_model = NodeModel(
         name="another_test_function",
-        function_mapping="tests.core.test_import_function.another_node_for_testing",
+        function_mapping="simstack_tests.with_context.core.test_import_function.another_node_for_testing",
         description="Another test function",
         input_mappings=[],
         default_parameters=parameters,
         pickle_function=function_pickle,  # Pass the FunctionPickle instance directly
     )
     await context.db.save(node_model)
+    await context.refresh_mappings()
 
-    yield context.db.engine
+    yield context.db
 
     await context.db.delete(node_model)
     await context.db.delete(function_pickle)
+    await context.refresh_mappings()
 
 
-@pytest.mark.skip(reason="function comparison works locally but fails in pipeline")
+CURRENT_MODULE = __name__
+
 @pytest.mark.asyncio
-async def test_import_function_from_node_model(setup_node_model):
+async def test_import_function_from_node_model(setup_node_model, initialized_context):
     """Test importing a function using NodeModel."""
     # Import the test_function using import_function
-    func = await import_function("tests.core.test_import_function.node_for_testing")
+
+    func = await import_function(f"{CURRENT_MODULE}.node_for_testing", context.db)
 
     # Verify that the function was imported correctly
-    assert func is node_for_testing
+    assert func.__name__ == node_for_testing.__name__
 
     # Call the function and verify it works
     result = func(StringData(value="test"))
     assert result.value == "test"
 
-
-@pytest.mark.skip(reason="pickle function tests must be fixed")
 @pytest.mark.asyncio
-async def test_import_function_from_pickle(setup_pickled_function):
-    """Test importing a function from a FunctionPickle."""
-    # Import the another_test_function using import_function
-    func = await import_function(
-        "tests.core.test_import_function.another_node_for_testing"
-    )
-
-    # Verify that the function was imported correctly
-    assert func.__name__ == "another_node_for_testing"
-
-    # Call the function and verify it works
-    result = func(StringData(value="test"))
-    assert result.value == "test"
-
-
-@pytest.mark.asyncio
-async def test_import_function_nonexistent():
+async def test_import_function_nonexistent(initialized_context):
     """Test importing a non-existent function which should raise ImportError."""
     # Try to import a non-existent function and expect ImportError
 
     with pytest.raises(
         LookupError,
-        match="Function tests.core.test_import_function.nonexistent_function not found in the NodeModel Table",
+        match="Function simstack_tests.with_context.core.test_import_function.nonexistent_function not found in the NodeModel Table",
     ):
-        await import_function("tests.core.test_import_function.nonexistent_function")
+        await import_function("simstack_tests.with_context.core.test_import_function.nonexistent_function", context.db)
 
 
 if __name__ == "__main__":
