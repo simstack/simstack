@@ -60,7 +60,7 @@ class Database:
         return self._db_type
 
     @classmethod
-    def from_db_info(cls, db_info: DatabaseInformation):
+    def from_db_info(cls, db_info: DatabaseInformation) -> "Database":
         if db_info.db_type == DBType.IN_MEMORY:
             # For tests, use in-memory MongoDB (mongomock)
             from mongomock_motor import AsyncMongoMockClient
@@ -114,28 +114,32 @@ class Database:
 
     @property
     def client(self) -> AsyncIOMotorClient:
+        if self._client is None:
+            raise RuntimeError("Database client is not initialized")
         return self._client
 
     @property
     def database_name(self) -> str:
+        if self._database_name is None:
+            raise RuntimeError("Database name is not initialized")
         return self._database_name
 
     @property
-    def raw_database(self):
+    def raw_database(self) -> Any:
         if self._client is not None and self._database_name is not None:
             return self._client[self._database_name]
         return getattr(self._engine, "database")
 
     @property
-    def database(self):
+    def database(self) -> Any:
         return getattr(self._engine, "database", self.raw_database)
 
-    def collection(self, model_or_name: Any):
+    def collection(self, model_or_name: Any) -> Any:
         if isinstance(model_or_name, str):
             return self.raw_database[model_or_name]
         return self._engine.get_collection(model_or_name)
 
-    def get_collection(self, model_or_name: Any):
+    def get_collection(self, model_or_name: Any) -> Any:
         """Temporary compatibility alias for code still being migrated."""
         return self.collection(model_or_name)
 
@@ -168,6 +172,36 @@ class Database:
         if result is not None:
             await self._apply_postprocess(model_class, result)
         return result
+
+    async def find_one_by_model_name(
+        self, model_mapping: str, item_id: str | ObjectId
+    ) -> Optional[Any]:
+        if "." in model_mapping:
+            from simstack.util.importer import import_class
+
+            model_class = await import_class(model_mapping, self)
+        else:
+            from simstack.util.importer import import_class_by_name
+
+            model_class = await import_class_by_name(model_mapping, self)
+
+        if model_class is None:
+            raise ValueError(
+                f"DB: model class {model_mapping} not found in the available modules"
+            )
+
+        if isinstance(item_id, str):
+            item_id = ObjectId(item_id)
+
+        instance = await self.find_one(model_class, model_class.id == item_id)
+        if instance is None:
+            logger.error(
+                f"Instance of '{model_class.__name__}' with id '{item_id}' does not exist"
+            )
+            raise ValueError(
+                f"Instance of '{model_class.__name__}' with id '{item_id}' does not exist"
+            )
+        return instance
 
     async def _apply_postprocess(self, model_class: type, result: Model) -> None:
         """Apply db_find_postprocess to results if defined on the model class."""
@@ -236,7 +270,7 @@ class Database:
                 exc_info=True,
             )
 
-    async def close(self):
+    async def close(self) -> None:
         if self._client is not None:
             self._client.close()
 

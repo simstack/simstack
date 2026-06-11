@@ -2,13 +2,14 @@ import argparse
 import asyncio
 import logging
 import os
+import sys
 
 from simstack.core.definitions import DBType
 
-try:
+if sys.version_info >= (3, 11):
     import tomllib  # Python 3.11+
-except ImportError:
-    import tomli as tomllib
+else:
+    import tomli as tomllib  # type: ignore[import-not-found]
 
 from simstack.core.context import context
 from simstack.models.resource_definition import ResourceDefinition
@@ -19,7 +20,7 @@ from simstack.core.services.runner_manager import RunnerManager
 logger = logging.getLogger("NodeRunner")
 
 
-async def initialize_default_resource():
+async def initialize_default_resource() -> ResourceDefinition | None:
     """
     Checks if the current resource is the default one.
     If so, syncs the node and model tables based on config.toml.
@@ -52,8 +53,8 @@ async def initialize_default_resource():
                 return resource_def
 
             logger.info(f"Default resource: initializing tables for {active_dirs}")
-            await make_model_table(context.db.engine, dirs=active_dirs)
-            await make_node_table(context.db.engine, dirs=active_dirs)
+            await make_model_table(context.db.core_engine, dirs=active_dirs)
+            await make_node_table(context.db.core_engine, dirs=active_dirs)
 
         except Exception as e:
             logger.error(f"Failed to initialize default resource tables: {e}")
@@ -61,12 +62,18 @@ async def initialize_default_resource():
     return resource_def
 
 
-async def async_main(args):
+async def async_main(args: argparse.Namespace) -> None:
     """Async entry point"""
     if args.connection_string == "none" or args.db_name == "none":
         await context.initialize(resource=args.resource, config_file=args.config)
     else:
-        await context.initialize(resource=args.resource, db_name=args.db_name, connection_string=args.connection_string, db_type=DBType.MONGODB, config_file=args.config)
+        await context.initialize(
+            resource=args.resource,
+            db_name=args.db_name,
+            connection_string=args.connection_string,
+            db_type=DBType.MONGODB,
+            config_file=args.config,
+        )
 
     # Initialize tables if this is the default resource
     resource_def = await initialize_default_resource()
@@ -85,12 +92,12 @@ async def async_main(args):
         )
 
 
-def runner_main():
+def runner_main() -> None:
     parser = argparse.ArgumentParser(description="Run nodes for a specific resource")
     parser.add_argument(
         "--config",
         type=str,
-        #default="config.toml",
+        # default="config.toml",
         help="Path to the configuration file",
     )
 

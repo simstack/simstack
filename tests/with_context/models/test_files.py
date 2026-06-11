@@ -10,6 +10,7 @@ from unittest.mock import patch
 from typing import Type, TypeVar
 import tempfile
 
+from odmantic import ObjectId as OdmanticObjectId
 from mongomock.object_id import ObjectId
 
 from simstack.core.resources import allowed_resources
@@ -196,6 +197,31 @@ def test_file_stack_creation():
     assert stack.is_hashable is True
     assert stack.in_memory is False
     assert stack.locations == []
+
+
+def test_file_stack_document_without_location_id_migrates():
+    """Old FileStack documents without FileInstance ids should still load."""
+    stack = FileStack.model_validate_doc(
+        {
+            "_id": OdmanticObjectId(),
+            "name": "legacy.txt",
+            "size": 12,
+            "is_hashable": True,
+            "hash": "abc",
+            "in_memory": False,
+            "locations": [
+                {
+                    "path": "legacy/path.txt",
+                    "resource": {"value": "local"},
+                    "created_at": datetime(2026, 1, 1, 12, 0, 0),
+                }
+            ],
+        }
+    )
+
+    assert stack.locations[0].id
+    assert stack.locations[0].location_type == "local_path"
+    assert stack.locations[0].status == "available"
 
 
 @pytest.mark.asyncio

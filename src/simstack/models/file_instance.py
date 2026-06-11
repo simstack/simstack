@@ -34,9 +34,7 @@ class FileInstance(EmbeddedModel):
         created_at (datetime): Timestamp indicating when the file instance was created.
     """
 
-    id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()), description="File instance id"
-    )
+    id: Optional[str] = Field(default=None, description="File instance id")
     path: str = Field(
         description="Path to the file relative to the host work directory"
     )
