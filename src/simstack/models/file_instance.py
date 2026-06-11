@@ -12,6 +12,7 @@ from pydantic import model_validator
 
 from simstack.models import simstack_model
 from simstack.models.parameters import Resource
+from simstack.util.file_transfer_client import transfer_resource_name
 from simstack.util.file_hashing import hash_file
 
 logger = logging.getLogger("file_instance")
@@ -143,7 +144,7 @@ class FileInstance(EmbeddedModel):
 
         file_instance = FileInstance(
             path=str(relative_path),
-            resource=context.config.resource,
+            resource=Resource(value=transfer_resource_name(context.config.resource)),
             created_at=datetime.now(),
             size_bytes=source_path.stat().st_size if source_path.exists() else None,
             checksum_sha256=hash_file(source_path) if source_path.exists() else None,

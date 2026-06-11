@@ -16,7 +16,7 @@ from simstack.util.file_transfer_client import (
     FileTransferClient,
     first_available_remote_location,
     path_for_file_instance,
-    resource_name,
+    transfer_resource_name,
 )
 from simstack.util.file_hashing import hash_file, hash_string
 
@@ -269,12 +269,15 @@ class FileStack(Model):
                     f"Failed to decompress and write file {self.name}: {e}"
                 )
 
+        local_resource_name = transfer_resource_name(local_resource)
+        local_transfer_resource = Resource(value=local_resource_name)
+
         # If in-memory instance not found or decompression failed, try finding instance on same resource
         same_resource_instance = next(
             (
                 f
                 for f in self.locations
-                if resource_name(f.resource) == resource_name(local_resource)
+                if transfer_resource_name(f.resource) == local_resource_name
                 and getattr(f, "status", "available") == "available"
             ),
             None)
@@ -290,15 +293,19 @@ class FileStack(Model):
             logger.info(f"Using existing instance {path} for {self.name}")
             return path
 
-        remote_instance = first_available_remote_location(self.locations, local_resource)
+        remote_instance = first_available_remote_location(
+            self.locations, local_transfer_resource
+        )
         if remote_instance is None:
             logger.error("No suitable file instance found for copying.")
             raise ValueError(
-                f"FileStack {self.id} is unavailable: no accessible file instance for resource {local_resource}."
+                f"FileStack {self.id} is unavailable: no accessible file instance for resource {local_transfer_resource}."
             )
 
         local_dir.mkdir(parents=True, exist_ok=True)
-        return self._get_via_server_transfer(remote_instance, local_resource, local_dir)
+        return self._get_via_server_transfer(
+            remote_instance, local_transfer_resource, local_dir
+        )
 
     def _get_via_server_transfer(
         self,
@@ -314,16 +321,16 @@ class FileStack(Model):
         transfer = client.create_transfer(
             file_stack_id=str(self.id),
             source_file_instance_id=getattr(remote_instance, "id", None),
-            source_resource_name=resource_name(remote_instance.resource),
-            target_resource_name=resource_name(local_resource),
+            source_resource_name=transfer_resource_name(remote_instance.resource),
+            target_resource_name=transfer_resource_name(local_resource),
         )
         transfer_id = str(transfer["transfer_id"])
         logger.info(
             "Created FileStack transfer %s for file_stack=%s from resource=%s to resource=%s",
             transfer_id,
             self.id,
-            resource_name(remote_instance.resource),
-            resource_name(local_resource),
+            transfer_resource_name(remote_instance.resource),
+            transfer_resource_name(local_resource),
         )
 
         try:
@@ -345,7 +352,7 @@ class FileStack(Model):
         instance_path = path_for_file_instance(downloaded.path, context.config.workdir)
         completed = client.complete_transfer(
             transfer_id=transfer_id,
-            target_resource_name=resource_name(local_resource),
+            target_resource_name=transfer_resource_name(local_resource),
             target_path=instance_path,
             size_bytes=downloaded.size_bytes,
             checksum_sha256=downloaded.checksum_sha256,

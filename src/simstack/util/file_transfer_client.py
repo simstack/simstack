@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import http.client
+import base64
 import json
 import logging
 import os
@@ -356,12 +357,69 @@ def resource_name(value: Any) -> str:
     return str(value)
 
 
+def _configured_runner_token() -> str | None:
+    token = os.environ.get("SIMSTACK_RUNNER_TOKEN")
+    if token:
+        return token
+    try:
+        from simstack.core.context import context
+
+        config = getattr(context, "config", None)
+    except Exception:
+        return None
+    return cast(
+        str | None,
+        getattr(config, "server_token", None)
+        or getattr(config, "simstack_runner_token", None),
+    )
+
+
+def _resource_from_runner_token(token: str | None) -> str | None:
+    if not token:
+        return None
+    parts = token.split(".")
+    if len(parts) < 2:
+        return None
+    payload = parts[1]
+    payload += "=" * (-len(payload) % 4)
+    try:
+        decoded = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")))
+    except Exception:
+        return None
+    resource = decoded.get("res")
+    return str(resource) if resource else None
+
+
+def transfer_resource_name(value: Any) -> str:
+    """
+    Return the concrete resource name used by file transfer endpoints.
+
+    SimStack uses the symbolic resource "self" for nodes that run on the
+    current resource. The server transfer API cannot authorize "self" because
+    runner tokens are scoped to concrete resources such as "local" or
+    "int-nano". When possible, resolve "self" through the configured runner
+    token resource before sending transfer requests or storing file instances.
+    """
+    name = resource_name(value)
+    if name != "self":
+        return name
+
+    token_resource = _resource_from_runner_token(_configured_runner_token())
+    if token_resource:
+        return token_resource
+
+    return name
+
+
 def first_available_remote_location(
     locations: Iterable[Any], local_resource: Any
 ) -> Any | None:
-    local_resource_str = resource_name(local_resource)
+    local_resource_str = transfer_resource_name(local_resource)
     for location in locations:
-        if resource_name(getattr(location, "resource", "")) == local_resource_str:
+        if (
+            transfer_resource_name(getattr(location, "resource", ""))
+            == local_resource_str
+        ):
             continue
         if getattr(location, "status", "available") != "available":
             continue
