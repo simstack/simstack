@@ -10,8 +10,6 @@ connection_string="${SIMSTACK_TEST_DB_CONNECTION_STRING:?SIMSTACK_TEST_DB_CONNEC
 config_path="${project_root}/simstack.toml"
 backup_path=""
 python_bin="${project_root}/.venv/bin/python"
-create_model_table_bin="${project_root}/.venv/bin/create_model_table"
-create_node_table_bin="${project_root}/.venv/bin/create_node_table"
 
 export SIMSTACK_PROJECT_ROOT="${project_root}"
 export SIMSTACK_TEST_DB="${db_name}"
@@ -22,7 +20,7 @@ if [ ! -f "${project_root}/pyproject.toml" ] || [ ! -d "${project_root}/src/sims
   exit 1
 fi
 
-if [ ! -x "${python_bin}" ] || [ ! -x "${create_model_table_bin}" ] || [ ! -x "${create_node_table_bin}" ]; then
+if [ ! -x "${python_bin}" ]; then
   echo "Expected runner smoke tooling in ${project_root}/.venv/bin." >&2
   exit 1
 fi
@@ -52,10 +50,6 @@ fi
 
 # Keep parent bootstrap and child runner on the same test TOML shape.
 "${python_bin}" -c "from pathlib import Path; from tests.with_context.with_runner.runner_smoke_toml import write_runner_smoke_toml; write_runner_smoke_toml(Path('${config_path}'), project_root=Path('${project_root}'), workdir_self=Path('${workdir_self}'), connection_string='${connection_string}', database_name='${db_name}', use_db=True)"
-
-# The runner resolves submitted nodes through the mapping tables.
-"${create_model_table_bin}" --dir tests
-"${create_node_table_bin}" --dir tests
 
 "${python_bin}" -m pytest -s -m runner_smoke \
   tests/without_context \

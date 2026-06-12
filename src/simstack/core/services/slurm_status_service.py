@@ -11,12 +11,13 @@ from simstack.core.services.base_service import BaseService
 
 logger = logging.getLogger("NodeRunner")
 
+
 class SlurmStatusService(BaseService):
-    def __init__(self, resource: Resource, interval):
+    def __init__(self, resource: Resource, interval: int) -> None:
         super().__init__("SlurmStatus", resource, interval)
         self._resource_name = str(resource)
 
-    async def execute(self):
+    async def execute(self) -> None:
         try:
             # logger.info(f"Running clean_slurm_info for {self._resource} and user {self._username}")
             await clean_slurm_info(self._resource, user=self._username)
@@ -31,12 +32,16 @@ class SlurmStatusService(BaseService):
                 (NodeRegistry.status == TaskStatus.SLURM_QUEUED)
                 & (NodeRegistry.parameters.resource == self._resource),
             )
-            #logger.info(f"Checking Slurm status for {len(running_tasks)} running jobs on resource {self._resource}")
+            # logger.info(f"Checking Slurm status for {len(running_tasks)} running jobs on resource {self._resource}")
 
             for task in list(running_tasks) + list(queued_tasks):
                 if task.job_id is not None:
-                    slurm_info = get_job_info(task.job_id, task.id, Resource(value=self._resource_name))
-                    slurm_entry = await context.db.find_one(SlurmInfo, SlurmInfo.job_id == task.job_id)
+                    slurm_info = get_job_info(
+                        task.job_id, task.id, Resource(value=self._resource_name)
+                    )
+                    slurm_entry = await context.db.find_one(
+                        SlurmInfo, SlurmInfo.job_id == task.job_id
+                    )
                     if slurm_info:
                         if slurm_entry:
                             slurm_entry.code = slurm_info.code
@@ -47,7 +52,9 @@ class SlurmStatusService(BaseService):
                             await context.db.save(slurm_info)
                     else:
                         # Logic for finished/timed out jobs
-                        check_job = await context.db.engine.find_one(NodeRegistry, NodeRegistry.id == task.id)
+                        check_job = await context.db.find_one(
+                            NodeRegistry, NodeRegistry.id == task.id
+                        )
                         if slurm_entry:
                             await context.db.delete(slurm_entry)
                         if check_job.status == TaskStatus.RUNNING:

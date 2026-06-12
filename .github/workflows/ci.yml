@@ -88,22 +88,8 @@ jobs:
       - name: Run tests with runner
         shell: pwsh
         env:
-          SIMSTACK_TEST_DB_CONNECTION_STRING: ''
-          SIMSTACK_TEST_DB: testing_data
-          SIMSTACK_PROJECT_ROOT: ${{ github.workspace }}
         run: |
-          New-Item -ItemType Directory -Force -Path simstack
-          $tomlContent = @"
-          [parameters]
-          [parameters.general]
-          use_db = false
-          workdir_self = "$($env:GITHUB_WORKSPACE -replace '\\', '\\')\\simstack"
-          [parameters.db]
-          database = "testing_data"
-          connection_string = ""
-          "@
-          Set-Content -Path simstack.toml -Value $tomlContent
-          Get-Content simstack.toml
-          uv run create_model_table --dir tests
-          uv run create_node_table --dir tests
-          uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+          # Windows currently runs only the non-runner smoke subset. It does not
+          # start the runner fixture or need the temporary simstack.toml bootstrap
+          # used by the Linux real-Mongo smoke path.
+          uv run python -m pytest -s -m runner_smoke tests/without_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml

@@ -1,14 +1,19 @@
+from __future__ import annotations
+
 import logging
 import shutil
+import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Union
+from typing import Any, Optional, Union
 
 from odmantic import EmbeddedModel, Field, ObjectId
 from pydantic import model_validator
 
 from simstack.models import simstack_model
 from simstack.models.parameters import Resource
+from simstack.util.file_transfer_client import transfer_resource_name
+from simstack.util.file_hashing import hash_file
 
 logger = logging.getLogger("file_instance")
 
@@ -29,22 +34,59 @@ class FileInstance(EmbeddedModel):
         created_at (datetime): Timestamp indicating when the file instance was created.
     """
 
-    path: str = Field(description="Path to the file relative to the host work directory")
+    id: Optional[str] = Field(default=None, description="File instance id")
+    path: str = Field(
+        description="Path to the file relative to the host work directory"
+    )
     resource: Resource = Field(description="Resource name")
     created_at: datetime = Field(description="Creation timestamp")
+    runner_id: Optional[str] = Field(
+        default=None, description="Runner identity that created the instance"
+    )
+    location_type: str = Field(default="local_path", description="File location type")
+    size_bytes: Optional[int] = Field(default=None, description="File size in bytes")
+    checksum_sha256: Optional[str] = Field(default=None, description="SHA256 checksum")
+    last_accessed_at: Optional[datetime] = Field(
+        default=None, description="Last access timestamp"
+    )
+    expires_at: Optional[datetime] = Field(
+        default=None, description="Expiration timestamp"
+    )
+    is_authoritative: bool = Field(
+        default=True, description="Whether this instance is authoritative"
+    )
+    is_cached: bool = Field(
+        default=False,
+        description="Whether this instance is a reusable local cache copy",
+    )
+    status: str = Field(default="available", description="Instance lifecycle status")
 
-    @model_validator(mode='before')
-    def migration(cls, values):
-        if isinstance(values.get('resource'), str):
-            values['resource'] = Resource(value=values['resource'])
-        if "path" in values and isinstance(values['path'], Path):
-            values['path'] = str(values['path'])
+    @model_validator(mode="before")
+    def migration(cls, values: Any) -> Any:
+        if isinstance(values.get("resource"), str):
+            values["resource"] = Resource(value=values["resource"])
+        if "path" in values and isinstance(values["path"], Path):
+            values["path"] = str(values["path"])
+        if not values.get("id"):
+            values["id"] = str(uuid.uuid4())
+        if not values.get("location_type"):
+            values["location_type"] = "local_path"
+        if not values.get("status"):
+            values["status"] = "available"
+        if values.get("is_authoritative") is None:
+            values["is_authoritative"] = True
+        if values.get("is_cached") is None:
+            values["is_cached"] = False
         return values
 
     @classmethod
     def from_local_file(
-        cls, path: Union[Path, str], file_stack_id: ObjectId, make_copy: bool = True, tasks_id: str = ""
-    ):
+        cls,
+        path: Union[Path, str],
+        file_stack_id: ObjectId,
+        make_copy: bool = True,
+        tasks_id: str = "",
+    ) -> FileInstance:
         """
         Creates a FileInstance object from a local file path.
 
@@ -70,20 +112,28 @@ class FileInstance(EmbeddedModel):
         resolved_path = Path(path).resolve()
         # Find 'simstack' in the path and compute the relative path from its parent
         from simstack.core.context import context
+
         workdir = context.config.workdir
         resolved_workdir = Path(workdir).resolve()
         if tasks_id == "":
             logger.debug(f"workdir is {resolved_workdir} path is {resolved_path}")
         else:
-            logger.debug(f"task_id: {tasks_id} workdir is {resolved_workdir} path is {resolved_path}")
+            logger.debug(
+                f"task_id: {tasks_id} workdir is {resolved_workdir} path is {resolved_path}"
+            )
         try:
             relative_path = resolved_path.relative_to(resolved_workdir)
         except ValueError:
             if tasks_id == "":
-                logger.error(f"Path {resolved_path} is not under workdir {resolved_workdir}")
+                logger.error(
+                    f"Path {resolved_path} is not under workdir {resolved_workdir}"
+                )
             else:
-                logger.error(f"Path {resolved_path} is not under workdir {resolved_workdir} for task_id: {tasks_id}")
+                logger.error(
+                    f"Path {resolved_path} is not under workdir {resolved_workdir} for task_id: {tasks_id}"
+                )
             import getpass
+
             username = getpass.getuser()
             relative_path = Path(username) / str(file_stack_id)
             absolute_dir = Path(context.config.workdir) / relative_path
@@ -92,7 +142,9 @@ class FileInstance(EmbeddedModel):
 
         file_instance = FileInstance(
             path=str(relative_path),
-            resource=context.config.resource,
+            resource=Resource(value=transfer_resource_name(context.config.resource)),
             created_at=datetime.now(),
+            size_bytes=source_path.stat().st_size if source_path.exists() else None,
+            checksum_sha256=hash_file(source_path) if source_path.exists() else None,
         )
         return file_instance
