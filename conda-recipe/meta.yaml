@@ -2,7 +2,7 @@ package:
   name: simstack
   version: "1.0.0"
 about:
-  home: https://gitlab.kit.edu/kit/ag_wenzel/simstack-model/
+  home: https://github.com/simstack/simstack.git
   license: MIT
   summary:
 source:
@@ -12,7 +12,7 @@ build:
   noarch: python
 requirements:
   build:
-    - python >=3.8
+    - python >=3.12
     - build
     - setuptools
     - setuptools-scm
