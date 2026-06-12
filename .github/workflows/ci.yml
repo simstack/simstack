@@ -87,7 +87,6 @@ jobs:
 
       - name: Run tests with runner
         shell: pwsh
-        env:
         run: |
           # Windows currently runs only the non-runner smoke subset. It does not
           # start the runner fixture or need the temporary simstack.toml bootstrap
