@@ -31,8 +31,7 @@ async def test_node_execution_service_execute_no_tasks(node_execution_service, i
 async def test_node_execution_service_execute_with_tasks(node_execution_service, initialized_context):
     registry_entry = NodeRegistry(
         name="test_node",
-        input_tables=[],
-        input_ids=[],
+        input_references=[],
         status=TaskStatus.SUBMITTED,
         parameters=Parameters(),
         func_mapping="test_mapping",
@@ -59,8 +58,7 @@ async def test_node_execution_service_execute_with_tasks(node_execution_service,
 async def test_node_execution_service_run_node_default_queue(node_execution_service, initialized_context):
     registry_entry = NodeRegistry(
         name="test_node",
-        input_tables=[],
-        input_ids=[],
+        input_references=[],
         status=TaskStatus.SUBMITTED,
         parameters=Parameters(),
         func_mapping="test_mapping",
@@ -81,8 +79,7 @@ async def test_node_execution_service_run_node_slurm_queue(node_execution_servic
     params.queue = Queue.SLURM_QUEUE
     registry_entry = NodeRegistry(
         name="test_node",
-        input_tables=[],
-        input_ids=[],
+        input_references=[],
         status=TaskStatus.SUBMITTED,
         parameters=params,
         func_mapping="test_mapping",

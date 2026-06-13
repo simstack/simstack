@@ -4,6 +4,7 @@ from odmantic import ObjectId
 from simstack.core.context import context
 from simstack.core.node import node, node_from_database
 from simstack.models import FloatData, BinaryOperationInput, NodeRegistry, Parameters, ModelMapping, NodeModel
+from simstack.models.named_data_reference import NamedDataReference
 from simstack.core.definitions import TaskStatus
 
 # Get current module path for dynamic function mapping
@@ -47,8 +48,7 @@ async def test_node_from_database_basic(initialized_context, setup_helper_node_m
         registry_entry = NodeRegistry(
             name="helper_node_func",
             status=TaskStatus.SUBMITTED,
-            input_tables=["simstack.models.FloatData"],
-            input_ids=[input_data.id],
+            input_references=[NamedDataReference.from_variable(input_data)],
             function_hash="NOT INITIALIZED",
             arg_hash="NOT INITIALIZED",
             func_mapping=f"{CURRENT_MODULE}.helper_node_func",
@@ -89,8 +89,7 @@ async def test_node_from_database_signature_fix(initialized_context, setup_helpe
         registry_entry = NodeRegistry(
             name="helper_node_func",
             status=TaskStatus.SUBMITTED,
-            input_tables=["simstack.models.FloatData"],
-            input_ids=[input_data.id],
+            input_references=[NamedDataReference.from_variable(input_data)],
             function_hash="NOT INITIALIZED",
             arg_hash="NOT INITIALIZED",
             func_mapping=f"{CURRENT_MODULE}.helper_node_func",
@@ -132,8 +131,7 @@ async def test_node_from_database_duplicate(initialized_context, setup_helper_no
         existing_entry = NodeRegistry(
             name="helper_node_func",
             status=TaskStatus.COMPLETED,
-            input_tables=["simstack.models.FloatData"],
-            input_ids=[input_data.id],
+            input_references=[NamedDataReference.from_variable(input_data)],
             function_hash=func_hash,
             arg_hash=arg_hash,
             func_mapping=f"{CURRENT_MODULE}.helper_node_func",
@@ -147,8 +145,7 @@ async def test_node_from_database_duplicate(initialized_context, setup_helper_no
             new_registry_entry = NodeRegistry(
                 name="helper_node_func",
                 status=TaskStatus.SUBMITTED,
-                input_tables=["simstack.models.FloatData"],
-                input_ids=[input_data.id],
+                input_references=[NamedDataReference.from_variable(input_data)],
                 function_hash="NOT INITIALIZED",
                 arg_hash="NOT INITIALIZED",
                 func_mapping=f"{CURRENT_MODULE}.helper_node_func",
@@ -198,8 +195,7 @@ async def test_node_from_database_invalid_mapping_with_duplicate(initialized_con
         existing_entry = NodeRegistry(
             name="helper_node_func",
             status=TaskStatus.COMPLETED,
-            input_tables=["simstack.models.FloatData"],
-            input_ids=[input_data.id],
+            input_references=[NamedDataReference.from_variable(input_data)],
             function_hash=func_hash,
             arg_hash=arg_hash,
             func_mapping=f"{CURRENT_MODULE}.helper_node_func",
@@ -213,8 +209,7 @@ async def test_node_from_database_invalid_mapping_with_duplicate(initialized_con
             new_registry_entry = NodeRegistry(
                 name="helper_node_func",
                 status=TaskStatus.SUBMITTED,
-                input_tables=["simstack.models.FloatData"],
-                input_ids=[input_data.id],
+                input_references=[NamedDataReference.from_variable(input_data)],
                 function_hash=func_hash, # Pre-initialized hashes
                 arg_hash=arg_hash,
                 func_mapping="non_existent_module.func", # INVALID MAPPING

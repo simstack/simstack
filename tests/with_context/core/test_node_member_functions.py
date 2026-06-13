@@ -112,7 +112,7 @@ async def test_make_registry_entry_success(initialized_context, setup_mappings):
         assert entry.function_hash == "func_hash"
         assert entry.arg_hash == "arg_hash"
         assert n.registry_entry == entry
-        assert len(entry.input_ids) == 1
+        assert len(entry.input_references) == 1
     finally:
         await context.db.delete(entry)
         await context.db.delete(data)
@@ -212,17 +212,11 @@ async def test_load_results(initialized_context):
     
     # 2. Completed but no result identifiers
     entry.status = TaskStatus.COMPLETED
-    # Should log warning but not raise if no tables/ids
+    # Should log warning but not raise if no references
     res = await n.load_results()
     assert isinstance(res, SimstackResult)
     
-    # 3. Inconsistent results
-    entry.result_tables = ["Table1"]
-    entry.result_ids = []
-    with pytest.raises(ValueError, match="has inconsistent results"):
-        await n.load_results()
-        
-    # 4. Successful load
+    # 3. Successful load
     res_data = FloatData(value=5.0)
     await context.db.save(res_data)
     
@@ -232,10 +226,13 @@ async def test_load_results(initialized_context):
     try:
         await context.refresh_mappings()
         
+        from simstack.models.named_data_reference import NamedDataReference
         entry.status = TaskStatus.COMPLETED
-        entry.result_tables = ["simstack.models.FloatData"]
-        entry.result_ids = [res_data.id]
-        entry.result_names = ["output"]
+        entry.results_references = [NamedDataReference(
+            variable_name="output",
+            variable_mapping="simstack.models.FloatData",
+            reference=res_data.id
+        )]
         await context.db.save(entry) # Ensure it's saved if load_results re-loads
         
         try:
@@ -266,8 +263,9 @@ async def test_execute_node_locally_sync(initialized_context, setup_mappings):
     finally:
         if entry:
             # result is also saved to DB by process_results
-            if entry.result_ids:
-                for rid in entry.result_ids:
+            if entry.results_references:
+                for ref in entry.results_references:
+                    rid = ref.reference
                     # We need to find which model it is, but we know it's FloatData here
                     # Database has no delete_by_id, so we use find_one then delete
                     res_to_del = await context.db.find_one(FloatData, FloatData.id == rid)
@@ -291,8 +289,9 @@ async def test_execute_node_locally_async(initialized_context, setup_mappings):
         assert n.status == TaskStatus.COMPLETED
     finally:
         if entry:
-            if entry.result_ids:
-                for rid in entry.result_ids:
+            if entry.results_references:
+                for ref in entry.results_references:
+                    rid = ref.reference
                     res_to_del = await context.db.find_one(FloatData, FloatData.id == rid)
                     if res_to_del:
                         await context.db.delete(res_to_del)
@@ -364,8 +363,9 @@ async def test_run_somewhere_local(initialized_context, setup_mappings):
             assert result.value == 11.0
         finally:
             if entry:
-                if entry.result_ids:
-                    for rid in entry.result_ids:
+                if entry.results_references:
+                    for ref in entry.results_references:
+                        rid = ref.reference
                         res_to_del = await context.db.find_one(FloatData, FloatData.id == rid)
                         if res_to_del:
                             await context.db.delete(res_to_del)

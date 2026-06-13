@@ -44,34 +44,27 @@ async def extract_node_data(node_id_str: str, target_dir_path: Path):
         print(f"Warning: Source directory {source_dir} does not exist or is not a directory.")
 
     # 5. Serialize inputs and results
-    async def serialize_models(ids: List[ObjectId], tables: List[str]) -> List[Dict[str, Any]]:
+    async def serialize_references(references: List[Any]) -> List[Dict[str, Any]]:
         serialized = []
-        for i, (oid, table) in enumerate(zip(ids, tables)):
-            # table is the model mapping (e.g. "simstack.models.parameters.Parameters")
+        for ref in references:
+            # ref is a NamedDataReference
+            table = ref.variable_mapping
+            oid = ref.reference
+            name = ref.variable_name
             model_cls = await import_class(table, context.db)
             if model_cls:
                 model_inst = await context.db.find_one(model_cls, model_cls.id == oid)
                 if model_inst:
                     data = await custom_model_dump(model_inst)
-                    # The name might be available in input_names/result_names, but let's try to match them.
-                    # This is a bit tricky if they don't match perfectly.
                     serialized.append({
-                        "name": f"item_{i}", # Fallback name
+                        "name": name,
                         "mapping": table,
                         "data": data
                     })
         return serialized
 
-    inputs_serialized = await serialize_models(node_registry.input_ids, node_registry.input_tables)
-    # Correct names if available
-    if len(inputs_serialized) == len(node_registry.input_names):
-        for item, name in zip(inputs_serialized, node_registry.input_names):
-            item["name"] = name
-
-    results_serialized = await serialize_models(node_registry.result_ids, node_registry.result_tables)
-    if len(results_serialized) == len(node_registry.result_names):
-        for item, name in zip(results_serialized, node_registry.result_names):
-            item["name"] = name
+    inputs_serialized = await serialize_references(node_registry.input_references)
+    results_serialized = await serialize_references(node_registry.result_references)
 
     with open(final_target_dir / "inputs.json", "w") as f:
         json.dump(inputs_serialized, f, indent=4, default=str)
