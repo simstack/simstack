@@ -6,6 +6,7 @@ from odmantic import Model, Field, ObjectId, Reference
 from simstack.core.definitions import TaskStatus
 from simstack.models.file_list import FileList
 from simstack.models.parameters import Parameters
+from simstack.models.named_data_reference import NamedDataReference
 
 class NodeRegistry(Model):
     """
@@ -26,15 +27,10 @@ class NodeRegistry(Model):
     :type category: Optional[str]
     :ivar description: An optional description providing details about the node.
     :type description: Optional[str]
-    :ivar input_tables: The names of the classes associated with this node's inputs.
-    :type input_tables: List[str]
-    :ivar input_ids: The unique identifier for the specific workflow instance providing the
-                     inputs.
-    :type input_ids: List[ObjectId]
-    :ivar result_tables: list of names of the result class of the ode's outputs.
-    :type result_tables: List[str]
-    :ivar result_ids: List of ids for the results instance.
-    :type result_ids: ListObjectId]
+    :ivar input_references: List of references to input data.
+    :type input_references: List[NamedDataReference]
+    :ivar results_references: List of references to result data.
+    :type results_references: List[NamedDataReference]
     :ivar parent_ids: A list of identifiers representing parent nodes associated with this node.
     :type parent_ids: List[ObjectId]
     :ivar created_at: The timestamp when the node was created.
@@ -76,18 +72,8 @@ class NodeRegistry(Model):
     error: Optional[str] = None
     message: Optional[str] = None
 
-    input_names: List[str] = Field(default_factory=list)
-    input_tables: List[str] = Field(
-        default_factory=list
-    )  # The model mappings the input classes
-    input_ids: List[ObjectId] = Field(
-        default_factory=list
-    )  # The ID of the specific workflow instance
-    result_tables: List[str] = Field(
-        default_factory=list
-    )  # The model mappings of the result classes
-    result_ids: List[ObjectId] = Field(default_factory=list)
-    result_names: List[str] = Field(default_factory=list)
+    input_references: List[NamedDataReference] = Field(default_factory=list)
+    results_references: List[NamedDataReference] = Field(default_factory=list)
 
     info_files: FileList = Field(default_factory=FileList)
 

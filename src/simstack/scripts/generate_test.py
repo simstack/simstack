@@ -10,35 +10,35 @@ from odmantic import Model, ObjectId
 from pydantic import BaseModel
 
 from simstack.core.context import context
-from simstack.models import NodeRegistry
+from simstack.models import NodeRegistry, NamedDataReference
 from simstack.util.importer import import_class
 
 logger = logging.getLogger("generate_test")
 
-async def load_models(tables: List[str], ids: List[ObjectId]) -> Dict[str, Any]:
-    """Load models from the database based on table names and IDs."""
+async def load_models(references: List[NamedDataReference]) -> Dict[str, Any]:
+    """Load models from the database based on references."""
     result = {}
     db = context.db
-    for table, obj_id in zip(tables, ids):
+    for ref in references:
         try:
-            model_cls = await import_class(table, db)
+            model_cls = await import_class(ref.variable_mapping, db)
             if model_cls:
-                obj = await db.find_one(model_cls, model_cls.id == obj_id)
+                obj = await db.find_one(model_cls, model_cls.id == ref.reference)
                 if obj:
                     # Try to find a nice name for the key
                     from simstack.models import ModelMapping
-                    model_mapping = await db.find_one(ModelMapping, ModelMapping.mapping == table)
-                    key = model_mapping.name if model_mapping else table
+                    model_mapping = await db.find_one(ModelMapping, ModelMapping.mapping == ref.variable_mapping)
+                    key = model_mapping.name if model_mapping else ref.variable_name
                     
                     if key in result:
-                        key = f"{key}_{str(obj_id)}"
+                        key = f"{key}_{str(ref.reference)}"
                     result[key] = obj
                 else:
-                    logger.warning(f"Object {obj_id} not found in {table}")
+                    logger.warning(f"Object {ref.reference} not found in {ref.variable_mapping}")
             else:
-                logger.error(f"Could not import class {table}")
+                logger.error(f"Could not import class {ref.variable_mapping}")
         except Exception as e:
-            logger.exception(f"Error loading {table} {obj_id}: {e}")
+            logger.exception(f"Error loading {ref.variable_mapping} {ref.reference}: {e}")
     return result
 
 def serialize_models(models: Dict[str, Any]) -> str:
@@ -83,13 +83,13 @@ async def generate_test(node_id: str, target_base: Path):
 
     # Load and serialize inputs
     print(f"Serializing inputs for {node_id}")
-    inputs = await load_models(registry_entry.input_tables, registry_entry.input_ids)
+    inputs = await load_models(registry_entry.input_references)
     with open(target_dir / "inputs.json", "w") as f:
         f.write(serialize_models(inputs))
 
     # Load and serialize outputs
     print(f"Serializing outputs for {node_id}")
-    outputs = await load_models(registry_entry.result_tables, registry_entry.result_ids)
+    outputs = await load_models(registry_entry.results_references)
     with open(target_dir / "outputs.json", "w") as f:
         f.write(serialize_models(outputs))
 

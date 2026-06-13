@@ -60,7 +60,7 @@ async def initialized_context(tmp_path_factory):
     os.environ["TEMP"] = str(working_dir)
 
     project_root = find_project_root(skip_files=())
-    
+
     import sys
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
@@ -70,7 +70,7 @@ async def initialized_context(tmp_path_factory):
     from simstack.util.db import Database
     # IMPORTANT: Do not move Database import inside initialize unless necessary.
     # It seems to be fine here.
-    
+
     await context.initialize(
         console=False,
         is_test=True,
@@ -130,7 +130,7 @@ async def initialized_context(tmp_path_factory):
         context.db._engine.save_all = patched_save_all
         # DO NOT patch find/find_one on _engine with the facade methods,
         # because the facade methods call _engine.find/find_one, creating recursion.
-        
+
         context.db.save = Database.save.__get__(context.db, Database)
         context.db.find = Database.find.__get__(context.db, Database)
         context.db.find_one = Database.find_one.__get__(context.db, Database)

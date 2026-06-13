@@ -11,8 +11,7 @@ def _build_node_registry(**overrides) -> NodeRegistry:
     values = {
         "name": "test-node",
         "status": TaskStatus.SUBMITTED,
-        "input_ids": [],
-        "input_tables": [],
+        "input_references": [],
         "function_hash": "function-hash",
         "arg_hash": "arg-hash",
         "func_mapping": "tests.module.function",

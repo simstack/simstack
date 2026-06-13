@@ -9,21 +9,21 @@ from simstack.models import ModelMapping
 from simstack.models.file_list import FileListModel
 from simstack.models.simstack_model import is_simstack_model
 
+from simstack.models.named_data_reference import NamedDataReference
+
 import logging
 logger = logging.getLogger("process_results")
 
 async def process_result_helper(
     result: Union[SimstackResult,Model, bool, BooleanData], task_id: str = "NA"
-) -> Tuple[List[ObjectId], List[str], List[Model], List[str]]:
+) -> Tuple[List[NamedDataReference], List[Model]]:
     """
-    Computes the result_ids, result_tables and result_names and returns a List[Model].
+    Computes the results_references and returns a List[Model].
     It works if the result is a SimstackResult, a single Model or a bool.
     """
 
-    result_ids: List[ObjectId] = []
-    result_tables: List[str] = []
+    results_references: List[NamedDataReference] = []
     result_models: List[Model] = []
-    result_names: List[str] = []
 
     if isinstance(result, bool) or isinstance(result, BooleanData) :
         # Convert bool to BooleanData
@@ -33,24 +33,13 @@ async def process_result_helper(
             boolean_data = result
         result_model = await context.db.save(boolean_data)
         result_models.append(result_model)
-        if result_model.id is None:
-            raise ValueError(
-                f"Task task_id: {task_id} saved BooleanData has no ID"
-            )
-        result_ids.append(result_model.id)
-        result_names.append("value")
-        result_table_name = await context.db.find_one(
-            ModelMapping, ModelMapping.name == BooleanData.__name__
-        )
-        if result_table_name is None:
-            logger.error(
-                f"Task task_id: {task_id} could not find table name for {BooleanData.__name__}"
-            )
-            raise ValueError(
-                f"Could not find table name for {BooleanData.__name__}"
-            )
-        result_tables.append(result_table_name.mapping)
-        return result_ids, result_tables, result_models, result_names
+        results_references.append(NamedDataReference.from_variable(
+            boolean_data,
+            variable_name="value",
+            task_id=task_id
+        ))
+
+        return results_references, result_models
 
     if isinstance(result, SimstackResult):
         # check if there are files in the result
@@ -71,16 +60,12 @@ async def process_result_helper(
                     logger.error(f"Task task_id: {task_id} saving file is NONE")
                     raise ValueError("saving file is NONE")
 
-            result_table_name = context.model_mappings.get_by_name(FileListModel.__name__)
-            if result_table_name is None:
-                logger.error(f"Task task_id: {task_id} could not find table name for {FileListModel.__name__}")
-                raise ValueError(f"Could not find table name for {FileListModel.__name__}")
-            result_tables.append(result_table_name.mapping)
-            result_names.append("files")
             saved = await context.db.save(file_list_model)
-            if saved.id is None:
-                raise ValueError(f"Task task_id: {task_id} saved FileListModel has no ID")
-            result_ids.append(saved.id)
+            results_references.append(NamedDataReference.from_variable(
+                saved,
+                variable_name="files",
+                task_id=task_id
+            ))
             result_models.append(saved)
 
         extra = getattr(result, "__pydantic_extra__", {})
@@ -96,28 +81,22 @@ async def process_result_helper(
                 if isinstance(value, Model):
                     result_model = await context.db.save(value)
                     result_models.append(result_model)
-                    if result_model.id is None:
-                        raise ValueError(
-                            f"Task task_id: {task_id} saved model {key} has no ID"
-                        )
-                    result_ids.append(result_model.id)
-                    result_names.append(key)
-                    result_table_name = context.model_mappings.get_by_name(value.__class__.__name__)
-                    if result_table_name is None:
-                        logger.error(f"Task task_id: {task_id} could not find table name for {value.__class__.__name__}")
-                        raise ValueError(f"Could not find table name for {value.__class__.__name__}")
-                    result_tables.append(result_table_name.mapping)
+                    results_references.append(NamedDataReference.from_variable(
+                        result_model,
+                        variable_name=key,
+                        task_id=task_id
+                    ))
                 else:
-                    raise ValueError(f"task_id: {task_id} cannot save model: {key} is not a model")
+                    raise ValueError(
+                        f"task_id: {task_id} cannot save model: {key} is not a model"
+                    )
     elif is_simstack_model(result) and isinstance(result, Model):
         result_model = await context.db.save(result)
         result_models.append(result_model)
-        result_ids.append(result_model.id)
-        result_names.append(result.__class__.__name__)
-        result_table_name = context.model_mappings.get_by_name(result.__class__.__name__)
-        if result_table_name is None:
-            logger.error(f"Task task_id: {task_id} could not find table name for {result.__class__.__name__}")
-            raise ValueError(f"Could not find table name for {result.__class__.__name__}")
-        result_tables.append(result_table_name.mapping)
+        results_references.append(NamedDataReference.from_variable(
+            result_model,
+            variable_name=result.__class__.__name__,
+            task_id=task_id
+        ))
 
-    return result_ids, result_tables, result_models, result_names
+    return results_references, result_models

@@ -109,6 +109,6 @@ async def test_failing_node_with_runner(info_file, hello_world_file):
         NodeRegistry, NodeRegistry.id == ObjectId(task_id)
     )
     assert len(node_registry.info_files) == 1
-    assert len(node_registry.result_names) == 1
-    assert node_registry.result_names[0] == "files"
+    assert len(node_registry.results_references) == 1
+    assert node_registry.results_references[0].variable_name == "files"
     assert node_registry.status == TaskStatus.FAILED
