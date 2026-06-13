@@ -17,6 +17,7 @@ SimStack II Documentation
    lists
    files
    mass_runner
+   testing_complex_nodes
    database_migrations
    misc
    installation

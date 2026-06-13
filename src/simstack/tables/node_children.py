@@ -89,21 +89,21 @@ def _extract_called_functions(func: Callable) -> List[str]:
 def normalize_text(s: str) -> str:
     return s.encode("utf-8", errors="replace").decode("utf-8")
 
-async def update_node_children(engine, drops: str) -> None:
+async def update_node_children(database, drops: str) -> None:
     """
     1) Read all registered nodes from NodeModel.
     2) For each node, import its function and extract called functions.
     3) Keep only those calls that correspond to nodes in the table.
     4) Update the NodeModel.called_nodes of the original function with a list of *function_mapping* strings.
     """
-    node_models: List[NodeModel] = await engine.find(NodeModel)
+    node_models: List[NodeModel] = await database.find(NodeModel)
 
     # Build lookup tables to resolve extracted names -> NodeModel.function_mapping
     mapping_by_node_name: Dict[str, str] = { nm.name: nm.function_mapping for nm in node_models}
     mapping_set: set[str] = set(nm.function_mapping for nm in node_models)
 
     for nm in node_models:
-        func = await import_function(nm.function_mapping, None, True)
+        func = await import_function(nm.function_mapping, database, None, True)
         if func is None:
             continue
 
@@ -154,7 +154,7 @@ async def update_node_children(engine, drops: str) -> None:
             logger.debug(f"Resolved children of {nm.name} to {resolved}")
         nm.called_nodes = sorted(resolved)
 
-        await engine.save(nm)
+        await database.save(nm)
 
     with open("node_models.txt", "w") as outfile:
         for nm in node_models:
