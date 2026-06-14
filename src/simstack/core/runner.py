@@ -53,8 +53,8 @@ async def initialize_default_resource() -> ResourceDefinition | None:
                 return resource_def
 
             logger.info(f"Default resource: initializing tables for {active_dirs}")
-            await make_model_table(context.db.core_engine, dirs=active_dirs)
-            await make_node_table(context.db.core_engine, dirs=active_dirs)
+            await make_model_table(context.db, dirs=active_dirs)
+            await make_node_table(context.db, dirs=active_dirs)
 
         except Exception as e:
             logger.error(f"Failed to initialize default resource tables: {e}")
