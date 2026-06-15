@@ -197,3 +197,6 @@ class ResourceConfig:
         except KeyError:
             pass
         return {}
+
+    def __str__(self):
+        return f"ResourceConfig(resource={self._resource}, config={self._config})"
