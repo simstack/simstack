@@ -81,7 +81,7 @@ async def submit_node(registry_entry: NodeRegistry) -> None:
                 await context.db.save(registry_entry)
                 return
 
-            full_sync_data = sync_data_start + f'cp -r {tmp_dir} {work_dir}\n' + sync_data_end
+            full_sync_data = sync_data_start + f'cp -a {tmp_dir}/. {work_dir}/recovery\n' + sync_data_end
 
             logger.info(f"task_id: {task_id} full_sync_data {full_sync_data}")
             slurm_parameters.startup_commands.append(full_sync_data)
