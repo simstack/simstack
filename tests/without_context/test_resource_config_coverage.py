@@ -82,21 +82,19 @@ def test_setup_with_runner(tmp_path, config_file):
 
 def test_run_with_runner(tmp_path, config_file):
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "orca"
     runner = MockNodeRunner()
     
     with tempfile.TemporaryDirectory() as test_cwd:
         old_cwd = os.getcwd()
         os.chdir(test_cwd)
         try:
-            rc.run(node_runner=runner)
+            rc.run(program_name="orca", node_runner=runner)
             runner.subprocess.assert_called_once_with("run", "orca orca.inp", cwd=test_cwd)
         finally:
             os.chdir(old_cwd)
 
 def test_run_with_temp_and_copy(tmp_path, config_file):
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "orca"
     
     with tempfile.TemporaryDirectory() as test_cwd:
         old_cwd = os.getcwd()
@@ -114,7 +112,6 @@ output_files = ["out.txt"]
 scratch_cleanup = true
 """)
             rc = ResourceConfig(tmp_path, "local")
-            rc.program = "orca"
 
             # Mock subprocess.run to simulate command execution
             def side_effect(*args, **kwargs):
@@ -124,7 +121,7 @@ scratch_cleanup = true
                 return MagicMock(returncode=0)
 
             with patch("subprocess.run", side_effect=side_effect) as mock_run:
-                rc.run()
+                rc.run(program_name="orca")
             
             assert (test_cwd_path / "out.txt").exists()
             assert (test_cwd_path / "out.txt").read_text() == "world"
@@ -141,14 +138,13 @@ run_command = "echo hi"
 """.replace("{base_dir}", (tmp_path / "base").as_posix()))
     
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "orca"
     with tempfile.TemporaryDirectory() as test_cwd:
         old_cwd = os.getcwd()
         os.chdir(test_cwd)
         try:
             base_dir = tmp_path / "base"
             base_dir.mkdir()
-            rc.run()
+            rc.run(program_name="orca")
             # Check if a temp dir was created in base
             subdirs = list(base_dir.iterdir())
             assert len(subdirs) >= 1
@@ -157,12 +153,10 @@ run_command = "echo hi"
 
 def test_get_program(tmp_path, config_file):
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "orca"
-    params = rc.get_program()
+    params = rc.get_program("orca")
     assert params["run_command"] == "orca orca.inp"
     
-    rc.program = "missing"
-    assert rc.get_program() == {}
+    assert rc.get_program("missing") == {}
 
 def test_get_setup_params(tmp_path, config_file):
     rc = ResourceConfig(tmp_path, "local")
@@ -185,9 +179,8 @@ run_command = "echo"
 input_files = ["nonexistent.txt"]
 """)
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "orca"
     with patch("subprocess.run"):
-        rc.run()
+        rc.run(program_name="orca")
         # Should not raise error
 
 def test_run_output_file_missing(tmp_path, config_file):
@@ -199,7 +192,6 @@ run_command = "echo"
 output_files = ["nonexistent_out.txt"]
 """)
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "orca"
     with patch("subprocess.run"):
-        rc.run()
+        rc.run(program_name="orca")
         # Should not raise error

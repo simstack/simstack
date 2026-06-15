@@ -51,7 +51,6 @@ output_files = ["output.txt"]
 """
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "test_prog"
     
     # Change to a temporary directory for the test to avoid polluting project root
     with tempfile.TemporaryDirectory() as test_cwd:
@@ -63,7 +62,7 @@ output_files = ["output.txt"]
             (test_cwd_path / "input.txt").write_text("input data")
             
             # Run
-            rc.run()
+            rc.run(program_name="test_prog")
             
             assert (test_cwd_path / "output.txt").exists()
             assert (test_cwd_path / "output.txt").read_text() == "input data"
@@ -78,11 +77,10 @@ use_temp = true
 run_command = "python -c \\"import shutil; shutil.copy('input.txt', 'output.txt')\\""
 input_files = ["input.txt"]
 output_files = ["output.txt"]
-scratch_cleanup = true
+# scratch_cleanup = true # Wait, I will use setup_params to mock base dir
 """
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "test_prog"
     
     with tempfile.TemporaryDirectory() as test_cwd:
         old_cwd = os.getcwd()
@@ -99,7 +97,13 @@ scratch_cleanup = true
             # In our current implementation of run, it checks program then setup.
             rc.get_setup_params = lambda: {"tmp_base_dir": str(temp_base)}
             
-            rc.run()
+            # Re-enable scratch_cleanup for this test case
+            content_with_cleanup = content.replace("# scratch_cleanup = true", "scratch_cleanup = true")
+            config_file.write_text(content_with_cleanup)
+            rc = ResourceConfig(tmp_path, "local")
+            rc.get_setup_params = lambda: {"tmp_base_dir": str(temp_base)}
+
+            rc.run(program_name="test_prog")
             
             # Output should be back in cwd
             assert (test_cwd_path / "output.txt").exists()
@@ -124,7 +128,6 @@ scratch_cleanup = false
 """
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "test_prog"
     
     with tempfile.TemporaryDirectory() as test_cwd:
         old_cwd = os.getcwd()
@@ -137,7 +140,7 @@ scratch_cleanup = false
             
             rc.get_setup_params = lambda: {"tmp_base_dir": tmp_base_dir_str}
             
-            rc.run()
+            rc.run(program_name="test_prog")
             
             assert (test_cwd_path / "output.txt").exists()
             assert temp_base.exists()

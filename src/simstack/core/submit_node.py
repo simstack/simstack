@@ -2,6 +2,7 @@ import os
 import re
 import stat
 import subprocess
+from pathlib import Path
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
@@ -112,9 +113,38 @@ async def submit_node(registry_entry: NodeRegistry) -> None:
             slurm_parameters.startup_commands.append(docker_start)
         else:
             slurm_parameters.startup_commands.append(
-                f"uv run --directory {base_path} run_node --node-id {registry_entry.id} --resource {str(context.config.resource)}"
+                f"uv run --directory {base_path} run_node --node-id {registry_entry.id} --resource {str(context.config.resource)} &"
             )
+            slurm_parameters.startup_commands.append("wait")
+        slurm_parameters.signal = "B:USR1@1:00"
 
+        sync_data_start = """# 1. Define the rsync function
+sync_data() {
+    echo "=== Time limit approaching! Starting rsync at $(date) ==="
+    
+    # Run rsync safely 
+"""
+        sync_data_end = """
+    echo "=== Rsync completed at $(date) ==="
+    exit 0
+}        
+"""
+
+        program_config = context.resource_config.get_program(registry_entry.name)
+        logger.info(f"task_id: {task_id} program_config {program_config}")
+        if program_config.get("use_tmp",False):
+            tmp_dir = context.resource_config.tmp_dir(registry_entry.id)
+
+            if not tmp_dir.exists() or not tmp_dir.is_dir():
+                logger.error(f"Task task_id: {task_id} tmp_dir {tmp_dir} does not exist or is not a directory -- failing")
+                registry_entry.status = TaskStatus.FAILED
+                await context.db.save(registry_entry)
+                return
+
+            full_sync_data = sync_data_start + f'rsync -avz --update f{tmp_dir} {Path.cwd().resolve()}' + sync_data_end
+            logger.info(f"task_id: {task_id} full_sync_data {full_sync_data}")
+            slurm_parameters.startup_commands.append(full_sync_data)
+            slurm_parameters.startup_commands.append("trap 'sync_data' SIGUSR1")
         slurm_script = slurm_parameters.to_sbatch_header()
 
         # write the script to a file in the work_dir

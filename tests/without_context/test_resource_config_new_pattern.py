@@ -24,7 +24,6 @@ scratch_cleanup = false
 """
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "orca"
     
     with tempfile.TemporaryDirectory() as test_cwd:
         old_cwd = os.getcwd()
@@ -59,7 +58,6 @@ scratch_cleanup = false
 """
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "orca"
     
     fs_input = MockFileStack("fs_in.txt")
     
@@ -76,6 +74,7 @@ scratch_cleanup = false
             fs_input.get.side_effect = mock_get
             
             rc.run(
+                program_name="orca",
                 input_files=[fs_input],
                 output_files=["fs_out.txt"]
             )
@@ -95,7 +94,6 @@ run_command = "python -c \\"open('fs_out.txt', 'w').write('fs result')\\""
 """
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "orca"
     
     fs_output = MockFileStack("fs_out.txt")
     
@@ -104,7 +102,7 @@ run_command = "python -c \\"open('fs_out.txt', 'w').write('fs result')\\""
         os.chdir(test_cwd)
         try:
             test_cwd_path = Path(test_cwd)
-            rc.run(output_files=[fs_output])
+            rc.run(program_name="orca", output_files=[fs_output])
             
             assert (test_cwd_path / "fs_out.txt").exists()
             assert (test_cwd_path / "fs_out.txt").read_text() == "fs result"

@@ -7,11 +7,9 @@ def test_resource_config_basic(tmp_path):
     config_file = tmp_path / "config.toml"
     config_file.write_text("[local.program.orca]\nrun_command = \"orca orca.inp\"\n")
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "orca"
-    params = rc.get_program()
+    params = rc.get_program("orca")
     assert params["run_command"] == "orca orca.inp"
     assert rc._resource == "local"
-    assert rc._program == "orca"
 
 def test_resource_config_from_file(tmp_path):
     config_file = tmp_path / "config.toml"
@@ -23,20 +21,17 @@ run_command = "orca orca.inp"
     
     # Test passing directory
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "orca"
-    params = rc.get_program()
+    params = rc.get_program("orca")
     assert params["run_command"] == "orca orca.inp"
     
     # Test passing file path
     rc2 = ResourceConfig(config_file, "local")
-    rc2.program = "orca"
-    params2 = rc2.get_program()
+    params2 = rc2.get_program("orca")
     assert params2["run_command"] == "orca orca.inp"
 
 def test_resource_config_missing():
     rc = ResourceConfig(Path("non_existent_path"), "local")
-    rc.program = "any"
-    params = rc.get_program()
+    params = rc.get_program("any")
     assert params == {}
 
 def test_resource_config_key_error(tmp_path):
@@ -47,16 +42,13 @@ foo = "bar"
 """
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")
-    rc.program = "orca"
-    assert rc.get_program() == {}
+    assert rc.get_program("orca") == {}
     
-    rc.program = "other" # Though it's under local.other, get_program expects local.program.other
-    assert rc.get_program() == {}
+    assert rc.get_program("other") == {} # Though it's under local.other, get_program expects local.program.other
 
 def test_resource_config_resource_storage(tmp_path):
     rc = ResourceConfig(tmp_path, "remote-resource")
     assert rc._resource == "remote-resource"
-    assert rc._program is None
 
 @pytest.mark.asyncio
 async def test_global_state_initialization(tmp_path, monkeypatch):
@@ -93,8 +85,7 @@ async def test_global_state_initialization(tmp_path, monkeypatch):
     assert hasattr(gs, "resource_config")
     assert isinstance(gs.resource_config, ResourceConfig)
     assert gs.resource_config._resource == "local"
-    gs.resource_config.program = "orca"
-    params = gs.resource_config.get_program()
+    params = gs.resource_config.get_program("orca")
     assert params == {"cmd": "run"}
 
 def test_resource_config_setup_and_postprocessing(tmp_path):

@@ -37,7 +37,7 @@ Homepage = "https://gitlab.kit.edu/kit/ag_wenzel/simstack-model/"
 [project.scripts]
 create_node_table = "simstack.tables.node_table:create_node_table_main"
 create_model_table = "simstack.tables.model_table:create_model_table_main"
-create_test_from_node = "simstack.scripts.generate_test:generate_test_main"
+create_test_from_node = "simstack.methods.generate_test:generate_test_main"
 run_test_for_hash = "simstack.scripts.run_test_for_hash:run_node_test_main"
 simstack_runner = "simstack.core.runner:runner_main"
 run_node = "simstack.core.run_node:run_node_main"
@@ -138,7 +138,7 @@ exclude = ["tests", "doc", "docs"]
 [project.entry-points."simstack.modules"]
 simstack_models = "simstack.models"
 simstack_nodes  = "simstack.methods"
-sismtack_tests  = "tests"
+simstack_tests  = "tests"
 
 [[tool.uv.index]]
 name = "testpypi"
