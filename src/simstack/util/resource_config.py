@@ -8,6 +8,8 @@ from typing import Dict, Any, Optional, List, Union
 
 from bson import ObjectId
 
+import logging
+logger = logging.getLogger("ResourceConfig")
 
 class ResourceConfig:
     """
@@ -64,7 +66,9 @@ class ResourceConfig:
     def tmp_dir(self, task_id: ObjectId | str) -> Path:
         if isinstance(task_id, ObjectId):
             task_id = str(task_id)
-        return self.tmp_base_dir / task_id
+        tmp_dir = self.tmp_base_dir / task_id
+        Path(tmp_dir).mkdir(parents=True, exist_ok=True)
+        return tmp_dir
 
     @property
     def tmp_base_dir(self) -> Path:
@@ -74,6 +78,7 @@ class ResourceConfig:
                 result = subprocess.run(tmp_dir_command, shell=True, check=True,
                                         capture_output=True, text=True)
                 # Parse the output to extract TEMP_BASE_DIR value
+                logger.info(f"tmp_base_dir command {tmp_dir_command} result {result.stdout}")
                 for line in result.stdout.splitlines():
                     if "TMP_BASE_DIR" in line and "=" in line:
                         # Extract value after the = sign
