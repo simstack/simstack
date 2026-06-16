@@ -32,7 +32,7 @@ from simstack.core.process_results import process_result_helper
 from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.task_id import set_task_id, clear_task_id
-from simstack.models import ModelMapping, Parameters
+from simstack.models import ModelMapping, Parameters, Project
 from simstack.models import NodeModel
 from simstack.models import NodeRegistry, NamedDataReference
 from simstack.models.file_list import FileList
@@ -260,6 +260,22 @@ class Node:
                 task_id=str(self.id)
             ))
 
+        if self.parent_id is None:
+            projects = context.db.find(Project)
+            if projects is None:
+                project = Project(field_name="default")
+                await context.db.save(project)
+                project_id = project.id
+                logger.info(f"task_id:  {self.id} created default project: {project_id} ")
+            else:
+                project = projects[0]
+                project_id = project.id
+                logger.info(f"task_id:  {self.id} using project: {project_id} ")
+        else:
+            parent_registry_entry = await context.db.load_task_by_id(self.parent_id)
+            project_id = parent_registry_entry.project
+            logger.info(f"task_id:  {self.id} using parent project: {project_id} ")
+
         self.registry_entry = NodeRegistry(
             name=self.name,
             input_references=input_references,
@@ -268,11 +284,13 @@ class Node:
             custom_name=self.custom_name,
             function_hash=function_hash,
             arg_hash=arg_hash,
+            project=project_id,
             parent_ids=[] if self.parent_id is None else [self.parent_id],
             parameters=self.parameters,
             func_mapping=function_mapping.function_mapping,
             call_path=self.call_path,
         )
+
         parent_parameters = self._function_kwargs.get("parent_parameters", None)
         registry_entry = self.registry_entry
         assert registry_entry is not None

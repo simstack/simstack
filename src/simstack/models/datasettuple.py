@@ -11,7 +11,7 @@ from simstack.util.make_table import make_table_entries_helper
 
 
 @simstack_model
-class DataSetSection(EmbeddedModel):
+class DataSetTupleSection(EmbeddedModel):
     """
     Represents a section of a dataset containing tuples of models.
 
@@ -360,14 +360,14 @@ class DataSetSection(EmbeddedModel):
 
 
 @simstack_model
-class DataSet(Model):
+class DataSetTuple(Model):
     field_name: str = Field(default="dataset")
     metadata: DataSetMetadata = Reference()
-    sections: Dict[str, DataSetSection] = Field(default_factory=dict)
+    sections: Dict[str, DataSetTupleSection] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
 
-    
+
     @property
     def dataset_type(self) -> str:
         return self.metadata.dataset_type
@@ -405,7 +405,7 @@ class DataSet(Model):
             for section_name, section in self.sections.items()
         }
 
-    async def clone(self, new_field_name: str = None, exclude_sections: List[str] = None) -> "DataSet":
+    async def clone(self, new_field_name: str = None, exclude_sections: List[str] = None) -> "DataSetTuple":
         """
         Clone the dataset with optionally a new field name and excluding specified sections.
 
@@ -417,7 +417,7 @@ class DataSet(Model):
             exclude_sections = []
 
         # Clone the dataset with new or same field name
-        cloned_dataset = DataSet(
+        cloned_dataset = DataSetTuple(
             field_name=new_field_name if new_field_name is not None else self.field_name,
             metadata=self.metadata
         )
@@ -426,7 +426,7 @@ class DataSet(Model):
         for section_name, section in self.sections.items():
             if section_name not in exclude_sections:
                 # Create a new DataSetSection with copied data
-                cloned_section = DataSetSection(
+                cloned_section = DataSetTupleSection(
                     model_types=section.model_types.copy(),
                     data=[model_ids.copy() for model_ids in section.data],
                     column_defs=[col_def.copy() for col_def in section.column_defs],
@@ -437,12 +437,12 @@ class DataSet(Model):
         return cloned_dataset
 
     # Dict-like behavior methods
-    def __getitem__(self, key: str) -> DataSetSection:
+    def __getitem__(self, key: str) -> DataSetTupleSection:
         if key not in self.sections:
-            self.sections[key] = DataSetSection()
+            self.sections[key] = DataSetTupleSection()
         return self.sections[key]
 
-    def __setitem__(self, key: str, value: DataSetSection) -> None:
+    def __setitem__(self, key: str, value: DataSetTupleSection) -> None:
         if key in self.sections:
             raise KeyError(f"Section {key} already exists in dataset")
         self.sections[key] = value
@@ -462,28 +462,28 @@ class DataSet(Model):
     def keys(self) -> KeysView[str]:
         return self.sections.keys()
 
-    def values(self) -> ValuesView[DataSetSection]:
+    def values(self) -> ValuesView[DataSetTupleSection]:
         return self.sections.values()
 
-    def items(self) -> ItemsView[str, DataSetSection]:
+    def items(self) -> ItemsView[str, DataSetTupleSection]:
         return self.sections.items()
 
-    def get(self, key: str, default: DataSetSection = None) -> DataSetSection:
+    def get(self, key: str, default: DataSetTupleSection = None) -> DataSetTupleSection:
         return self.sections.get(key, default)
 
-    def pop(self, key: str, default=None) -> DataSetSection:
+    def pop(self, key: str, default=None) -> DataSetTupleSection:
         if default is None:
             return self.sections.pop(key)
         return self.sections.pop(key, default)
 
-    def popitem(self) -> Tuple[str, DataSetSection]:
+    def popitem(self) -> Tuple[str, DataSetTupleSection]:
         return self.sections.popitem()
 
     def clear(self) -> None:
         self.sections.clear()
 
     def update(
-        self, other: Union[Dict[str, DataSetSection], "DataSet"] = None, **kwargs
+        self, other: Union[Dict[str, DataSetTupleSection], "DataSetTuple"] = None, **kwargs
     ) -> None:
         if other is not None:
             if hasattr(other, "sections"):
@@ -492,7 +492,7 @@ class DataSet(Model):
                 self.sections.update(other)
         self.sections.update(kwargs)
 
-    def setdefault(self, key: str, default: DataSetSection = None) -> DataSetSection:
+    def setdefault(self, key: str, default: DataSetTupleSection = None) -> DataSetTupleSection:
         return self.sections.setdefault(key, default)
 
     @classmethod
@@ -516,7 +516,7 @@ class DataSetTupleSelection(Model):
 
     async def get_dataset(self):
         from simstack.core.context import context
-        return await context.db.find_one(DataSet, DataSet.id == self.dataset_id)
+        return await context.db.find_one(DataSetTuple, DataSetTuple.id == self.dataset_id)
 
     async def get_selected_elements(self, section_name: str = None) -> List[Tuple[Model, ...]]:
         """
@@ -527,7 +527,7 @@ class DataSetTupleSelection(Model):
         """
         from simstack.core.context import context
         db = context.db
-        dataset = await db.find_one(DataSet, DataSet.id == self.dataset_id)
+        dataset = await db.find_one(DataSetTuple, DataSetTuple.id == self.dataset_id)
 
         if dataset is None:
             raise ValueError(f"Dataset with id {self.dataset_id} not found")
@@ -560,7 +560,7 @@ class DataSetTupleSelection(Model):
         """
         from simstack.core.context import context
         db = context.db
-        dataset = await db.find_one(DataSet, DataSet.id == self.dataset_id)
+        dataset = await db.find_one(DataSetTuple, DataSetTuple.id == self.dataset_id)
 
         if dataset is None:
             raise ValueError(f"Dataset with id {self.dataset_id} not found")

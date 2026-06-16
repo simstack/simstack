@@ -21,7 +21,12 @@ from .named_data_reference import NamedDataReference
 from .project import Project
 from .tag import Tag
 from .resource_assignment import ResourceAssignmentRule, SlurmParametersPatch
-from .datasettuple import DataSet, DataSetSection, DataSetTupleSelection, DataSetTupleSelectionField
+from .datasettuple import (
+    DataSetTuple,
+    DataSetTupleSection,
+    DataSetTupleSelection,
+    DataSetTupleSelectionField,
+)
 from .dataset import DataSet, DataSetSection, DataSetSelection, DataSetSelectionField
 from .dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
 from .images2d import Image2DArtifactModel
@@ -51,9 +56,9 @@ __all__ = [
     "DataSet",
     "DataSetSection",
     "DataSetSelection",
+    "DataSetTuple",
+    "DataSetTupleSection",
     "DataSetTupleSelectionField",
-    "DataSet",
-    "DataSetSection",
     "DataSetMetadata",
     "DataSetSelectionField",
     "DataSetTupleSelection",
