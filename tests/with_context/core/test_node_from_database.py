@@ -229,3 +229,47 @@ async def test_node_from_database_invalid_mapping_with_duplicate(initialized_con
             await context.db.delete(existing_entry)
     finally:
         await context.db.delete(input_data)
+
+@pytest.mark.asyncio
+async def test_node_from_database_recovers_itself(initialized_context, setup_helper_node_model, caplog):
+    """
+    Test that node_from_database might 'recover itself' if hashes are pre-initialized 
+    and it is already in the database.
+    """
+    input_data = FloatData(value=10.0)
+    await context.db.save(input_data)
+    
+    from simstack.core.node import compute_arg_hash
+    from simstack.core.hash import complex_hash_function
+    
+    arg_hash = compute_arg_hash([input_data])
+    func_hash = complex_hash_function(helper_node_func._inner)
+    
+    # Create a registry entry that IS ALREADY in the DB and HAS HASHES
+    registry_entry = NodeRegistry(
+        name="helper_node_func",
+        status=TaskStatus.SUBMITTED,
+        input_references=[NamedDataReference.from_variable(input_data)],
+        function_hash=func_hash,
+        arg_hash=arg_hash,
+        func_mapping=f"{CURRENT_MODULE}.helper_node_func",
+        parameters=Parameters(),
+        is_async=False
+    )
+    await context.db.save(registry_entry)
+    
+    try:
+        # Call node_from_database
+        reconstructed_node = await node_from_database(registry_entry)
+        
+        assert reconstructed_node is not None
+        assert reconstructed_node.registry_entry.id == registry_entry.id
+        
+        # Check if the INFO log about duplicate is present (since it's already in DB)
+        assert "found duplicate entry" in caplog.text
+        # Check that the error log is GONE
+        assert "recovered itself. This should not happen" not in caplog.text
+        
+    finally:
+        await context.db.delete(registry_entry)
+        await context.db.delete(input_data)

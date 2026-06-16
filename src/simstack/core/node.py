@@ -261,7 +261,7 @@ class Node:
             ))
 
         if self.parent_id is None:
-            projects = context.db.find(Project)
+            projects = await context.db.find(Project)
             if projects is None:
                 project = Project(field_name="default")
                 await context.db.save(project)
@@ -759,32 +759,23 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             NodeRegistry,
             (NodeRegistry.name == registry_entry.name)
             & (NodeRegistry.arg_hash == registry_entry.arg_hash)
-            & (NodeRegistry.function_hash == registry_entry.function_hash),
+            & (NodeRegistry.function_hash == registry_entry.function_hash)
+            & (NodeRegistry.id != registry_entry.id),
         )
-        await db.save(
-            registry_entry
-        )  # save the fixed entry AFTER checking for duplicates
-        # the calling function may have the originial entry unsaved !
-        if duplicate_entry is not None:
-            logger.info(
-                f"Original Entry: {duplicate_entry.id} {duplicate_entry.arg_hash} {duplicate_entry.function_hash}"
-            )
-            logger.info(
-                f"Current Entry: {registry_entry.id} {registry_entry.arg_hash} {registry_entry.function_hash} "
-            )
+        if duplicate_entry is None:
+            await db.save(
+                registry_entry
+            )  # save the fixed entry AFTER checking for duplicates
+            # the calling function may have the originial entry unsaved !
+        else:
             logger.info(
                 f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}"
             )
-            if duplicate_entry.id == registry_entry.id:
-                logger.error(
-                    f"Task task_id: {registry_entry.id} recovered itself. This should not happen"
-                )
 
-            if duplicate_entry.id != registry_entry.id:
-                # the parameters of the new job may be different
-                duplicate_entry.parameters = registry_entry.parameters
-                await db.delete(registry_entry)
-                registry_entry = duplicate_entry
+            # the parameters of the new job may be different
+            duplicate_entry.parameters = registry_entry.parameters
+            await db.delete(registry_entry)
+            registry_entry = duplicate_entry
 
             if func is None:
                 # we recovered a duplicate, let's try to import the function from the duplicate's mapping
