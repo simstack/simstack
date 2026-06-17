@@ -134,8 +134,10 @@ class GlobalState:
         project_root = kwargs.get("project_root", find_project_root())
         if project_root is None:  # maybe None was passed
             project_root = find_project_root()
-        kwargs["project_root"] = project_root  # overwrite in case it was not set before
+            kwargs["project_root"] = project_root  # overwrite in case it was not set before
+
         simstack_toml_path = project_root / "simstack.toml"
+        print(f"TOML PATH {simstack_toml_path}")
         db_name: str | None = kwargs.get("db_name", None)
         connection_string: str | None = kwargs.get("connection_string", None)
         db_type: DBType | None = kwargs.get("db_type", None)
