@@ -184,7 +184,7 @@ class GlobalState:
         from simstack.util.resource_config import ResourceConfig
         if not kwargs.get("skip_config", False):
             try:
-                self._config = await ConfigReader.create(resource_str, self._db, toml_reader, **kwargs)
+                self._config = await ConfigReader.create(resource_str, self._db, toml_reader, project_root, **kwargs)
                 self._resource_config = ResourceConfig(resource_config_file, resource_str)
             except Exception as e:
                 if is_test:
