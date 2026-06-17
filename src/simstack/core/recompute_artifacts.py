@@ -82,13 +82,13 @@ async def recompute_artifacts(node_registry: NodeRegistry):
             # Reconstruct the function arguments for artifact creation
             args = []
             for ref in node_registry.input_references:
-                model = await import_class(ref.variable_mapping)
+                model = await import_class(ref.variable_mapping, context.db)
                 arg = await db.find_one(model, model.id == ref.reference)
                 if arg:
                     args.append(arg)
 
             # Get the function for artifact creation
-            wrapped_func = await import_function(node_registry.func_mapping)
+            wrapped_func = await import_function(node_registry.func_mapping, context.db)
             func = (
                 wrapped_func
                 if not hasattr(wrapped_func, "_inner")

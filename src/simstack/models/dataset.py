@@ -26,7 +26,8 @@ class DataSetSection(EmbeddedModel):
     """
 
     model_types: Dict[str, str] = Field(default_factory=dict)
-    data: Dict[str, Dict[str, ObjectId]] = Field(default_factory=dict)
+
+    persistent_data: Dict[str, Dict[str, ObjectId]] = Field(default_factory=dict)
 
     column_defs: List[Dict] = Field(default_factory=list)
     table_entries: List[List[Dict]] = Field(default_factory=list)
@@ -45,6 +46,23 @@ class DataSetSection(EmbeddedModel):
             cache = self._set_cache(cache)
         return cache
 
+    @property
+    def data(self) -> Dict[str, Dict[str, ObjectId]]:
+        """
+        Dynamically construct data from the cache.
+        This allows the rest of the system to still use the .data attribute
+        while the source of truth is the cache.
+        """
+        # Return persistent_data if cache is empty, otherwise construct from cache
+        cache = self._get_cache()
+        if not cache:
+            return self.persistent_data
+
+        return {
+            name: {key: model.id for key, model in row.items()}
+            for name, row in cache.items()
+        }
+
     def add_row(self, item: Dict[str, Optional[Model]], name: Optional[str] = None) -> None:
         """
         Add a dictionary of models to this section.
@@ -58,7 +76,8 @@ class DataSetSection(EmbeddedModel):
         if name is None:
             name = str(uuid.uuid4())
 
-        if name in self.data:
+        cache = self._get_cache()
+        if name in cache:
             raise ValueError(f"Item with name '{name}' already exists in section")
         
         if not isinstance(item, dict):
@@ -88,17 +107,14 @@ class DataSetSection(EmbeddedModel):
             else:
                 self.model_types[key] = model_name
 
-        # Save all models to cache and update data with IDs
-        item_ids = {}
+        # Save all models to cache
         cached_items = {}
         for key, model in item.items():
             if model is None:
                 continue
-            item_ids[key] = model.id
             cached_items[key] = model
 
-        self.data[name] = item_ids
-        self._get_cache()[name] = cached_items
+        cache[name] = cached_items
 
     async def make_column_defs(self):
         """
@@ -109,75 +125,63 @@ class DataSetSection(EmbeddedModel):
         from simstack.core.context import context
         engine = context.db
         column_defs = []
-        if not self.data:
+        cache = self._get_cache()
+        if not cache:
             return column_defs
 
         # Use model_types to determine columns. 
-        # Since it's a dict, we might want to order them or just iterate.
         for key, model_type in self.model_types.items():
-            # Find the first instance of this key in data to get an ID for make_column_defs_instance if needed
-            # Actually make_column_defs_instance might just need the class, let's check how it's used in DataSetTuple
-            
-            # In DataSetTuple:
-            # for model_group_id, model_type in zip(self.data[0], self.model_types):
-            #     model_class = await import_class_by_name(model_type, engine)
-            #     model_instance = await engine.find_one(model_class, model_class.id == model_group_id)
-            #     model_columns = make_column_defs_instance(model_instance)
-            #     column_defs.extend(model_columns)
-            
-            # We do something similar but we need an instance for each key.
-            model_group_id = None
-            for row in self.data.values():
+            model_instance = None
+            for row in cache.values():
                 if key in row:
-                    model_group_id = row[key]
+                    model_instance = row[key]
                     break
             
-            if model_group_id is None:
+            if model_instance is None:
                 continue
                 
-            model_class = await import_class_by_name(model_type, engine)
-            model_instance = await engine.find_one(model_class, model_class.id == model_group_id)
-            if model_instance:
-                model_columns = make_column_defs_instance(model_instance)
-                # Maybe prefix column headers with the key? 
-                # DataSetTuple doesn't seem to prefix, but it's a tuple so order matters.
-                # In a dict, we might have many models.
-                column_defs.extend(model_columns)
+            model_columns = make_column_defs_instance(model_instance)
+            column_defs.extend(model_columns)
         
         return column_defs
 
     async def make_table_entries(self):
         all_data = []
-        from simstack.core.context import context
-        from simstack.util.importer import import_class_by_name
-        for row in self.data.values():
+        cache = self._get_cache()
+        for row in cache.values():
             row_data = []
             for key, model_type in self.model_types.items():
-                model_group_id = row.get(key)
-                if model_group_id is None:
-                    # How to handle missing values in make_table_entries?
-                    # DataSetTuple assumes all models in the tuple are present (or at least zip handles it)
-                    # Let's see what make_table_entries_helper does with None.
-                    row_data.append({}) # Or some empty representation
-                    continue
-
-
-                model_class = await import_class_by_name(model_type, context.db)
-                model_instance = await context.db.find_one(model_class, model_class.id == model_group_id)
+                model_instance = row.get(key)
                 model_data = make_table_entries_helper(model_instance)
                 row_data.append(model_data)
             all_data.append(row_data)
         return all_data
 
 
-    def get_item(self, name: str) -> Dict[str, Model]:
-        if name not in self.data:
-            raise KeyError(f"Item with name '{name}' not found")
-
-        row = self.data[name]
-        # Use cache if available
+    async def save(self, db):
+        """
+        Save all models in the cache to the database and update persistent_data.
+        """
         cache = self._get_cache()
-        return cache.get(name, None)
+        for row_name, row_models in cache.items():
+            for model_key, model in row_models.items():
+                if model is not None:
+                    await db.save_unchecked(model)
+
+        # Sync cache to persistent_data before saving
+        self.persistent_data = {
+            name: {k: v.id for k, v in row.items()}
+            for name, row in cache.items()
+        }
+
+        self.column_defs = await self.make_column_defs()
+        self.table_entries = await self.make_table_entries()
+
+    def get_item(self, name: str) -> Dict[str, Model]:
+        cache = self._get_cache()
+        if name not in cache:
+            raise KeyError(f"Item with name '{name}' not found")
+        return cache[name]
 
     async def db_find_postprocess(self, db: "Database"):
         await self.load_to_cache(db)
@@ -189,9 +193,9 @@ class DataSetSection(EmbeddedModel):
         from simstack.core.context import context
         if db is None:
             db = context.db
-        cached_row = {}
         cache = self._get_cache()
-        for name, row in self.data.items():
+        for name, row in self.persistent_data.items():
+            cached_row = {}
             for key, model_id in row.items():
                 model_type = self.model_types[key]
                 from simstack.util.importer import import_class_by_name
@@ -206,48 +210,33 @@ class DataSetSection(EmbeddedModel):
         self._set_cache(cache)
 
     def __len__(self) -> int:
-        return len(self.data)
+        return len(self._get_cache())
 
     def __iter__(self):
-        cache = self._get_cache()
-        return iter(cache)
+        return iter(self._get_cache().items())
 
     def __getitem__(self, name: str) -> Dict[str, Model]:
         cache = self._get_cache()
         if name in cache:
             return cache[name]
         
-        # If it's in data but not in cache, we don't have the models loaded.
-        # However, DataSetSection.get_item does similar logic.
-        if name in self.data:
-            # We can't easily load it here because it's async in get_item/load_to_cache
-            # and __getitem__ is sync. 
-            # But previous task added load_to_cache.
-            # If it's in data but not cache, we should probably raise KeyError 
-            # or try to return what's in cache if it was partially loaded.
-            return cache[name] # This will raise KeyError if not in cache
-        
         raise KeyError(f"Item with name '{name}' not found")
 
     def __setitem__(self, name: str, value: Dict[str, Optional[Model]]) -> None:
-        if name in self.data:
-             # If it already exists, we might want to allow overwriting or not.
-             # add_row raises ValueError if name exists.
-             # Let's remove it first to allow overwrite via __setitem__
+        cache = self._get_cache()
+        if name in cache:
              self.pop(name, None)
         
         self.add_row(value, name=name)
 
     def __delitem__(self, name: str) -> None:
-        if name not in self.data:
-            raise KeyError(f"Item with name '{name}' not found")
-        del self.data[name]
         cache = self._get_cache()
-        if name in cache:
-            del cache[name]
+        if name not in cache:
+            raise KeyError(f"Item with name '{name}' not found")
+        del cache[name]
 
     def __contains__(self, name: str) -> bool:
-        return name in self.data
+        return name in self._get_cache()
 
     def get(self, name: str, default: Any = None) -> Any:
         try:
@@ -256,46 +245,34 @@ class DataSetSection(EmbeddedModel):
             return default
 
     def keys(self) -> KeysView[str]:
-        return self.data.keys()
+        return self._get_cache().keys()
 
     def values(self) -> ValuesView[Dict[str, Model]]:
-        cache = self._get_cache()
-        # Note: values() might be misleading if cache is not fully populated.
-        # But according to the task "datasetsection acts like a dict operating on cache"
-        return cache.values()
+        return self._get_cache().values()
 
     def items(self) -> ItemsView[str, Dict[str, Model]]:
-        cache = self._get_cache()
-        return cache.items()
+        return self._get_cache().items()
 
     def clear(self) -> None:
-        self.data.clear()
         self._set_cache({})
 
     def pop(self, name: str, default: Any = ...) -> Any:
-        if name not in self.data:
+        cache = self._get_cache()
+        if name not in cache:
             if default is ...:
                 raise KeyError(f"Item with name '{name}' not found")
             return default
         
-        del self.data[name]
-        cache = self._get_cache()
-        return cache.pop(name, None)
+        return cache.pop(name)
 
     def popitem(self) -> Tuple[str, Dict[str, Model]]:
-        if not self.data:
-            raise KeyError("popitem(): dictionary is empty")
-        name, _ = self.data.popitem()
         cache = self._get_cache()
-        item = cache.pop(name, None)
-        return name, item
+        if not cache:
+            raise KeyError("popitem(): dictionary is empty")
+        return cache.popitem()
 
     def update(self, other: Union[Dict[str, Dict[str, Optional[Model]]], "DataSetSection"]) -> None:
         if isinstance(other, DataSetSection):
-            # We should probably iterate over its data and cache
-            # This is tricky because other might not have cache loaded.
-            # But if it's "acting like a dict operating on cache", 
-            # then it should probably use the cache of the 'other' section.
             other_cache = other._get_cache()
             for name, row in other_cache.items():
                 self[name] = row
@@ -304,12 +281,13 @@ class DataSetSection(EmbeddedModel):
                 self[name] = row
 
     def setdefault(self, name: str, default: Dict[str, Optional[Model]] = None) -> Dict[str, Model]:
-        if name not in self.data:
+        cache = self._get_cache()
+        if name not in cache:
             self[name] = default
         return self[name]
 
     def __repr__(self) -> str:
-        return f"DataSetSection(keys={list(self.model_types.keys())}, length={len(self.data)})"
+        return f"DataSetSection(keys={list(self.model_types.keys())}, length={len(self)})"
 
 
 @simstack_model
@@ -337,15 +315,7 @@ class DataSet(Model):
             raise ValueError("Metadata validation failed")
 
         for key, section in self.sections.items():
-            # Save cached models in each section
-            cache = section._get_cache()
-            for row_name, row_models in cache.items():
-                for model_key, model in row_models.items():
-                    await db.save_unchecked(model)
-            section._set_cache({})
-
-            self.sections[key].column_defs = await section.make_column_defs()
-            self.sections[key].table_entries = await section.make_table_entries()
+            await section.save(db)
 
         await db.save_unchecked(self)
 

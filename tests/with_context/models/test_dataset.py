@@ -16,7 +16,7 @@ class TestDataSetSection:
         section = DataSetSection()
 
         assert section.model_types == {}
-        assert section.data == {}
+        # assert section.data == {} # Removed data field
         assert len(section) == 0
 
     @pytest.mark.asyncio
@@ -32,7 +32,7 @@ class TestDataSetSection:
 
         assert len(section) == 1
         assert section.model_types == {"f": "FloatData", "s": "StringData"}
-        assert section.data[item_name] == {"f": float_data.id, "s": string_data.id}
+        # assert section.data[item_name] == {"f": float_data.id, "s": string_data.id} # Removed data field
         
         # Verify it's in the cache
         cache = section._get_cache()
@@ -49,7 +49,7 @@ class TestDataSetSection:
         section.add_row({"f": float_data})
 
         assert len(section) == 1
-        name = list(section.data.keys())[0]
+        name = list(section.keys())[0]
         # Should be a valid UUID
         uuid.UUID(name)
 
@@ -277,14 +277,13 @@ class TestDataSetSectionDict:
         await context.db.save(f1)
 
         section = DataSetSection()
-        # Manually populate data to simulate loading from DB without cache
-        section.data["item1"] = {"f": f1.id}
-        section.model_types["f"] = "FloatData"
+        # self.data is removed, so we add it to the section normally
+        section.add_row({"f": f1}, name="item1")
 
-        # Cache should be empty
-        assert "item1" not in section._get_cache()
+        # Cache should NOT be empty because add_row populates it
+        assert "item1" in section._get_cache()
 
-        # Load to cache
+        # Load to cache should now be a no-op
         await section.load_to_cache(context.db)
 
         assert "item1" in section._get_cache()

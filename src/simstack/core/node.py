@@ -178,8 +178,8 @@ class Node:
         self.is_async = kwargs.pop("is_async")
         self.parent_id = kwargs.pop("parent_id", None)
         self.call_path = kwargs.pop("call_path", "") or "." + self.name
-        self._arg_hash = None
-        self._function_hash = None
+        self._arg_hash = kwargs.pop("arg_hash", None)
+        self._function_hash = kwargs.pop("function_hash", None)
 
         # Get function signature to identify argument names
         sig = inspect.signature(self._func)
@@ -262,7 +262,7 @@ class Node:
 
         if self.parent_id is None:
             projects = await context.db.find(Project)
-            if projects is None:
+            if projects is None or len(projects) == 0:
                 project = Project(field_name="default")
                 await context.db.save(project)
                 project_id = project.id
@@ -723,6 +723,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
         logger.debug(f"Task task_id: {registry_entry.id} computes arg hashes")
         registry_entry.arg_hash = compute_arg_hash(args)
 
+
     logger.debug(
         f"Task task_id: {registry_entry.id} {registry_entry.name} loaded {len(args)} inputs in Node:node_from_database status: {registry_entry.status}"
     )
@@ -809,6 +810,8 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
         "call_path": registry_entry.call_path,
         "parameters": registry_entry.parameters,
         "custom_name": registry_entry.custom_name,
+        "arg_hash": registry_entry.arg_hash,
+        "function_hash": registry_entry.function_hash,
     }
     if hasattr(registry_entry, "is_async"):
         kwargs["is_async"] = registry_entry.is_async
