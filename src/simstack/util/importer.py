@@ -1,5 +1,6 @@
 import importlib
 import logging
+import re
 from typing import Any, Callable, Optional, Type, cast
 from odmantic import Model, AIOEngine, ObjectId
 
@@ -11,6 +12,24 @@ logger = logging.getLogger("importer")
 
 NODES_SEARCH_BY_NAME_FALLBACK = True
 MODELS_SEARCH_BY_NAME_FALLBACK = True
+
+# Mapping for relocated modules to ensure backward compatibility
+_PATH_MIGRATION_MAP = {
+    "applications.electronic_structure.util.obabel_scripts": "molecular_qm_util.obabel_scripts",
+    "applications.electronic_structure.util.indigo_scripts": "molecular_qm_util.indigo_scripts",
+    "applications.electronic_structure.util.molecular_geometry": "molecular_qm_models.molecular_geometry",
+    "applications.electronic_structure.util.zmatrix": "molecular_qm_models.zmatrix",
+    "applications.electronic_structure.util.molecule_list_from_file": "molecular_qm_models.molecule_list_from_file",
+    "applications.electronic_structure.util.make_database_from_molecules": "molecular_qm_models.make_database_from_molecules",
+    "applications.electronic_structure.util.molecule_to_pymatgen": "molecular_qm_models.molecule_to_pymatgen",
+}
+
+
+def _migrate_function_path(path: str) -> str:
+    for old_prefix, new_prefix in _PATH_MIGRATION_MAP.items():
+        if path.startswith(old_prefix):
+            return path.replace(old_prefix, new_prefix, 1)
+    return path
 
 
 def _get_initialized_context() -> Any | None:
@@ -177,6 +196,7 @@ async def _function_from_model(
     """
 
     function_path = node_model.function_mapping
+    function_path = _migrate_function_path(function_path)
     try:
         module_path, function_name = function_path.rsplit(".", 1)
         module = importlib.import_module(module_path)
@@ -219,6 +239,7 @@ async def import_function(
     Returns:
         The imported function object or None if import fails
     """
+    function_path = _migrate_function_path(function_path)
     node_model = await _find_node_model(function_path, db)
 
     if node_model is None:
@@ -265,7 +286,7 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
     Returns:
         The imported class object or None if import fails
     """
-
+    class_path = _migrate_function_path(class_path)
     try:
         # Split the path into module path and class name
         module_path, class_name = class_path.rsplit(".", 1)
