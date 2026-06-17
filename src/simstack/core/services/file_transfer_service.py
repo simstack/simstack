@@ -63,7 +63,7 @@ class FileTransferService(BaseService):
             transfers = client.list_transfers(role="source", status="created", limit=10)
         except Exception as exc:
             logger.warning("Unable to poll file transfers: %s", exc)
-            return
+            raise exc
 
         for transfer in transfers:
             transfer_id = str(transfer.get("transfer_id") or "")

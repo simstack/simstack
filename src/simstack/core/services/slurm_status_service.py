@@ -64,3 +64,4 @@ class SlurmStatusService(BaseService):
 
         except Exception as e:
             logger.exception(f"Error checking Slurm status: {e}")
+            raise e
