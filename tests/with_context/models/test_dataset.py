@@ -16,7 +16,7 @@ class TestDataSetSection:
         section = DataSetSection()
 
         assert section.model_types == {}
-        # assert section.data == {} # Removed data field
+        assert section.data == {}
         assert len(section) == 0
 
     @pytest.mark.asyncio
@@ -32,7 +32,8 @@ class TestDataSetSection:
 
         assert len(section) == 1
         assert section.model_types == {"f": "FloatData", "s": "StringData"}
-        # assert section.data[item_name] == {"f": float_data.id, "s": string_data.id} # Removed data field
+        # Note: data is only synchronized in save()
+        assert section.data == {}
         
         # Verify it's in the cache
         cache = section._get_cache()
@@ -277,13 +278,13 @@ class TestDataSetSectionDict:
         await context.db.save(f1)
 
         section = DataSetSection()
-        # self.data is removed, so we add it to the section normally
-        section.add_row({"f": f1}, name="item1")
+        # data is synchronized in save, or we can set it manually for this test
+        section.model_types = {"f": "FloatData"}
+        section.data = {"item1": {"f": f1.id}}
 
-        # Cache should NOT be empty because add_row populates it
-        assert "item1" in section._get_cache()
+        # Cache should be empty initially
+        assert "item1" not in section._get_cache()
 
-        # Load to cache should now be a no-op
         await section.load_to_cache(context.db)
 
         assert "item1" in section._get_cache()

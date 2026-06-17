@@ -18,16 +18,12 @@ class DataSetSection(EmbeddedModel):
     :ivar model_types: Dictionary mapping keys to model class names.
     :type model_types: Dict[str, str]
     :ivar data: Dictionary mapping names to dictionaries mapping keys to ObjectIds.
-    :type data: Dict[str, Dict[str, ObjectId]] stores the ids, the actual data is in the cache
-
-
-
-
+    :type data: Dict[str, Dict[str, ObjectId]]
     """
 
     model_types: Dict[str, str] = Field(default_factory=dict)
 
-    persistent_data: Dict[str, Dict[str, ObjectId]] = Field(default_factory=dict)
+    data: Dict[str, Dict[str, ObjectId]] = Field(default_factory=dict)
 
     column_defs: List[Dict] = Field(default_factory=list)
     table_entries: List[List[Dict]] = Field(default_factory=list)
@@ -45,23 +41,6 @@ class DataSetSection(EmbeddedModel):
             cache = {}
             cache = self._set_cache(cache)
         return cache
-
-    @property
-    def data(self) -> Dict[str, Dict[str, ObjectId]]:
-        """
-        Dynamically construct data from the cache.
-        This allows the rest of the system to still use the .data attribute
-        while the source of truth is the cache.
-        """
-        # Return persistent_data if cache is empty, otherwise construct from cache
-        cache = self._get_cache()
-        if not cache:
-            return self.persistent_data
-
-        return {
-            name: {key: model.id for key, model in row.items()}
-            for name, row in cache.items()
-        }
 
     def add_row(self, item: Dict[str, Optional[Model]], name: Optional[str] = None) -> None:
         """
@@ -160,7 +139,7 @@ class DataSetSection(EmbeddedModel):
 
     async def save(self, db):
         """
-        Save all models in the cache to the database and update persistent_data.
+        Save all models in the cache to the database and update data.
         """
         cache = self._get_cache()
         for row_name, row_models in cache.items():
@@ -168,8 +147,8 @@ class DataSetSection(EmbeddedModel):
                 if model is not None:
                     await db.save_unchecked(model)
 
-        # Sync cache to persistent_data before saving
-        self.persistent_data = {
+        # Sync cache to data before saving
+        self.data = {
             name: {k: v.id for k, v in row.items()}
             for name, row in cache.items()
         }
@@ -194,7 +173,7 @@ class DataSetSection(EmbeddedModel):
         if db is None:
             db = context.db
         cache = self._get_cache()
-        for name, row in self.persistent_data.items():
+        for name, row in self.data.items():
             cached_row = {}
             for key, model_id in row.items():
                 model_type = self.model_types[key]
