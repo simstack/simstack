@@ -1,5 +1,6 @@
 import pytest
 import pytest_asyncio
+import logging
 from odmantic import ObjectId
 from simstack.core.context import context
 from simstack.core.node import node, node_from_database
@@ -246,7 +247,7 @@ async def test_node_from_database_recovers_itself(initialized_context, setup_hel
     func_hash = complex_hash_function(helper_node_func._inner)
     
     # Create a registry entry that IS ALREADY in the DB and HAS HASHES
-    registry_entry = NodeRegistry(
+    existing_entry = NodeRegistry(
         name="helper_node_func",
         status=TaskStatus.SUBMITTED,
         input_references=[NamedDataReference.from_variable(input_data)],
@@ -256,20 +257,35 @@ async def test_node_from_database_recovers_itself(initialized_context, setup_hel
         parameters=Parameters(),
         is_async=False
     )
-    await context.db.save(registry_entry)
+    await context.db.save(existing_entry)
+    
+    # NEW entry with DIFFERENT ID but SAME hashes
+    new_entry = NodeRegistry(
+        name="helper_node_func",
+        status=TaskStatus.SUBMITTED,
+        input_references=[NamedDataReference.from_variable(input_data)],
+        function_hash=func_hash,
+        arg_hash=arg_hash,
+        func_mapping=f"{CURRENT_MODULE}.helper_node_func",
+        parameters=Parameters(),
+        is_async=False
+    )
+    # SAVE it so it can be deleted
+    await context.db.save(new_entry)
     
     try:
-        # Call node_from_database
-        reconstructed_node = await node_from_database(registry_entry)
+        # Call node_from_database with new_entry
+        with caplog.at_level(logging.INFO, logger="Node"):
+            reconstructed_node = await node_from_database(new_entry)
         
         assert reconstructed_node is not None
-        assert reconstructed_node.registry_entry.id == registry_entry.id
+        assert reconstructed_node.registry_entry.id == existing_entry.id
         
         # Check if the INFO log about duplicate is present (since it's already in DB)
         assert "found duplicate entry" in caplog.text
-        # Check that the error log is GONE
+        # Check that the error log is GONE (historical check)
         assert "recovered itself. This should not happen" not in caplog.text
         
     finally:
-        await context.db.delete(registry_entry)
+        await context.db.delete(existing_entry)
         await context.db.delete(input_data)
