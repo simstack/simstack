@@ -8,7 +8,6 @@ from simstack.core.definitions import DBType
 from simstack.tables.model_table import make_model_table
 from simstack.tables.node_table import make_node_table
 from simstack.models.files import FileStack
-from simstack.util.project_root_finder import find_project_root
 
 
 def pytest_report_header(config):
@@ -38,15 +37,14 @@ async def initialized_context(tmp_path_factory):
     if use_real_db:
         logger.info(f"Test context initialized with real MongoDB")
         if not _mongodb_available(db_connection_string):
-            raise RuntimeError(f"SIMSTACK_TEST cannot reach db at: {db_connection_string}")
-
+            pytest.exit("SIMSTACK_TEST: Failed to reach MongoDB. Terminating all tests. .",
+                        returncode=1)
         # Test actual read/write operations
         if not await _test_mongodb_connection(db_connection_string, test_database_name):
             pytest.exit("SIMSTACK_TEST: Failed to write and read test document from MongoDB. Terminating all tests.",
                         returncode=1)
     else:
         logger.info("Test context initialized with mock database (patched for mongomock)")
-
 
     working_dir = tmp_path_factory.mktemp("simstack_test")
     # set the variables such that fake dirs exist, project_root is the actual project root
@@ -59,20 +57,19 @@ async def initialized_context(tmp_path_factory):
     os.environ["HOME"] = str(working_dir / "home")
     os.environ["TEMP"] = str(working_dir)
 
-    project_root = find_project_root(skip_files=())
+    project_root = Path.cwd() # find_project_root(skip_files=())
 
     import sys
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
-    if str(project_root / "simstack" / "src") not in sys.path:
-        sys.path.insert(0, str(project_root / "simstack" / "src"))
+    if str(project_root / "src") not in sys.path:
+        sys.path.insert(0, str(project_root / "src"))
 
-    from simstack.util.db import Database
-    # IMPORTANT: Do not move Database import inside initialize unless necessary.
-    # It seems to be fine here.
+    test_workdir = tmp_path_factory.mktemp("test_workdir")
 
     await context.initialize(
         console=False,
+        skip_config=True, # we first need to write the ResourceDefinition to the database
         is_test=True,
         resource="self",
         connection_string=db_connection_string if use_real_db else None,
@@ -82,76 +79,12 @@ async def initialized_context(tmp_path_factory):
         project_root=project_root
     )
 
+
+
     if use_real_db:
         await context.db.reset_database()
     else:
-        # Patch ODMantic engine to work without sessions in test mode
-        async def patched_save(instance, *args, **kwargs):
-            """Patched save method that doesn't use sessions"""
-            # Handle engine.save(None, model) which is how it might be called
-            if instance is None and args:
-                 instance = args[0]
-                 args = args[1:]
-
-            # If instance is still None, it might be a call to validate args
-            if instance is None:
-                from odmantic import Model
-                if not args or not isinstance(args[0], Model):
-                     raise TypeError("AIOEngine.save() missing 1 required positional argument: 'instance'")
-                return instance
-
-            # Use the collection directly without transactions
-            collection = context.db.get_collection(type(instance))
-
-            # Ensure the instance has an ObjectId
-            if not instance.id:
-                from odmantic import ObjectId
-
-                instance.id = ObjectId()
-
-            # Convert to dict and save
-            doc = instance.model_dump(by_alias=True)
-            doc["_id"] = instance.id
-
-            # Upsert the document
-            await collection.replace_one({"_id": instance.id}, doc, upsert=True)
-            return instance
-
-        async def patched_save_all(instances, **kwargs):
-            """Patched save_all method that doesn't use sessions"""
-            results = []
-            for instance in instances:
-                result = await patched_save(instance, **kwargs)
-                results.append(result)
-            return results
-
-        # Apply patches only for the mock database
-        context.db._engine.save = patched_save
-        context.db._engine.save_all = patched_save_all
-        # DO NOT patch find/find_one on _engine with the facade methods,
-        # because the facade methods call _engine.find/find_one, creating recursion.
-
-        context.db.save = Database.save.__get__(context.db, Database)
-        context.db.find = Database.find.__get__(context.db, Database)
-        context.db.find_one = Database.find_one.__get__(context.db, Database)
-        context.db.save_all = patched_save_all
-        context.db.save_unchecked = Database.save_unchecked.__get__(context.db, Database)
-
-        # Mock database command for stats
-        async def patched_command(command, *args, **kwargs):
-            if isinstance(command, str):
-                command = {command: 1}
-            if "dbStats" in command:
-                return {"db": "ui_testing", "collections": 10, "objects": 100}
-            if "ping" in command:
-                return {"ok": 1.0}
-            raise NotImplementedError(f"Mock command {command} not implemented")
-
-        context.db.database.command = patched_command
-
-    project_root = find_project_root()
-    test_workdir = Path(project_root) / "test_workdir"
-    test_workdir.mkdir(parents=True, exist_ok=True)
+        await create_db_patches(context.db)
 
     from simstack.models.resource_definition import ResourceDefinition
     test_resource_definition = ResourceDefinition(
@@ -161,13 +94,19 @@ async def initialized_context(tmp_path_factory):
         is_default=False,
         git_branch="main"
     )
-
     await context.db.save(test_resource_definition)
+    # we do not need a toml reader if we pass all arguments as kwargs
+    await context.initialize_configs(context.db, None, resource = "test", workdir=test_workdir,
+                                     project_root=project_root, python_paths = [project_root / "src"],
+                                     environment_start = "")
+
 
     # Initialize model and node tables for both real and mock databases
-    dirs = [] # "simstack/src/simstack/models", "simstack/src/simstack/methods", "tests"]
-    await make_model_table(context.db, dirs=dirs, drops="src", clear=True, project_root=project_root)
-    await make_node_table(context.db, dirs=dirs, drops="src", clear=True, project_root=project_root)
+    dirs = ["tests", "src/simstack/models" ,"src/simstack/methods"]  # "simstack/src/simstack/models", "simstack/src/simstack/methods", "tests"]
+    await make_model_table(context.db, dirs=dirs, drops="src", clear=True,
+                           project_root=project_root, ignore_entrypoints=True)
+    await make_node_table(context.db, dirs=dirs, drops="src", clear=True,
+                          project_root=project_root, ignore_entrypoints=True)
 
     # Ensure a "test" resource exists in DB for tests
     from simstack.models.resource_definition import ResourceDefinition
@@ -191,7 +130,9 @@ async def initialized_context(tmp_path_factory):
     # Mock TomlReader to avoid file access
     mock_toml = MagicMock()
     mock_toml.use_db.return_value = True
-    context.config = await ConfigReader.create("test", context.db, mock_toml, project_root=project_root, workdir=working_dir)
+    context.config = await ConfigReader.create("test", context.db, mock_toml, project_root=project_root,
+                                               workdir=working_dir, python_paths=[project_root / "src"],
+                                               environment_start="")
 
     if use_real_db:
         # print(f"\n[SIMSTACK] Test context initialized with real MongoDB database at: {db_connection_string}")
@@ -253,6 +194,73 @@ async def initialized_context(tmp_path_factory):
             print("Test context cleaned up")
     except Exception as e:
         print(f"Warning: Error during context cleanup: {e}")
+
+
+async def create_db_patches(db):
+    from simstack.util.db import Database
+    # Patch ODMantic engine to work without sessions in test mode
+    async def patched_save(instance, *args, **kwargs):
+        """Patched save method that doesn't use sessions"""
+        # Handle engine.save(None, model) which is how it might be called
+        if instance is None and args:
+            instance = args[0]
+            args = args[1:]
+
+        # If instance is still None, it might be a call to validate args
+        if instance is None:
+            from odmantic import Model
+            if not args or not isinstance(args[0], Model):
+                raise TypeError("AIOEngine.save() missing 1 required positional argument: 'instance'")
+            return instance
+
+        # Use the collection directly without transactions
+        collection = context.db.get_collection(type(instance))
+
+        # Ensure the instance has an ObjectId
+        if not instance.id:
+            from odmantic import ObjectId
+
+            instance.id = ObjectId()
+
+        # Convert to dict and save
+        doc = instance.model_dump(by_alias=True)
+        doc["_id"] = instance.id
+
+        # Upsert the document
+        await collection.replace_one({"_id": instance.id}, doc, upsert=True)
+        return instance
+
+    async def patched_save_all(instances, **kwargs):
+        """Patched save_all method that doesn't use sessions"""
+        results = []
+        for instance in instances:
+            result = await patched_save(instance, **kwargs)
+            results.append(result)
+        return results
+
+    # Apply patches only for the mock database
+    db._engine.save = patched_save
+    db._engine.save_all = patched_save_all
+    # DO NOT patch find/find_one on _engine with the facade methods,
+    # because the facade methods call _engine.find/find_one, creating recursion.
+
+    db.save = Database.save.__get__(context.db, Database)
+    db.find = Database.find.__get__(context.db, Database)
+    db.find_one = Database.find_one.__get__(context.db, Database)
+    db.save_all = patched_save_all
+    db.save_unchecked = Database.save_unchecked.__get__(context.db, Database)
+
+    # Mock database command for stats
+    async def patched_command(command, *args, **kwargs):
+        if isinstance(command, str):
+            command = {command: 1}
+        if "dbStats" in command:
+            return {"db": "ui_testing", "collections": 10, "objects": 100}
+        if "ping" in command:
+            return {"ok": 1.0}
+        raise NotImplementedError(f"Mock command {command} not implemented")
+
+    context.db.database.command = patched_command
 
 
 @pytest.fixture(scope="function")

@@ -97,18 +97,18 @@ class GlobalState:
         Args:
             **kwargs: Arbitrary keyword arguments for configuration. The following keys are expected:
                 - project_root (str, optional): The project root directory. If not provided, it will be
-                  determined using `find_project_root`.
+                    determined using `find_project_root`.
                 - db_name (str, optional): The name of the database. Required when not using a TOML
-                  configuration.
+                    configuration.
                 - connection_string (str, optional): The connection string for the database. Required
-                  when not using a TOML configuration.
+                    when not using a TOML configuration.
                 - db_type (DBType, optional): The type of the database. Required when not using a TOML
-                  configuration.
+                    configuration.
                 - is_test (bool, optional): Indicates whether the initialization is for testing purposes.
-                  Defaults to `False`.
+                    Defaults to `False`.
                 - log_level (str, optional): Specifies the logging level. Defaults to `"INFO"`.
                 - resource (str, optional): Specifies the resource identifier for the configuration reader.
-                  Defaults to `"self"`.
+                    Defaults to `"self"`.
                 - config_file (str, optional): Specifies the path to the configuration file, defaults to simstack.toml
 
         Logic:
@@ -125,40 +125,30 @@ class GlobalState:
             for the specific resource
 
         """
+        is_test = kwargs.get("is_test", False)
+        resource_str = kwargs.get("resource", "self")
+
         if self._initialized:
             # If already initialized, we just return if not in test mode,
-            if not kwargs.get("is_test", False):
+            if not is_test:
                 return
+        self._initialized = True  # required because some later functions use context
 
-        self._initialized = True
         project_root = kwargs.get("project_root", find_project_root())
         if project_root is None:  # maybe None was passed
             project_root = find_project_root()
             kwargs["project_root"] = project_root  # overwrite in case it was not set before
 
         simstack_toml_path = project_root / "simstack.toml"
-        print(f"TOML PATH {simstack_toml_path}")
+        toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
+
         db_name: str | None = kwargs.get("db_name", None)
         connection_string: str | None = kwargs.get("connection_string", None)
         db_type: DBType | None = kwargs.get("db_type", None)
-        is_test = kwargs.get("is_test", False)
-        resource_config_file = kwargs.get("config_file")
-        if resource_config_file is None:
-            resource_config_file = project_root / "config.toml"
-        else:
-            resource_config_file = Path(resource_config_file)
 
-
-        toml_reader = None
-        if is_test:
-            db_info = DatabaseInformation(db_name, connection_string, db_type)
-        elif db_name is None or connection_string is None or db_type is None:
-            # use toml
-            toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
-            if toml_reader.config:
-                db_info = DatabaseInformation.from_config(toml_reader.config)
-            else:
-                db_info = DatabaseInformation(db_name, connection_string, db_type)
+        if db_name is None or connection_string is None or db_type is None:
+            # use not all info in the kwargs
+            db_info = DatabaseInformation.from_config(toml_reader.config)
         else:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
 
@@ -166,36 +156,41 @@ class GlobalState:
         self.initialize_database(db_info, is_test)
         self.initialize_logging(db_info.connection_string, db_info.db_name, is_test, kwargs.get("log_level", "INFO"))
 
-
         logger = logging.getLogger("Context")
         if db_info.connection_string is not None:
-            safe_connection_string = remove_password_from_connection_string(
-                db_info.connection_string
-            )
-            logger.info(
-                f"Database connection to {db_type} {safe_connection_string}/{db_name}"
-            )
+            safe_connection_string = remove_password_from_connection_string(db_info.connection_string)
+            logger.info(f"Database connection to {db_type} {safe_connection_string}/{db_name}")
         else:
             logger.info(f"Database connection in_memory {db_type}")
-        # here we have a db, we may or may not have a toml reader
-        resource_str: str = kwargs.get("resource", "self")
-        # For testing, we might want to skip ConfigReader if it causes issues
-        from simstack.util.config_reader import ConfigReader
-        from simstack.util.resource_config import ResourceConfig
+
         if not kwargs.get("skip_config", False):
-            try:
-                self._config = await ConfigReader.create(resource_str, self._db, toml_reader, project_root, **kwargs)
-                self._resource_config = ResourceConfig(resource_config_file, resource_str)
-            except Exception as e:
-                if is_test:
-                    logger.warning(f"Failed to initialize ConfigReader in test mode: {e}")
-                else:
-                    raise e
+            await self.initialize_configs(self._db, toml_reader, **kwargs)
 
         # Initialize memory-loaded mappings
         await self.refresh_mappings()
 
         self._initialized = True
+
+    async def initialize_configs(self, db, toml_reader, **kwargs):
+        project_root = kwargs["project_root"]
+        resource_str = kwargs.get("resource", "self")
+        is_test = kwargs.get("is_test", False)
+        try:
+            from simstack.util.config_reader import ConfigReader
+            from simstack.util.resource_config import ResourceConfig
+            resource_config_file = kwargs.get("config_file")
+            if resource_config_file is None:
+                resource_config_file = project_root / "config.toml"
+            else:
+                resource_config_file = Path(resource_config_file)
+            self._config = await ConfigReader.create(resource_str, db, toml_reader, **kwargs)
+            self._resource_config = ResourceConfig(resource_config_file, resource_str)
+        except Exception as e:
+            if is_test:
+                logger = logging.getLogger("Context")
+                logger.warning(f"Failed to initialize ConfigReader in test mode: {e}")
+            else:
+                raise e
 
     async def refresh_mappings(self, *, models: bool = True, nodes: bool = True):
         if models:
@@ -277,7 +272,6 @@ class GlobalState:
     @property
     def initialized(self):
         return self._initialized
-
 
 
 # Create the singleton instance, but it's not initialized yet

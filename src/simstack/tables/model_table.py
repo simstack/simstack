@@ -172,6 +172,7 @@ async def make_model_table(
     write_schema: bool = False,
     clear: bool = False,
     project_root: Path = None,
+    ignore_entrypoints: bool = False,
 ):
     """
     Rebuild the model table using the given database.
@@ -179,7 +180,7 @@ async def make_model_table(
     This is a thin wrapper around CreateModelTable for backward compatibility.
     """
     creator = CreateModelTable(db, write_schema=write_schema, project_root=project_root)
-    await creator.build(dirs=dirs, drops=drops, clear=clear)
+    await creator.build(dirs=dirs, drops=drops, clear=clear, ignore_entrypoints=ignore_entrypoints)
 
 
 def create_model_table_main():

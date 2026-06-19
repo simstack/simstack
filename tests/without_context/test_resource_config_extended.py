@@ -116,36 +116,38 @@ output_files = ["output.txt"]
         finally:
             os.chdir(old_cwd)
 
-def test_resource_config_run_tmp_base_dir_assignment(tmp_path):
-    # Test that tmp_base_dir handles assignments like "set TMP_BASE_DIR=..."
-    config_file = tmp_path / "config.toml"
-    content = """
-[local.program.test_prog]
-use_temp = true
-run_command = "python -c \\"open('output.txt', 'w').write('done')\\""
-output_files = ["output.txt"]
-scratch_cleanup = false
-"""
-    config_file.write_text(content)
-    rc = ResourceConfig(tmp_path, "local")
+def test_resource_config_tmp_base_dir_expansion(tmp_path, monkeypatch):
+    # Test that tmp_base_dir handles environment variable expansion and directory creation
+    rc = ResourceConfig(tmp_path, "test")
     
     with tempfile.TemporaryDirectory() as test_cwd:
-        old_cwd = os.getcwd()
-        os.chdir(test_cwd)
-        try:
-            test_cwd_path = Path(test_cwd)
-            temp_base = test_cwd_path / "my_assigned_temp_base"
-            # Simulate a windows style set command in the string
-            tmp_base_dir_str = f"set TMP_BASE_DIR={temp_base}"
-            
-            rc.get_setup_params = lambda: {"tmp_base_dir": tmp_base_dir_str}
-            
-            rc.run(program_name="test_prog")
-            
-            assert (test_cwd_path / "output.txt").exists()
-            assert temp_base.exists()
-            # Since scratch_cleanup=False, there should be a temp dir inside temp_base
-            subdirs = [d for d in temp_base.iterdir() if d.is_dir()]
-            assert len(subdirs) == 1
-        finally:
-            os.chdir(old_cwd)
+        test_cwd_path = Path(test_cwd)
+        # 1. Test normal path (non-existent)
+        temp_base = test_cwd_path / "new_base"
+        assert not temp_base.exists()
+        rc.get_setup_params = lambda: {"tmp_base_dir": str(temp_base)}
+        
+        path = rc.tmp_base_dir
+        assert path == temp_base
+        assert temp_base.exists()
+        
+        # 2. Test environment variable expansion
+        env_base = test_cwd_path / "env_base"
+        monkeypatch.setenv("MY_TEMP_VAR", str(env_base))
+        assert not env_base.exists()
+        rc.get_setup_params = lambda: {"tmp_base_dir": "$MY_TEMP_VAR" if os.name != 'nt' else "%MY_TEMP_VAR%"}
+        
+        path = rc.tmp_base_dir
+        assert path == env_base
+        assert env_base.exists()
+
+        # 3. Test user expansion (~)
+        # We'll just check if it calls expanduser by mocking it or checking results
+        # A simple check: if we use ~ it should not be literally ~
+        rc.get_setup_params = lambda: {"tmp_base_dir": "~/simstack_tmp_test"}
+        path = rc.tmp_base_dir
+        assert path != Path("~/simstack_tmp_test")
+        assert path.is_absolute()
+        # Clean up the created directory if it's in home
+        if path.exists() and "simstack_tmp_test" in path.name:
+             shutil.rmtree(path)

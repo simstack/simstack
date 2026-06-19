@@ -69,7 +69,11 @@ async def submit_node(registry_entry: NodeRegistry) -> None:
         }        
         """
 
-        program_config = context.resource_config.get_program(registry_entry.name)
+        if context.resource_config is not None:
+            program_config = context.resource_config.get_program(registry_entry.name)
+        else:
+            program_config = {}
+
         logger.info(f"task_id: {task_id} program_config {program_config}")
         if program_config.get("use_tmp", False):
             tmp_dir = context.resource_config.tmp_dir(registry_entry.id)

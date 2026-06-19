@@ -486,6 +486,7 @@ async def make_node_table(
     write_schema: bool = False,
     clear: bool = False,
     project_root: Path | None = None,
+    ignore_entrypoints: bool = False,
 ) -> None:
     """
     Rebuild the node table using the given databse.
@@ -493,7 +494,7 @@ async def make_node_table(
     This is a thin wrapper around CreateNodeTable for backward compatibility.
     """
     creator = CreateNodeTable(db, write_schema=write_schema, project_root=project_root)
-    await creator.build(dirs=dirs, drops=drops, clear=clear)
+    await creator.build(dirs=dirs, drops=drops, clear=clear, ignore_entrypoints=ignore_entrypoints)
 
 
 def create_node_table_main() -> None:

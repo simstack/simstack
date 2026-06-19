@@ -38,6 +38,19 @@ async def test_initialization_flow(tmp_path):
     with pytest.raises(RuntimeError, match="GlobalState must be initialized"):
         _ = gs.db
 
+    # Create simstack.toml in tmp_path
+    toml_file = tmp_path / "simstack.toml"
+    toml_file.write_text("""
+[parameters.db]
+database = "test_db"
+connection_string = "mongodb://localhost:27017"
+[parameters.general]
+use_db = true
+[resources.test]
+hostname = "localhost"
+workdir = "test_workdir"
+""")
+
     # Mock dependencies
     with patch("simstack.core.context.DatabaseInformation") as mock_db_info_class, \
          patch("simstack.util.db.Database") as mock_db_class, \
@@ -46,6 +59,15 @@ async def test_initialization_flow(tmp_path):
          patch("simstack.util.mappings.ModelMappingTable.load", new_callable=AsyncMock) as mock_model_load, \
          patch("simstack.util.mappings.NodeMappingTable.load", new_callable=AsyncMock) as mock_node_load:
         
+        from simstack.models.resource_definition import ResourceDefinition
+        mock_resource_definition = ResourceDefinition(
+            resource_str="test",
+            hostname="localhost",
+            workdir=str(tmp_path / "workdir"),
+            python_paths=[],
+            routes=[]
+        )
+
         mock_db_info = MagicMock()
         mock_db_info.connection_string = "mongodb://localhost:27017"
         mock_db_info.db_name = "test_db"
@@ -55,6 +77,7 @@ async def test_initialization_flow(tmp_path):
         mock_db_instance = MagicMock()
         mock_db_instance.connection_string = "mongodb://localhost:27017"
         mock_db_instance.db_name = "test_db"
+        mock_db_instance.find = AsyncMock(return_value=[mock_resource_definition])
         mock_db_class.from_db_info.return_value = mock_db_instance
         
         mock_config_instance = MagicMock()
@@ -66,7 +89,7 @@ async def test_initialization_flow(tmp_path):
             db_name="test_db",
             connection_string="mongodb://localhost:27017",
             db_type=DBType.MONGODB,
-            resource="local"
+            resource="test"
         )
         
         assert gs.initialized is True
@@ -92,8 +115,22 @@ async def test_getattribute_whitelist():
         _ = gs.some_random_attribute
 
 @pytest.mark.asyncio
-async def test_reinitialization_behavior():
+async def test_reinitialization_behavior(tmp_path):
     gs = GlobalState()
+    
+    # Create simstack.toml in tmp_path
+    toml_file = tmp_path / "simstack.toml"
+    toml_file.write_text("""
+[parameters.db]
+database = "test_db"
+connection_string = "mongodb://localhost:27017"
+[parameters.general]
+use_db = true
+[resources.self]
+hostname = "localhost"
+workdir = "test_workdir"
+""")
+
     with patch("simstack.core.context.DatabaseInformation") as mock_db_info_class, \
          patch("simstack.util.db.Database"), \
          patch("simstack.util.config_reader.ConfigReader.create", new_callable=AsyncMock), \
@@ -105,12 +142,13 @@ async def test_reinitialization_behavior():
         mock_db_info.connection_string = "mongodb://localhost:27017"
         mock_db_info.db_name = "test_db"
         mock_db_info.db_type = DBType.MONGODB
+        mock_db_info_class.from_config.return_value = mock_db_info
         mock_db_info_class.return_value = mock_db_info
 
-        await gs.initialize(is_test=True)
+        await gs.initialize(is_test=True, project_root=tmp_path)
         assert gs.initialized is True
         
         # Second call to initialize should return early if not is_test or if already initialized
         with patch.object(gs, 'initialize_database') as mock_init_db:
-            await gs.initialize(is_test=False)
+            await gs.initialize(is_test=False, project_root=tmp_path)
             mock_init_db.assert_not_called()

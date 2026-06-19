@@ -3,10 +3,11 @@ import os
 import shutil
 import subprocess
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Union
 
-from bson import ObjectId
+from odmantic import ObjectId
 
 import logging
 logger = logging.getLogger("ResourceConfig")
@@ -66,30 +67,21 @@ class ResourceConfig:
     def tmp_dir(self, task_id: ObjectId | str) -> Path:
         if isinstance(task_id, ObjectId):
             task_id = str(task_id)
-        tmp_dir = self.tmp_base_dir / task_id
+        tmp_dir = self.tmp_base_dir / str(task_id)
         Path(tmp_dir).mkdir(parents=True, exist_ok=True)
         return tmp_dir
 
     @property
     def tmp_base_dir(self) -> Path:
-        tmp_dir_command = self._config.get(self._resource, {}).get("tmp_base_dir", "")
-        if tmp_dir_command:
-            try:
-                result = subprocess.run(tmp_dir_command, shell=True, check=True,
-                                        capture_output=True, text=True)
-                # Parse the output to extract TEMP_BASE_DIR value
-                logger.info(f"tmp_base_dir command {tmp_dir_command} result {result.stdout}")
-                for line in result.stdout.splitlines():
-                    if "TMP_BASE_DIR" in line and "=" in line:
-                        # Extract value after the = sign
-                        value = line.split("=", 1)[1].strip()
-                        # Remove quotes if present
-                        value = value.strip("'\"")
-                        return Path(value)
-            except (subprocess.CalledProcessError, Exception):
-                pass
-        
-        # Default to system temp directory if not found
+        tmp_base_dir_str = self.get_setup_params().get("tmp_base_dir", "")
+
+        if tmp_base_dir_str:
+            expanded_path_str = os.path.expandvars(os.path.expanduser(tmp_base_dir_str))
+            path = Path(expanded_path_str)
+            path.mkdir(parents=True, exist_ok=True)
+            return path
+
+        # Default to system temp directory if no command/path specified
         return Path(tempfile.gettempdir())
 
     def run(self,
@@ -130,7 +122,10 @@ class ResourceConfig:
         try:
             exec_dir = Path.cwd()
             if use_temp:
-                tmp_dir = self.tmp_dir(node_runner.task_id)
+                tmp_id = node_runner.task_id if node_runner else uuid.uuid4()
+                tmp_dir = self.tmp_dir(tmp_id)
+                exec_dir = tmp_dir
+                
                 # Copy input files to exec_dir
                 for f in input_files:
                     if hasattr(f, "get"):  # It's a FileStack

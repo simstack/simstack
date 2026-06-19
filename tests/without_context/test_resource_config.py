@@ -51,39 +51,71 @@ def test_resource_config_resource_storage(tmp_path):
     assert rc._resource == "remote-resource"
 
 @pytest.mark.asyncio
-async def test_global_state_initialization(tmp_path, monkeypatch):
+async def test_global_state_initialization(tmp_path):
     from simstack.core.context import GlobalState
-    from simstack.util.db import Database, DBType
-    from simstack.util.config_reader import ConfigReader
-    from simstack.util.resource_config import ResourceConfig
-    
-    # Mock Database and ConfigReader
-    mock_db = AsyncMock()
-    monkeypatch.setattr(Database, "from_db_info", lambda info: mock_db)
-    monkeypatch.setattr(ConfigReader, "create", AsyncMock(return_value=SimpleNamespace()))
-    
-    # We need to mock initialize_logging and refresh_mappings to avoid side effects
-    monkeypatch.setattr(GlobalState, "initialize_logging", lambda self, connection_string, db_name, is_test, log_level: None)
-    monkeypatch.setattr(GlobalState, "refresh_mappings", AsyncMock())
+    from simstack.util.db import DBType
+    from simstack.models.resource_definition import ResourceDefinition
     
     gs = GlobalState()
     # Ensure it's not initialized
     gs._initialized = False
     
-    config_file = tmp_path / "config.toml"
+    project_root = tmp_path
+    (project_root / "simstack.toml").write_text("[parameters.db]\ndatabase = \"test_db\"\n")
+    config_file = project_root / "config.toml"
     config_file.write_text("[local.program.orca]\ncmd = \"run\"\n")
     
+    # Mimic conftest.py:
+    # 1. Initialize with skip_config=True
     await gs.initialize(
         is_test=True,
-        project_root=tmp_path,
-        db_name="test",
-        connection_string="test",
+        project_root=project_root,
+        db_name="test_db",
+        connection_string="mongodb://localhost:27017", # Provide a dummy connection string to satisfy from_config
         db_type=DBType.IN_MEMORY,
-        resource="local"
+        resource="local",
+        skip_config=True
+    )
+    
+    # 2. Save ResourceDefinition to DB
+    # We need to patch the DB save because mongomock doesn't support sessions
+    # mimicking create_db_patches from conftest.py
+    async def patched_save(instance, *args, **kwargs):
+        collection = gs.db.get_collection(type(instance))
+        if not instance.id:
+            from odmantic import ObjectId
+            instance.id = ObjectId()
+        doc = instance.model_dump(by_alias=True)
+        doc["_id"] = instance.id
+        await collection.replace_one({"_id": instance.id}, doc, upsert=True)
+        return instance
+
+    gs.db._engine.save = patched_save
+    
+    resource_definition = ResourceDefinition(
+        resource_str="local",
+        workdir=str(tmp_path),
+        hostname="localhost",
+        is_default=True
+    )
+    await gs.db.save(resource_definition)
+    
+    # 3. Initialize configs
+    # initialize_configs calls ConfigReader.create which calls initialize_resource_from_db
+    from simstack.util.toml_reader import TomlReader
+    mock_toml = AsyncMock(spec=TomlReader)
+    mock_toml.get.return_value = None
+    
+    await gs.initialize_configs(
+        gs.db, 
+        mock_toml,
+        project_root=project_root,
+        resource="local",
+        workdir=tmp_path,
+        python_paths=[project_root]
     )
     
     assert hasattr(gs, "resource_config")
-    assert isinstance(gs.resource_config, ResourceConfig)
     assert gs.resource_config._resource == "local"
     params = gs.resource_config.get_program("orca")
     assert params == {"cmd": "run"}

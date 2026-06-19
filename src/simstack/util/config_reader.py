@@ -4,10 +4,8 @@ from simstack.core.resources import allowed_resources
 from simstack.models.parameters import Resource
 from simstack.models.resource_definition import ResourceDefinition, GitRepo
 from simstack.util.transform_file_name import transform_file_name
-from simstack.util.init_data_source import (
-    initialize_resource_from_db,
-    initialize_paths_from_db,
-)
+from simstack.util.init_data_source import initialize_resource_from_db
+
 from simstack.util.toml_reader import TomlReader
 from simstack.util.database_information import DatabaseInformation
 
@@ -46,26 +44,31 @@ class ConfigReader(DatabaseInformation):
         project_root: Path,
         **kwargs,
     ):
+        """
+
+        the idea here is to attempt to get:
+
+        1) all required data from the kwargs, if available
+        2) if the data is not all available, get it from the database
+
+        """
         import logging
 
-        logger = logging.getLogger(
-            "config-reader"
-        )  # do this here because the calling function sets the logger up
+        logger = logging.getLogger("config-reader")  # do this here because the calling function sets the logger up
 
         required_keys = [
-            "resource",
-            "python_path",
-            "ssh_key",
-            "git_list",
-            "allowed_resources",
+            "python_paths",
             "workdir",
             "environment_start",
         ]
-        init_done = False
+        init_done = True
+        workdir_self = None
         config = {"project_root": project_root}
         for key in required_keys:
             if key in kwargs:
                 config[key] = kwargs.get(key)
+                if key == "workdir":
+                    workdir_self = kwargs.get("workdir")
                 logger.info(f"Init from kwargs: {key}: {kwargs.get(key)}")
             else:
                 init_done = False
@@ -74,36 +77,29 @@ class ConfigReader(DatabaseInformation):
                 config[key] = kwargs.get(key)
                 logger.info(f"Init from kwargs: {key}: {kwargs.get(key)}")
 
-        resource_definition = None
         git_list = []
         if not init_done:
-            if not toml_reader:
-                toml_reader = TomlReader(project_root)
-            use_db_for_init = toml_reader.use_db()
+            if toml_reader is None:
+                raise ValueError("ConfigReader: No toml_reader provided.")
             workdir_self = kwargs.get("workdir", None)
             if workdir_self is None:
                 workdir_self = toml_reader.get("parameters.general.workdir_self", None)
                 if workdir_self is None:
                     workdir_self = toml_reader.get("resources.self.workdir", None)
             if workdir_self is None:
-                raise ValueError(
-                    "No workdir for self specified in config file or keyword arguments."
-                )
+                # raise ValueError("No workdir for self specified in config file or keyword arguments.")
+                workdir_self = project_root / "simstack" # Default to project_root / simstack if not found
             else:
                 workdir_self = Path(workdir_self)
 
-            logger.info(f"toml-file read, use_db_for_init: {use_db_for_init}")
-            if use_db_for_init:  # get all data from the simstack.toml file
-                resource_definition = await initialize_resource_from_db(
-                    resource_str, db, workdir_self
-                )
-                await initialize_paths_from_db(db)
-            else:
-                allowed_resources_list = toml_reader.get_allowed_resources()
-                allowed_resources.set_resources(allowed_resources_list)
-                resource_definition = toml_reader.get_resource_definition(resource_str)
-                git_list = toml_reader.get_git_list()
-                toml_reader.build_routes()
+        resource_definition = await initialize_resource_from_db(resource_str, db, workdir_self)
+            # else:
+            #     raise RuntimeError("initialization from toml file is deprecated")
+            #     allowed_resources_list = toml_reader.get_allowed_resources()
+            #     allowed_resources.set_resources(allowed_resources_list)
+            #     resource_definition = toml_reader.get_resource_definition(resource_str)
+            #     git_list = toml_reader.get_git_list()
+            #     toml_reader.build_routes()
 
         if resource_definition is None:
             raise ValueError("No valid resource definition found.")

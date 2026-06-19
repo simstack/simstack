@@ -69,8 +69,8 @@ async def test_initialize_default_resource_builds_model_table_before_node_table(
 
     assert result is resource_def
     assert [call[0] for call in call_order] == ["model", "node"]
-    assert call_order[0][1] == (engine,)
-    assert call_order[1][1] == (engine,)
+    assert call_order[0][1] == (db,)
+    assert call_order[1][1] == (db,)
     assert call_order[0][2] == {"dirs": ["src/simstack/models"]}
     assert call_order[1][2] == {"dirs": ["src/simstack/models"]}
 

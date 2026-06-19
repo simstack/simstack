@@ -12,7 +12,7 @@ from simstack.models.files import FileStack
 
 
 @node
-def failing_node(arg: IntData, **kwargs) -> IntData:
+def failing_node_with_int_arg(arg: IntData, **kwargs) -> IntData:
     task_id = kwargs.get("task_id", None)
     raise RuntimeError(f"Task task_id: {task_id} This is a test exception")
 
@@ -53,7 +53,7 @@ async def failing_node_with_runner(
 
 @node
 def calling_failing_node(arg: IntData, **kwargs) -> IntData:
-    failing_node(arg, **kwargs)
+    failing_node_with_int_arg(arg, **kwargs)
     return IntData(value=arg.value + 1)
 
 
@@ -68,11 +68,11 @@ def node_returns_bool(arg: IntData, **kwargs) -> bool:
 
 def test_failing_node():
     with pytest.raises(RuntimeError, match=r"Task task_id: .* This is a test exception"):
-        failing_node(IntData(value=1))
+        failing_node_with_int_arg(IntData(value=1))
 
 
 def test_calling_failing_node():
-    with pytest.raises(RuntimeError, match=r"Task task_id: .* node: failing_node terminated with status TaskStatus.FAILED"):
+    with pytest.raises(RuntimeError, match=r"Task task_id: .*This is a test exception"):
         calling_failing_node(IntData(value=1))
 
 

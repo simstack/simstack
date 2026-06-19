@@ -567,6 +567,10 @@ class Node:
                 else:
                     result = real_func(*self._args, **node_kwargs)
             except Exception as e:
+                # Save the error message if possible
+                if self.registry_entry:
+                    self.registry_entry.error = str(e)
+                    await context.db.save(self.registry_entry)
                 logger.exception(
                     f"Task task_id: {self.id} node function error for node: {self.name} msg: {str(e)}"
                 )
@@ -960,6 +964,13 @@ def node(
                     raise RuntimeError(
                         f"Task task_id: {execution_node.id} node: {execution_node.name} registry entry disappeared"
                     )
+
+                if (
+                    current_registry_entry.status == TaskStatus.FAILED
+                    and current_registry_entry.error
+                ):
+                    raise RuntimeError(current_registry_entry.error)
+
                 raise RuntimeError(
                     f"Task task_id: {current_registry_entry.id} node: {current_registry_entry.name} terminated with status {current_registry_entry.status}"
                 )
@@ -986,6 +997,13 @@ def node(
             ]:
                 return cast(T, loop.run_until_complete(execution_node.run_somewhere()))
             if result is None or execution_node.status != TaskStatus.COMPLETED:
+                if (
+                    execution_node.registry_entry is not None
+                    and execution_node.registry_entry.status == TaskStatus.FAILED
+                    and execution_node.registry_entry.error
+                ):
+                    raise RuntimeError(execution_node.registry_entry.error)
+
                 raise RuntimeError(
                     f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"
                 )

@@ -198,8 +198,8 @@ class TestIsModuleSubpathOfPath:
         """Test with applications directory structure."""
         mock_find_root.return_value = self.project_root
 
-        module_path = "molecular_qm_util.indigo_scripts.cdx_to_molecule_indigo"
-        path_info_path = self.project_root / "applications"
+        module_path = "tests.with_context.core.test_hash"
+        path_info_path = self.project_root / "tests"
 
         result = is_module_subpath_of_path(module_path, path_info_path)
         assert result is True
