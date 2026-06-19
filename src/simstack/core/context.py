@@ -137,7 +137,8 @@ class GlobalState:
         project_root = kwargs.get("project_root", find_project_root())
         if project_root is None:  # maybe None was passed
             project_root = find_project_root()
-            kwargs["project_root"] = project_root  # overwrite in case it was not set before
+
+        kwargs["project_root"] = project_root
 
         simstack_toml_path = project_root / "simstack.toml"
         toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
