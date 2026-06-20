@@ -159,6 +159,7 @@ class GlobalState:
 
         logger = logging.getLogger("Context")
         if db_info.connection_string is not None:
+            db_type = DBType.MONGODB.value
             safe_connection_string = remove_password_from_connection_string(db_info.connection_string)
             logger.info(f"Database connection to {db_type} {safe_connection_string}/{db_name}")
         else:

@@ -51,6 +51,7 @@ Thumbs.db
 debug.txt
 *.lock
 !pixi.lock
+!uv.lock
 
 # Build artifacts
 build/

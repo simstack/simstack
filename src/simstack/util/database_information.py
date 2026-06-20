@@ -119,7 +119,7 @@ class DatabaseInformation:
         elif isinstance(db_info, Database):
             return cls(
                 db_info.database_name,
-                "None",
+                db_info.connection_string,
                 db_info.databae_type,
                 getattr(db_info, "server_url", None),
                 getattr(db_info, "server_token", None),

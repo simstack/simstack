@@ -32,6 +32,7 @@ class Database:
         *,
         client: AsyncIOMotorClient | None = None,
         database_name: str | None = None,
+        connection_string: str | None = None,
         engine: Any | None = None,
         db_type: DBType | None = None,
         server_url: str | None = None,
@@ -48,6 +49,7 @@ class Database:
         self._engine = engine
         self._client = client or getattr(engine, "client", None)
         self._database_name = database_name or getattr(engine, "database_name", None)
+        self._connection_string = connection_string or getattr(engine, "connection_string", None)
         self._server_url = server_url
         self._server_token = server_token
 
@@ -58,6 +60,10 @@ class Database:
     @property
     def databae_type(self) -> DBType:
         return self._db_type
+
+    @property
+    def connection_string(self) -> str | None:
+        return self._connection_string
 
     @classmethod
     def from_db_info(cls, db_info: DatabaseInformation) -> "Database":
@@ -94,6 +100,7 @@ class Database:
             engine=engine,
             client=client,
             database_name=db_info.db_name,
+            connection_string=db_info.connection_string,
             db_type=db_info.db_type,
             server_url=db_info.server_url,
             server_token=db_info.server_token,

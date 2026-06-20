@@ -13,12 +13,12 @@ async def run_docker(registry_entry: NodeRegistry):
     resource = context.config.resource
     parameters = registry_entry.parameters
 
-    if parameters.docker_image:
-        image = parameters.docker_image
-    else:
-        image = context.config.docker_image
 
-    workdir = str(context.config.workdir)
+    program_config = context.resource_config.get_program(registry_entry.name)
+    image= program_config.get("docker_image", None)
+    if image is None:
+        raise ValueError(f"Docker image not found for task_id={registry_entry.name}")
+    workdir = context.config.workdir
 
     cmd = [
         "docker", "run", "-d",
@@ -27,7 +27,7 @@ async def run_docker(registry_entry: NodeRegistry):
         "-e", f"SIMSTACK_DB_CONNECTION_STRING={context.config.connection_string}",
         "-v", f"{workdir}:/root/simstack",
         image,
-        "uv", "run", "run_node", "--node-id", str(registry_entry.id), "--resource", str(resource)
+        "--node-id", str(registry_entry.id), "--resource", str(resource), "--project-root", "/app"
     ]
 
     # Use platform specific flags to ensure the process survives if runner is killed
