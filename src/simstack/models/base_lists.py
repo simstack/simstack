@@ -1,7 +1,8 @@
 import re
 from typing import Union, List, Any, Optional, TypeVar, Generic, Iterator, Iterable
 
-from odmantic import EmbeddedModel, Field, Model
+from .base_model import Model
+from odmantic import EmbeddedModel, Field
 
 from simstack.models import simstack_model, StringData
 from simstack.models.files import FileStack

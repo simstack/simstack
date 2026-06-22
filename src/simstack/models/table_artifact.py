@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict, Any
 
-from odmantic import Model, Field, EmbeddedModel, ObjectId
+from .base_model import Model
+from odmantic import Field, EmbeddedModel, ObjectId
 
 
 class AGGridColumnDef(EmbeddedModel):

@@ -2,7 +2,7 @@ import json
 import zlib
 from typing import Optional
 
-from odmantic import Model
+from .base_model import Model
 from pydantic import model_validator
 
 from simstack.models.simstack_model import simstack_model
