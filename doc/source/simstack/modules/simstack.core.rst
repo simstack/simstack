@@ -44,14 +44,6 @@ simstack.core.context module
    :show-inheritance:
    :undoc-members:
 
-simstack.core.data module
--------------------------
-
-.. automodule:: simstack.core.data
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 simstack.core.definitions module
 --------------------------------
 
@@ -92,10 +84,26 @@ simstack.core.node module
    :show-inheritance:
    :undoc-members:
 
+simstack.core.node\_claim module
+--------------------------------
+
+.. automodule:: simstack.core.node_claim
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.core.node\_runner module
 ---------------------------------
 
 .. automodule:: simstack.core.node_runner
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.core.process\_results module
+-------------------------------------
+
+.. automodule:: simstack.core.process_results
    :members:
    :show-inheritance:
    :undoc-members:
@@ -112,6 +120,14 @@ simstack.core.reset\_db module
 ------------------------------
 
 .. automodule:: simstack.core.reset_db
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.core.resource\_assignment module
+-----------------------------------------
+
+.. automodule:: simstack.core.resource_assignment
    :members:
    :show-inheritance:
    :undoc-members:

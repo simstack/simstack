@@ -12,6 +12,14 @@ simstack.core.services.base\_service module
    :show-inheritance:
    :undoc-members:
 
+simstack.core.services.file\_transfer\_service module
+-----------------------------------------------------
+
+.. automodule:: simstack.core.services.file_transfer_service
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.core.services.git\_restart\_service module
 ---------------------------------------------------
 

@@ -12,6 +12,14 @@ simstack.util.async\_zip\_utils module
    :show-inheritance:
    :undoc-members:
 
+simstack.util.b64mixin module
+-----------------------------
+
+.. automodule:: simstack.util.b64mixin
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.util.cleaned\_json\_schema module
 ------------------------------------------
 
@@ -92,6 +100,14 @@ simstack.util.file\_hashing module
    :show-inheritance:
    :undoc-members:
 
+simstack.util.file\_transfer\_client module
+-------------------------------------------
+
+.. automodule:: simstack.util.file_transfer_client
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.util.files module
 --------------------------
 
@@ -112,6 +128,14 @@ simstack.util.generate\_ui\_schema module
 -----------------------------------------
 
 .. automodule:: simstack.util.generate_ui_schema
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.util.generic\_list\_mixin module
+-----------------------------------------
+
+.. automodule:: simstack.util.generic_list_mixin
    :members:
    :show-inheritance:
    :undoc-members:
@@ -188,6 +212,14 @@ simstack.util.make\_table module
    :show-inheritance:
    :undoc-members:
 
+simstack.util.mappings module
+-----------------------------
+
+.. automodule:: simstack.util.mappings
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.util.minimal\_route\_finder module
 -------------------------------------------
 
@@ -212,6 +244,14 @@ simstack.util.module\_path\_checker module
    :show-inheritance:
    :undoc-members:
 
+simstack.util.object\_list\_mixin module
+----------------------------------------
+
+.. automodule:: simstack.util.object_list_mixin
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.util.path\_manager module
 ----------------------------------
 
@@ -232,6 +272,14 @@ simstack.util.queue\_watcher module
 -----------------------------------
 
 .. automodule:: simstack.util.queue_watcher
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.util.resource\_config module
+-------------------------------------
+
+.. automodule:: simstack.util.resource_config
    :members:
    :show-inheritance:
    :undoc-members:

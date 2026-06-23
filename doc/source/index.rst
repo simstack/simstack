@@ -10,13 +10,13 @@ SimStack II Documentation
    :caption: Contents:
 
    overview
-   ui_documentation
    workflows
-   data
-   database_migrations
-   misc
+   ui_documentation
+
+   developer_guide
+
    installation
-   simstack/modules
+   simstack/modules/modules
 
 Indices and tables
 ==================
