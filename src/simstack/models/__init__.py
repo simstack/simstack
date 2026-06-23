@@ -9,7 +9,7 @@ from .base_types import (
     IteratorInput,
 )
 from .base_lists import StringDataList, StringList
-from .array_list import ArrayList, ArrayListModel, ArrayListIO
+from .array_list import ArrayList
 from .file_list import FileList, FileListModel
 from .models import (
     ModelMapping,
@@ -40,8 +40,6 @@ __all__ = [
     "StringData",
     "BooleanData",
     "ArrayList",
-    "ArrayListModel",
-    "ArrayListIO",
     "BinaryOperationInput",
     "IteratorInput",
     "ArtifactMapping",

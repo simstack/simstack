@@ -7,7 +7,7 @@ from simstack.models.array_storage import ArrayStorage
 from simstack.util.object_list_mixin import ObjectListMixin
 
 @simstack_model
-class ArrayListModel(Model, ObjectListMixin[ArrayStorage]):
+class ArrayList(Model, ObjectListMixin[ArrayStorage]):
     elements: List[ObjectId] = Field(default_factory=list)
 
     def __init__(self, **data):

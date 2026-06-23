@@ -3,7 +3,6 @@ import numpy as np
 from simstack.core.context import context
 from simstack.models.array_list import ArrayList
 from simstack.models.array_storage import ArrayStorage
-from simstack.util.object_list_mixin import ObjectListMixin
 
 
 @pytest.mark.asyncio
@@ -16,16 +15,11 @@ async def test_array_list_basic_operations(initialized_context):
     await engine.save(a1)
 
     arr_list = ArrayList()
-    # Explicitly call Mixin methods because ArrayList might not expose them due to Pydantic interception
-    ObjectListMixin.append(arr_list, a1)
+    arr_list.append(a1)
 
-    # Check elements field. Note: might be in __dict__ if not exposed as attribute
-    elements = getattr(arr_list, "elements", [])
-    if not elements and "elements" in arr_list.__dict__:
-        elements = arr_list.__dict__["elements"]
-
-    assert len(elements) == 1
-    assert elements[0] == a1.id
+    # Check elements field
+    assert len(arr_list.elements) == 1
+    assert arr_list.elements[0] == a1.id
 
     # Test iteration
     items = [a for a in arr_list]
@@ -52,15 +46,8 @@ async def test_array_list_initialization_with_data(initialized_context):
     # Initialize ArrayList with existing elements
     arr_list = ArrayList(elements=[a1])
 
-    elements = getattr(arr_list, "elements", [])
-    if not elements and "elements" in arr_list.__dict__:
-        elements = arr_list.__dict__["elements"]
-
-    # Standard ArrayList implementation might not correctly process 'elements' in __init__
-    # if it's not functional.
-    if elements:
-        assert len(elements) == 1
-        assert elements[0] == a1.id
+    assert len(arr_list.elements) == 1
+    assert arr_list.elements[0] == a1.id
 
 
 @pytest.mark.asyncio
@@ -74,25 +61,16 @@ async def test_array_list_manipulation(initialized_context):
     arr_list = ArrayList()
 
     # Use Mixin methods directly
-    ObjectListMixin.append(arr_list, a1)
-    ObjectListMixin.append(arr_list, a2)
+    arr_list.append(a1)
+    arr_list.append(a2)
 
-    elements = getattr(arr_list, "elements", [])
-    if not elements and "elements" in arr_list.__dict__:
-        elements = arr_list.__dict__["elements"]
-    assert len(elements) == 2
+    assert len(arr_list.elements) == 2
 
     # Test remove
-    ObjectListMixin.remove(arr_list, a1)
+    arr_list.remove(a1)
 
-    elements = getattr(arr_list, "elements", [])
-    if not elements and "elements" in arr_list.__dict__:
-        elements = arr_list.__dict__["elements"]
-    assert len(elements) == 1
+    assert len(arr_list.elements) == 1
 
     # Test clear
-    ObjectListMixin.clear(arr_list)
-    elements = getattr(arr_list, "elements", [])
-    if not elements and "elements" in arr_list.__dict__:
-        elements = arr_list.__dict__["elements"]
-    assert len(elements) == 0
+    arr_list.clear()
+    assert len(arr_list.elements) == 0
