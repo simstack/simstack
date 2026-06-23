@@ -1,5 +1,5 @@
-src
-===
+simstack
+========
 
 .. toctree::
    :maxdepth: 4

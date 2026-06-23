@@ -85,6 +85,15 @@ Example:
        field_name: str = "string_data_list"
        elements: List[ObjectId] = Field(default_factory=list)
 
+Concrete Implementations
+------------------------
+
+Several core SimStack models utilize these mixins:
+
+*   :doc:`files`: ``FileList`` and ``FileListModel`` use ``ObjectListMixin[FileStack]``.
+*   :doc:`array_lists`: ``ArrayList`` uses ``ObjectListMixin[ArrayStorage]``.
+*   :doc:`tables`: ``SimpleTable`` (while not using list mixins directly, it's a related data structure).
+
 Available Methods (mostly Async):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

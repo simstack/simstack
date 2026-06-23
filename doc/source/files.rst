@@ -47,12 +47,17 @@ To retrieve the file in a node:
 FileList and FileListModel
 --------------------------
 
-When dealing with multiple files, you can use ``FileList`` or ``FileListModel``.
+When dealing with multiple files, you can use ``FileList`` or ``FileListModel``. Both models now inherit from ``ObjectListMixin``, providing a consistent and powerful interface for managing collections of files.
+
+Key features of both:
+* **Dict/List-like API**: Supports standard operations like ``append()``, ``extend()``, ``insert()``, ``remove()``, ``pop()``, and slicing.
+* **Regex Search**: Use ``find(pattern)`` or ``find_all(pattern)`` to search for files by their names using regular expressions.
+* **Database Integration**: Handles saving and loading of ``FileStack`` references automatically.
 
 FileList (Embedded)
 ~~~~~~~~~~~~~~~~~~~
 
-``FileList`` is an ``EmbeddedModel`` that stores a list of ``FileStack`` objects directly within the parent model. This is suitable for smaller collections of files where you want to keep everything together.
+``FileList`` is an ``EmbeddedModel``. It is suitable for smaller collections of files where you want to keep them directly within the parent model.
 
 .. code-block:: python
 
@@ -63,28 +68,42 @@ FileList (Embedded)
    file_list.append(FileStack.from_local_file("file1.txt"))
    file_list.append(FileStack.from_local_file("file2.txt"))
 
+   # Search for a file
+   config_file = file_list.find(r".*\.conf")
+
 FileListModel (Referenced)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``FileListModel`` is a top-level ``Model`` that stores a list of ``ObjectId`` references to ``FileStack`` objects. This is preferred for large collections or when ``FileStack`` objects need to be shared across multiple models. It uses ``ObjectListMixin`` for asynchronous database access.
+``FileListModel`` is a top-level ``Model``. This is preferred for large collections or when ``FileStack`` objects need to be shared across multiple models.
 
 .. code-block:: python
 
    from simstack.models.file_list import FileListModel
 
    file_list_model = FileListModel()
-   # Note: append is async for FileListModel
-   await file_list_model.append(FileStack.from_local_file("large_file.dat"))
+   # Note: saving the parent model will automatically save new FileStack objects
+   file_list_model.append(FileStack.from_local_file("large_file.dat"))
 
 Methods and Mixins
 ~~~~~~~~~~~~~~~~~~
 
-Both ``FileList`` and ``FileListModel`` provide a rich set of methods for managing the collection, such as ``append()``, ``extend()``, ``find()`` (by regex on filename), and ``filter_by_size()``.
+Both ``FileList`` and ``FileListModel`` provide a rich set of methods for managing the collection. For more details on the underlying list behaviors provided by ``ObjectListMixin``, see :doc:`lists`.
 
-For more details on the underlying list behaviors, see :doc:`lists`.
+API Reference
+-------------
+
+.. autoclass:: simstack.models.file_list.FileList
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: simstack.models.file_list.FileListModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 External and Internal Files and Resources
-=========================================
+-----------------------------------------
 
 Workflows need access to external resources, such as files, databases, and URLs.
 External resources are only input and otherwise not managed. Internal resources, mostly
@@ -96,7 +115,7 @@ since the last call.
 
 
 Input Data
-~~~~~~~~~~
+^^^^^^^^^^
 
 Files can (mostly) be hashed. For all other use cases an intermediate storage (electron) can be implemented that
 stores the "query" and the "result" of the query (assuming that the query and the result can be hashed).

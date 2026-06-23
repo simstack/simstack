@@ -28,6 +28,22 @@ simstack.models.artifact\_models module
    :show-inheritance:
    :undoc-members:
 
+simstack.models.base\_lists module
+----------------------------------
+
+.. automodule:: simstack.models.base_lists
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.models.base\_model module
+----------------------------------
+
+.. automodule:: simstack.models.base_model
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.models.base\_types module
 ----------------------------------
 
@@ -60,6 +76,14 @@ simstack.models.dataset\_metadata module
    :show-inheritance:
    :undoc-members:
 
+simstack.models.datasettuple module
+-----------------------------------
+
+.. automodule:: simstack.models.datasettuple
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.models.file\_instance module
 -------------------------------------
 
@@ -84,6 +108,14 @@ simstack.models.files module
    :show-inheritance:
    :undoc-members:
 
+simstack.models.images2d module
+-------------------------------
+
+.. automodule:: simstack.models.images2d
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.models.log\_entry\_model module
 ----------------------------------------
 
@@ -96,6 +128,14 @@ simstack.models.models module
 -----------------------------
 
 .. automodule:: simstack.models.models
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.models.named\_data\_reference module
+---------------------------------------------
+
+.. automodule:: simstack.models.named_data_reference
    :members:
    :show-inheritance:
    :undoc-members:
@@ -128,6 +168,22 @@ simstack.models.pickle\_models module
 -------------------------------------
 
 .. automodule:: simstack.models.pickle_models
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.models.project module
+------------------------------
+
+.. automodule:: simstack.models.project
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.models.resource\_assignment module
+-------------------------------------------
+
+.. automodule:: simstack.models.resource_assignment
    :members:
    :show-inheritance:
    :undoc-members:
@@ -176,6 +232,14 @@ simstack.models.table\_artifact module
 --------------------------------------
 
 .. automodule:: simstack.models.table_artifact
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.models.tag module
+--------------------------
+
+.. automodule:: simstack.models.tag
    :members:
    :show-inheritance:
    :undoc-members:

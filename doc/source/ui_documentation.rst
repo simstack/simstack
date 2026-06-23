@@ -140,7 +140,7 @@ To access visualizations:
 4. Interact with the chart to explore the data
 
 Data Tables
-----------
+-----------
 
 .. figure:: resources/data_tables.png
    :align: center
@@ -157,7 +157,7 @@ For tabular data, SimStack II uses AG-Grid to provide interactive tables with:
 * **Export**: Download data as CSV or Excel files
 
 User Account Management
-----------------------
+-----------------------
 
 .. figure:: resources/user_account.png
    :align: center

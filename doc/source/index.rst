@@ -10,18 +10,13 @@ SimStack II Documentation
    :caption: Contents:
 
    overview
-   ui_documentation
    workflows
-   resource_config
-   data
-   lists
-   files
-   mass_runner
-   testing_complex_nodes
-   database_migrations
-   misc
+   ui_documentation
+
+   developer_guide
+
    installation
-   simstack/modules
+   simstack/modules/modules
 
 Indices and tables
 ==================
