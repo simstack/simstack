@@ -1,6 +1,8 @@
 import argparse
 import asyncio
 import logging
+import sys
+import os
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
@@ -9,9 +11,14 @@ from simstack.core.services.node_execution_service import run_node_from_registry
 
 logger = logging.getLogger("Run Node")
 
-async def run_node_from_id(node_id: str, resource_str: str):
+async def run_node_from_id(node_id: str, resource_str: str, project_root: str = None):
     """Run a single node by its ID from the database"""
-    await context.initialize(resource=resource_str)
+    logger.info(f"Initializing node run: node_id={node_id}, resource={resource_str}, project_root={project_root}")
+    try:
+        await context.initialize(resource=resource_str, project_root=project_root)
+    except Exception as e:
+        logger.error(f"Failed to initialize context: {str(e)}", exc_info=True)
+        return False
     registry_entry = None
     try:
         registry_entry = await context.db.load_task_by_id(node_id)
@@ -27,6 +34,8 @@ async def run_node_from_id(node_id: str, resource_str: str):
         return False
 
 def run_node_main():
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', stream=sys.stdout)
+    logger.info("Starting run_node_main")
     parser = argparse.ArgumentParser(description="Run nodes for a specific resource")
     parser.add_argument(
         "--node-id",
@@ -55,7 +64,7 @@ def run_node_main():
 
     if args.node_id:
         # Run a specific node once
-        asyncio.run(run_node_from_id(args.node_id, args.resource))
+        asyncio.run(run_node_from_id(args.node_id, args.resource, args.project_root))
 
 
 if __name__ == "__main__":

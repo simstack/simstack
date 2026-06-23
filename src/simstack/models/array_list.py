@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from odmantic import Model, Field, ObjectId
 
@@ -6,9 +6,8 @@ from simstack.models import simstack_model
 from simstack.models.array_storage import ArrayStorage
 from simstack.util.object_list_mixin import ObjectListMixin
 
-
 @simstack_model
-class ArrayList(Model, ObjectListMixin[ArrayStorage]):
+class ArrayListModel(Model, ObjectListMixin[ArrayStorage]):
     elements: List[ObjectId] = Field(default_factory=list)
 
     def __init__(self, **data):
@@ -19,3 +18,4 @@ class ArrayList(Model, ObjectListMixin[ArrayStorage]):
 
     def __iter__(self):
         return ObjectListMixin.__iter__(self)
+

@@ -362,9 +362,8 @@ class DataSetTupleSection(EmbeddedModel):
 @simstack_model
 class DataSetTuple(Model):
     field_name: str = Field(default="dataset")
-    metadata: DataSetMetadata = Reference()
+    metadata: DataSetMetadata
     sections: Dict[str, DataSetTupleSection] = Field(default_factory=dict)
-
     model_config = {"extra": "forbid"}
 
 

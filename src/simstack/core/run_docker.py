@@ -21,7 +21,7 @@ async def run_docker(registry_entry: NodeRegistry):
     workdir = context.config.workdir
 
     cmd = [
-        "docker", "run", "-d",
+        "docker", "run",
         "-e", f"SIMSTACK_DB_DATABASE={context.config.db_name}",
         "-e", f"SIMSTACK_DB_TEST_DATABaASE={context.config.db_name}",
         "-e", f"SIMSTACK_DB_CONNECTION_STRING={context.config.connection_string}",
@@ -57,8 +57,10 @@ async def run_docker(registry_entry: NodeRegistry):
         return False
 
     if stdout:
-        # For `docker run -d`, stdout is usually the container id
-        logger.info("Spawned docker container for task_id=%s: %s", registry_entry.id, stdout)
+        # For `docker run` without -d, stdout is the actual output of the command
+        logger.info("Docker container output for task_id=%s: %s", registry_entry.id, stdout)
+    else:
+        logger.info("Docker container spawned for task_id=%s", registry_entry.id)
     if stderr:
         # Some Docker setups warn on stderr even on success
         logger.warning("docker run stderr for task_id=%s: %s", registry_entry.id, stderr)

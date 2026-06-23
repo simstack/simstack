@@ -13,25 +13,6 @@ logger = logging.getLogger("importer")
 NODES_SEARCH_BY_NAME_FALLBACK = True
 MODELS_SEARCH_BY_NAME_FALLBACK = True
 
-# Mapping for relocated modules to ensure backward compatibility
-_PATH_MIGRATION_MAP = {
-    "applications.electronic_structure.util.obabel_scripts": "molecular_qm_util.obabel_scripts",
-    "applications.electronic_structure.util.indigo_scripts": "molecular_qm_util.indigo_scripts",
-    "applications.electronic_structure.util.molecular_geometry": "molecular_qm_models.molecular_geometry",
-    "applications.electronic_structure.util.zmatrix": "molecular_qm_models.zmatrix",
-    "applications.electronic_structure.util.molecule_list_from_file": "molecular_qm_models.molecule_list_from_file",
-    "applications.electronic_structure.util.make_database_from_molecules": "molecular_qm_models.make_database_from_molecules",
-    "applications.electronic_structure.util.molecule_to_pymatgen": "molecular_qm_models.molecule_to_pymatgen",
-}
-
-
-def _migrate_function_path(path: str) -> str:
-    for old_prefix, new_prefix in _PATH_MIGRATION_MAP.items():
-        if path.startswith(old_prefix):
-            return path.replace(old_prefix, new_prefix, 1)
-    return path
-
-
 def _get_initialized_context() -> Any | None:
     try:
         from simstack.core.context import context
