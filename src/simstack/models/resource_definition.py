@@ -49,6 +49,7 @@ class ResourceDefinition(Model):
     environment_start: Optional[str] = None
     ssh_key: Optional[str] = None  # Change Optional[Path] to Optional[str]
     routes: Optional[List[str]] = []
+    queue: str = "default"
     is_default: bool = False
     git_branch: str = "main"
 
@@ -76,6 +77,14 @@ class ResourceDefinition(Model):
         if v is None:
             return None
         return str(cls._convert_backslashes(str(v)))
+
+    @field_validator("queue", mode="before")
+    @classmethod
+    def normalize_queue(cls, v):
+        if v is None:
+            return "default"
+        normalized = str(v).strip()
+        return normalized or "default"
 
 
     def validate_hostname(self):
