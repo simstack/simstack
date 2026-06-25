@@ -1,8 +1,7 @@
 from datetime import datetime
 from typing import Dict, Any, Union, List
 
-from .base_model import Model
-from odmantic import EmbeddedModel, Field
+from odmantic import EmbeddedModel, Field, Model
 
 from simstack.core.asnyc_helper import async_helper
 from simstack.core.engine import current_engine_context

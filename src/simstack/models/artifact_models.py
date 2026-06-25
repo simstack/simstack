@@ -1,7 +1,6 @@
 from typing import Optional, Dict, Any
 
-from .base_model import Model
-from odmantic import Field
+from odmantic import Field, Model
 
 from simstack.models.pickle_models import FunctionPickle
 from simstack.models.simstack_model import simstack_model

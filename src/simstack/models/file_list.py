@@ -1,7 +1,6 @@
 import re
 from typing import Union, List, Any, Optional
 
-from .base_model import Model
 from odmantic import Field, Model
 
 from simstack.models import simstack_model

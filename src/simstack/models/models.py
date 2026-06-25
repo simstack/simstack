@@ -1,7 +1,6 @@
 import base64
 from typing import Optional, List, TypeVar
-from .base_model import Model
-from odmantic import Field, EmbeddedModel
+from odmantic import EmbeddedModel, Field, Model
 from simstack.models.parameters import Parameters
 from simstack.models.pickle_models import FunctionPickle
 import logging

@@ -1,7 +1,6 @@
 from typing import List, Union, Literal, Optional, Dict, Any
 
-from .base_model import Model
-from odmantic import Field, EmbeddedModel, ObjectId
+from odmantic import EmbeddedModel, Field, Model, ObjectId
 
 from simstack.models import simstack_model
 
