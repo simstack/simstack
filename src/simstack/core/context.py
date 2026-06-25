@@ -9,6 +9,7 @@ from simstack.util.db import DBType
 from simstack.util.project_root_finder import find_project_root
 from simstack.util.toml_reader import TomlReader
 
+from simstack.util.resource_config import ResourceConfig
 from simstack.util.setup_logging import setup_logging
 from simstack.util.mappings import ModelMappingTable, NodeMappingTable
 
