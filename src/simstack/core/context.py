@@ -141,7 +141,7 @@ class GlobalState:
 
         kwargs["project_root"] = project_root
 
-        simstack_toml_path = project_root / "simstack.toml"
+        simstack_toml_path = Path(project_root) / "simstack.toml"
         toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
 
         db_name: str | None = kwargs.get("db_name", None)
