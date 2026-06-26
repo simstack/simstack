@@ -139,9 +139,12 @@ class GlobalState:
         if project_root is None:  # maybe None was passed
             project_root = find_project_root()
 
+
+        project_root = Path(project_root)
         kwargs["project_root"] = project_root
 
-        simstack_toml_path = Path(project_root) / "simstack.toml"
+        print("Project root: ", project_root, "")
+        simstack_toml_path = project_root / "simstack.toml"
         toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
 
         db_name: str | None = kwargs.get("db_name", None)
