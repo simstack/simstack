@@ -18,17 +18,35 @@ async def run_docker(registry_entry: NodeRegistry):
     image= program_config.get("docker_image", None)
     if image is None:
         raise ValueError(f"Docker image not found for task_id={registry_entry.name}")
-    workdir = context.config.workdir
+    docker_cmd = program_config.get("docker_cmd", None)
+    if docker_cmd is None:
+        docker_cmd = "docker"
 
-    cmd = [
-        "docker", "run",
-        "-e", f"SIMSTACK_DB_DATABASE={context.config.db_name}",
-        "-e", f"SIMSTACK_DB_TEST_DATABaASE={context.config.db_name}",
-        "-e", f"SIMSTACK_DB_CONNECTION_STRING={context.config.connection_string}",
-        "-v", f"{workdir}:/root/simstack",
-        image,
-        "--node-id", str(registry_entry.id), "--resource", str(resource), "--project-root", "/app"
-    ]
+    workdir = context.config.workdir
+    if docker_cmd == "docker":
+        cmd = [
+            "docker", "run",
+            "-e", f"SIMSTACK_DB_DATABASE={context.config.db_name}",
+            "-e", f"SIMSTACK_DB_TEST_DATABaASE={context.config.db_name}",
+            "-e", f"SIMSTACK_DB_CONNECTION_STRING={context.config.connection_string}",
+            "-v", f"{workdir}:/root/simstack",
+            image,
+            "--node-id", str(registry_entry.id), "--resource", str(resource), "--project-root", "/app"
+        ]
+    elif docker_cmd == "apptainer":
+        cmd = [
+            "apptainer", "run",
+            "--env", f"SIMSTACK_DB_DATABASE={context.config.db_name}",
+            "--env", f"SIMSTACK_DB_TEST_DATABaASE={context.config.db_name}",
+            "--env", f"SIMSTACK_DB_CONNECTION_STRING={context.config.connection_string}",
+            "--bind", f"{workdir}:/root/simstack",
+            image,
+            "--node-id", str(registry_entry.id),
+            "--resource", str(resource),
+            "--project-root", "/app",
+        ]
+    else:
+        raise ValueError(f"Unsupported command {docker_cmd} for task_id={registry_entry.name}")
 
     # Use platform specific flags to ensure the process survives if runner is killed
     creationflags = 0

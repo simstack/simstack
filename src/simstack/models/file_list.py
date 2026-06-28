@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional
+from typing import List, Optional, Iterator
 
 from odmantic import EmbeddedModel, Field, Model, ObjectId
 
@@ -18,7 +18,7 @@ class FileList(EmbeddedModel, ObjectListMixin[FileStack]):
         if cache is not None:
             self._set_cache(cache)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[FileStack]:
         return ObjectListMixin.__iter__(self)
 
 
@@ -32,7 +32,7 @@ class FileListModel(Model, ObjectListMixin[FileStack]):
         if cache is not None:
             self._set_cache(cache)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[FileStack]:
         return ObjectListMixin.__iter__(self)
 
 

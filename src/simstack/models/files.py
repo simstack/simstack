@@ -300,7 +300,7 @@ class FileStack(Model):
         if remote_instance is None:
             logger.error("No suitable file instance found for copying.")
             raise ValueError(
-                f"FileStack {self.id} is unavailable: no accessible file instance for resource {local_transfer_resource}."
+                f"FileStack {self.id} {self.name} is unavailable: no accessible file instance for resource {local_transfer_resource}."
             )
 
         local_dir.mkdir(parents=True, exist_ok=True)

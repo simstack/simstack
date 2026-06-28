@@ -191,7 +191,7 @@ class NodeRunner(SimstackResult):
             exc_info=True,
         )
 
-    def subprocess(self, name: str, command: str, cwd: str = "") -> bool:
+    def subprocess(self, name: str, command: str | List[str], cwd: str = "") -> bool:
         """
         Execute a shell command as a subprocess and capture its output.
 
@@ -213,6 +213,9 @@ class NodeRunner(SimstackResult):
         """
         if name == "":
             name = "process"
+        if isinstance(command, list):
+            command = " ".join(command)
+
         with open(f"{name}.log", "w", encoding="utf-8") as process_log:
             process_log.write(f"Command: {name}\n{command}\n")
             # TODO adapt for docker

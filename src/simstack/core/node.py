@@ -458,6 +458,10 @@ class Node:
             while True:
                 new_registry_entry = await context.db.load_task_by_id(self.id)
                 # TODO add timeout mechanism here
+                if new_registry_entry is None:
+                    raise RuntimeError(
+                        f"Task task_id: {self.id} could not be found in the database"
+                    )
                 new_status = new_registry_entry.status
                 if (
                     new_status != TaskStatus.RUNNING
