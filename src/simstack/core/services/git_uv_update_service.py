@@ -41,10 +41,16 @@ class GitUvUpdateService(RestartService):
             with open (self._uv_extra_depencency_path,"rb") as f:
                 desired_extras_all=tomllib.load(f)
             
-            if resource.value in desired_extras_all.keys():
-                self.desired_extras=desired_extras_all[resource.value]
-                self.extras=True
-                logger.info(f"extras {self.extras}, len(self.desired_extras) {len(self.desired_extras)}")
+            # Access raw value without triggering validation against allowed_resources
+            resource_name = object.__getattribute__(resource, "__dict__").get("value") or str(resource)
+            if resource_name in desired_extras_all.keys():
+                self.desired_extras = desired_extras_all[resource_name]
+                self.extras = True
+                logger.info(f"extras {self.extras}, len(self.desired_extras) {len(self.desired_extras)} for resource {resource_name}")
+            #if resource.value in desired_extras_all.keys():
+            #    self.desired_extras=desired_extras_all[resource.value]
+            #    self.extras=True
+            #    logger.info(f"extras {self.extras}, len(self.desired_extras) {len(self.desired_extras)}")
         except Exception as e:
             logger.warning(f"resource {resource} spec  with user file {self._uv_extra_depencency_path} failed with the exception {e}")
 
