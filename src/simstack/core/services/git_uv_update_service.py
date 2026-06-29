@@ -40,18 +40,17 @@ class GitUvUpdateService(RestartService):
             logger.info(f" trying to read extras from {self._uv_extra_depencency_path}")
             with open (self._uv_extra_depencency_path,"rb") as f:
                 desired_extras_all=tomllib.load(f)
+                # Access the nested section - this was the issue with the keys
+                extras_section = desired_extras_all.get("optional_dependencies_desired_by_ressource", {})
+
             
             # Access raw value without triggering validation against allowed_resources
             resource_name = object.__getattribute__(resource, "__dict__").get("value") or str(resource)
-            logger.info(f" name {resource_name} , type {type(resource_name)}, compared against {desired_extras_all.keys()}") 
-            if resource_name in desired_extras_all.keys():
-                self.desired_extras = desired_extras_all[resource_name]
+            logger.info(f" name {resource_name} , type {type(resource_name)}, compared against {extras_section.keys()}") 
+            if resource_name in extras_section.keys():
+                self.desired_extras = extras_section[resource_name]
                 self.extras = True
-                logger.info(f"extras {self.extras}, len(self.desired_extras) {len(self.desired_extras)} for resource {resource_name}")
-            #if resource.value in desired_extras_all.keys():
-            #    self.desired_extras=desired_extras_all[resource.value]
-            #    self.extras=True
-            #    logger.info(f"extras {self.extras}, len(self.desired_extras) {len(self.desired_extras)}")
+                
         except Exception as e:
             logger.warning(f"resource {resource} spec  with user file {self._uv_extra_depencency_path} failed with the exception {e}")
 
