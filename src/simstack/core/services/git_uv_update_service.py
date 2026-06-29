@@ -31,20 +31,22 @@ class GitUvUpdateService(RestartService):
         # Resolve project root (assuming we are in src/simstack/core/runner.py)
         self._project_dir = context.config.project_root.resolve(strict=True)
         self._uv_lock_path = context.config.project_root / "uv.lock"
-        self._uv_extra_depencency_pyth = context.config.project_root / "user_extra_config.toml"
+        self._uv_extra_depencency_path = context.config.project_root / "user_extra_config.toml"
         self.extras=False
         self.desired_extras=[]
-        #check if the file _uv_extra_depencency_pyth exists if yes - read toml and then extras=True
+        #check if the file _uv_extra_depencency_path exists if yes - read toml and then extras=True
         try :
             import tomllib
-            with open (self._uv_extra_depencency_pyth,"rb") as f:
+            logger.info(f" trying to read extras from {self._uv_extra_depencency_path}"}
+            with open (self._uv_extra_depencency_path,"rb") as f:
                 desired_extras_all=tomllib.load(f)
+            
             if resource.value in desired_extras_all.keys():
                 self.desired_extras=desired_extras_all[resource.value]
                 self.extras=True
                 logger.info(f"extras {self.extras}, len(self.desired_extras) {len(self.desired_extras)}")
         except Exception as e:
-            logger.warning(f"resource {resource} spec  with user file {self._uv_extra_depencency_pyth} failed with the exception {e}")
+            logger.warning(f"resource {resource} spec  with user file {self._uv_extra_depencency_path} failed with the exception {e}")
 
 
         
