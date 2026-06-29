@@ -42,7 +42,7 @@ class GitUvUpdateService(RestartService):
             if resource in desired_extras_all.keys:
                 self.desired_extras=desired_extras_all[resource]
         except Exception as e:
-            logger.warning(f"resource {resource} spec  with user file {self._uv_extra_depencency_pyth} failed")
+            logger.warning(f"resource {resource} spec  with user file {self._uv_extra_depencency_pyth} failed with the exception {e}")
 
 
         
