@@ -39,8 +39,8 @@ class GitUvUpdateService(RestartService):
             import tomllib
             with open (self._uv_extra_depencency_pyth,"rb") as f:
                 desired_extras_all=tomllib.load(f)
-            if resource in desired_extras_all.keys():
-                self.desired_extras=desired_extras_all[resource]
+            if resource.value in desired_extras_all.keys():
+                self.desired_extras=desired_extras_all[resource.value]
                 self.extras=True
         except Exception as e:
             logger.warning(f"resource {resource} spec  with user file {self._uv_extra_depencency_pyth} failed with the exception {e}")
