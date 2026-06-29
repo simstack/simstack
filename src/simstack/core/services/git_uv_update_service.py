@@ -37,7 +37,7 @@ class GitUvUpdateService(RestartService):
         #check if the file _uv_extra_depencency_path exists if yes - read toml and then extras=True
         try :
             import tomllib
-            logger.info(f" trying to read extras from {self._uv_extra_depencency_path}")
+            logger.info(f" trying to read user-specified (extras) optional dependencies from {self._uv_extra_depencency_path}")
             with open (self._uv_extra_depencency_path,"rb") as f:
                 desired_extras_all=tomllib.load(f)
                 # Access the nested section - this was the issue with the keys
@@ -46,7 +46,7 @@ class GitUvUpdateService(RestartService):
             
             # Access raw value without triggering validation against allowed_resources
             resource_name = object.__getattribute__(resource, "__dict__").get("value") or str(resource)
-            logger.info(f" name {resource_name} , type {type(resource_name)}, compared against {extras_section.keys()}") 
+            #logger.info(f" name {resource_name} , type {type(resource_name)}, compared against {extras_section.keys()}") 
             if resource_name in extras_section.keys():
                 self.desired_extras = extras_section[resource_name]
                 self.extras = True
