@@ -43,6 +43,7 @@ class GitUvUpdateService(RestartService):
             
             # Access raw value without triggering validation against allowed_resources
             resource_name = object.__getattribute__(resource, "__dict__").get("value") or str(resource)
+            logger.info(f" name {resource_name} , type {type(resource_name)}) 
             if resource_name in desired_extras_all.keys():
                 self.desired_extras = desired_extras_all[resource_name]
                 self.extras = True
