@@ -37,7 +37,7 @@ class GitUvUpdateService(RestartService):
         #check if the file _uv_extra_depencency_path exists if yes - read toml and then extras=True
         try :
             import tomllib
-            logger.info(f" trying to read extras from {self._uv_extra_depencency_path}"}
+            logger.info(f" trying to read extras from {self._uv_extra_depencency_path}")
             with open (self._uv_extra_depencency_path,"rb") as f:
                 desired_extras_all=tomllib.load(f)
             
