@@ -84,11 +84,9 @@ class NodeExecutionService(BaseService):
                 return False
 
             if queue == "slurm-queue":
-                await submit_node(registry_entry)
-                return True
+                return await submit_node(registry_entry)
             elif queue == "docker":
-                await run_docker(registry_entry)
-                return True
+                return await run_docker(registry_entry)
 
             elif queue == "default":
                 if self._detach:
