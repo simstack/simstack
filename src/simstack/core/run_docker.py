@@ -31,6 +31,8 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
              image += ".sif"
 
     workdir = context.config.workdir
+    host_simstack_toml = context.config.project_root / "simstack.toml"
+
     if docker_cmd == "docker":
         cmd = [
             "docker", "run",
@@ -38,6 +40,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
             "-e", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}",
             "-e", f"SIMSTACK_DB_CONNECTION_STRING={context.config.connection_string}",
             "-v", f"{workdir}:/root/simstack",
+            "-v", f"{host_simstack_toml}:/app/simstack.toml",
             image,
             "--node-id", str(registry_entry.id), "--resource", str(resource), "--project-root", "/app"
         ]
@@ -48,6 +51,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
             "--env", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}",
             "--env", f"SIMSTACK_DB_CONNECTION_STRING={context.config.connection_string}",
             "--bind", f"{workdir}:/root/simstack",
+            "--bind", f"{host_simstack_toml}:/app/simstack.toml",
             image,
             "--node-id", str(registry_entry.id),
             "--resource", str(resource),
