@@ -82,7 +82,7 @@ class GitUvUpdateService(RestartService):
 
         await self._run_command(["git", "stash"], ignore_error=True)
 
-        git_output = await self._run_command(["git", "pull"])
+        git_output = await self._run_command(["git", "pull", "--recurse-submodules" ])
         git_changed = "Already up to date." not in git_output
 
         # Clear the stash now that we've pulled

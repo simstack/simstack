@@ -29,6 +29,7 @@ class RunnerManager:
         detach: bool = True,
         no_pull: bool = False,
         is_default: bool = False,
+        with_file_transfer: bool = True,
     ) -> None:
         self._resource = resource
         self._detach = detach
@@ -38,6 +39,7 @@ class RunnerManager:
         self._shutdown_event: asyncio.Event = asyncio.Event()
         self._pid_file: Path = Path(context.config.workdir) / f"runner_{resource}.pid"
         self._is_default = is_default
+        self._with_file_transfer = with_file_transfer
 
     def _is_process_running(self, pid: int) -> bool:
         """Check if a process with given PID is running and is a simstack_runner process"""
@@ -119,12 +121,6 @@ class RunnerManager:
                 detach=self._detach,
                 is_default=self._is_default,
             ),
-            # FileTransferService(
-            #     self._resource,
-            #     interval=10,
-            #     max_concurrent=2,
-            #     shutdown_event=self._shutdown_event,
-            # ),
             RunnerStatusService(self._resource, interval=60),
             RunnerCleanupService(self._resource, interval=300),
             SlurmStatusService(self._resource, interval=60),
@@ -132,6 +128,16 @@ class RunnerManager:
                 self._resource, interval=10, shutdown_event=self._shutdown_event
             ),
         ]
+
+        if self._with_file_transfer:
+            self._services.append(
+                FileTransferService(
+                    self._resource,
+                    interval=10,
+                    max_concurrent=2,
+                    shutdown_event=self._shutdown_event,
+                )
+            )
 
         if not self._no_pull:
             self._services.append(GitUvUpdateService(self._resource, interval=60))
