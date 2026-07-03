@@ -119,12 +119,12 @@ class RunnerManager:
                 detach=self._detach,
                 is_default=self._is_default,
             ),
-            FileTransferService(
-                self._resource,
-                interval=10,
-                max_concurrent=2,
-                shutdown_event=self._shutdown_event,
-            ),
+            # FileTransferService(
+            #     self._resource,
+            #     interval=10,
+            #     max_concurrent=2,
+            #     shutdown_event=self._shutdown_event,
+            # ),
             RunnerStatusService(self._resource, interval=60),
             RunnerCleanupService(self._resource, interval=300),
             SlurmStatusService(self._resource, interval=60),
