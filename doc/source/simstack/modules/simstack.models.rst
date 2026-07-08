@@ -36,14 +36,6 @@ simstack.models.base\_lists module
    :show-inheritance:
    :undoc-members:
 
-simstack.models.base\_model module
-----------------------------------
-
-.. automodule:: simstack.models.base_model
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 simstack.models.base\_types module
 ----------------------------------
 
