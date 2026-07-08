@@ -196,7 +196,10 @@ class TestNodeRunner:
         # Check that success was logged
         expected_calls = [
             # First call from __init__
-            call("Task test_node: started task_id: test_123", stacklevel=2),
+            call(
+                "Task test_node: NodeRunner 'test_node' initialized for task_id: test_123 task_id: test_123",
+                stacklevel=2,
+            ),
             # Second call from succeed
             call(
                 "Task test_node: succeeded Task completed successfully task_id: test_123",

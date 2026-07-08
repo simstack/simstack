@@ -89,11 +89,12 @@ async def test_async_main_uses_false_is_default_when_default_resource_init_retur
             self.config = SimpleNamespace(resource=kwargs.get("resource"))
 
     class DummyRunnerManager:
-        def __init__(self, resource, *, detach, no_pull, is_default):
+        def __init__(self, resource, *, detach, no_pull, is_default, with_file_transfer=True):
             captured["resource"] = resource
             captured["detach"] = detach
             captured["no_pull"] = no_pull
             captured["is_default"] = is_default
+            captured["with_file_transfer"] = with_file_transfer
 
         async def run_nodes_for_resource(self, polling_interval, *_args, timeout=None):
             captured["polling_interval"] = polling_interval
@@ -114,6 +115,7 @@ async def test_async_main_uses_false_is_default_when_default_resource_init_retur
         timeout=None,
         connection_string="none",
         config="simstack.toml",
+        with_file_transfer=False,
     )
 
     await runner.async_main(args)

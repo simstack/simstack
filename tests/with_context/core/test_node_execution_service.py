@@ -88,7 +88,7 @@ async def test_node_execution_service_run_node_slurm_queue(node_execution_servic
     )
     await context.db.save(registry_entry)
 
-    with patch("simstack.core.services.node_execution_service.submit_node", AsyncMock(return_value=None)) as mock_submit:
+    with patch("simstack.core.services.node_execution_service.submit_node", AsyncMock(return_value=True)) as mock_submit:
         result = await node_execution_service.run_node(registry_entry)
         assert result is True
         mock_submit.assert_called_once_with(registry_entry)
