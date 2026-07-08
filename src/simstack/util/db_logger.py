@@ -34,7 +34,7 @@ class DBLogHandler(logging.Handler):
         super().__init__()
 
         # Validate configuration
-        if connection_string == "":
+        if not connection_string or not isinstance(connection_string, str):
             raise ValueError(f"Invalid connection string {connection_string}")
         if not db_name or not isinstance(db_name, str):
             raise ValueError(f"Invalid database name {db_name}")
@@ -47,19 +47,12 @@ class DBLogHandler(logging.Handler):
         self.collection_name = collection_name
 
         # Create MongoDB client
-        if self.connection_string:
-            self.client = MongoClient(self.connection_string)
-            self.db = self.client[self.db_name]
-            self.collection = self.db[self.collection_name]
-        else:
-            self.client = None
-            self.db = None
-            self.collection = None
+        self.client = MongoClient(self.connection_string)
+        self.db = self.client[self.db_name]
+        self.collection = self.db[self.collection_name]
 
     def emit(self, record: logging.LogRecord) -> None:
         """Process a log record by converting it to a log entry and inserting it into MongoDB."""
-        if not self.collection:
-            return
         try:
             # Create log entry as a dictionary
             log_entry = self.create_log_entry(record)
