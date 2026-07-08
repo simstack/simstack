@@ -107,7 +107,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install MongoDB
-        uses: supercharge/mongodb-github-action@1.11.0
+        uses: mongodb-labs/setup-mongodb@v1
         with:
           mongodb-version: 'latest'
 
