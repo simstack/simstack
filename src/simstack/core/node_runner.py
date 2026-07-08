@@ -43,7 +43,7 @@ class NodeRunner(SimstackResult):
             name (str): Name for this task runner.
             task_id (str | ObjectId): Unique identifier for the task.
             logger (logging.Logger, optional): Logger instance to use. If None, uses a logger named 'NodeRunner'.
-            **kwargs: Additional keyword arguments.
+            kwargs: Additional keyword arguments.
         """
         super().__init__()
         self.task_id = str(task_id) if isinstance(task_id, ObjectId) else task_id

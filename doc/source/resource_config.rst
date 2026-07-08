@@ -1,5 +1,5 @@
-Program Execution 
-================
+Program Execution
+=================
 
 When developers write new nodes that execute external programs they cannot know the specifics of the resources on which these nodes are to be run. 
 Simstack separates the program execution logic from the specifics of a particular resource. The ``ResourceConfig`` class handles resource-specific 
@@ -9,14 +9,14 @@ and run commands in a controlled environment (optionally using temporary directo
 
 The config toml is structured by resources, i.e. if you have resources hpc1 and small-computer and my-laptop sections starting with [hpc1], [small-computer], [my-laptop]
 contain the data for each of these nodes. The convenience functions return the data for the actual resource. In principle you are totally free 
-which information you store in ``config.toml´´ for your own nodes, but the convenience functions implement often used features, such as
+which information you store in ``config.toml`` for your own nodes, but the convenience functions implement often used features, such as
 
 - using scratch space for program execution and where that is 
 - startup scripts 
 - the actual command to execute to run the programs
 
 .. note::
-   An instance of ``ResourceConfig´´ is provided by the context
+   An instance of ``ResourceConfig`` is provided by the context
 
 
 The documentation below explains the current defaults. Standard nodes are then simply executed by:

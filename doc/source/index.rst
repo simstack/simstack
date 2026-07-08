@@ -11,7 +11,6 @@ SimStack II Documentation
 
    overview
    workflows
-   recovery
    ui_documentation
 
    developer_guide

@@ -14,7 +14,7 @@ UI Setup
 3. Go to your profile and upload your resources configuration.
 
 Example resources configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: json
 
@@ -211,4 +211,3 @@ Notes / scratch commands:
 .. code-block:: bash
 
    uv lock --upgrade-package <package-name>
-```

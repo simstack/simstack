@@ -89,6 +89,12 @@ jobs:
       - name: Build documentation with Sphinx
         run: uv run sphinx-build -b html doc/source doc/build
 
+      - name: Upload documentation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sphinx-docs
+          path: doc/build
+
   test-windows:
     name: Test on windows-latest (Python ${{ matrix.python-version }})
     runs-on: windows-latest

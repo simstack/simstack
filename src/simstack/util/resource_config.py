@@ -23,7 +23,8 @@ class ResourceConfig:
     handling temporary directories, file manipulation, and subprocess execution.
 
     Attributes:
-        os (str): The operating system associated with the resource, with a default value of "linux".
+        _config (Dict[str, Any]): The loaded configuration dictionary.
+        _resource (str): The name of the current resource.
     """
     def __init__(self, config_path: Path, resource: str):
         self._config: Dict[str, Any] = {}

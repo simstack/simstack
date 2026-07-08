@@ -49,9 +49,9 @@ These systems embrace Python directly, enabling more dynamic and expressive comp
 Our experience with SimStack I suggests there are two only partially overlapping communities:
 
 * expert workflow developers (in python or otherwise) who struggle to develop user-interfaces
-make these workflows accessible to end-users
+  make these workflows accessible to end-users
 * a larger group of workflow users, but may not have the software engineering background
-to develop the workflows on their own.
+  to develop the workflows on their own.
 
 Bridging developers and users
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -86,7 +86,6 @@ SimStack II is designed with the following priorities:
 * Results are persisted and accessible for re-analysis, ideally through the GUI.
 * Workflow components are implemented in Python, with minimal coding overhead.
 * Workflows expose results in a UI that is (to a large extent)
-automatically generated on the basis of the python code additional frontend development.
+  automatically generated on the basis of the python code additional frontend development.
 
 .. include:: architecture.rst
-```

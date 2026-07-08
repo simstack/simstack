@@ -84,21 +84,18 @@ def compute_arg_hash(args: List[Model]) -> str:
     is an instance of the Model class or can be processed into a hashable
     format. Uses a complex hashing function for the resulting computation.
 
-    Parameters:
-    args: List[Model]
-        A list of objects where each object must be an instance of the
-        Model class. The objects are used to compute their respective
-        hash values via a specified complex hashing mechanism.
+    Args:
+        args (List[Model]): A list of objects where each object must be an instance of the
+            Model class. The objects are used to compute their respective
+            hash values via a specified complex hashing mechanism.
 
     Returns:
-    str
-        A string representation of the computed hash for the provided
-        list of arguments.
+        str: A string representation of the computed hash for the provided
+            list of arguments.
 
     Raises:
-    TypeError
-        If any item in the provided list is not an instance of the
-        Model class.
+        TypeError: If any item in the provided list is not an instance of the
+            Model class.
     """
     arg_hashes = []
     for arg in args:
@@ -159,8 +156,6 @@ class Node:
     :type parameters: Parameters
     :ivar _func: The function represented by the node.
     :type _func: Callable[[Model], Model]
-    :ivar *args: The arguments passed to the function.
-    :type *args: List[Model]
     """
 
     def __init__(

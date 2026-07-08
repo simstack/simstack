@@ -115,7 +115,7 @@ since the last call.
 
 
 Input Data
-^^^^^^^^^^
+----------
 
 Files can (mostly) be hashed. For all other use cases an intermediate storage (electron) can be implemented that
 stores the "query" and the "result" of the query (assuming that the query and the result can be hashed).
@@ -144,7 +144,8 @@ This service electron returns the result with a flag whether the result has chan
         return result
 
 
-## Output Data
+Output Data
+-----------
 
 Only Output Data is generated in SimStack II. Because "human readable" data is core concept of the new version all
 digestible output should be parsed to JSON. The question is how to handle large-scale data, which is costly to
