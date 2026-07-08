@@ -106,6 +106,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install MongoDB
+        uses: mongodb-labs/setup-mongodb-action@v1.0.0
+        with:
+          mongodb-version: 'latest'
+
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
@@ -118,10 +123,23 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
+      - name: Set up MongoDB for testing
+        shell: pwsh
+        run: |
+          uv run python -c "
+          from pymongo import MongoClient
+          client = MongoClient('mongodb://localhost:27017/')
+          db = client['admin']
+          # No authentication by default on setup-mongodb-action unless configured
+          db = client['testing_data']
+          db['init'].insert_one({'init': True})
+          print('MongoDB initialized with database testing_data')
+          "
+
       - name: Run tests with runner
         shell: pwsh
         env:
-          SIMSTACK_TEST_DB_CONNECTION_STRING: ''
+          SIMSTACK_TEST_DB_CONNECTION_STRING: 'mongodb://localhost:27017/'
           SIMSTACK_TEST_DB: testing_data
           SIMSTACK_PROJECT_ROOT: ${{ github.workspace }}
         run: |
@@ -129,11 +147,11 @@ jobs:
           $tomlContent = @"
           [parameters]
           [parameters.general]
-          use_db = false
+          use_db = true
           workdir_self = "$($env:GITHUB_WORKSPACE -replace '\\', '\\')\\simstack"
           [parameters.db]
           database = "testing_data"
-          connection_string = ""
+          connection_string = "mongodb://localhost:27017/"
           "@
           Set-Content -Path simstack.toml -Value $tomlContent
           Get-Content simstack.toml
