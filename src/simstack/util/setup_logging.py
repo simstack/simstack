@@ -32,12 +32,13 @@ def setup_logging(
     # Create formatter
     formatter = logging.Formatter(log_format, datefmt="%Y-%m-%d %H:%M:%S")
 
-    db_handler = DBLogHandler(connection_string, db_name, "logs")
+    if connection_string:
+        db_handler = DBLogHandler(connection_string, db_name, "logs")
 
-    # Add database handler
-    db_handler.setLevel(log_level)
-    db_handler.setFormatter(formatter)
-    root_logger.addHandler(db_handler)
+        # Add database handler
+        db_handler.setLevel(log_level)
+        db_handler.setFormatter(formatter)
+        root_logger.addHandler(db_handler)
 
     # Optionally add console handler
     if console:
