@@ -19,5 +19,6 @@ In this section we compiled a list of how-to's to help developers to use simstac
    docker_nodes
    testing_complex_nodes
    database_migrations
+   ci_pipeline
    misc
 
