@@ -177,7 +177,6 @@ async def _function_from_model(
     """
 
     function_path = node_model.function_mapping
-    function_path = _migrate_function_path(function_path)
     try:
         module_path, function_name = function_path.rsplit(".", 1)
         module = importlib.import_module(module_path)
@@ -220,7 +219,6 @@ async def import_function(
     Returns:
         The imported function object or None if import fails
     """
-    function_path = _migrate_function_path(function_path)
     node_model = await _find_node_model(function_path, db)
 
     if node_model is None:
@@ -267,7 +265,7 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
     Returns:
         The imported class object or None if import fails
     """
-    class_path = _migrate_function_path(class_path)
+
     try:
         # Split the path into module path and class name
         module_path, class_name = class_path.rsplit(".", 1)

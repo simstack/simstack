@@ -9,6 +9,7 @@ from simstack.util.db import DBType
 from simstack.util.project_root_finder import find_project_root
 from simstack.util.toml_reader import TomlReader
 
+from simstack.util.resource_config import ResourceConfig
 from simstack.util.setup_logging import setup_logging
 from simstack.util.mappings import ModelMappingTable, NodeMappingTable
 
@@ -138,8 +139,11 @@ class GlobalState:
         if project_root is None:  # maybe None was passed
             project_root = find_project_root()
 
+
+        project_root = Path(project_root)
         kwargs["project_root"] = project_root
 
+        print("Project root: ", project_root, "")
         simstack_toml_path = project_root / "simstack.toml"
         toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
 

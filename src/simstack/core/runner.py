@@ -86,6 +86,7 @@ async def async_main(args: argparse.Namespace) -> None:
             detach=args.detach,
             no_pull=args.no_pull,
             is_default=is_default_resource,
+            with_file_transfer=args.with_file_transfer,
         )
         await runner_manager.run_nodes_for_resource(
             args.polling_interval, 10, timeout=args.timeout
@@ -148,6 +149,13 @@ def runner_main() -> None:
         action="store_true",
         default=False,
         help="If true, do not pull from git (GitUvUpdateService will not be started)",
+    )
+
+    parser.add_argument(
+        "--with-file-transfer",
+        type=lambda x: (str(x).lower() not in ["false", "0", "no"]),
+        default=True,
+        help="If true (default), start the FileTransferService.",
     )
 
     args = parser.parse_args()

@@ -15,6 +15,7 @@ from .models import (
     ModelMapping,
     NodeModel,
 )
+from .files import FileStack
 from .parameters import Parameters
 from .node_registry import NodeRegistry
 from .named_data_reference import NamedDataReference
@@ -48,6 +49,7 @@ __all__ = [
     "Parameters",
     "NodeRegistry",
     "NamedDataReference",
+    "FileStack",
     "Project",
     "Tag",
     "ResourceAssignmentRule",

@@ -26,7 +26,7 @@ class FileTransferService(BaseService):
         shutdown_event: asyncio.Event | None = None,
     ) -> None:
         super().__init__(
-            "FileTransfer", resource, interval, shutdown_event=shutdown_event
+            "FileTransfer", resource, interval, shutdown_event=None
         )
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._running_tasks: set[asyncio.Task[bool]] = set()

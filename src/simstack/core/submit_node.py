@@ -24,7 +24,7 @@ def make_executable(file_path: str | os.PathLike[str]) -> None:
     os.chmod(file_path, executable_mode)
 
 
-async def submit_node(registry_entry: NodeRegistry) -> None:
+async def submit_node(registry_entry: NodeRegistry) -> bool:
     """Submit a node to the SLURM queue"""
     task_id = registry_entry.id
     try:
@@ -41,10 +41,10 @@ async def submit_node(registry_entry: NodeRegistry) -> None:
 
         original_slurm_parameters = registry_entry.parameters.slurm_parameters
         if original_slurm_parameters is None:
-            logger.error("Task task_id: {task_id} has no slurm parameters -- failing")
+            logger.error(f"Task task_id: {task_id} has no slurm parameters -- failing")
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
-            return
+            return False
         slurm_parameters = original_slurm_parameters.model_copy(deep=True)
         slurm_parameters.output = f"{work_dir}/%j.out"
         slurm_parameters.error = f"{work_dir}/%j.err"
@@ -83,7 +83,7 @@ async def submit_node(registry_entry: NodeRegistry) -> None:
                     f"Task task_id: {task_id} tmp_dir {tmp_dir} does not exist or is not a directory -- failing")
                 registry_entry.status = TaskStatus.FAILED
                 await context.db.save(registry_entry)
-                return
+                return False
 
             full_sync_data = sync_data_start + f'cp -a {tmp_dir}/. {work_dir}/recovery\n' + sync_data_end
 
@@ -132,7 +132,7 @@ async def submit_node(registry_entry: NodeRegistry) -> None:
                 )
                 registry_entry.status = TaskStatus.FAILED
                 await context.db.save(registry_entry)
-                return
+                return False
 
             docker_start = "udocker run "
             docker_start += "-e GIT_TOKEN=XXX"
@@ -206,8 +206,12 @@ async def submit_node(registry_entry: NodeRegistry) -> None:
             )
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
-            return
+            return False
         registry_entry.status = TaskStatus.SLURM_QUEUED
         await context.db.save(registry_entry)
+        return True
     except Exception as e:
         logger.exception(f"fatal error in submitting task_id: {task_id} {str(e)}")
+        registry_entry.status = TaskStatus.FAILED
+        await context.db.save(registry_entry)
+        return False
