@@ -246,7 +246,7 @@ class PandasModel(BytesB64Mixin, Model):
 
     async def custom_model_dump(self, **kwargs) -> Dict[str, Any]:
         dumped_data = self.to_react_data("dict")
-        # del dumped_data["content"]  # Exclude content from the dumped data
+        # del dumped_data["content_"]  # Exclude content from the dumped data
         return dumped_data
 
     def __repr__(self):
