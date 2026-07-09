@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "master", "feature-release-candidate" ]
+    branches:
+      - "**"
   pull_request:
-    branches: [ "main", "master", "feature-release-candidate" ]
   workflow_dispatch:  # This line enables the manual run button
 
 jobs:
@@ -65,11 +65,15 @@ jobs:
           uv run create_node_table --dir tests
           uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
 
-  build-docs:
-    name: Build Documentation
+  package-html-docs:
+    name: Build and Commit Package HTML Docs
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -83,17 +87,34 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
-      - name: Run sphinx-apidoc
+      - name: Generate API documentation sources
         run: uv run sphinx-apidoc -o doc/source/simstack/modules src/simstack -f
 
-      - name: Build documentation with Sphinx
-        run: uv run sphinx-build -b html doc/source doc/build
+      - name: Build package HTML documentation with Sphinx
+        run: |
+          set -euo pipefail
+          rm -rf src/simstack/static/docs
+          mkdir -p src/simstack/static/docs
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          uv run sphinx-build -b html -d /tmp/simstack-docs-doctrees doc/source src/simstack/static/docs
 
-      - name: Upload documentation artifact
+      - name: Upload package HTML documentation artifact
         uses: actions/upload-artifact@v4
         with:
           name: sphinx-docs
-          path: doc/build
+          path: src/simstack/static/docs
+
+      - name: Commit generated package HTML docs
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          git add -- src/simstack/static/docs
+          git diff --cached --quiet && echo "Generated package documentation is already up to date." && exit 0
+          # Official GitHub Actions bot noreply identity; keeps automated commits attributed to github-actions[bot].
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs: update generated package HTML [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
   test-windows:
     name: Test on windows-latest (Python ${{ matrix.python-version }})
@@ -131,7 +152,6 @@ jobs:
           from pymongo import MongoClient
           client = MongoClient('mongodb://localhost:27017/')
           db = client['admin']
-          # No authentication by default on setup-mongodb-action unless configured
           db = client['testing_data']
           db['init'].insert_one({'init': True})
           print('MongoDB initialized with database testing_data')

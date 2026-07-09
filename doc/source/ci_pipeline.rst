@@ -3,57 +3,32 @@
 CI Pipeline and Documentation Artifacts
 =======================================
 
-The SimStack II project uses GitHub Actions for Continuous Integration. One of the jobs in the pipeline is `build-docs`, which automatically generates the API documentation and builds the Sphinx HTML documentation.
+The SimStack II project uses GitHub Actions for Continuous Integration. One of the jobs in the pipeline is ``package-html-docs``, which automatically generates the API documentation and builds the Sphinx HTML documentation for the installed package.
 
-Where to find the documentation artifact on GitHub
---------------------------------------------------
+Where the HTML documentation lives
+----------------------------------
 
-When a CI run completes, you can find the built documentation as follows:
+The generated HTML documentation is owned by the ``simstack`` package and is stored under:
 
-1. Go to the **Actions** tab in the GitHub repository.
-2. Click on the most recent workflow run (usually named "CI").
-3. Scroll down to the **Artifacts** section at the bottom of the summary page.
-4. You will see an artifact named `sphinx-docs`. You can download it as a ZIP file.
+.. code-block:: text
 
-How to use the artifact in another repository
----------------------------------------------
+   src/simstack/static/docs
 
-If you want to use the documentation artifact in another repository's GitHub Action (for example, to deploy it to a web server), you can use the `actions/download-artifact` action.
+This directory is included as package data. Any application that installs ``simstack`` can serve the generated HTML from the installed package instead of rebuilding or copying documentation from this repository.
 
-Since artifacts are associated with a specific workflow run, you typically need to know the run ID. However, for the most recent successful run, you can use the `dawidd6/action-download-artifact` action or the GitHub CLI.
+How the CI job updates docs
+---------------------------
 
-Example workflow for another repository:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+On branch pushes and manual workflow runs, the ``package-html-docs`` job:
 
-Below is an example of how to download the `sphinx-docs` artifact from this repository in another GitHub Action:
+1. Runs ``sphinx-apidoc`` to refresh generated API documentation sources.
+2. Builds Sphinx HTML into ``src/simstack/static/docs``.
+3. Uploads the generated HTML as the ``sphinx-docs`` artifact for inspection.
+4. Commits changed generated HTML back to the same branch.
 
-.. code-block:: yaml
+The auto-commit message contains ``[skip ci]`` so the generated-docs commit does not start another CI run.
 
-    name: Update Server Documentation
-    on:
-      workflow_run:
-        workflows: ["CI"]
-        types: [completed]
-        branches: [main]
+How other projects should consume docs
+--------------------------------------
 
-    jobs:
-      deploy:
-        runs-on: ubuntu-latest
-        if: ${{ github.event.workflow_run.conclusion == 'success' }}
-        steps:
-          - name: Download sphinx-docs artifact
-            uses: dawidd6/action-download-artifact@v6
-            with:
-              github_token: ${{ secrets.GITHUB_TOKEN }}
-              workflow: ci.yml
-              name: sphinx-docs
-              repo: your-org/simstack  # Replace with the actual repository path
-              run_id: ${{ github.event.workflow_run.id }}
-
-          - name: Deploy to Server
-            run: |
-              # Your deployment commands here
-              # The documentation is now in the current directory (or the path you specified)
-              ls -R
-
-Note: You may need a Personal Access Token (PAT) if the repository is private or if you are accessing it across different organizations.
+Other projects should not download CI artifacts or rebuild these docs. They should install the desired ``simstack`` revision and use/serve ``simstack/static/docs`` from the installed package.
