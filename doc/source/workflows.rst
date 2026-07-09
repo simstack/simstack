@@ -88,6 +88,8 @@ Here are some ground rules to write workflows in Simstack II:
     by running make_node_table (:ref:`registering`)
   - All positional arguments of node functions must be **registered Models** in the model_table of the database
     by running make_model_table (:ref:`registering`). Presently kwargs for models are not supported.
+  - node functions must declare their child nodes in the docstring (:ref:`node-docstring`). make_node_table tries to discover
+    the children but this does not always work 
 
 Beyond that nodes functions are normal python functions which can use the full flexibility of python.
 The can call other functions or other nodes, but should **avoid "closures"**, such as global variables.
@@ -355,6 +357,70 @@ crashes and restart the server if such events are detected.
 The file :file:`simstack.scripts.check_runner.sh` provides a template that
 must be adapted to the configuration of the remote node. This needs to be
 done only once.
+
+.. _node-docstring
+
+Docstring
+~~~~~~~~~
+
+Each ``@node`` function should have a docstring that follows a specific format to allow SimStack to discover child nodes and document inputs and outputs correctly. SimStack uses a custom docstring parser that recognizes several sections.
+
+Supported Sections
+------------------
+
+The parser recognizes the following sections (case-sensitive):
+
+* ``Args:`` or ``Parameters:``: Describes the input arguments.
+* ``Returns:``: Describes the return value.
+* ``SimstackResult:``: Used when the function returns a ``SimstackResult`` or ``NodeRunner`` to define multiple named outputs.
+* ``Called Nodes:``: Lists the other nodes that this node might call. This is crucial for SimStack to build the workflow graph and ensure all necessary nodes are registered and available.
+* ``Raises:``: Describes the exceptions that the node might raise.
+
+Called Nodes
+------------
+
+The ``Called Nodes:`` section is particularly important. While SimStack attempts to automatically discover child nodes by analyzing the function body, this is not always reliable (e.g., when calling nodes dynamically or through helpers). Explicitly listing them in the docstring ensures they are correctly identified.
+
+.. code-block:: python
+
+    @node
+    def parent_node(arg1: FloatData, **kwargs) -> FloatData:
+        """
+        A node that calls other nodes.
+
+        Called Nodes:
+            - child_node_1
+            - child_node_2
+        """
+        res1 = child_node_1(arg1, **kwargs)
+        return child_node_2(res1, **kwargs)
+
+SimstackResult
+--------------
+
+When a node returns a ``SimstackResult`` (or its subclass ``NodeRunner``), it is unclear what this really means because the attributes of
+``SimstackResult:`` are the actual return values. To help devopers use your nodes you should use the ``SimstackResult:`` section to document the individual models added to the result. The format is ``name (Type): description``.
+
+.. code-block:: python
+
+    @node
+    def complex_node(arg1: FloatData, **kwargs) -> SimstackResult:
+        """
+        A node returning multiple results.
+
+        SimstackResult:
+            output_1 (FloatData): The first result of the calculation.
+            output_2 (ArrayStorage): The second result containing large data.
+        """
+        node_runner = kwargs['node_runner']
+
+        # ... calculation ...
+
+        node_runner.output_1 = FloatData(value=1.0)
+        node_runner.output_2 = ArrayStorage(field_name="large_data")
+
+        return node_runner.succeed("Done")
+
 
 .. _registering:
 

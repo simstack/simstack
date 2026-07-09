@@ -133,8 +133,8 @@ Note: This will install all required dependencies, including ``mongomock`` and `
 
 .. _configuration-file:
 
-Create ``simstack.toml``
-~~~~~~~~~~~~~~~~~~~~~~~~
+Create simstack.toml
+~~~~~~~~~~~~~~~~~~~~
 
 Create a ``simstack.toml`` file (placeholders shown below):
 
@@ -151,6 +151,11 @@ Create a ``simstack.toml`` file (placeholders shown below):
    test_database = "<NAME>_test"
    connection_string = "mongodb://<USER>:<PASSWORD>@<HOST>:27017/"
    mongodump_path = "<PATH_TO_MONGODUMP_EXE>"
+   [parameters.server]
+   url="http://127.0.0.1:8000"
+   token="eyJhb....."
+
+
 
 Where:
 
@@ -158,7 +163,10 @@ Where:
 * ``<NAME>`` is your database name (often your first name in lower case)
 * ``<PASSWORD>`` is the database password
 * ``<PATH_TO_MONGODUMP_EXE>`` is the path to the ``mongodump`` executable (required for database backups)
+* ``url`` is the url for the fastapi server
+* ``token`` is the runner specific token you get in the ui profile. the name of the runner must match the name in the ui
 
+The last two parameters are needed for file transfer between nodes.
 
 Initialize the system
 ~~~~~~~~~~~~~~~~~~~~~
