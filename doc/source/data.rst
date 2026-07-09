@@ -92,9 +92,10 @@ And for file management (see :doc:`files`):
 - FileList
 - FileListModel
 
-And the parallel execution utility (see :doc:`mass_runner`):
+And the parallel execution utilities (see :doc:`mass_runner` and :doc:`fire_and_forget_runner`):
 
 - MassRunner
+- FireAndForgetRunner
 
 :class:`simstack.models.array_storage.ArrayStorage` is an example of a class which
 packs its content by serializing and deserializing it. This is the

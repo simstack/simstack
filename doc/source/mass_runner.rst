@@ -1,6 +1,11 @@
 MassRunner
 ==========
 
+.. autoclass:: simstack.methods.mass_runner.MassRunner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 The ``MassRunner`` is a specialized ``NodeRunner`` utility designed to execute a large number of independent node tasks in parallel. It handles task orchestration, concurrency control, and result persistence within a ``DataSet``.
 
 Key Features
@@ -32,6 +37,19 @@ The ``MassRunner`` is typically used within an ``async with`` block inside a par
         
         # After the block, runner.dataset contains all results
         return runner.dataset
+
+
+The dataset will comprise a single ``DataSetSection`` called "tasks". Each row contains all inputs and outputs of the
+node that has been called, success and error flags. The name of the row is the arg-hash of the arguments of the node.
+
+.. :note:
+   The rows returned by MassRunner may contain much more data than is actually needed in the subsequent calculation.
+   It may therefore be better to immideatly create a derived dataset with only the relevent data.
+
+.. :note:
+   MassRunner is meant for jobs which are expected to mostly suceed and which take roughly the same amount of time
+
+
 
 Detailed Flow in MassRunner Tests
 ---------------------------------
