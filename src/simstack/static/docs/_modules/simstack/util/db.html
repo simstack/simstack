@@ -1,0 +1,1350 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>simstack.util.db - SimStack II documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/cobalt2-theme.css?v=2d651046" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/docs-build-badge.css?v=803faff8" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">SimStack II  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ui_documentation.html">Graphical User Interface</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../developer_guide.html">Developer Guide</a><input aria-label="Toggle navigation of Developer Guide" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../data.html">Persisting and Visualizing Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../lists.html">List Mixins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../array_lists.html">Array Lists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tables.html">Tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../files.html">File Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resource_config.html">Program Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../mass_runner.html">MassRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../database_migrations.html">Database Migrations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../ci_pipeline.html">CI Pipeline and Documentation Artifacts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Simstack II Setup</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for simstack.util.db</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">bson</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectId</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">motor.motor_asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncIOMotorClient</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIOEngine</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">EmbeddedModel</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.definitions</span><span class="w"> </span><span class="kn">import</span> <span class="n">DBType</span><span class="p">,</span> <span class="n">TaskStatus</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.node_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeRegistry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.database_information</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseInformation</span>
+
+<span class="c1"># from simstack.util.importer import import_class</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">Model</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Database">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Database</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Server-owned database facade.</span>
+
+<span class="sd">    The server should depend on this object instead of reaching into SimStack</span>
+<span class="sd">    core engine abstractions directly.  The underlying persistence primitive is</span>
+<span class="sd">    the plain ODMantic engine; SimStack-specific behavior lives in this facade.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">client</span><span class="p">:</span> <span class="n">AsyncIOMotorClient</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">database_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">connection_string</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">engine</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">db_type</span><span class="p">:</span> <span class="n">DBType</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">server_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">server_token</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">engine</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">client</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">database_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;client and database_name are required when engine is not provided&quot;</span>
+                <span class="p">)</span>
+            <span class="n">engine</span> <span class="o">=</span> <span class="n">AIOEngine</span><span class="p">(</span><span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span> <span class="n">database</span><span class="o">=</span><span class="n">database_name</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_db_type</span> <span class="o">=</span> <span class="n">db_type</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="s2">&quot;db_type&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_engine</span> <span class="o">=</span> <span class="n">engine</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="o">=</span> <span class="n">client</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="s2">&quot;client&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_database_name</span> <span class="o">=</span> <span class="n">database_name</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="s2">&quot;database_name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection_string</span> <span class="o">=</span> <span class="n">connection_string</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="s2">&quot;connection_string&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_server_url</span> <span class="o">=</span> <span class="n">server_url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_server_token</span> <span class="o">=</span> <span class="n">server_token</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_database_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">database</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_database_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">database</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">databae_type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DBType</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db_type</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">connection_string</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection_string</span>
+
+<div class="viewcode-block" id="Database.from_db_info">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.from_db_info">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_db_info</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">db_info</span><span class="p">:</span> <span class="n">DatabaseInformation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Database&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">db_info</span><span class="o">.</span><span class="n">db_type</span> <span class="o">==</span> <span class="n">DBType</span><span class="o">.</span><span class="n">IN_MEMORY</span><span class="p">:</span>
+            <span class="c1"># For tests, use in-memory MongoDB (mongomock)</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">mongomock_motor</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncMongoMockClient</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># import mongomock</span>
+                <span class="n">client</span> <span class="o">=</span> <span class="n">AsyncMongoMockClient</span><span class="p">()</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using in-memory MongoDB mock&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;mongomock not installed, falling back to localhost MongoDB&quot;</span>
+                <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;mongomock not installed, cannot use in-memory MongoDB&quot;</span>
+                <span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">db_info</span><span class="o">.</span><span class="n">db_type</span> <span class="o">==</span> <span class="n">DBType</span><span class="o">.</span><span class="n">MONGODB</span><span class="p">:</span>
+            <span class="n">connection_string</span> <span class="o">=</span> <span class="n">db_info</span><span class="o">.</span><span class="n">connection_string</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">connection_string</span><span class="p">:</span>
+                <span class="n">connection_string</span> <span class="o">=</span> <span class="s2">&quot;mongodb://localhost:27017&quot;</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">AsyncIOMotorClient</span><span class="p">(</span><span class="n">connection_string</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Connected to MongoDB&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Unsupported database type for MongoDB: </span><span class="si">{</span><span class="n">db_info</span><span class="o">.</span><span class="n">db_type</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Create engine</span>
+        <span class="n">engine</span> <span class="o">=</span> <span class="n">AIOEngine</span><span class="p">(</span><span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span> <span class="n">database</span><span class="o">=</span><span class="n">db_info</span><span class="o">.</span><span class="n">db_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">engine</span><span class="o">=</span><span class="n">engine</span><span class="p">,</span>
+            <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span>
+            <span class="n">database_name</span><span class="o">=</span><span class="n">db_info</span><span class="o">.</span><span class="n">db_name</span><span class="p">,</span>
+            <span class="n">connection_string</span><span class="o">=</span><span class="n">db_info</span><span class="o">.</span><span class="n">connection_string</span><span class="p">,</span>
+            <span class="n">db_type</span><span class="o">=</span><span class="n">db_info</span><span class="o">.</span><span class="n">db_type</span><span class="p">,</span>
+            <span class="n">server_url</span><span class="o">=</span><span class="n">db_info</span><span class="o">.</span><span class="n">server_url</span><span class="p">,</span>
+            <span class="n">server_token</span><span class="o">=</span><span class="n">db_info</span><span class="o">.</span><span class="n">server_token</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">core_engine</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compatibility escape hatch for SimStack core internals only.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_engine</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">server_url</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_url</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">server_token</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_token</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">client</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIOMotorClient</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Database client is not initialized&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">database_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_database_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Database name is not initialized&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_database_name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">raw_database</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_database_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_database_name</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_engine</span><span class="p">,</span> <span class="s2">&quot;database&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">database</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_engine</span><span class="p">,</span> <span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw_database</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Database.collection">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.collection">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_or_name</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model_or_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw_database</span><span class="p">[</span><span class="n">model_or_name</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_engine</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">model_or_name</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Database.get_collection">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.get_collection">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_or_name</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Temporary compatibility alias for code still being migrated.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">(</span><span class="n">model_or_name</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Database.find">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.find">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">:</span>
+            <span class="c1"># Re-raise TypeError as expected by tests if no args provided</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;AIOEngine.find() missing 1 required positional argument: &#39;model&#39;&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">model_class</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_engine</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_postprocess</span><span class="p">(</span><span class="n">model_class</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">results</span></div>
+
+
+<div class="viewcode-block" id="Database.find_all">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.find_all">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_all</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Database.find_one">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.find_one">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">:</span>
+            <span class="c1"># Re-raise TypeError as expected by tests if no args provided</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;Database.find_one() missing 1 required positional argument: &#39;model&#39;&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">model_class</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_engine</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_postprocess</span><span class="p">(</span><span class="n">model_class</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="Database.find_one_by_model_name">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.find_one_by_model_name">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_one_by_model_name</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">model_mapping</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">ObjectId</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="s2">&quot;.&quot;</span> <span class="ow">in</span> <span class="n">model_mapping</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.importer</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_class</span>
+
+            <span class="n">model_class</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_class</span><span class="p">(</span><span class="n">model_mapping</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.importer</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_class_by_name</span>
+
+            <span class="n">model_class</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_class_by_name</span><span class="p">(</span><span class="n">model_mapping</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">model_class</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;DB: model class </span><span class="si">{</span><span class="n">model_mapping</span><span class="si">}</span><span class="s2"> not found in the available modules&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">item_id</span> <span class="o">=</span> <span class="n">ObjectId</span><span class="p">(</span><span class="n">item_id</span><span class="p">)</span>
+
+        <span class="n">instance</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">model_class</span><span class="p">,</span> <span class="n">model_class</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">item_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">instance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Instance of &#39;</span><span class="si">{</span><span class="n">model_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&#39; with id &#39;</span><span class="si">{</span><span class="n">item_id</span><span class="si">}</span><span class="s2">&#39; does not exist&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Instance of &#39;</span><span class="si">{</span><span class="n">model_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&#39; with id &#39;</span><span class="si">{</span><span class="n">item_id</span><span class="si">}</span><span class="s2">&#39; does not exist&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">instance</span></div>
+
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_apply_postprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_class</span><span class="p">:</span> <span class="nb">type</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">Model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply db_find_postprocess to results if defined on the model class.&quot;&quot;&quot;</span>
+        <span class="n">post_process</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">model_class</span><span class="p">,</span> <span class="s2">&quot;db_find_postprocess&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">post_process</span> <span class="ow">and</span> <span class="nb">callable</span><span class="p">(</span><span class="n">post_process</span><span class="p">):</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+
+            <span class="n">is_async</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">post_process</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">is_async</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="n">post_process</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Sync db_find_postprocess on </span><span class="si">{</span><span class="n">model_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> is deprecated. &quot;</span>
+                        <span class="s2">&quot;Please make it asynchronous.&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">post_process</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Error during post-processing </span><span class="si">{</span><span class="n">model_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Should we re-raise or just log? Usually post-processing failure is critical.</span>
+                <span class="k">raise</span>
+
+        <span class="c1"># Recursively apply postprocess to nested Model attributes</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">Model</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">EmbeddedModel</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">attr_name</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">attr_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
+                    <span class="k">continue</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">attr_value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="k">if</span> <span class="n">attr_value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">callable</span><span class="p">(</span><span class="n">attr_value</span><span class="p">):</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># Handle direct Model instance</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attr_value</span><span class="p">,</span> <span class="n">Model</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span>
+                    <span class="n">attr_value</span><span class="p">,</span> <span class="n">EmbeddedModel</span>
+                <span class="p">):</span>
+                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_postprocess</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">attr_value</span><span class="p">),</span> <span class="n">attr_value</span><span class="p">)</span>
+
+                <span class="c1"># Handle list of Models</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attr_value</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+                    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">attr_value</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">Model</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">EmbeddedModel</span><span class="p">):</span>
+                            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_postprocess</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">item</span><span class="p">),</span> <span class="n">item</span><span class="p">)</span>
+
+                <span class="c1"># Handle dict with Model values</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attr_value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attr_value</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Model</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">EmbeddedModel</span><span class="p">):</span>
+                            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_postprocess</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Error during recursive post-processing traversal for </span><span class="si">{</span><span class="n">model_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="Database.close">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.close">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Database.save">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.save">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">:</span>
+            <span class="c1"># Re-raise TypeError as expected by tests if no args provided</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;AIOEngine.save() missing 1 required positional argument: &#39;instance&#39;&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">rest_args</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="nb">set</span><span class="p">)):</span>
+            <span class="c1"># Use list comprehension to collect results and ensure they are returned</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_save_one</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="o">*</span><span class="n">rest_args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">results</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_save_one</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="o">*</span><span class="n">rest_args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="Database.save_unchecked">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.save_unchecked">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">save_unchecked</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_engine</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Database.delete">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.delete">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_engine</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Database.apply_resource_assignment_to_node_registry">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.apply_resource_assignment_to_node_registry">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">apply_resource_assignment_to_node_registry</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">node_registry</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.resource_assignment</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">apply_resource_assignment_to_node_registry</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="k">await</span> <span class="n">apply_resource_assignment_to_node_registry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_registry</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Database.find_artifact_mappings">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.find_artifact_mappings">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_artifact_mappings</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">node_registry_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.artifacts</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_artifact_mappings</span>
+
+        <span class="k">return</span> <span class="k">await</span> <span class="n">find_artifact_mappings</span><span class="p">(</span><span class="n">node_registry_path</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Database.find_all_artifacts">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.find_all_artifacts">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_all_artifacts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_registry</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.artifacts</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_all_artifacts</span>
+
+        <span class="k">return</span> <span class="k">await</span> <span class="n">find_all_artifacts</span><span class="p">(</span><span class="n">node_registry</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Database.ping">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.ping">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ping</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">admin</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;ping&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Database.stats">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.stats">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;dbStats&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_save_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="c1"># Avoid recursion if custom save is called</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;_currently_saving&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_engine</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span> <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">model</span>
+
+        <span class="n">custom_save_called</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_call_custom_save</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="c1"># Parts saves should always be called unless the main model has a custom save</span>
+        <span class="c1"># that handles everything. But in our current logic, _maybe_call_custom_save</span>
+        <span class="c1"># returning True means the custom save WAS called.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">custom_save_called</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_call_parts_saves</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">custom_save_called</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">model</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_engine</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span> <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">model</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_maybe_call_custom_save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">save_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="s2">&quot;save&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">save_attr</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Avoid recursion if custom save is called</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="s2">&quot;_currently_saving&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Set a flag to prevent recursion if custom save calls db.save(self)</span>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="s2">&quot;_currently_saving&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">save_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="s2">&quot;_currently_saving&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_call_parts_saves</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">any_saved</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">seen_ids</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_save_parts</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+            <span class="n">part_id</span> <span class="o">=</span> <span class="nb">id</span><span class="p">(</span><span class="n">part</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">part_id</span> <span class="ow">in</span> <span class="n">seen_ids</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">seen_ids</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">part_id</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_call_custom_save</span><span class="p">(</span><span class="n">part</span><span class="p">):</span>
+                <span class="n">any_saved</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="n">any_saved</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_iter_save_parts</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="n">parts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="nb">set</span><span class="p">)):</span>
+                <span class="n">parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">parts</span>
+
+<div class="viewcode-block" id="Database.load_task">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.load_task">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_task</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">arg_hash</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">function_hash</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;NodeRegistry&quot;</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load a task based on name, arg_hash and function_hash</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Node name</span>
+<span class="sd">            arg_hash: Hash of the arguments</span>
+<span class="sd">            function_hash: Hash of the function</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The found NodeRegistry instance or None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
+            <span class="n">NodeRegistry</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">NodeRegistry</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">name</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="n">NodeRegistry</span><span class="o">.</span><span class="n">arg_hash</span> <span class="o">==</span> <span class="n">arg_hash</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="n">NodeRegistry</span><span class="o">.</span><span class="n">function_hash</span> <span class="o">==</span> <span class="n">function_hash</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+    <span class="c1"># legacy functions ... these are functions in the old database class which we do not want to migrate if possible</span>
+    <span class="c1">#</span>
+    <span class="c1"># load_waiting_tasks_for_resource DONE</span>
+    <span class="c1"># reset_database                  DONE</span>
+    <span class="c1"># the rest is hopefully not needed anymore</span>
+    <span class="c1"># list_collections</span>
+    <span class="c1"># upsert</span>
+    <span class="c1"># _save_references</span>
+    <span class="c1"># find_one_by_model_name</span>
+    <span class="c1"># find_all</span>
+    <span class="c1"># find_many</span>
+    <span class="c1"># delete_by_id</span>
+    <span class="c1"># drop_collection</span>
+    <span class="c1"># load_from_collection</span>
+    <span class="c1"># load_node_model_by_name</span>
+    <span class="c1"># load_task_by_id</span>
+    <span class="c1"># count</span>
+    <span class="c1"># aggregate</span>
+
+<div class="viewcode-block" id="Database.load_waiting_tasks_for_resource">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.load_waiting_tasks_for_resource">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_waiting_tasks_for_resource</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="s2">&quot;NodeRegistry&quot;</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load all waiting tasks for a specific resource</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resource: The resource name</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of matching NodeRegistry instances</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Try to use the engine directly if find is failing in tests</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">submitted_tasks</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+                <span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">NodeRegistry</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SUBMITTED</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Error calling self.find in load_waiting_tasks_for_resource: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">. Falling back to engine.find.&quot;</span>
+            <span class="p">)</span>
+            <span class="n">submitted_tasks</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_engine</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+                <span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">NodeRegistry</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SUBMITTED</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Then filter them in Python by checking the resource field</span>
+        <span class="n">matching_tasks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">submitted_tasks</span><span class="p">:</span>
+            <span class="c1"># Check if parameters has a resource attribute and if it matches our resource</span>
+            <span class="c1"># the local runner will also do the immidiate tasks</span>
+            <span class="c1"># TODO not the local runner the default resource should pick up self but there should be no seld</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="nb">hasattr</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span> <span class="s2">&quot;resource&quot;</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">task</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">resource</span> <span class="o">==</span> <span class="n">resource</span>
+            <span class="p">):</span>
+                <span class="n">matching_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="nb">hasattr</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span> <span class="s2">&quot;resource&quot;</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">task</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">resource</span> <span class="o">==</span> <span class="s2">&quot;self&quot;</span>
+            <span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;There should be tasks submitted to self&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">matching_tasks</span></div>
+
+
+<div class="viewcode-block" id="Database.reset_database">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.reset_database">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">reset_database</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reset the database by dropping all collections and recreating them</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">db</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">database_name</span><span class="p">]</span>
+        <span class="n">collections</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">list_collection_names</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">collection</span> <span class="ow">in</span> <span class="n">collections</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">db</span><span class="p">[</span><span class="n">collection</span><span class="p">]</span><span class="o">.</span><span class="n">drop</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Database </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">database_name</span><span class="si">}</span><span class="s2"> has been reset&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Database.load_task_by_id">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.Database.load_task_by_id">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_task_by_id</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ObjectId</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NodeRegistry</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load a task based on its ID</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            task_id: The task ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The found NodeRegistry instance or None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">task_id</span> <span class="o">=</span> <span class="n">ObjectId</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">NodeRegistry</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">task_id</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1">#</span>
+<span class="c1"># def set_database_core_context(database: Any):</span>
+<span class="c1">#     set_context = getattr(database, &quot;set_core_context&quot;, None)</span>
+<span class="c1">#     if callable(set_context):</span>
+<span class="c1">#         return set_context()</span>
+<span class="c1">#     return current_engine_context.set(database)</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># def reset_database_core_context(database: Any, token) -&gt; None:</span>
+<span class="c1">#     reset_context = getattr(database, &quot;reset_core_context&quot;, None)</span>
+<span class="c1">#     if callable(reset_context):</span>
+<span class="c1">#         reset_context(token)</span>
+<span class="c1">#         return</span>
+<span class="c1">#     current_engine_context.reset(token)</span>
+<span class="c1">#</span>
+
+
+<span class="c1"># TODO engines</span>
+<div class="viewcode-block" id="find_all_artifacts_for_database">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.db.find_all_artifacts_for_database">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_all_artifacts_for_database</span><span class="p">(</span>
+    <span class="n">database</span><span class="p">:</span> <span class="n">Database</span><span class="p">,</span> <span class="n">node_registry</span><span class="p">:</span> <span class="n">Any</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+    <span class="n">find_all</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">database</span><span class="p">,</span> <span class="s2">&quot;find_all_artifacts&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">find_all</span><span class="p">):</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">database</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">node_registry</span><span class="p">)</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.artifacts</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_all_artifacts</span>
+
+    <span class="k">return</span> <span class="k">await</span> <span class="n">find_all_artifacts</span><span class="p">(</span><span class="n">node_registry</span><span class="p">,</span> <span class="n">database</span><span class="p">)</span></div>
+
+
+
+<span class="c1">#</span>
+<span class="c1"># class DatabaseOld(DatabaseInformation):</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     Asynchronous MongoDB database access class using ODMantic ORM.</span>
+<span class="c1">#     Provides a cleaner interface for database operations.</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#</span>
+<span class="c1">#     def __init__(self, db_type: DBType, db_name: str = &quot;simstack&quot;, connection_string: str = &quot;&quot;):</span>
+<span class="c1">#         super().__init__(db_name, connection_string, db_type)</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Initialize the MongoDB connection</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             db_type: Type of database configuration</span>
+<span class="c1">#             connection_string: MongoDB connection string (if not using default)</span>
+<span class="c1">#             db_name: Name of the MongoDB database</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#</span>
+<span class="c1">#         if db_type == DBType.IN_MEMORY:</span>
+<span class="c1">#             # For tests, use in-memory MongoDB (mongomock)</span>
+<span class="c1">#             try:</span>
+<span class="c1">#                 # import mongomock</span>
+<span class="c1">#                 from mongomock_motor import AsyncMongoMockClient</span>
+<span class="c1">#</span>
+<span class="c1">#                 self.client = AsyncMongoMockClient()</span>
+<span class="c1">#                 logger.info(&quot;Using in-memory MongoDB mock&quot;)</span>
+<span class="c1">#             except ImportError:</span>
+<span class="c1">#                 logger.warning(</span>
+<span class="c1">#                     &quot;mongomock not installed, falling back to localhost MongoDB&quot;</span>
+<span class="c1">#                 )</span>
+<span class="c1">#                 self.client = AsyncIOMotorClient(&quot;mongodb://localhost:27017&quot;)</span>
+<span class="c1">#</span>
+<span class="c1">#         elif db_type == DBType.MONGODB:</span>
+<span class="c1">#             if not connection_string:</span>
+<span class="c1">#                 connection_string = &quot;mongodb://localhost:27017&quot;</span>
+<span class="c1">#             self.client = AsyncIOMotorClient(connection_string)</span>
+<span class="c1">#             logger.info(&quot;Connected to MongoDB&quot;)</span>
+<span class="c1">#</span>
+<span class="c1">#         else:</span>
+<span class="c1">#             raise ValueError(f&quot;Unsupported database type for MongoDB: {db_type}&quot;)</span>
+<span class="c1">#</span>
+<span class="c1">#         # Create engine</span>
+<span class="c1">#         self.engine = AIOEngineProxy(client=self.client, database=db_name)</span>
+<span class="c1">#         # this will set the engine for all functions that are either called from the core package or the server</span>
+<span class="c1">#         # current_engine_context.set(self.engine)</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#     @classmethod</span>
+<span class="c1">#     def from_db_info(cls, db_info: DatabaseInformation):</span>
+<span class="c1">#         return cls(db_info.db_type, db_info.db_name, db_info.connection_string)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def list_collections(self):</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         List all collections in the database</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         db = self.client[self.db_name]</span>
+<span class="c1">#         return await db.list_collection_names()</span>
+<span class="c1">#</span>
+<span class="c1">#     async def upsert(self, model: Model) -&gt; Model:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Save or update a model instance including all references and list fields</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             model: The ODMantic model instance to save</span>
+<span class="c1">#</span>
+<span class="c1">#         Returns:</span>
+<span class="c1">#             The saved model with updated fields</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         # First, handle all references to ensure they exist in the database</span>
+<span class="c1">#         if isinstance(Model, NodeRegistry):</span>
+<span class="c1">#             if not hasattr(model, &quot;name&quot;):</span>
+<span class="c1">#                 logger.exception(</span>
+<span class="c1">#                     f&quot;Fatal Error A trying to save node_registry: {model.model_dump()} for task_id: {model.id}&quot;</span>
+<span class="c1">#                 )</span>
+<span class="c1">#                 return model</span>
+<span class="c1">#             if model.name is None:</span>
+<span class="c1">#                 logger.exception(</span>
+<span class="c1">#                     f&quot;Fatal Error B trying to save node_registry: {model.model_dump()} for task_id: {model.id}&quot;</span>
+<span class="c1">#                 )</span>
+<span class="c1">#                 return model</span>
+<span class="c1">#</span>
+<span class="c1">#         await self._save_references(model)</span>
+<span class="c1">#</span>
+<span class="c1">#         # Then save the model itself</span>
+<span class="c1">#         return await self.engine.save(model)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def _save_references(self, model: Model, visited=None):</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Recursively save all references within a model</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             model: The model containing references to save</span>
+<span class="c1">#             visited: Set of object IDs already processed to prevent infinite recursion</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         if visited is None:</span>
+<span class="c1">#             visited = set()</span>
+<span class="c1">#</span>
+<span class="c1">#         # Skip if we&#39;ve already processed this object (prevents circular references)</span>
+<span class="c1">#         model_id = id(model)</span>
+<span class="c1">#         if model_id in visited:</span>
+<span class="c1">#             return</span>
+<span class="c1">#         visited.add(model_id)</span>
+<span class="c1">#</span>
+<span class="c1">#         # Get all model fields, including those with default_factory</span>
+<span class="c1">#         model_fields = getattr(model.__class__, &quot;model_fields&quot;, {})</span>
+<span class="c1">#</span>
+<span class="c1">#         # Process each field in the model</span>
+<span class="c1">#         for field_name, field_value in model.__dict__.items():</span>
+<span class="c1">#             if field_value is None:</span>
+<span class="c1">#                 continue</span>
+<span class="c1">#</span>
+<span class="c1">#             # Get field info if available</span>
+<span class="c1">#             field_info = model_fields.get(field_name)</span>
+<span class="c1">#             if not field_info:</span>
+<span class="c1">#                 continue</span>
+<span class="c1">#</span>
+<span class="c1">#         # Handle different field types</span>
+<span class="c1">#</span>
+<span class="c1">#         # Case 1: Direct Reference fields</span>
+<span class="c1">#         if hasattr(field_info, &quot;annotation&quot;) and &quot;Reference&quot; in str(</span>
+<span class="c1">#             field_info.annotation</span>
+<span class="c1">#         ):</span>
+<span class="c1">#             if field_value is not None:</span>
+<span class="c1">#                 logger.info(</span>
+<span class="c1">#                     f&quot;Saving reference field {field_name} of type {type(field_value).__name__}&quot;</span>
+<span class="c1">#                 )</span>
+<span class="c1">#                 await self._save_references(field_value, visited)</span>
+<span class="c1">#                 await self.engine.save(field_value)</span>
+<span class="c1">#</span>
+<span class="c1">#         # Case 2: List fields that might contain models</span>
+<span class="c1">#         elif isinstance(field_value, list):</span>
+<span class="c1">#             for item in field_value:</span>
+<span class="c1">#                 if isinstance(item, Model):</span>
+<span class="c1">#                     logger.info(</span>
+<span class="c1">#                         f&quot;Saving list item of type {type(item).__name__} in field {field_name}&quot;</span>
+<span class="c1">#                     )</span>
+<span class="c1">#                     await self._save_references(item, visited)</span>
+<span class="c1">#                     await self.engine.save(item)</span>
+<span class="c1">#</span>
+<span class="c1">#         # Case 3: Embedded models (like in FileInstance within FileStack)</span>
+<span class="c1">#         elif isinstance(field_value, Model):</span>
+<span class="c1">#             logger.info(</span>
+<span class="c1">#                 f&quot;Saving embedded model of type {type(field_value).__name__} in field {field_name}&quot;</span>
+<span class="c1">#             )</span>
+<span class="c1">#             await self._save_references(field_value, visited)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def save(self, model: Model) -&gt; Model:</span>
+<span class="c1">#         return await self.upsert(model)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def find_one(self, model_class: Type[T], query=None, **kwargs) -&gt; Optional[T]:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Find a single document matching the query</span>
+<span class="c1">#             :param model_class:</span>
+<span class="c1">#             :param query:</span>
+<span class="c1">#         Returns:</span>
+<span class="c1">#             The found model instance or None</span>
+<span class="c1">#</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         return await self.engine.find_one(model_class, query, **kwargs)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def find_one_by_model_name(</span>
+<span class="c1">#         self, model_mapping: str, item_id: str</span>
+<span class="c1">#     ) -&gt; Optional[Any]:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Find a single document matching the query by model name</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             model_name: The name of the ODMantic model class as a string</span>
+<span class="c1">#</span>
+<span class="c1">#         Returns:</span>
+<span class="c1">#             The found model instance or None</span>
+<span class="c1">#</span>
+<span class="c1">#         Raises:</span>
+<span class="c1">#             ValueError: If model name is not found in the global namespace</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         # Import common models that might be used</span>
+<span class="c1">#</span>
+<span class="c1">#         # Find the model class based on its name</span>
+<span class="c1">#         # model_class = import_class(model_mapping)</span>
+<span class="c1">#         # model_elements = model_mapping.split(&quot;.&quot;)</span>
+<span class="c1">#         # if len(model_elements) &gt; 1:</span>
+<span class="c1">#         #     model_name = model_mapping.split(&quot;.&quot;)[-1]</span>
+<span class="c1">#         # else:</span>
+<span class="c1">#         #     model_name = model_mapping</span>
+<span class="c1">#         # # Search through modules in current namespace</span>
+<span class="c1">#         # for module_name, module in sys.modules.items():</span>
+<span class="c1">#         #     if hasattr(module, model_name):</span>
+<span class="c1">#         #         potential_class = getattr(module, model_name)</span>
+<span class="c1">#         #         # Check if it&#39;s likely a model class (has attributes like id, __collection__)</span>
+<span class="c1">#         #         if hasattr(potential_class, &quot;id&quot;) and hasattr(</span>
+<span class="c1">#         #             potential_class, &quot;__collection__&quot;</span>
+<span class="c1">#         #         ):</span>
+<span class="c1">#         #             model_class = potential_class</span>
+<span class="c1">#         #             break</span>
+<span class="c1">#         # if model_class is None:</span>
+<span class="c1">#         #    logger.info(f&quot;Trying to import model: {model_mapping}&quot;)</span>
+<span class="c1">#</span>
+<span class="c1">#         from simstack.util.importer import import_class</span>
+<span class="c1">#         model_class = await import_class(model_mapping, self)</span>
+<span class="c1">#         if model_class is None:</span>
+<span class="c1">#             raise ValueError(</span>
+<span class="c1">#                 f&quot;DB: model class {model_mapping} not found in the available modules&quot;</span>
+<span class="c1">#             )</span>
+<span class="c1">#</span>
+<span class="c1">#         if isinstance(item_id, str):</span>
+<span class="c1">#             item_id = ObjectId(item_id)</span>
+<span class="c1">#</span>
+<span class="c1">#         instance = await self.engine.find_one(model_class, model_class.id == item_id)</span>
+<span class="c1">#         if not instance:</span>
+<span class="c1">#             logger.error(</span>
+<span class="c1">#                 f&quot;Instance of &#39;{model_class.__name__}&#39; with id &#39;{item_id}&#39; does not exist&quot;</span>
+<span class="c1">#             )</span>
+<span class="c1">#             raise ValueError(</span>
+<span class="c1">#                 f&quot;Instance of &#39;{model_class.__name__}&#39; with id &#39;{item_id}&#39; does not exist&quot;</span>
+<span class="c1">#             )</span>
+<span class="c1">#         return instance</span>
+<span class="c1">#</span>
+<span class="c1">#     async def find_all(self, model_class: Type[T], **kwargs) -&gt; List[T]:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Find all documents of a given model class</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             model_class: The ODMantic model class</span>
+<span class="c1">#             **kwargs: Query filters</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         return await self.engine.find(model_class, **kwargs)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def find_many(self, model_class: Type[T], query, **kwargs) -&gt; List[T]:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Find multiple documents matching the query</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             model_class: The ODMantic model class</span>
+<span class="c1">#             :param query:</span>
+<span class="c1">#             **kwargs: Query filters</span>
+<span class="c1">#</span>
+<span class="c1">#         Returns:</span>
+<span class="c1">#             List of matching model instances</span>
+<span class="c1">#</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         return await self.engine.find(model_class, query, **kwargs)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def delete(self, model: Model) -&gt; None:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Delete a model instance</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             model: The model instance to delete</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         await self.engine.delete(model)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def delete_by_id(</span>
+<span class="c1">#         self, model_class: Type[T], id: Union[str, ObjectId]</span>
+<span class="c1">#     ) -&gt; None:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Delete a document by its ID</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             model_class: The ODMantic model class</span>
+<span class="c1">#             id: The document ID (either string or ObjectId)</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         # Convert string ID to ObjectId if needed</span>
+<span class="c1">#         if isinstance(id, str):</span>
+<span class="c1">#             id = ObjectId(id)</span>
+<span class="c1">#</span>
+<span class="c1">#         instance = await self.engine.find_one(model_class, model_class.id == id)</span>
+<span class="c1">#         if instance:</span>
+<span class="c1">#             await self.engine.delete(instance)</span>
+<span class="c1">#         else:</span>
+<span class="c1">#             logger.error(f&quot;No data found in &#39;{model_class.__name__}&#39; with id &#39;{id}&#39;&quot;)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def drop_collection(self, model_class: Type[T]) -&gt; None:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Drop the collection for the given model class</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             model_class: The ODMantic model class</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         collection = self.engine.get_collection(model_class)</span>
+<span class="c1">#         if collection is None:</span>
+<span class="c1">#             logger.error(f&quot;Could not drop collection {model_class.__name__}&quot;)</span>
+<span class="c1">#         await collection.drop()</span>
+<span class="c1">#</span>
+<span class="c1">#         # collection_name = model_class.__collection__</span>
+<span class="c1">#         # db = self.client[self.db_name]</span>
+<span class="c1">#         # await db[collection_name].drop()</span>
+<span class="c1">#</span>
+<span class="c1">#     async def load_from_collection(</span>
+<span class="c1">#         self, model_class: Type[T], id: Union[str, ObjectId]</span>
+<span class="c1">#     ) -&gt; Optional[T]:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Load a document by its ID</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             model_class: The ODMantic model class</span>
+<span class="c1">#             id: The document ID (either string or ObjectId)</span>
+<span class="c1">#</span>
+<span class="c1">#         Returns:</span>
+<span class="c1">#             The found model instance or None</span>
+<span class="c1">#</span>
+<span class="c1">#         Raises:</span>
+<span class="c1">#             ValueError: If document is not found</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         # Convert string ID to ObjectId if needed</span>
+<span class="c1">#         if isinstance(id, str):</span>
+<span class="c1">#             id = ObjectId(id)</span>
+<span class="c1">#</span>
+<span class="c1">#         instance = await self.engine.find_one(model_class, model_class.id == id)</span>
+<span class="c1">#         if not instance:</span>
+<span class="c1">#             logger.error(f&quot;No data found in &#39;{model_class.__name__}&#39; with id &#39;{id}&#39;&quot;)</span>
+<span class="c1">#             raise ValueError(</span>
+<span class="c1">#                 f&quot;No data found in &#39;{model_class.__name__}&#39; with id &#39;{id}&#39;&quot;</span>
+<span class="c1">#             )</span>
+<span class="c1">#         return instance</span>
+<span class="c1">#</span>
+<span class="c1">#     async def load_node_model_by_name(</span>
+<span class="c1">#         self, node_model_name: str</span>
+<span class="c1">#     ) -&gt; Optional[&quot;NodeModel&quot;]:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Load a node based on its name</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             node_model_name: The node name</span>
+<span class="c1">#</span>
+<span class="c1">#         Returns:</span>
+<span class="c1">#             The found NodeRegistry instance or None</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         from simstack.models import NodeModel</span>
+<span class="c1">#         return await self.engine.find_one(NodeModel, NodeModel.name == node_model_name)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def load_task_by_id(</span>
+<span class="c1">#         self, task_id: Union[str, ObjectId]</span>
+<span class="c1">#     ) -&gt; Optional[NodeRegistry]:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Load a task based on its ID</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             task_id: The task ID</span>
+<span class="c1">#</span>
+<span class="c1">#         Returns:</span>
+<span class="c1">#             The found NodeRegistry instance or None</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         if isinstance(task_id, str):</span>
+<span class="c1">#             task_id = ObjectId(task_id)</span>
+<span class="c1">#</span>
+<span class="c1">#         return await self.engine.find_one(NodeRegistry, NodeRegistry.id == task_id)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def load_waiting_tasks_for_resource(</span>
+<span class="c1">#         self, resource: str</span>
+<span class="c1">#     ) -&gt; List[NodeRegistry]:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Load all waiting tasks for a specific resource</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             resource: The resource name</span>
+<span class="c1">#</span>
+<span class="c1">#         Returns:</span>
+<span class="c1">#             List of matching NodeRegistry instances</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         submitted_tasks = await self.engine.find(</span>
+<span class="c1">#             NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED</span>
+<span class="c1">#         )</span>
+<span class="c1">#         # Then filter them in Python by checking the resource field</span>
+<span class="c1">#         matching_tasks = []</span>
+<span class="c1">#         for task in submitted_tasks:</span>
+<span class="c1">#             # Check if parameters has a resource attribute and if it matches our resource</span>
+<span class="c1">#             # the local runner will also do the immidiate tasks</span>
+<span class="c1">#             if hasattr(task.parameters, &quot;resource&quot;) and (</span>
+<span class="c1">#                 task.parameters.resource == resource</span>
+<span class="c1">#                 or (resource == &quot;local&quot; and task.parameters.resource == &quot;self&quot;)</span>
+<span class="c1">#             ):</span>
+<span class="c1">#                 if resource == &quot;local&quot; and task.parameters.resource == &quot;self&quot;:</span>
+<span class="c1">#                     logger.info(f&quot;local runner taking job for &#39;self&#39; with  {task.id}&quot;)</span>
+<span class="c1">#                 matching_tasks.append(task)</span>
+<span class="c1">#         return matching_tasks</span>
+<span class="c1">#</span>
+<span class="c1">#     async def reset_database(self) -&gt; None:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Reset the database by dropping all collections and recreating them</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         db = self.client[self.db_name]</span>
+<span class="c1">#         collections = await db.list_collection_names()</span>
+<span class="c1">#</span>
+<span class="c1">#         for collection in collections:</span>
+<span class="c1">#             await db[collection].drop()</span>
+<span class="c1">#</span>
+<span class="c1">#         logger.info(f&quot;Database {self.db_name} has been reset&quot;)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def count(self, model_class: Type[T], **kwargs) -&gt; int:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Count documents matching the query</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             model_class: The ODMantic model class</span>
+<span class="c1">#             **kwargs: Query filters</span>
+<span class="c1">#</span>
+<span class="c1">#         Returns:</span>
+<span class="c1">#             Number of matching documents</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         return await self.engine.count(model_class, **kwargs)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def aggregate(</span>
+<span class="c1">#         self, model_class: Type[Model], pipeline: List[Dict]</span>
+<span class="c1">#     ) -&gt; List[Dict]:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Perform an aggregation operation</span>
+<span class="c1">#</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             model_class: The ODMantic model class</span>
+<span class="c1">#             pipeline: MongoDB aggregation pipeline</span>
+<span class="c1">#</span>
+<span class="c1">#         Returns:</span>
+<span class="c1">#             List of aggregation results</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         collection = self.engine.get_collection(model_class)</span>
+<span class="c1">#         cursor = collection.aggregate(pipeline)</span>
+<span class="c1">#         return await cursor.to_list(length=None)</span>
+<span class="c1">#</span>
+<span class="c1">#     async def close(self) -&gt; None:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Close database connections</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         self.client.close()</span>
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, Wolfgang Wenzel
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script data-docs-built-at="2026-07-09 09:42:04 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    </body>
+</html>

@@ -1,0 +1,1380 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>simstack.core.node - SimStack II documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/cobalt2-theme.css?v=2d651046" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/docs-build-badge.css?v=803faff8" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">SimStack II  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ui_documentation.html">Graphical User Interface</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../developer_guide.html">Developer Guide</a><input aria-label="Toggle navigation of Developer Guide" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../data.html">Persisting and Visualizing Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../lists.html">List Mixins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../array_lists.html">Array Lists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tables.html">Tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../files.html">File Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resource_config.html">Program Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../mass_runner.html">MassRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../database_migrations.html">Database Migrations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../ci_pipeline.html">CI Pipeline and Documentation Artifacts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Simstack II Setup</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for simstack.core.node</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Any</span><span class="p">,</span>
+    <span class="n">Callable</span><span class="p">,</span>
+    <span class="n">Optional</span><span class="p">,</span>
+    <span class="n">TypeVar</span><span class="p">,</span>
+    <span class="n">cast</span><span class="p">,</span>
+    <span class="n">List</span><span class="p">,</span>
+    <span class="n">ParamSpec</span><span class="p">,</span>
+    <span class="n">Union</span><span class="p">,</span>
+    <span class="n">overload</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">coolname</span>  <span class="c1"># type: ignore[import-untyped]</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">nest_asyncio</span>  <span class="c1"># type: ignore[import-untyped]</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ObjectId</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.artifacts</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_artifacts</span><span class="p">,</span> <span class="n">ArtifactArguments</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.definitions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskStatus</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.hash</span><span class="w"> </span><span class="kn">import</span> <span class="n">complex_hash_function</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.node_claim</span><span class="w"> </span><span class="kn">import</span> <span class="n">claim_submitted_node</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.node_runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeRunner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.process_results</span><span class="w"> </span><span class="kn">import</span> <span class="n">process_result_helper</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.resource_assignment</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_resource_assignment_to_node_registry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.simstack_result</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimstackResult</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.task_id</span><span class="w"> </span><span class="kn">import</span> <span class="n">set_task_id</span><span class="p">,</span> <span class="n">clear_task_id</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelMapping</span><span class="p">,</span> <span class="n">Parameters</span><span class="p">,</span> <span class="n">Project</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">NamedDataReference</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.file_list</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileList</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.files</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileStack</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">Resource</span><span class="p">,</span> <span class="n">Queue</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.simstack_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_simstack_model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.importer</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_function</span><span class="p">,</span> <span class="n">import_class</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;Node&quot;</span><span class="p">)</span>
+
+<span class="n">nest_asyncio</span><span class="o">.</span><span class="n">apply</span><span class="p">()</span>
+
+<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="default_name_generator">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.default_name_generator">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">default_name_generator</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">coolname</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="mi">2</span><span class="p">)))</span></div>
+
+
+
+<div class="viewcode-block" id="hashable_value">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.hashable_value">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">hashable_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">BaseModel</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">hashable_inputs</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">hashable_value</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">value</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">hashable_value</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">hashable_value</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="k">return</span> <span class="n">value</span></div>
+
+
+
+<div class="viewcode-block" id="hashable_inputs">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.hashable_inputs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">hashable_inputs</span><span class="p">(</span><span class="n">arg</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the hashable inputs for the node. This allows exclusion of some fields from the hash.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: The hashable inputs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="n">key</span><span class="p">:</span> <span class="n">hashable_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">arg</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="compute_arg_hash">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.compute_arg_hash">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_arg_hash</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Model</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes a hash for a list of arguments provided, where each argument</span>
+<span class="sd">    is an instance of the Model class or can be processed into a hashable</span>
+<span class="sd">    format. Uses a complex hashing function for the resulting computation.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        args (List[Model]): A list of objects where each object must be an instance of the</span>
+<span class="sd">            Model class. The objects are used to compute their respective</span>
+<span class="sd">            hash values via a specified complex hashing mechanism.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: A string representation of the computed hash for the provided</span>
+<span class="sd">            list of arguments.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If any item in the provided list is not an instance of the</span>
+<span class="sd">            Model class.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">arg_hashes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Model</span><span class="p">):</span>
+            <span class="n">arg_hash</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">arg</span><span class="o">.</span><span class="n">complex_hash</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="s2">&quot;complex_hash&quot;</span><span class="p">)</span>
+                <span class="k">else</span> <span class="n">complex_hash_function</span><span class="p">(</span><span class="n">hashable_inputs</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+            <span class="p">)</span>
+            <span class="n">arg_hashes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">arg_hash</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Argument </span><span class="si">{</span><span class="n">arg</span><span class="si">}</span><span class="s2"> is not an instance of </span><span class="si">{</span><span class="n">Model</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">complex_hash_function</span><span class="p">(</span><span class="n">arg_hashes</span><span class="p">))</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parameters_field_values</span><span class="p">(</span><span class="n">parameters</span><span class="p">:</span> <span class="n">Parameters</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="n">raw_values</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="s2">&quot;__dict__&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="n">field_name</span><span class="p">:</span> <span class="n">raw_values</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">field_name</span> <span class="ow">in</span> <span class="n">Parameters</span><span class="o">.</span><span class="n">model_fields</span>
+        <span class="k">if</span> <span class="n">field_name</span> <span class="ow">in</span> <span class="n">raw_values</span>
+    <span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parameters_from_node_kwargs</span><span class="p">(</span><span class="n">kwargs_node</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Parameters</span><span class="p">:</span>
+    <span class="n">base_parameters</span> <span class="o">=</span> <span class="n">kwargs_node</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parameters&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">base_parameters</span><span class="p">,</span> <span class="n">Parameters</span><span class="p">):</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">_parameters_field_values</span><span class="p">(</span><span class="n">base_parameters</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">base_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">_parameters_field_values</span><span class="p">(</span><span class="n">Parameters</span><span class="p">())</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">_parameters_field_values</span><span class="p">(</span><span class="n">Parameters</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">base_parameters</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">field_name</span> <span class="ow">in</span> <span class="n">Parameters</span><span class="o">.</span><span class="n">model_fields</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">field_name</span> <span class="ow">in</span> <span class="n">kwargs_node</span><span class="p">:</span>
+            <span class="n">values</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs_node</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">Parameters</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Node">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.Node">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Node</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    represents a computational task or node in the workflow, managing its lifecycle,</span>
+<span class="sd">    execution environment, and interactions with the database. This class helps in</span>
+<span class="sd">    defining tasks, storing their details, and ensuring they are executed either</span>
+<span class="sd">    locally or remotely, with their statuses tracked within a shared database</span>
+<span class="sd">    context.</span>
+
+<span class="sd">    :ivar name: The name of the function associated with the node.</span>
+<span class="sd">    :type name: str</span>
+<span class="sd">    :ivar custom_name: A custom name for the node, generated if not specified.</span>
+<span class="sd">    :type custom_name: str or None</span>
+<span class="sd">    :ivar registry_entry: The registry entry associated with the node in the database.</span>
+<span class="sd">    :type registry_entry: NodeRegistry or None</span>
+<span class="sd">    :ivar parent_id: The parent node&#39;s unique identifier, if applicable.</span>
+<span class="sd">    :type parent_id: ObjectId or None</span>
+<span class="sd">    :ivar parameters: Additional parameters for the node.</span>
+<span class="sd">    :type parameters: Parameters</span>
+<span class="sd">    :ivar _func: The function represented by the node.</span>
+<span class="sd">    :type _func: Callable[[Model], Model]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_args</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>  <span class="c1"># Convert to list to allow appending</span>
+
+        <span class="c1"># Extract specific known parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_func</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;func&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_async</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;is_async&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent_id</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;parent_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">call_path</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;call_path&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arg_hash</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;arg_hash&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_function_hash</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;function_hash&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1"># Get function signature to identify argument names</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="p">)</span>
+        <span class="n">param_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+        <span class="c1"># Move kwargs that match function parameter names to args</span>
+        <span class="k">for</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">param_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">param_name</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="s2">&quot;custom_name&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">custom_name</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;custom_name&quot;</span><span class="p">]</span>  <span class="c1"># pass to children</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">custom_name</span> <span class="o">=</span> <span class="n">default_name_generator</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;parameters&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">recompute_artifacts</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;recompute_artifacts&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">recompute_artifacts</span> <span class="ow">or</span> <span class="kc">False</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_function_kwargs</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">kwargs</span>  <span class="c1"># what is left over here must be kwargs of the function</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="p">:</span> <span class="n">NodeRegistry</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectId</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskStatus</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Node.make_registry_entry">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.Node.make_registry_entry">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">make_registry_entry</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">function_hash</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">arg_hash</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NodeRegistry</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a registry entry for the node in the database.</span>
+
+<span class="sd">        This method is used to create a new entry in the database for the node,</span>
+<span class="sd">        including its inputs and outputs. It ensures that the task is properly</span>
+<span class="sd">        registered with all necessary details.</span>
+
+<span class="sd">        :rtype: NodeRegistry</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO why does this fail when nodemapping succeeds ?</span>
+        <span class="c1"># function_mapping = await context.db.find_one(NodeModel, NodeModel.name == self.name)</span>
+        <span class="n">function_mapping</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">node_mappings</span><span class="o">.</span><span class="n">get_by_name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">function_mapping</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find function mapping for name: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find function mapping for name: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">input_references</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">:</span>
+            <span class="c1"># if there is no table for an arg raise an error</span>
+            <span class="c1"># input_table_name = await context.db.find_one(ModelMapping, ModelMapping.name == arg.__class__.__name__)</span>
+            <span class="n">input_table_name</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">model_mappings</span><span class="o">.</span><span class="n">get_by_name</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">input_table_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find table name for </span><span class="si">{</span><span class="n">arg</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find table name for </span><span class="si">{</span><span class="n">arg</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Model</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arg</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> is not an odmantic Model&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arg</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> is not an odmantic Model&quot;</span><span class="p">)</span>
+
+            <span class="n">argument_entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+
+            <span class="c1"># Check if the save operation was successful and returned a valid ID</span>
+            <span class="k">if</span> <span class="n">argument_entry</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">argument_entry</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to save argument </span><span class="si">{</span><span class="n">arg</span><span class="si">}</span><span class="s2"> - returned None or invalid ID&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to save argument of type </span><span class="si">{</span><span class="n">arg</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="n">input_references</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">NamedDataReference</span><span class="o">.</span><span class="n">from_variable</span><span class="p">(</span>
+                <span class="n">argument_entry</span><span class="p">,</span>
+                <span class="n">variable_name</span><span class="o">=</span><span class="s2">&quot;variable&quot;</span><span class="p">,</span>
+                <span class="n">task_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+            <span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">projects</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">Project</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">projects</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">projects</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">project</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span><span class="n">field_name</span><span class="o">=</span><span class="s2">&quot;default&quot;</span><span class="p">)</span>
+                <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">project</span><span class="p">)</span>
+                <span class="n">project_id</span> <span class="o">=</span> <span class="n">project</span><span class="o">.</span><span class="n">id</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;task_id:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> created default project: </span><span class="si">{</span><span class="n">project_id</span><span class="si">}</span><span class="s2"> &quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">project</span> <span class="o">=</span> <span class="n">projects</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">project_id</span> <span class="o">=</span> <span class="n">project</span><span class="o">.</span><span class="n">id</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;task_id:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> using project: </span><span class="si">{</span><span class="n">project_id</span><span class="si">}</span><span class="s2"> &quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">parent_registry_entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">load_task_by_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent_id</span><span class="p">)</span>
+            <span class="n">project_id</span> <span class="o">=</span> <span class="n">parent_registry_entry</span><span class="o">.</span><span class="n">project</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;task_id:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> using parent project: </span><span class="si">{</span><span class="n">project_id</span><span class="si">}</span><span class="s2"> &quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span> <span class="o">=</span> <span class="n">NodeRegistry</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">input_references</span><span class="o">=</span><span class="n">input_references</span><span class="p">,</span>
+            <span class="n">is_async</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">is_async</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">TaskStatus</span><span class="o">.</span><span class="n">SUBMITTED</span><span class="p">,</span>
+            <span class="n">custom_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">custom_name</span><span class="p">,</span>
+            <span class="n">function_hash</span><span class="o">=</span><span class="n">function_hash</span><span class="p">,</span>
+            <span class="n">arg_hash</span><span class="o">=</span><span class="n">arg_hash</span><span class="p">,</span>
+            <span class="n">project</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span>
+            <span class="n">parent_ids</span><span class="o">=</span><span class="p">[]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent_id</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">parent_id</span><span class="p">],</span>
+            <span class="n">parameters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span>
+            <span class="n">func_mapping</span><span class="o">=</span><span class="n">function_mapping</span><span class="o">.</span><span class="n">function_mapping</span><span class="p">,</span>
+            <span class="n">call_path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">call_path</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">parent_parameters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_function_kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parent_parameters&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">registry_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span>
+        <span class="k">assert</span> <span class="n">registry_entry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">await</span> <span class="n">apply_resource_assignment_to_node_registry</span><span class="p">(</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="p">,</span>
+            <span class="n">registry_entry</span><span class="p">,</span>
+            <span class="n">parent_parameters</span><span class="o">=</span><span class="n">parent_parameters</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">parent_parameters</span><span class="p">,</span> <span class="n">Parameters</span><span class="p">)</span>
+            <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">parameters</span>
+        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> with name </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> created for resource: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">resource</span><span class="si">}</span><span class="s2"> queue: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">queue</span><span class="si">}</span><span class="s2"> with id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">registry_entry</span></div>
+
+
+<div class="viewcode-block" id="Node.get_node_registry">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.Node.get_node_registry">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_node_registry</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskStatus</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reads or initializes the task registry entry in the database.</span>
+
+<span class="sd">        This method ensures that a task entry exists in the database for the</span>
+<span class="sd">        current task. It computes hashes of its arguments and function,</span>
+<span class="sd">        checks if a database entry already matches these hashes, and creates</span>
+<span class="sd">        a new entry if no match is found. If the database is not connected,</span>
+<span class="sd">        an exception is raised.</span>
+
+<span class="sd">        :raises ValueError: if the database is not connected.</span>
+<span class="sd">        :return: Status of the task retrieved or created.</span>
+<span class="sd">        :rtype: TaskStatus</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Database is not connected&quot;</span><span class="p">)</span>
+
+        <span class="n">arg_hash</span> <span class="o">=</span> <span class="n">compute_arg_hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">)</span>
+        <span class="n">function_hash</span> <span class="o">=</span> <span class="n">complex_hash_function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arg_hash</span> <span class="o">=</span> <span class="n">arg_hash</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_function_hash</span> <span class="o">=</span> <span class="n">function_hash</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">load_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">arg_hash</span><span class="p">,</span> <span class="n">function_hash</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">force_rerun</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_registry_entry</span><span class="p">(</span><span class="n">function_hash</span><span class="p">,</span> <span class="n">arg_hash</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent_id</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> adding parent_id </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">parent_id</span><span class="si">}</span><span class="s2"> to task: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> parent_id is a string: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">parent_id</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">parent_id</span> <span class="o">=</span> <span class="n">ObjectId</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent_id</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">parent_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent_id</span><span class="p">)</span>
+                <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="p">)</span>
+            <span class="c1"># whenever a task is found in the database, we may have to redo all child artifacts because the children</span>
+            <span class="c1"># will not be loaded</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recompute_artifacts</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> recomputing artifacts for task: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.recompute_artifacts</span><span class="w"> </span><span class="kn">import</span> <span class="n">recompute_artifacts</span>
+
+                <span class="k">await</span> <span class="n">recompute_artifacts</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> was found in the database with status: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">. Terminating execution.&quot;</span>
+                <span class="p">)</span>
+
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span></div>
+
+
+<div class="viewcode-block" id="Node.load_results">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.Node.load_results">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_results</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Model</span><span class="p">,</span> <span class="n">SimstackResult</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Loads the results associated with a specific task from the database. This</span>
+<span class="sd">        method verifies whether the task has valid result identifiers. If valid</span>
+<span class="sd">        identifiers (results_id and results_table_name) exist, it attempts to fetch</span>
+<span class="sd">        the outputs.</span>
+
+<span class="sd">        If the task status is not TaskStatus.COMPLETED None is returned which results in a RuntimeError</span>
+<span class="sd">        If the results are not found or if the retrieval process fails, a `ValueError` is raised.</span>
+
+<span class="sd">        :raises ValueError: If the task has completed but lacks output identifiers</span>
+<span class="sd">            (`results_id` or `results_table_name`), or if there is any error</span>
+<span class="sd">            during the process of loading the results.</span>
+
+<span class="sd">        :return: The retrieved task outputs from the database.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> loading results with task status </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            
+            <span class="n">simstack_result</span> <span class="o">=</span> <span class="n">SimstackResult</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">results_references</span><span class="p">:</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_class</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">variable_mapping</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">ref</span><span class="o">.</span><span class="n">reference</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> could not find result with id </span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">reference</span><span class="si">}</span><span class="s2"> in table </span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">variable_mapping</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> could not find result with id </span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">reference</span><span class="si">}</span><span class="s2"> in table </span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">variable_mapping</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">simstack_result</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> loaded outputs&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">results_references</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">result</span>  <span class="c1"># there is only one result, return it directly</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">simstack_result</span>  <span class="c1"># return the SimstackResult with all results</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> failed to load outputs: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> failed to load outputs: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Node.run_somewhere">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.Node.run_somewhere">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_somewhere</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Model</span><span class="p">,</span> <span class="n">SimstackResult</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes the task either locally or on a remote resource. This function ensures that</span>
+<span class="sd">        if the task is meant to execute on a remote resource, it waits for the task to complete</span>
+<span class="sd">        remotely and fetches its results. If the task executes locally, it directly runs the task</span>
+<span class="sd">        and retrieves the results.</span>
+
+<span class="sd">        If any exception occurs during the execution, the status is updated to `FAILED`</span>
+<span class="sd">        and the exception is logged.</span>
+
+<span class="sd">        :return: A single Model or a list of Model instances of the task results or None. If the task</span>
+<span class="sd">                 is not completed successfully.</span>
+<span class="sd">        :rtype: Model | SimstackResult</span>
+
+<span class="sd">        :raises RunTimeError: When task execution fails due to an unexpected exception.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">resource_self</span> <span class="o">=</span> <span class="n">Resource</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="s2">&quot;self&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> run_somewhere context resource: </span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span><span class="si">}</span><span class="s2"> target resource: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">resource</span><span class="si">}</span><span class="s2"> queue: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">queue</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">resource</span> <span class="o">==</span> <span class="n">resource_self</span> <span class="ow">or</span> <span class="p">(</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">resource</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">queue</span> <span class="o">==</span> <span class="n">Queue</span><span class="o">.</span><span class="n">DEFAULT</span>
+        <span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_node_locally</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_submit_slurm_child_from_current_resource</span><span class="p">():</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;Task task_id: </span><span class="si">%s</span><span class="s2"> submitted nested Slurm child directly from resource </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="c1"># the task will be executed somewhere else</span>
+            <span class="c1"># wait for the database status to change</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">new_registry_entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">load_task_by_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+                <span class="c1"># TODO add timeout mechanism here</span>
+                <span class="k">if</span> <span class="n">new_registry_entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> could not be found in the database&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">new_status</span> <span class="o">=</span> <span class="n">new_registry_entry</span><span class="o">.</span><span class="n">status</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">new_status</span> <span class="o">!=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">RUNNING</span>
+                    <span class="ow">and</span> <span class="n">new_status</span> <span class="o">!=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SUBMITTED</span>
+                    <span class="ow">and</span> <span class="n">new_status</span> <span class="o">!=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SLURM_QUEUED</span>
+                    <span class="ow">and</span> <span class="n">new_status</span> <span class="o">!=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">RETRIEVED</span>
+                <span class="p">):</span>
+                    <span class="k">break</span>
+
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> is waiting for results&quot;</span><span class="p">)</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">new_status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> completed remotely&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span> <span class="o">=</span> <span class="n">new_registry_entry</span>
+                <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_results</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span></div>
+
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_submit_slurm_child_from_current_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">queue</span> <span class="o">!=</span> <span class="n">Queue</span><span class="o">.</span><span class="n">SLURM_QUEUE</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">resource</span> <span class="o">!=</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="n">claim_submitted_node</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.submit_node</span><span class="w"> </span><span class="kn">import</span> <span class="n">submit_node</span>
+
+        <span class="k">await</span> <span class="n">submit_node</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="Node.execute_node_locally">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.Node.execute_node_locally">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_node_locally</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Model</span><span class="p">,</span> <span class="n">SimstackResult</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes a specified node in the current context locally, either asynchronously or</span>
+<span class="sd">        synchronously, managing task status updates, directory changes, and result persistence.</span>
+
+<span class="sd">        This method handles the execution of a computational task represented as a &quot;node&quot;. It</span>
+<span class="sd">        manages the task&#39;s status transitions, file system operations for managing working</span>
+<span class="sd">        directories, and handling output results, including their persistence in a database.</span>
+<span class="sd">        The method supports both asynchronous and synchronous node execution. It verifies</span>
+<span class="sd">        results, handles exceptions, and manages task metadata updates.</span>
+
+<span class="sd">        Nodes can either return</span>
+<span class="sd">              * a single `Model` instance</span>
+<span class="sd">              * a `SimstackResult` instance</span>
+<span class="sd">              * None (for failure).</span>
+<span class="sd">              * a boolean value (for failure or success if there are no results)</span>
+
+<span class="sd">        There is a try-except block around the actual execution of the node which generates a log entry</span>
+<span class="sd">        &quot;node function error for node&quot; that catches all uncaught exceptions within the node.  These error are</span>
+<span class="sd">        not propagated, but the task status is set to TaskStatus.FAILED.</span>
+
+<span class="sd">        :param self: Instance of the class invoking this method.</span>
+
+<span class="sd">        :raises Exception: for failures of the Simstack logic</span>
+
+<span class="sd">        :return: The processed result of the node execution. Depending on the task&#39;s output,</span>
+<span class="sd">                 it could be of the type `Model`, `SimstackResult`, or be None if no valid result</span>
+<span class="sd">                 was produced.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">started_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">TaskStatus</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> is started on </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">resource</span><span class="si">}</span><span class="s2"> in Node:execute_node_locally&quot;</span>
+        <span class="p">)</span>
+        <span class="n">original_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">node_runner</span> <span class="o">=</span> <span class="n">NodeRunner</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+            <span class="n">node_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;node_runner&quot;</span><span class="p">:</span> <span class="n">node_runner</span><span class="p">,</span>
+                <span class="s2">&quot;parent_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s2">&quot;call_path&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_path</span><span class="p">,</span>
+                <span class="s2">&quot;parent_parameters&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span>  <span class="c1"># this must have a name different from parameters, because</span>
+                <span class="c1"># otherwise this setting will override all the parameters of</span>
+                <span class="c1"># the child nodes</span>
+                <span class="s2">&quot;recompute_artifacts&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">recompute_artifacts</span><span class="p">,</span>
+                <span class="s2">&quot;custom_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">custom_name</span><span class="p">,</span>
+                <span class="s2">&quot;arg_hash&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arg_hash</span><span class="p">,</span>
+                <span class="s2">&quot;function_hash&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_function_hash</span><span class="p">,</span>
+            <span class="p">}</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">force_rerun</span><span class="p">:</span>
+                <span class="n">node_kwargs</span><span class="p">[</span><span class="s2">&quot;force_rerun&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+            <span class="c1"># Create the directory if it doesn&#39;t exist</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> successfully changed to directory: </span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">absolute</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+            <span class="c1"># real_func_wrapper = await import_function_by_name(self._func.__name__,self.id)</span>
+            <span class="c1"># real_func = getattr(real_func_wrapper, &#39;_inner&#39;, real_func_wrapper)</span>
+            <span class="n">real_func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">set_task_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_async</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">real_func</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">,</span> <span class="o">**</span><span class="n">node_kwargs</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="n">real_func</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">,</span> <span class="o">**</span><span class="n">node_kwargs</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="c1"># Save the error message if possible</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">error</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                    <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> node function error for node: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> msg: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="c1"># save what we can, in particular the info_files</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_results</span><span class="p">(</span><span class="n">node_runner</span><span class="p">)</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">)</span>
+                <span class="k">raise</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">clear_task_id</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">completed_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+            <span class="n">new_task_status</span><span class="p">,</span> <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_results</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">new_task_status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
+                <span class="n">artifact_arguments</span> <span class="o">=</span> <span class="n">ArtifactArguments</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+                <span class="n">artifact_arguments</span><span class="o">.</span><span class="n">add_attributes</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">,</span> <span class="o">**</span><span class="n">node_kwargs</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">artifact_ids</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_artifacts</span><span class="p">(</span>
+                    <span class="n">artifact_arguments</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span>
+                <span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span>
+                <span class="n">new_task_status</span>
+            <span class="p">)</span>  <span class="c1"># this will also commit the registry entry</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> is finished on resource: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">resource</span><span class="si">}</span><span class="s2"> with task status: </span><span class="si">{</span><span class="n">new_task_status</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">new_task_status</span> <span class="o">!=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">)</span>
+            <span class="k">raise</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">original_dir</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> successfully back to directory: </span><span class="si">{</span><span class="n">original_dir</span><span class="o">.</span><span class="n">absolute</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Node.process_results">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.Node.process_results">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">process_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TaskStatus</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="c1"># each of the following if sets the result either to a valid value or None</span>
+        <span class="n">new_task_status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span>
+        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> returned None&quot;</span><span class="p">)</span>
+            <span class="n">new_task_status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>  <span class="c1"># result is None</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">:</span>
+                <span class="n">new_task_status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">elif</span> <span class="n">is_simstack_model</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">SimstackResult</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">SimstackResult</span><span class="p">):</span>
+                <span class="n">new_task_status</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">status</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;custom_name&quot;</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">custom_name</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">custom_name</span>
+
+                <span class="k">for</span> <span class="n">file_stack</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">info_files</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">file_stack</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">file_stack</span><span class="p">,</span> <span class="n">FileStack</span><span class="p">):</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> saving info file: </span><span class="si">{</span><span class="n">file_stack</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">file_stack</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="p">)</span>
+                            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">info_files</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">info_files</span> <span class="o">=</span> <span class="n">FileList</span><span class="p">()</span>
+                            <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">file_stack</span><span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">info_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_stack</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> cannot save info_file: FileStack expected but got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">file_stack</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> saving info-file is NONE&quot;</span><span class="p">)</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;saving info file is NONE&quot;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">error_message</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">error_message</span> <span class="o">!=</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> returned with error: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">error_message</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">message</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">message</span> <span class="o">!=</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> message: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">):</span>
+                    <span class="n">new_task_status</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">status</span>
+                <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;task_status&quot;</span><span class="p">):</span>
+                    <span class="n">new_task_status</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">task_status</span>
+
+            <span class="n">results_references</span><span class="p">,</span> <span class="n">result_models</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process_result_helper</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">))</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">results_references</span> <span class="o">=</span> <span class="n">results_references</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">new_task_status</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">results_references</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">result_models</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># for a SimstackResult with just one returned model we return the model directly</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> returned a result of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">result</span><span class="p">)</span><span class="si">}</span><span class="s2"> which is not a SimstackModel or a SimstackResult&quot;</span>
+            <span class="p">)</span>
+            <span class="n">new_task_status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
+        <span class="k">return</span> <span class="n">new_task_status</span><span class="p">,</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="Node.set_status">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.Node.set_status">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">set_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">:</span> <span class="n">TaskStatus</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Task has no registry entry&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">status</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2"> is not a TaskStatus&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registry_entry</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> is set to </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">, id is: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="node_from_database">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.node_from_database">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">node_from_database</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="s2">&quot;Node&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Constructs an instance of the class from database information encoded in a</span>
+<span class="sd">    registry entry.</span>
+
+<span class="sd">    This method retrieves input arguments and the serialized function from the</span>
+<span class="sd">    database using information provided in the `registry_entry`. It then deserializes</span>
+<span class="sd">    the function and initializes a corresponding Node instance, associating it</span>
+<span class="sd">    with the given registry entry.</span>
+
+<span class="sd">    This function can delete the registry_entry !!!</span>
+<span class="sd">    The only way that registry_entry.function_hash is &quot;NOT INITIALIZED&quot; is when the node</span>
+<span class="sd">    is created from the frontend. No other node is listening specifically for this registry_entry to complete.</span>
+<span class="sd">    If a duplicate is found the node from the duplication is returned</span>
+
+<span class="sd">    :param registry_entry: The registry entry containing information necessary to</span>
+<span class="sd">        reconstruct the Node instance. Includes input table names, function pickled</span>
+<span class="sd">        as a string, and other metadata.</span>
+<span class="sd">    :type registry_entry: NodeRegistry</span>
+
+<span class="sd">    :return: A reconstructed Node instance based on the registry entry, or None if</span>
+<span class="sd">        the deserialized function is not valid or there was an error.</span>
+<span class="sd">    :rtype: Optional[Node]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
+
+    <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">input_references</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_class</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">variable_mapping</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span>
+            <span class="n">arg</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">ref</span><span class="o">.</span><span class="n">reference</span><span class="p">)</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> failed to load input </span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">variable_mapping</span><span class="si">}</span><span class="s2"> with id </span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">reference</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">arg_hash</span> <span class="o">==</span> <span class="s2">&quot;NOT INITIALIZED&quot;</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> computes arg hashes&quot;</span><span class="p">)</span>
+        <span class="n">registry_entry</span><span class="o">.</span><span class="n">arg_hash</span> <span class="o">=</span> <span class="n">compute_arg_hash</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span><span class="si">}</span><span class="s2"> inputs in Node:node_from_database status: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="n">func</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">wrapped_func</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_function</span><span class="p">(</span>
+            <span class="n">registry_entry</span><span class="o">.</span><span class="n">func_mapping</span><span class="p">,</span> <span class="n">db</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">wrapped_func</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># for nodes the mapping points to the wrapped func to we use that</span>
+            <span class="n">func</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">wrapped_func</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">wrapped_func</span><span class="p">,</span> <span class="s2">&quot;_inner&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">wrapped_func</span><span class="o">.</span><span class="n">_inner</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> inner: </span><span class="si">{</span><span class="nb">hasattr</span><span class="p">(</span><span class="n">wrapped_func</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;_inner&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> imported function: </span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">function_hash</span> <span class="o">==</span> <span class="s2">&quot;NOT INITIALIZED&quot;</span><span class="p">:</span>
+                <span class="n">registry_entry</span><span class="o">.</span><span class="n">function_hash</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">complex_hash_function</span><span class="p">(</span><span class="n">func</span><span class="p">))</span>
+                <span class="n">registry_entry</span><span class="o">.</span><span class="n">is_async</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> could not import function </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">func_mapping</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> failed to import function </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">func_mapping</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">func</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">function_hash</span> <span class="o">==</span> <span class="s2">&quot;NOT INITIALIZED&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">duplicate_entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
+            <span class="n">NodeRegistry</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">NodeRegistry</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="n">NodeRegistry</span><span class="o">.</span><span class="n">arg_hash</span> <span class="o">==</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">arg_hash</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="n">NodeRegistry</span><span class="o">.</span><span class="n">function_hash</span> <span class="o">==</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">function_hash</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="n">NodeRegistry</span><span class="o">.</span><span class="n">id</span> <span class="o">!=</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">duplicate_entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span>
+                <span class="n">registry_entry</span>
+            <span class="p">)</span>  <span class="c1"># save the fixed entry AFTER checking for duplicates</span>
+            <span class="c1"># the calling function may have the originial entry unsaved !</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> found duplicate entry </span><span class="si">{</span><span class="n">duplicate_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">duplicate_entry</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+            <span class="c1"># the parameters of the new job may be different</span>
+            <span class="n">duplicate_entry</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">parameters</span>
+            <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">)</span>
+            <span class="n">registry_entry</span> <span class="o">=</span> <span class="n">duplicate_entry</span>
+
+            <span class="k">if</span> <span class="n">func</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># we recovered a duplicate, let&#39;s try to import the function from the duplicate&#39;s mapping</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">wrapped_func</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_function</span><span class="p">(</span>
+                        <span class="n">registry_entry</span><span class="o">.</span><span class="n">func_mapping</span><span class="p">,</span> <span class="n">db</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span>
+                    <span class="p">)</span>
+                    <span class="k">if</span> <span class="n">wrapped_func</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">func</span> <span class="o">=</span> <span class="p">(</span>
+                            <span class="n">wrapped_func</span>
+                            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">wrapped_func</span><span class="p">,</span> <span class="s2">&quot;_inner&quot;</span><span class="p">)</span>
+                            <span class="k">else</span> <span class="n">wrapped_func</span><span class="o">.</span><span class="n">_inner</span>
+                        <span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> failed to import function from duplicate </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">func_mapping</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">func</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> failed during duplicate detection or secondary import </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="n">func</span><span class="p">,</span>
+        <span class="s2">&quot;is_async&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;call_path&quot;</span><span class="p">:</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">call_path</span><span class="p">,</span>
+        <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span>
+        <span class="s2">&quot;custom_name&quot;</span><span class="p">:</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">custom_name</span><span class="p">,</span>
+        <span class="s2">&quot;arg_hash&quot;</span><span class="p">:</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">arg_hash</span><span class="p">,</span>
+        <span class="s2">&quot;function_hash&quot;</span><span class="p">:</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">function_hash</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">,</span> <span class="s2">&quot;is_async&quot;</span><span class="p">):</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;is_async&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">is_async</span>
+
+    <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;parent_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">registry_entry</span><span class="o">.</span><span class="n">parent_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">parent_ids</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> is_async: </span><span class="si">{</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;is_async&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> parent_id: </span><span class="si">{</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;parent_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">new_node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">new_node</span><span class="o">.</span><span class="n">registry_entry</span> <span class="o">=</span> <span class="n">registry_entry</span>
+    <span class="k">return</span> <span class="n">new_node</span></div>
+
+
+
+<span class="c1"># Add a return type annotation for async functions</span>
+<span class="c1"># T_co = TypeVar(&quot;T_co&quot;, covariant=True)</span>
+<span class="c1">#</span>
+<span class="c1"># # Create overloaded function type annotations</span>
+<span class="c1"># @overload</span>
+<span class="c1"># def node(</span>
+<span class="c1">#     _func: Callable[..., Awaitable[T_co]],</span>
+<span class="c1"># ) -&gt; Callable[..., Awaitable[T_co]]: ...</span>
+<span class="c1">#</span>
+<span class="c1"># @overload</span>
+<span class="c1"># def node(</span>
+<span class="c1">#     _func: Callable[..., T_co],</span>
+<span class="c1"># ) -&gt; Callable[..., T_co]: ...</span>
+<span class="c1">#</span>
+<span class="c1"># @overload</span>
+<span class="c1"># def node(</span>
+<span class="c1">#     _func: None = None,</span>
+<span class="c1">#     *,</span>
+<span class="c1">#     name: Optional[str] = None,</span>
+<span class="c1">#     version: Optional[str] = None,</span>
+<span class="c1">#     cache: bool = True,</span>
+<span class="c1">#     **kwargs_node,</span>
+<span class="c1"># ) -&gt; Callable[[Callable[..., Any]], Callable[..., Any]]: ...</span>
+
+
+<span class="n">P</span> <span class="o">=</span> <span class="n">ParamSpec</span><span class="p">(</span><span class="s2">&quot;P&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@overload</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">node</span><span class="p">(</span><span class="n">_func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">T</span><span class="p">]:</span>
+    <span class="o">...</span>
+
+
+<span class="nd">@overload</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">node</span><span class="p">(</span>
+    <span class="n">_func</span><span class="p">:</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">version</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cache</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs_node</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">T</span><span class="p">]],</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">T</span><span class="p">]]:</span>
+    <span class="o">...</span>
+
+
+<div class="viewcode-block" id="node">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node.node">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">node</span><span class="p">(</span>
+    <span class="n">_func</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">T</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">version</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs_node</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">T</span><span class="p">],</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">T</span><span class="p">]],</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">T</span><span class="p">]]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Decorator to mark a function as a node in the computation graph.</span>
+<span class="sd">    Supports both synchronous and asynchronous functions.</span>
+<span class="sd">    Can be used with or without parameters:</span>
+<span class="sd">    @node</span>
+<span class="sd">    def func(): ...</span>
+
+<span class="sd">    @node(name=&quot;example&quot;)</span>
+<span class="sd">    def func(): ...</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">T</span><span class="p">]:</span>
+        <span class="n">is_async</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="s2">&quot;_is_node&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="s2">&quot;_inner&quot;</span><span class="p">,</span> <span class="n">func</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="s2">&quot;_node_parameters&quot;</span><span class="p">,</span> <span class="n">_parameters_from_node_kwargs</span><span class="p">(</span><span class="n">kwargs_node</span><span class="p">))</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">update_kwargs</span><span class="p">(</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;func&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;is_async&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">is_async</span>
+            <span class="n">explicit_parameters</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;parameters&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">explicit_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;parameters&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="s2">&quot;_node_parameters&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span>
+                    <span class="n">deep</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">explicit_parameters</span><span class="p">,</span> <span class="n">Parameters</span><span class="p">):</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;parameters&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">explicit_parameters</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;parameters&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Parameters</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span>
+                    <span class="n">explicit_parameters</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;custom_name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span>
+                <span class="s2">&quot;custom_name&quot;</span><span class="p">,</span> <span class="n">kwargs_node</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;custom_name&quot;</span><span class="p">,</span> <span class="n">default_name_generator</span><span class="p">())</span>
+            <span class="p">)</span>
+            <span class="n">call_path</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;call_path&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">call_path</span><span class="p">:</span>
+                <span class="n">call_path</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task call_path: </span><span class="si">{</span><span class="n">call_path</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Fix call path construction - handle empty call_path for root nodes</span>
+            <span class="k">if</span> <span class="n">call_path</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+                <span class="n">call_path</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">call_path</span> <span class="o">=</span> <span class="n">call_path</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;call_path&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">call_path</span>
+
+        <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">async_wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
+            <span class="n">update_kwargs</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="c1"># Create Node with the remaining kwargs</span>
+            <span class="n">execution_node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="n">status</span> <span class="o">=</span> <span class="k">await</span> <span class="n">execution_node</span><span class="o">.</span><span class="n">get_node_registry</span><span class="p">()</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">execution_node</span><span class="o">.</span><span class="n">load_results</span><span class="p">()</span>
+            <span class="c1"># TODO why do we run somewhere when already running ?</span>
+            <span class="k">elif</span> <span class="n">status</span> <span class="ow">in</span> <span class="p">[</span>
+                <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SUBMITTED</span><span class="p">,</span>
+                <span class="n">TaskStatus</span><span class="o">.</span><span class="n">RETRIEVED</span><span class="p">,</span>
+                <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SLURM_QUEUED</span><span class="p">,</span>
+            <span class="p">]:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">execution_node</span><span class="o">.</span><span class="n">run_somewhere</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">execution_node</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> status: </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2"> was not executed&quot;</span>
+                <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">execution_node</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">execution_node</span><span class="o">.</span><span class="n">registry_entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">execution_node</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> node: </span><span class="si">{</span><span class="n">execution_node</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> has no registry entry&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">current_registry_entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
+                    <span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">NodeRegistry</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">execution_node</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">current_registry_entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">execution_node</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> node: </span><span class="si">{</span><span class="n">execution_node</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> registry entry disappeared&quot;</span>
+                    <span class="p">)</span>
+
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">current_registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
+                    <span class="ow">and</span> <span class="n">current_registry_entry</span><span class="o">.</span><span class="n">error</span>
+                <span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">current_registry_entry</span><span class="o">.</span><span class="n">error</span><span class="p">)</span>
+
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">current_registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> node: </span><span class="si">{</span><span class="n">current_registry_entry</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> terminated with status </span><span class="si">{</span><span class="n">current_registry_entry</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+
+        <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">sync_wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+
+            <span class="n">update_kwargs</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="c1"># Create Node with the remaining kwargs</span>
+            <span class="n">execution_node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="c1"># If it&#39;s an async function but called in a sync context, run it in the event loop</span>
+            <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">execution_node</span><span class="o">.</span><span class="n">get_node_registry</span><span class="p">())</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">loop</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">execution_node</span><span class="o">.</span><span class="n">load_results</span><span class="p">()))</span>
+            <span class="k">elif</span> <span class="n">status</span> <span class="ow">in</span> <span class="p">[</span>
+                <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SUBMITTED</span><span class="p">,</span>
+                <span class="n">TaskStatus</span><span class="o">.</span><span class="n">RETRIEVED</span><span class="p">,</span>
+                <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SLURM_QUEUED</span><span class="p">,</span>
+            <span class="p">]:</span>
+                <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">loop</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">execution_node</span><span class="o">.</span><span class="n">run_somewhere</span><span class="p">()))</span>
+            <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">execution_node</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">execution_node</span><span class="o">.</span><span class="n">registry_entry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                    <span class="ow">and</span> <span class="n">execution_node</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
+                    <span class="ow">and</span> <span class="n">execution_node</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">error</span>
+                <span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">execution_node</span><span class="o">.</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">error</span><span class="p">)</span>
+
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">execution_node</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> node: </span><span class="si">{</span><span class="n">execution_node</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> terminated with status </span><span class="si">{</span><span class="n">execution_node</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">async_wrapper</span><span class="p">,</span> <span class="s2">&quot;is_node&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">sync_wrapper</span><span class="p">,</span> <span class="s2">&quot;is_node&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># Return the appropriate wrapper based on whether the function is async</span>
+        <span class="k">if</span> <span class="n">is_async</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">T</span><span class="p">],</span> <span class="n">async_wrapper</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">T</span><span class="p">],</span> <span class="n">sync_wrapper</span><span class="p">)</span>
+
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">decorator</span><span class="p">,</span> <span class="s2">&quot;is_node&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">_func</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Called with parameters: @node(...)</span>
+        <span class="k">return</span> <span class="n">decorator</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Called without parameters: @node</span>
+        <span class="k">return</span> <span class="n">decorator</span><span class="p">(</span><span class="n">_func</span><span class="p">)</span></div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, Wolfgang Wenzel
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script data-docs-built-at="2026-07-09 09:42:04 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    </body>
+</html>
