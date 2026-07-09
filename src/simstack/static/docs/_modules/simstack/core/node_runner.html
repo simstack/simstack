@@ -330,6 +330,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">info_file_patterns</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;*.in&quot;</span><span class="p">,</span> <span class="s2">&quot;*.out&quot;</span><span class="p">,</span> <span class="s2">&quot;*.err&quot;</span><span class="p">,</span> <span class="s2">&quot;*.log&quot;</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;NodeRunner &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; initialized for task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
+
 <div class="viewcode-block" id="NodeRunner.from_kwargs">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node_runner.NodeRunner.from_kwargs">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -359,7 +360,7 @@
 
 <div class="viewcode-block" id="NodeRunner.make_info_files">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node_runner.NodeRunner.make_info_files">[docs]</a>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">make_info_files</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">make_info_files</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">cwd</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Collect and process information files based on patterns and explicit file paths.</span>
 
@@ -370,26 +371,37 @@
 <span class="sd">            *args: Variable arguments that can be:</span>
 <span class="sd">                - File patterns (strings containing &#39;*&#39;)</span>
 <span class="sd">                - Explicit file paths (existing readable files)</span>
+<span class="sd">            cwd (str | Path, optional): The directory where to look for files.</span>
+<span class="sd">                Defaults to current directory.</span>
 
 <span class="sd">        Note:</span>
 <span class="sd">            Files are added to the info_files list as FileStack objects.</span>
 <span class="sd">            Only readable files are processed.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">cwd</span><span class="p">:</span>
+                <span class="n">search_cwd</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">search_cwd</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">cwd</span><span class="p">)</span>
+
             <span class="n">files_set</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
             <span class="c1"># Process args for patterns and files</span>
             <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
                     <span class="k">if</span> <span class="s2">&quot;*&quot;</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">info_file_patterns</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-                    <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">R_OK</span><span class="p">):</span>
-                        <span class="n">files_set</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">filepath</span> <span class="o">=</span> <span class="n">value</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">search_cwd</span> <span class="o">/</span> <span class="n">value</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">R_OK</span><span class="p">):</span>
+                            <span class="n">files_set</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processing patterns: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">info_file_patterns</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processing patterns: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">info_file_patterns</span><span class="si">}</span><span class="s2"> in </span><span class="si">{</span><span class="n">search_cwd</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
             <span class="c1"># Add files matching patterns</span>
             <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">info_file_patterns</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">filepath</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">):</span>
+                <span class="c1"># If pattern is not absolute, join it with search_cwd</span>
+                <span class="n">search_pattern</span> <span class="o">=</span> <span class="n">pattern</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">search_cwd</span> <span class="o">/</span> <span class="n">pattern</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">filepath</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">search_pattern</span><span class="p">):</span>
                     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">R_OK</span><span class="p">):</span>
                         <span class="n">files_set</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
 
@@ -402,8 +414,9 @@
                     <span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">info_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_stack</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Info file added: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">finally_error</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in finally block: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">finally_error</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in make_info_files: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in make_info_files: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span></div>
 
 
 <div class="viewcode-block" id="NodeRunner.debug">
@@ -692,6 +705,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-09 09:43:16 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-09 15:29:25 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

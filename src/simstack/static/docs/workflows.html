@@ -281,7 +281,7 @@
 <span id="id1"></span><h1>Workflows<a class="headerlink" href="#workflows" title="Link to this heading">¶</a></h1>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>This section is intended for workflow developers</p>
+<p>This section is intended for workflow developers but also helpful to users. A more detailed how-to for nodes is given in <span class="xref std std-ref">developer-guide</span></p>
 </div>
 <section id="from-python-to-workflows">
 <h2>From Python to Workflows<a class="headerlink" href="#from-python-to-workflows" title="Link to this heading">¶</a></h2>
@@ -382,11 +382,13 @@ that can be stored in the database. In many cases the output files of
 terminal nodes will nevertheless be required input by other terminal nodes. In
 order to facilitate processing, references to these files should be stored in
 the output to avoid error-prone parsing and recreation.</p>
-<p>THe following return types od node_functions are supported:
-- any <strong>registered</strong> Model (<a class="reference internal" href="#registering"><span class="std std-ref">Registering Models and Nodes</span></a>),
-- True or False, the indicating success or failure,
-- a class derived from SimstackResult, in particular NodeRunner,
-- None will result in failure</p>
+<p>THe following return types od node_functions are supported:</p>
+<ul class="simple">
+<li><p>any <strong>registered</strong> Model (<a class="reference internal" href="#registering"><span class="std std-ref">Registering Models and Nodes</span></a>),</p></li>
+<li><p>True or False, the indicating success or failure,</p></li>
+<li><p>a class derived from SimstackResult, in particular NodeRunner,</p></li>
+<li><p>None will result in failure</p></li>
+</ul>
 <p><a class="reference internal" href="simstack/modules/simstack.core.html#simstack.core.simstack_result.SimstackResult" title="simstack.core.simstack_result.SimstackResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">simstack.core.simstack_result.SimstackResult</span></code></a> provides a framework to
 return more than one result, including files and info_files to the calling
 function. The class NodeRunner is a child class of SimstackResult and
@@ -429,7 +431,7 @@ instance of NodeRunner in the **kwargs.</p>
     <span class="c1"># will not be added to the result tables but to the info_files tab or the node and</span>
     <span class="c1"># can be inspected in the gui for potential problems or output</span>
     <span class="c1"># that has not been parsed.</span>
-    <span class="n">node_runner</span><span class="o">.</span><span class="n">info_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">some_file_with_log_output</span><span class="p">)</span>
+    <span class="n">node_runner</span><span class="o">.</span><span class="n">make_info_files</span><span class="p">(</span><span class="n">some_file_with_log_output</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">some_error</span><span class="p">:</span>
         <span class="c1"># this error will be caught in the calling function</span>
@@ -444,6 +446,11 @@ instance of NodeRunner in the **kwargs.</p>
     <span class="k">return</span> <span class="n">node_runner</span><span class="o">.</span><span class="n">succeed</span><span class="p">(</span><span class="s2">&quot;happy ending&quot;</span><span class="p">)</span> <span class="c1"># node_runner is a child</span>
                                                <span class="c1"># class of SimstackResult</span>
 </pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>NodeRunner.make_info_files(file1,file2,pattern1,pattern2) is a more clever way to append many files to the info_files list.
+NodeRunner.info_file_patterns defines a standard set of endings to include automatically</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -753,6 +760,6 @@ your main repo so that the runners can update simstack.
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-09 09:43:16 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-09 15:29:25 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

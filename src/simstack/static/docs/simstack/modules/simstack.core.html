@@ -1142,15 +1142,19 @@ be saved as a log file when the task finishes.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.core.node_runner.NodeRunner.make_info_files">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">make_info_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/node_runner.html#NodeRunner.make_info_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.node_runner.NodeRunner.make_info_files" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">make_info_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cwd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/node_runner.html#NodeRunner.make_info_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.node_runner.NodeRunner.make_info_files" title="Link to this definition">¶</a></dt>
 <dd><p>Collect and process information files based on patterns and explicit file paths.</p>
 <p>This method processes the provided arguments to identify file patterns and explicit
 file paths, then collects all matching files into FileStack objects for later use.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>*args</strong> – Variable arguments that can be:
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – Variable arguments that can be:
 - File patterns (strings containing ‘*’)
-- Explicit file paths (existing readable files)</p>
+- Explicit file paths (existing readable files)</p></li>
+<li><p><strong>cwd</strong> (<em>str</em><em> | </em><em>Path</em><em>, </em><em>optional</em>) – The directory where to look for files.
+Defaults to current directory.</p></li>
+</ul>
 </dd>
 </dl>
 <div class="admonition note">
@@ -1873,6 +1877,6 @@ but not passed to the calling function</p></li>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-09 09:43:16 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-09 15:29:25 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

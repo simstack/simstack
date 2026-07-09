@@ -20,6 +20,14 @@ simstack.methods.get\_file module
    :show-inheritance:
    :undoc-members:
 
+simstack.methods.mass\_runner module
+------------------------------------
+
+.. automodule:: simstack.methods.mass_runner
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.methods.multiple\_executor module
 ------------------------------------------
 
