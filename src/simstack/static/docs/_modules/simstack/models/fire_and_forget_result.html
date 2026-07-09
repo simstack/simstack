@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>simstack.models.node_registry - SimStack II documentation</title>
+        <title>simstack.models.fire_and_forget_result - SimStack II documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -271,108 +271,19 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <h1>Source code for simstack.models.node_registry</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span>
+          <h1>Source code for simstack.models.fire_and_forget_result</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.simstack_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">Reference</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.definitions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskStatus</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.file_list</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileList</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parameters</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.named_data_reference</span><span class="w"> </span><span class="kn">import</span> <span class="n">NamedDataReference</span>
-
-<div class="viewcode-block" id="NodeRegistry">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.node_registry.NodeRegistry">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">NodeRegistry</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Represents a registry for nodes with associated metadata, configurations, and status</span>
-<span class="sd">    information. It allows tracking the state and attributes of a workflow node, including its</span>
-<span class="sd">    execution parameters, process status, and relationship to other nodes.</span>
-
-<span class="sd">    This class is designed for managing workflow instances and their lifecycle, with</span>
-<span class="sd">    capabilities to monitor execution states, inputs, outputs, and associated timestamps.</span>
-
-<span class="sd">    :ivar name: The name of the node.</span>
-<span class="sd">    :type name: str</span>
-<span class="sd">    :ivar custom_name: An optional custom name for the node.</span>
-<span class="sd">    :type custom_name: Optional[str]</span>
-<span class="sd">    :ivar status: TheTaskStatus of the node in string format.</span>
-<span class="sd">    :type status: TaskStatus</span>
-<span class="sd">    :ivar category: An optional category classification for the node.</span>
-<span class="sd">    :type category: Optional[str]</span>
-<span class="sd">    :ivar description: An optional description providing details about the node.</span>
-<span class="sd">    :type description: Optional[str]</span>
-<span class="sd">    :ivar input_references: List of references to input data.</span>
-<span class="sd">    :type input_references: List[NamedDataReference]</span>
-<span class="sd">    :ivar results_references: List of references to result data.</span>
-<span class="sd">    :type results_references: List[NamedDataReference]</span>
-<span class="sd">    :ivar parent_ids: A list of identifiers representing parent nodes associated with this node.</span>
-<span class="sd">    :type parent_ids: List[ObjectId]</span>
-<span class="sd">    :ivar created_at: The timestamp when the node was created.</span>
-<span class="sd">    :type created_at: datetime</span>
-<span class="sd">    :ivar started_at: An optional timestamp indicating when the execution of the node started.</span>
-<span class="sd">    :type started_at: Optional[datetime]</span>
-<span class="sd">    :ivar completed_at: An optional timestamp indicating when the execution of the node was</span>
-<span class="sd">                        completed.</span>
-<span class="sd">    :type completed_at: Optional[datetime]</span>
-<span class="sd">    :ivar function_hash: A hash value representing the unique function executed by this node.</span>
-<span class="sd">    :type function_hash: str</span>
-<span class="sd">    :ivar arg_hash: A hash value representing the unique arguments passed to the function of</span>
-<span class="sd">                    this node.</span>
-<span class="sd">    :type arg_hash: str</span>
-<span class="sd">    :ivar func_mapping: A mapping identifier associated with the function executed by this</span>
-<span class="sd">                        node.</span>
-<span class="sd">    :type func_mapping: str</span>
-<span class="sd">    :ivar is_async: A boolean value indicating whether the node execution is asynchronous.</span>
-<span class="sd">    :type is_async: bool</span>
-<span class="sd">    :ivar parameters: Parameters associated with the node execution.</span>
-<span class="sd">    :type parameters: Parameters</span>
-<span class="sd">    :ivar call_path: An optional path indicating where the function is called from by concatenating the name of all nodes in the call stack.</span>
-<span class="sd">    :type call_path: Optional[str]</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">status</span><span class="p">:</span> <span class="n">TaskStatus</span>
-    <span class="n">custom_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">version</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="c1"># Keep this as Optional[ObjectId] instead of Reference(Project):</span>
-    <span class="c1"># in the ODMantic version used here, nullable references are not supported</span>
-    <span class="c1"># as Optional[Project] + Reference() field definitions.</span>
-    <span class="n">project</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-    <span class="n">category</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">description</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">call_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">assignment_rule_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">assignment_rule_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">assignment_pattern</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">message</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-
-    <span class="n">input_references</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">NamedDataReference</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
-    <span class="n">results_references</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">NamedDataReference</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
-
-    <span class="n">info_files</span><span class="p">:</span> <span class="n">FileList</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">FileList</span><span class="p">)</span>
-
-    <span class="n">parent_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
-    <span class="n">artifact_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
-    <span class="n">created_at</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
-    <span class="n">started_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-    <span class="n">completed_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-    <span class="n">job_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">function_hash</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">arg_hash</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">func_mapping</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">is_async</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">parameters</span><span class="p">:</span> <span class="n">Parameters</span> <span class="o">=</span> <span class="n">Reference</span><span class="p">()</span></div>
-
-
-
-<div class="viewcode-block" id="find_child_nodes">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.node_registry.find_child_nodes">[docs]</a>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_child_nodes</span><span class="p">(</span><span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">NodeRegistry</span><span class="p">]:</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-    <span class="k">return</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">NodeRegistry</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;parent_ids&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;$in&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">task_id</span><span class="p">]}})</span></div>
+<div class="viewcode-block" id="FireAndForgetResult">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult">[docs]</a>
+<span class="nd">@simstack_model</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FireAndForgetResult</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
+    <span class="n">call_path</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">models</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">success</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">failure</span><span class="p">:</span> <span class="nb">bool</span></div>
 
 </pre></div>
         </article>

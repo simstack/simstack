@@ -215,6 +215,7 @@
 <li class="toctree-l2"><a class="reference internal" href="files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="resource_config.html">Program Execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="mass_runner.html">MassRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="database_migrations.html">Database Migrations</a></li>
@@ -556,9 +557,13 @@
   <h2>C</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="simstack/modules/simstack.models.html#simstack.models.node_registry.NodeRegistry.call_path">call_path (simstack.models.node_registry.NodeRegistry attribute)</a>
+        <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult.call_path">call_path (simstack.models.fire_and_forget_result.FireAndForgetResult attribute)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.call_path">[1]</a>
 
         <ul>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult.call_path">(simstack.models.FireAndForgetResult attribute)</a>
+</li>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.node_registry.NodeRegistry.call_path">(simstack.models.node_registry.NodeRegistry attribute)</a>
+</li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.NodeRegistry.call_path">(simstack.models.NodeRegistry attribute)</a>
 </li>
         </ul></li>
@@ -856,8 +861,12 @@
 </li>
         <li><a href="simstack/modules/simstack.models.html#simstack.models.charts_artifact.create_simple_scatter_chart">create_simple_scatter_chart() (in module simstack.models.charts_artifact)</a>
 </li>
-        <li><a href="simstack/modules/simstack.methods.html#simstack.methods.mass_runner.MassRunner.create_tasks">create_tasks() (simstack.methods.mass_runner.MassRunner method)</a>
+        <li><a href="fire_and_forget_runner.html#simstack.methods.fire_and_forget_runner.FireAndForgetRunner.create_tasks">create_tasks() (simstack.methods.fire_and_forget_runner.FireAndForgetRunner method)</a>, <a href="simstack/modules/simstack.methods.html#simstack.methods.fire_and_forget_runner.FireAndForgetRunner.create_tasks">[1]</a>
+
+        <ul>
+          <li><a href="mass_runner.html#simstack.methods.mass_runner.MassRunner.create_tasks">(simstack.methods.mass_runner.MassRunner method)</a>, <a href="simstack/modules/simstack.methods.html#simstack.methods.mass_runner.MassRunner.create_tasks">[1]</a>
 </li>
+        </ul></li>
         <li><a href="simstack/modules/simstack.util.html#simstack.util.file_transfer_client.FileTransferClient.create_transfer">create_transfer() (simstack.util.file_transfer_client.FileTransferClient method)</a>
 </li>
         <li><a href="simstack/modules/simstack.models.html#id0">created_at (simstack.models.file_instance.FileInstance attribute)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.file_instance.FileInstance.created_at">[1]</a>
@@ -962,6 +971,10 @@
           <li><a href="simstack/modules/simstack.models.html#simstack.models.files.FileStack.custom_model_dump">(simstack.models.files.FileStack method)</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FileStack.custom_model_dump">(simstack.models.FileStack method)</a>
+</li>
+          <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult.custom_model_dump">(simstack.models.fire_and_forget_result.FireAndForgetResult method)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.custom_model_dump">[1]</a>
+</li>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult.custom_model_dump">(simstack.models.FireAndForgetResult method)</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FloatData.custom_model_dump">(simstack.models.FloatData method)</a>
 </li>
@@ -1424,6 +1437,12 @@
 </li>
         <li><a href="simstack/modules/simstack.core.html#simstack.core.definitions.TaskStatus.FAILED">FAILED (simstack.core.definitions.TaskStatus attribute)</a>
 </li>
+        <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult.failure">failure (simstack.models.fire_and_forget_result.FireAndForgetResult attribute)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.failure">[1]</a>
+
+        <ul>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult.failure">(simstack.models.FireAndForgetResult attribute)</a>
+</li>
+        </ul></li>
         <li><a href="simstack/modules/simstack.models.html#simstack.models.models.NodeModel.favorite">favorite (simstack.models.models.NodeModel attribute)</a>
 
         <ul>
@@ -1618,6 +1637,14 @@
 </li>
         <li><a href="simstack/modules/simstack.core.html#simstack.core.find_simstack_modules.find_simstack_modules">find_simstack_modules() (in module simstack.core.find_simstack_modules)</a>
 </li>
+        <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult">FireAndForgetResult (class in simstack.models)</a>
+
+        <ul>
+          <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult">(class in simstack.models.fire_and_forget_result)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult">[1]</a>
+</li>
+        </ul></li>
+        <li><a href="fire_and_forget_runner.html#simstack.methods.fire_and_forget_runner.FireAndForgetRunner">FireAndForgetRunner (class in simstack.methods.fire_and_forget_runner)</a>, <a href="simstack/modules/simstack.methods.html#simstack.methods.fire_and_forget_runner.FireAndForgetRunner">[1]</a>
+</li>
         <li><a href="simstack/modules/simstack.util.html#simstack.util.file_transfer_client.first_available_remote_location">first_available_remote_location() (in module simstack.util.file_transfer_client)</a>
 </li>
         <li><a href="simstack/modules/simstack.models.html#simstack.models.table_artifact.AGGridColumnDef.flex">flex (simstack.models.table_artifact.AGGridColumnDef attribute)</a>
@@ -1751,6 +1778,10 @@
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FileStack.from_dict">(simstack.models.FileStack class method)</a>
 </li>
+          <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult.from_dict">(simstack.models.fire_and_forget_result.FireAndForgetResult class method)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.from_dict">[1]</a>
+</li>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult.from_dict">(simstack.models.FireAndForgetResult class method)</a>
+</li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FloatData.from_dict">(simstack.models.FloatData class method)</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.Image2DArtifactModel.from_dict">(simstack.models.Image2DArtifactModel class method)</a>
@@ -1866,6 +1897,10 @@
           <li><a href="simstack/modules/simstack.models.html#simstack.models.files.FileStack.from_model">(simstack.models.files.FileStack class method)</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FileStack.from_model">(simstack.models.FileStack class method)</a>
+</li>
+          <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult.from_model">(simstack.models.fire_and_forget_result.FireAndForgetResult class method)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.from_model">[1]</a>
+</li>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult.from_model">(simstack.models.FireAndForgetResult class method)</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FloatData.from_model">(simstack.models.FloatData class method)</a>
 </li>
@@ -2309,6 +2344,10 @@
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FileStack.id">(simstack.models.FileStack attribute)</a>
 </li>
+          <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult.id">(simstack.models.fire_and_forget_result.FireAndForgetResult attribute)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.id">[1]</a>
+</li>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult.id">(simstack.models.FireAndForgetResult attribute)</a>
+</li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FloatData.id">(simstack.models.FloatData attribute)</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.Image2DArtifactModel.id">(simstack.models.Image2DArtifactModel attribute)</a>
@@ -2380,10 +2419,10 @@
 </li>
         <li><a href="simstack/modules/simstack.util.html#simstack.util.importer.import_class_by_name">import_class_by_name() (in module simstack.util.importer)</a>
 </li>
-        <li><a href="simstack/modules/simstack.util.html#simstack.util.importer.import_function">import_function() (in module simstack.util.importer)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="simstack/modules/simstack.util.html#simstack.util.importer.import_function">import_function() (in module simstack.util.importer)</a>
+</li>
         <li><a href="simstack/modules/simstack.util.html#simstack.util.importer.import_function_by_name">import_function_by_name() (in module simstack.util.importer)</a>
 </li>
         <li><a href="simstack/modules/simstack.util.html#simstack.util.import_module.import_module_from_file">import_module_from_file() (in module simstack.util.import_module)</a>
@@ -2674,6 +2713,10 @@
           <li><a href="simstack/modules/simstack.models.html#simstack.models.files.FileStack.json_schema">(simstack.models.files.FileStack class method)</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FileStack.json_schema">(simstack.models.FileStack class method)</a>
+</li>
+          <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult.json_schema">(simstack.models.fire_and_forget_result.FireAndForgetResult class method)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.json_schema">[1]</a>
+</li>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult.json_schema">(simstack.models.FireAndForgetResult class method)</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FloatData.json_schema">(simstack.models.FloatData class method)</a>
 </li>
@@ -2974,7 +3017,7 @@
           <li><a href="simstack/modules/simstack.models.html#simstack.models.charts_artifact.AGScatterSeriesConfig.marker">(simstack.models.charts_artifact.AGScatterSeriesConfig attribute)</a>
 </li>
         </ul></li>
-        <li><a href="simstack/modules/simstack.methods.html#simstack.methods.mass_runner.MassRunner">MassRunner (class in simstack.methods.mass_runner)</a>
+        <li><a href="mass_runner.html#simstack.methods.mass_runner.MassRunner">MassRunner (class in simstack.methods.mass_runner)</a>, <a href="simstack/modules/simstack.methods.html#simstack.methods.mass_runner.MassRunner">[1]</a>
 </li>
         <li><a href="simstack/modules/simstack.models.html#simstack.models.table_artifact.TableArtifactModel.master_detail">master_detail (simstack.models.table_artifact.TableArtifactModel attribute)</a>
 </li>
@@ -3053,7 +3096,9 @@
         <ul>
           <li><a href="simstack/modules/simstack.core.html#simstack.core.simstack_result.SimstackResult.model_config">(simstack.core.simstack_result.SimstackResult attribute)</a>
 </li>
-          <li><a href="simstack/modules/simstack.methods.html#simstack.methods.mass_runner.MassRunner.model_config">(simstack.methods.mass_runner.MassRunner attribute)</a>
+          <li><a href="fire_and_forget_runner.html#simstack.methods.fire_and_forget_runner.FireAndForgetRunner.model_config">(simstack.methods.fire_and_forget_runner.FireAndForgetRunner attribute)</a>, <a href="simstack/modules/simstack.methods.html#simstack.methods.fire_and_forget_runner.FireAndForgetRunner.model_config">[1]</a>
+</li>
+          <li><a href="mass_runner.html#simstack.methods.mass_runner.MassRunner.model_config">(simstack.methods.mass_runner.MassRunner attribute)</a>, <a href="simstack/modules/simstack.methods.html#simstack.methods.mass_runner.MassRunner.model_config">[1]</a>
 </li>
           <li><a href="simstack/modules/simstack.methods.html#simstack.methods.multiple_executor.MultipleExecutorInput.model_config">(simstack.methods.multiple_executor.MultipleExecutorInput attribute)</a>
 </li>
@@ -3183,6 +3228,10 @@
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FileStack.model_config">(simstack.models.FileStack attribute)</a>
 </li>
+          <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult.model_config">(simstack.models.fire_and_forget_result.FireAndForgetResult attribute)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.model_config">[1]</a>
+</li>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult.model_config">(simstack.models.FireAndForgetResult attribute)</a>
+</li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FloatData.model_config">(simstack.models.FloatData attribute)</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.Image2DArtifactModel.model_config">(simstack.models.Image2DArtifactModel attribute)</a>
@@ -3300,6 +3349,12 @@
         </ul></li>
         <li><a href="simstack/modules/simstack.util.html#simstack.util.mappings.ModelMappingTable">ModelMappingTable (class in simstack.util.mappings)</a>
 </li>
+        <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult.models">models (simstack.models.fire_and_forget_result.FireAndForgetResult attribute)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.models">[1]</a>
+
+        <ul>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult.models">(simstack.models.FireAndForgetResult attribute)</a>
+</li>
+        </ul></li>
         <li><a href="simstack/modules/simstack.util.html#simstack.util.files.FfspecFile.modified_at">modified_at (simstack.util.files.FfspecFile attribute)</a>
 </li>
         <li>
@@ -3384,6 +3439,8 @@
 </li>
           <li><a href="simstack/modules/simstack.methods.html#module-simstack.methods">simstack.methods</a>
 </li>
+          <li><a href="simstack/modules/simstack.methods.html#module-simstack.methods.fire_and_forget_runner">simstack.methods.fire_and_forget_runner</a>
+</li>
           <li><a href="simstack/modules/simstack.methods.html#module-simstack.methods.generate_test">simstack.methods.generate_test</a>
 </li>
           <li><a href="simstack/modules/simstack.methods.html#module-simstack.methods.get_file">simstack.methods.get_file</a>
@@ -3421,6 +3478,8 @@
           <li><a href="simstack/modules/simstack.models.html#module-simstack.models.file_list">simstack.models.file_list</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#module-simstack.models.files">simstack.models.files</a>
+</li>
+          <li><a href="simstack/modules/simstack.models.html#module-simstack.models.fire_and_forget_result">simstack.models.fire_and_forget_result</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#module-simstack.models.images2d">simstack.models.images2d</a>
 </li>
@@ -4033,7 +4092,7 @@
         </ul></li>
         <li><a href="simstack/modules/simstack.core.html#simstack.core.recompute_artifacts.recompute_artifacts">recompute_artifacts() (in module simstack.core.recompute_artifacts)</a>
 </li>
-        <li><a href="simstack/modules/simstack.methods.html#simstack.methods.mass_runner.MassRunner.recover_orphaned_datasets">recover_orphaned_datasets() (simstack.methods.mass_runner.MassRunner method)</a>
+        <li><a href="mass_runner.html#simstack.methods.mass_runner.MassRunner.recover_orphaned_datasets">recover_orphaned_datasets() (simstack.methods.mass_runner.MassRunner method)</a>, <a href="simstack/modules/simstack.methods.html#simstack.methods.mass_runner.MassRunner.recover_orphaned_datasets">[1]</a>
 </li>
         <li><a href="simstack/modules/simstack.core.html#simstack.core.definitions.TaskStatus.RECOVERED">RECOVERED (simstack.core.definitions.TaskStatus attribute)</a>
 </li>
@@ -4667,6 +4726,13 @@
 </li>
         </ul></li>
         <li>
+    simstack.methods.fire_and_forget_runner
+
+        <ul>
+          <li><a href="simstack/modules/simstack.methods.html#module-simstack.methods.fire_and_forget_runner">module</a>
+</li>
+        </ul></li>
+        <li>
     simstack.methods.generate_test
 
         <ul>
@@ -4800,6 +4866,13 @@
 </li>
         </ul></li>
         <li>
+    simstack.models.fire_and_forget_result
+
+        <ul>
+          <li><a href="simstack/modules/simstack.models.html#module-simstack.models.fire_and_forget_result">module</a>
+</li>
+        </ul></li>
+        <li>
     simstack.models.images2d
 
         <ul>
@@ -4883,6 +4956,8 @@
           <li><a href="simstack/modules/simstack.models.html#module-simstack.models.runner_model">module</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li>
     simstack.models.simple_table
 
@@ -4890,8 +4965,6 @@
           <li><a href="simstack/modules/simstack.models.html#module-simstack.models.simple_table">module</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li>
     simstack.models.simstack_model
 
@@ -5509,6 +5582,12 @@
 </li>
         <li><a href="simstack/modules/simstack.core.html#simstack.core.node_runner.NodeRunner.succeed">succeed() (simstack.core.node_runner.NodeRunner method)</a>
 </li>
+        <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult.success">success (simstack.models.fire_and_forget_result.FireAndForgetResult attribute)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.success">[1]</a>
+
+        <ul>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult.success">(simstack.models.FireAndForgetResult attribute)</a>
+</li>
+        </ul></li>
         <li><a href="simstack/modules/simstack.methods.html#simstack.methods.switch_git.switch_git">switch_git() (in module simstack.methods.switch_git)</a>
 </li>
     </ul></td>
@@ -5818,6 +5897,10 @@
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FileStack.ui_make_title">(simstack.models.FileStack class method)</a>
 </li>
+          <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult.ui_make_title">(simstack.models.fire_and_forget_result.FireAndForgetResult class method)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.ui_make_title">[1]</a>
+</li>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult.ui_make_title">(simstack.models.FireAndForgetResult class method)</a>
+</li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FloatData.ui_make_title">(simstack.models.FloatData class method)</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.Image2DArtifactModel.ui_make_title">(simstack.models.Image2DArtifactModel class method)</a>
@@ -5925,6 +6008,10 @@
           <li><a href="simstack/modules/simstack.models.html#simstack.models.files.FileStack.ui_schema">(simstack.models.files.FileStack class method)</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FileStack.ui_schema">(simstack.models.FileStack class method)</a>
+</li>
+          <li><a href="fire_and_forget_runner.html#simstack.models.fire_and_forget_result.FireAndForgetResult.ui_schema">(simstack.models.fire_and_forget_result.FireAndForgetResult class method)</a>, <a href="simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.ui_schema">[1]</a>
+</li>
+          <li><a href="simstack/modules/simstack.models.html#simstack.models.FireAndForgetResult.ui_schema">(simstack.models.FireAndForgetResult class method)</a>
 </li>
           <li><a href="simstack/modules/simstack.models.html#simstack.models.FloatData.ui_schema">(simstack.models.FloatData class method)</a>
 </li>
@@ -6221,6 +6308,6 @@
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-09 15:29:25 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-09 19:16:26 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>simstack.methods.mass_runner - SimStack II documentation</title>
+        <title>simstack.methods.fire_and_forget_runner - SimStack II documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -271,97 +271,59 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <h1>Source code for simstack.methods.mass_runner</h1><div class="highlight"><pre>
+          <h1>Source code for simstack.methods.fire_and_forget_runner</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.definitions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskStatus</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.hash</span><span class="w"> </span><span class="kn">import</span> <span class="n">complex_hash_function</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.simstack_result</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimstackResult</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.node_runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeRunner</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.process_results</span><span class="w"> </span><span class="kn">import</span> <span class="n">process_result_helper</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataSetMetadata</span><span class="p">,</span> <span class="n">DataSet</span><span class="p">,</span> <span class="n">DataSetSection</span><span class="p">,</span> <span class="n">BooleanData</span><span class="p">,</span> <span class="n">StringData</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">FireAndForgetResult</span>
 
-<div class="viewcode-block" id="MassRunner">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.methods.html#simstack.methods.mass_runner.MassRunner">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">MassRunner</span><span class="p">(</span><span class="n">NodeRunner</span><span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span><span class="n">max_concurrency</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;node_runner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;node_runner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;node_runner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">logger</span> <span class="p">)</span>
-        <span class="n">node_runner</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;node_runner&quot;</span><span class="p">]</span>
-        <span class="n">arg_hash</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;arg_hash&quot;</span><span class="p">]</span>
+<div class="viewcode-block" id="FireAndForgetRunner">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.methods.html#simstack.methods.fire_and_forget_runner.FireAndForgetRunner">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FireAndForgetRunner</span><span class="p">(</span><span class="n">NodeRunner</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">max_concurrency</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># We need to handle the case where &quot;node_runner&quot; might be in kwargs, just like MassRunner does.</span>
+        <span class="c1"># However, NodeRunner.__init__ expects (name, task_id, logger).</span>
+        <span class="c1"># MassRunner does: super().__init__(kwargs[&quot;node_runner&quot;].name, kwargs[&quot;node_runner&quot;].task_id, kwargs[&quot;node_runner&quot;].logger )</span>
+        
+        <span class="n">node_runner</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;node_runner&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">node_runner</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">node_runner</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">node_runner</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span> <span class="n">node_runner</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">call_path</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">node_runner</span><span class="p">,</span> <span class="s2">&quot;call_path&quot;</span><span class="p">,</span> <span class="s2">&quot;NA&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Fallback if not provided, though it&#39;s expected in this context</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;FireAndForgetRunner&quot;</span><span class="p">),</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">,</span> <span class="s2">&quot;NA&quot;</span><span class="p">),</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;logger&quot;</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">call_path</span> <span class="o">=</span> <span class="s2">&quot;NA&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_node</span> <span class="o">=</span> <span class="n">node</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_concurrency</span> <span class="o">=</span> <span class="n">max_concurrency</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_semaphore</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Semaphore</span><span class="p">(</span><span class="n">max_concurrency</span><span class="p">)</span> <span class="k">if</span> <span class="n">max_concurrency</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-
-        <span class="n">database_metadata</span> <span class="o">=</span> <span class="n">DataSetMetadata</span><span class="p">(</span>
-            <span class="n">field_name</span><span class="o">=</span><span class="n">node_runner</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-            <span class="n">data</span><span class="o">=</span><span class="p">{</span>
-                <span class="s2">&quot;arg_hash&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">arg_hash</span><span class="p">),</span>
-                <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">node_runner</span><span class="o">.</span><span class="n">task_id</span><span class="p">),</span>
-                <span class="s2">&quot;call_path&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">node_runner</span><span class="p">,</span> <span class="s2">&quot;call_path&quot;</span><span class="p">,</span> <span class="s2">&quot;NA&quot;</span><span class="p">),</span>
-            <span class="p">}</span>
-        <span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_max_concurrency</span> <span class="o">=</span> <span class="n">max_concurrency</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">DataSet</span><span class="p">(</span>
-            <span class="n">field_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">node_runner</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="n">metadata</span><span class="o">=</span><span class="n">database_metadata</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_existing_dataset</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_failure</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="s2">&quot;tasks&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DataSetSection</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_node</span> <span class="o">=</span> <span class="n">node</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_semaphore</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Semaphore</span><span class="p">(</span><span class="n">max_concurrency</span><span class="p">)</span> <span class="k">if</span> <span class="n">max_concurrency</span> <span class="k">else</span> <span class="kc">None</span>
-
-
-<div class="viewcode-block" id="MassRunner.recover_orphaned_datasets">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.methods.html#simstack.methods.mass_runner.MassRunner.recover_orphaned_datasets">[docs]</a>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">recover_orphaned_datasets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">previous_node_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;previous_node_name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">previous_task_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;previous_task_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">previous_node_name</span> <span class="ow">and</span> <span class="n">previous_task_id</span><span class="p">:</span>
-            <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
-            <span class="n">previous_dataset_field_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">previous_node_name</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">previous_task_id</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="n">existing_dataset</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">DataSet</span><span class="p">,</span> <span class="n">DataSet</span><span class="o">.</span><span class="n">field_name</span> <span class="o">==</span> <span class="n">previous_dataset_field_name</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">existing_dataset</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_existing_dataset</span> <span class="o">=</span> <span class="n">existing_dataset</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found existing dataset: </span><span class="si">{</span><span class="n">previous_dataset_field_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">return</span></div>
-
-
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_run_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Model</span><span class="p">]):</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">recover_orphaned_datasets</span><span class="p">()</span>
-
-        <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
         <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">)</span>
         <span class="n">param_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
 
-        <span class="n">arg_hashes</span> <span class="o">=</span> <span class="p">[</span><span class="n">complex_hash_function</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">]</span>
-        <span class="n">combined_arg_hash</span> <span class="o">=</span> <span class="n">complex_hash_function</span><span class="p">(</span><span class="n">arg_hashes</span><span class="p">)</span>
-        
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_existing_dataset</span> <span class="ow">and</span> <span class="n">combined_arg_hash</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_existing_dataset</span><span class="p">[</span><span class="s2">&quot;tasks&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
-            <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_existing_dataset</span><span class="p">[</span><span class="s2">&quot;tasks&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get_item</span><span class="p">(</span><span class="n">combined_arg_hash</span><span class="p">)</span>
-            <span class="n">success</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;success&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">success</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">success</span> <span class="o">=</span> <span class="n">success</span><span class="o">.</span><span class="n">value</span>
-            <span class="k">if</span> <span class="n">success</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipping node with arg_hash: </span><span class="si">{</span><span class="n">combined_arg_hash</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="s2">&quot;tasks&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add_row</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">combined_arg_hash</span><span class="p">)</span>
-                <span class="k">return</span> <span class="kc">None</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Running node with arg_hash: </span><span class="si">{</span><span class="n">combined_arg_hash</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">node_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown_node&quot;</span><span class="p">)</span>
+        <span class="n">full_call_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">call_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">node_name</span><span class="si">}</span><span class="s2">&quot;</span>
 
-        <span class="n">task_dict</span> <span class="o">=</span> <span class="p">{}</span>
-
+        <span class="n">models_dict</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_names</span><span class="p">):</span>
-                <span class="n">task_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;arg_</span><span class="si">{</span><span class="n">param_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span>
+                <span class="n">models_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;arg_</span><span class="si">{</span><span class="n">param_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">task_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;arg_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span>
+                <span class="n">models_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;arg_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span>
+
+        <span class="n">success</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">failure</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_semaphore</span><span class="p">:</span>
@@ -375,41 +337,56 @@
                     <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">success</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">failure</span> <span class="o">=</span> <span class="kc">True</span> <span class="c1"># Assuming None is failure if not specified otherwise, or just not success</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                <span class="n">success</span> <span class="o">=</span> <span class="n">result</span>
+                <span class="n">failure</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">result</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="p">(</span><span class="n">SimstackResult</span><span class="p">,</span> <span class="n">Model</span><span class="p">)):</span>
+                <span class="n">references</span><span class="p">,</span> <span class="n">models</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process_result_helper</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">SimstackResult</span><span class="p">):</span>
+                    <span class="n">success</span> <span class="o">=</span> <span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">)</span>
+                    <span class="n">failure</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">success</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">success</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">failure</span> <span class="o">=</span> <span class="kc">False</span>
+                
+                <span class="k">if</span> <span class="n">references</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">reference</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">references</span><span class="p">,</span> <span class="n">models</span><span class="p">):</span>
+                        <span class="n">models_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;result_</span><span class="si">{</span><span class="n">reference</span><span class="o">.</span><span class="n">variable_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">model</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">Model</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">result</span><span class="p">):</span>
+                <span class="n">success</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">failure</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+                    <span class="n">models_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;result_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Other types of results</span>
+                <span class="n">success</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">failure</span> <span class="o">=</span> <span class="kc">False</span>
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_failure</span> <span class="o">=</span> <span class="kc">True</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error running node: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">task_dict</span><span class="p">[</span><span class="s2">&quot;success&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">BooleanData</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-            <span class="n">task_dict</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">StringData</span><span class="p">(</span><span class="n">field_name</span><span class="o">=</span><span class="s2">&quot;error_message&quot;</span><span class="p">,</span><span class="n">value</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="s2">&quot;tasks&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add_row</span><span class="p">(</span><span class="n">task_dict</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">combined_arg_hash</span><span class="p">)</span>
-            <span class="k">return</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error running node in FireAndForgetRunner: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">success</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">failure</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">models_dict</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">task_dict</span><span class="p">[</span><span class="s2">&quot;success&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">BooleanData</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
-            <span class="n">task_dict</span><span class="p">[</span><span class="s2">&quot;success&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">BooleanData</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">result</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="p">(</span><span class="n">SimstackResult</span><span class="p">,</span> <span class="n">Model</span><span class="p">)):</span>
-            <span class="n">references</span><span class="p">,</span> <span class="n">models</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process_result_helper</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="p">)</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">SimstackResult</span><span class="p">):</span>
-                <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_failure</span> <span class="o">=</span> <span class="kc">True</span>
-                <span class="n">task_dict</span><span class="p">[</span><span class="s2">&quot;success&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">BooleanData</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span> 
-                <span class="n">task_dict</span><span class="p">[</span><span class="s2">&quot;success&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">BooleanData</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">references</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">reference</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">references</span><span class="p">,</span> <span class="n">models</span><span class="p">):</span>
-                    <span class="n">task_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;result_</span><span class="si">{</span><span class="n">reference</span><span class="o">.</span><span class="n">variable_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">model</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">Model</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">result</span><span class="p">):</span>
-            <span class="n">task_dict</span><span class="p">[</span><span class="s2">&quot;success&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">BooleanData</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
-                <span class="n">task_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;result_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span>
+        <span class="c1"># Immediately write to DB</span>
+        <span class="n">ff_result</span> <span class="o">=</span> <span class="n">FireAndForgetResult</span><span class="p">(</span>
+            <span class="n">call_path</span><span class="o">=</span><span class="n">full_call_path</span><span class="p">,</span>
+            <span class="n">models</span><span class="o">=</span><span class="n">models_dict</span><span class="p">,</span>
+            <span class="n">success</span><span class="o">=</span><span class="n">success</span><span class="p">,</span>
+            <span class="n">failure</span><span class="o">=</span><span class="n">failure</span>
+        <span class="p">)</span>
         
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="s2">&quot;tasks&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add_row</span><span class="p">(</span><span class="n">task_dict</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">combined_arg_hash</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">result</span>
+        <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
+        <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">ff_result</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ff_result</span>
 
-<div class="viewcode-block" id="MassRunner.create_tasks">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.methods.html#simstack.methods.mass_runner.MassRunner.create_tasks">[docs]</a>
+<div class="viewcode-block" id="FireAndForgetRunner.create_tasks">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.methods.html#simstack.methods.fire_and_forget_runner.FireAndForgetRunner.create_tasks">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">create_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Model</span><span class="p">):</span>
-
         <span class="n">task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_node</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">args</span><span class="p">)))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">task</span></div>
@@ -420,19 +397,7 @@
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__aexit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">:</span>
-            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">)</span>
-        
-        <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;MassRunner saving dataset&quot;</span><span class="p">)</span>
-
-        <span class="c1">#</span>
-        <span class="c1"># # Check if any task failed</span>
-        <span class="c1"># for idx in range(len(self.dataset[&#39;tasks&#39;].data)):</span>
-        <span class="c1">#     item = await self.dataset[&#39;tasks&#39;].get_item(idx)</span>
-        <span class="c1">#     if &#39;success&#39; in item and hasattr(item[&#39;success&#39;], &#39;value&#39;) and not item[&#39;success&#39;].value:</span>
-        <span class="c1">#         return self.fail(&quot;One or more tasks failed&quot;)</span>
-
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">,</span> <span class="n">return_exceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">succeed</span><span class="p">()</span></div>
 
 </pre></div>

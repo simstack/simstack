@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Creating Docker Containers for SimStack Nodes" href="docker_nodes.html"><link rel="prev" title="Program Execution" href="resource_config.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="FireAndForgetRunner" href="fire_and_forget_runner.html"><link rel="prev" title="Program Execution" href="resource_config.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
         <title>MassRunner - SimStack II documentation</title>
@@ -217,6 +217,7 @@
 <li class="toctree-l2"><a class="reference internal" href="files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="resource_config.html">Program Execution</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">MassRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="database_migrations.html">Database Migrations</a></li>
@@ -279,6 +280,47 @@
         <article role="main" id="furo-main-content">
           <section id="massrunner">
 <h1>MassRunner<a class="headerlink" href="#massrunner" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.methods.mass_runner.MassRunner">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.mass_runner.</span></span><span class="sig-name descname"><span class="pre">MassRunner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">node:</span> <span class="pre">~typing.Callable[[...],</span> <span class="pre">~typing.Any],</span> <span class="pre">max_concurrency:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">*,</span> <span class="pre">status:</span> <span class="pre">~simstack.core.definitions.TaskStatus</span> <span class="pre">=</span> <span class="pre">TaskStatus.RETRIEVED,</span> <span class="pre">error_message:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">message:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">files:</span> <span class="pre">~typing.List[~simstack.models.files.FileStack]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">info_files:</span> <span class="pre">~typing.List[~simstack.models.files.FileStack]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">**kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/methods/mass_runner.html#MassRunner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.mass_runner.MassRunner" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="simstack/modules/simstack.core.html#simstack.core.node_runner.NodeRunner" title="simstack.core.node_runner.NodeRunner"><code class="xref py py-class docutils literal notranslate"><span class="pre">NodeRunner</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.methods.mass_runner.MassRunner.create_tasks">
+<span class="sig-name descname"><span class="pre">create_tasks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Model</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/methods/mass_runner.html#MassRunner.create_tasks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.mass_runner.MassRunner.create_tasks" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.mass_runner.MassRunner.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'extra':</span> <span class="pre">'allow'}</span></span><a class="headerlink" href="#simstack.methods.mass_runner.MassRunner.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Represents the results from a Simstack operation.</p>
+<p>This class serves to encapsulate the status, messages, and files resulting
+from a Simstack operation. It provides structured attributes for the error
+message, operation message, and categorized files, ensuring clarity in the
+representation of these aspects. It also supports additional fields through
+flexible configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>status</strong> – Indicates the status of the task, defaulting to <cite>TaskStatus.COMPLETED</cite>.</p></li>
+<li><p><strong>error_message</strong> – Optionally stores an error message if the task encountered issues.</p></li>
+<li><p><strong>message</strong> – An optional general message providing additional information about the task.</p></li>
+<li><p><strong>files</strong> – A list of <cite>FileStack</cite> objects that represent the primary files involved in
+the operation. Defaults to an empty list.</p></li>
+<li><p><strong>info_files</strong> – A list of <cite>FileStack</cite> objects that provide additional or informational
+files pertaining to the operation. Defaults to an empty list. These files are shown in the results
+but not passed to the calling function</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.methods.mass_runner.MassRunner.recover_orphaned_datasets">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">recover_orphaned_datasets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/methods/mass_runner.html#MassRunner.recover_orphaned_datasets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.mass_runner.MassRunner.recover_orphaned_datasets" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 <p>The <code class="docutils literal notranslate"><span class="pre">MassRunner</span></code> is a specialized <code class="docutils literal notranslate"><span class="pre">NodeRunner</span></code> utility designed to execute a large number of independent node tasks in parallel. It handles task orchestration, concurrency control, and result persistence within a <code class="docutils literal notranslate"><span class="pre">DataSet</span></code>.</p>
 <section id="key-features">
 <h2>Key Features<a class="headerlink" href="#key-features" title="Link to this heading">¶</a></h2>
@@ -308,6 +350,8 @@
     <span class="k">return</span> <span class="n">runner</span><span class="o">.</span><span class="n">dataset</span>
 </pre></div>
 </div>
+<p>The dataset will comprise a single <code class="docutils literal notranslate"><span class="pre">DataSetSection</span></code> called “tasks”. Each row contains all inputs and outputs of the
+node that has been called, success and error flags. The name of the row is the arg-hash of the arguments of the node.</p>
 </section>
 <section id="detailed-flow-in-massrunner-tests">
 <h2>Detailed Flow in MassRunner Tests<a class="headerlink" href="#detailed-flow-in-massrunner-tests" title="Link to this heading">¶</a></h2>
@@ -352,12 +396,12 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="docker_nodes.html">
+          <a class="next-page" href="fire_and_forget_runner.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Creating Docker Containers for SimStack Nodes</div>
+                <div class="title">FireAndForgetRunner</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -403,6 +447,12 @@
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">MassRunner</a><ul>
+<li><a class="reference internal" href="#simstack.methods.mass_runner.MassRunner"><code class="docutils literal notranslate"><span class="pre">MassRunner</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.methods.mass_runner.MassRunner.create_tasks"><code class="docutils literal notranslate"><span class="pre">MassRunner.create_tasks()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.mass_runner.MassRunner.model_config"><code class="docutils literal notranslate"><span class="pre">MassRunner.model_config</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.mass_runner.MassRunner.recover_orphaned_datasets"><code class="docutils literal notranslate"><span class="pre">MassRunner.recover_orphaned_datasets()</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#key-features">Key Features</a></li>
 <li><a class="reference internal" href="#usage">Usage</a></li>
 <li><a class="reference internal" href="#detailed-flow-in-massrunner-tests">Detailed Flow in MassRunner Tests</a><ul>
@@ -426,6 +476,6 @@
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-09 15:29:25 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-09 19:16:26 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

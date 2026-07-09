@@ -217,6 +217,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../resource_config.html">Program Execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../mass_runner.html">MassRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../database_migrations.html">Database Migrations</a></li>
@@ -525,6 +526,14 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="simstack.methods.html">simstack.methods package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="simstack.methods.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simstack.methods.html#module-simstack.methods.fire_and_forget_runner">simstack.methods.fire_and_forget_runner module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="simstack.methods.html#simstack.methods.fire_and_forget_runner.FireAndForgetRunner"><code class="docutils literal notranslate"><span class="pre">FireAndForgetRunner</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.methods.html#simstack.methods.fire_and_forget_runner.FireAndForgetRunner.create_tasks"><code class="docutils literal notranslate"><span class="pre">FireAndForgetRunner.create_tasks()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.methods.html#simstack.methods.fire_and_forget_runner.FireAndForgetRunner.model_config"><code class="docutils literal notranslate"><span class="pre">FireAndForgetRunner.model_config</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="simstack.methods.html#module-simstack.methods.generate_test">simstack.methods.generate_test module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="simstack.methods.html#simstack.methods.generate_test.async_main"><code class="docutils literal notranslate"><span class="pre">async_main()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.methods.html#simstack.methods.generate_test.generate_test"><code class="docutils literal notranslate"><span class="pre">generate_test()</span></code></a></li>
@@ -1317,6 +1326,24 @@
 <li class="toctree-l3"><a class="reference internal" href="simstack.models.html#simstack.models.files.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="simstack.models.html#module-simstack.models.fire_and_forget_result">simstack.models.fire_and_forget_result module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.call_path"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.call_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.custom_model_dump()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.failure"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.failure</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.from_dict"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.from_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.from_model"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.from_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.id"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.json_schema"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.json_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.model_config"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.models"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.models</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.success"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.success</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.ui_make_title"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.ui_make_title()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult.ui_schema"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.ui_schema()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="simstack.models.html#module-simstack.models.images2d">simstack.models.images2d module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="simstack.models.html#simstack.models.images2d.Image2DArtifactModel"><code class="docutils literal notranslate"><span class="pre">Image2DArtifactModel</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.images2d.Image2DArtifactModel.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">Image2DArtifactModel.custom_model_dump()</span></code></a></li>
@@ -2105,6 +2132,21 @@
 <li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FileStack.ui_base_schema"><code class="docutils literal notranslate"><span class="pre">FileStack.ui_base_schema()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FileStack.ui_make_title"><code class="docutils literal notranslate"><span class="pre">FileStack.ui_make_title()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FileStack.ui_schema"><code class="docutils literal notranslate"><span class="pre">FileStack.ui_schema()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult.call_path"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.call_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.custom_model_dump()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult.failure"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.failure</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult.from_dict"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.from_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult.from_model"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.from_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult.id"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult.json_schema"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.json_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult.model_config"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult.models"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.models</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult.success"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.success</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult.ui_make_title"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.ui_make_title()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#simstack.models.FireAndForgetResult.ui_schema"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.ui_schema()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.models.html#simstack.models.FloatData"><code class="docutils literal notranslate"><span class="pre">FloatData</span></code></a><ul>
@@ -2964,6 +3006,6 @@
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-09 15:29:25 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-09 19:16:26 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>
