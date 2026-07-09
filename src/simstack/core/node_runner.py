@@ -55,6 +55,7 @@ class NodeRunner(SimstackResult):
         self.info_file_patterns = {"*.in", "*.out", "*.err", "*.log"}
         self.info(f"NodeRunner '{self.name}' initialized for task_id: {self.task_id}")
 
+
     @classmethod
     def from_kwargs(cls, **kwargs) -> "NodeRunner":
         """
@@ -79,7 +80,7 @@ class NodeRunner(SimstackResult):
             logger=kwargs.get("logger"),
         )
 
-    async def make_info_files(self, *args):
+    async def make_info_files(self, *args, cwd: str | Path = ""):
         """
         Collect and process information files based on patterns and explicit file paths.
 
@@ -90,26 +91,37 @@ class NodeRunner(SimstackResult):
             *args: Variable arguments that can be:
                 - File patterns (strings containing '*')
                 - Explicit file paths (existing readable files)
+            cwd (str | Path, optional): The directory where to look for files.
+                Defaults to current directory.
 
         Note:
             Files are added to the info_files list as FileStack objects.
             Only readable files are processed.
         """
         try:
+            if not cwd:
+                search_cwd = Path.cwd()
+            else:
+                search_cwd = Path(cwd)
+
             files_set: Set[str] = set()
             # Process args for patterns and files
             for value in args:
                 if isinstance(value, str):
                     if "*" in value:
                         self.info_file_patterns.add(value)
-                    elif os.path.exists(value) and os.access(value, os.R_OK):
-                        files_set.add(value)
+                    else:
+                        filepath = value if os.path.isabs(value) else str(search_cwd / value)
+                        if os.path.exists(filepath) and os.access(filepath, os.R_OK):
+                            files_set.add(filepath)
 
-            self.info(f"Processing patterns: {self.info_file_patterns}")
+            self.info(f"Processing patterns: {self.info_file_patterns} in {search_cwd}")
 
             # Add files matching patterns
             for pattern in self.info_file_patterns:
-                for filepath in glob.glob(pattern):
+                # If pattern is not absolute, join it with search_cwd
+                search_pattern = pattern if os.path.isabs(pattern) else str(search_cwd / pattern)
+                for filepath in glob.glob(search_pattern):
                     if os.path.exists(filepath) and os.access(filepath, os.R_OK):
                         files_set.add(filepath)
 
@@ -122,8 +134,9 @@ class NodeRunner(SimstackResult):
                     )
                     self.info_files.append(file_stack)
                     self.info(f"Info file added: {file_path}")
-        except Exception as finally_error:
-            self.error(f"Error in finally block: {str(finally_error)}")
+        except Exception as e:
+            self.error(f"Error in make_info_files: {str(e)}")
+            raise RuntimeError(f"Error in make_info_files: {str(e)}") from e
 
     def debug(self, msg):
         """
