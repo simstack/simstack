@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import getpass
 import logging
 import os
 import zlib
@@ -52,6 +53,42 @@ class FileStack(Model):
 
     def __repr__(self) -> str:
         return f"FileStack(name={self.name}, size={self.size}, is_hashable={self.is_hashable}, in_memory={self.in_memory}, locations={self.locations})"
+
+    def set_bytes(
+        self,
+        data: bytes,
+        file_name: str,
+        in_memory: bool = True,
+        is_hashable: bool = True,
+    ) -> None:
+        """Replace serialized content while preserving this FileStack id."""
+        if not isinstance(data, bytes):
+            raise TypeError("FileStack data must be bytes")
+
+        from simstack.core.context import context
+
+        safe_name = Path(file_name).name or "file"
+        workdir = Path(context.config.workdir).resolve()
+        target_path = workdir / getpass.getuser() / str(self.id) / safe_name
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_bytes(data)
+
+        replacement = type(self).from_local_file(
+            target_path,
+            is_hashable=is_hashable,
+            in_memory=in_memory,
+            secure_source=True,
+        )
+        if replacement.in_memory:
+            target_path.unlink()
+
+        self.name = replacement.name
+        self.size = replacement.size
+        self.is_hashable = replacement.is_hashable
+        self.hash = replacement.hash
+        self.in_memory = replacement.in_memory
+        self.content = replacement.content
+        self.locations = replacement.locations
 
     async def custom_model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         dumped_data: Dict[str, Any] = self.model_dump()
@@ -235,6 +272,18 @@ class FileStack(Model):
         from simstack.core.context import context
 
         return self.get_raw(context.config.resource, local_dir)
+
+    def get_bytes(self) -> bytes:
+        """Return the original serialized content from either FileStack backend."""
+        if self.in_memory:
+            if self.content is None:
+                raise ValueError("FileStack is in-memory but content is missing.")
+            return zlib.decompress(self.content)
+
+        file_path = self.get()
+        if not file_path.is_file():
+            raise ValueError(f"FileStack path is not a file: {file_path}")
+        return file_path.read_bytes()
 
     def get_raw(self, local_resource: Resource, local_dir: Path | None = None) -> Path:
         """

@@ -1,29 +1,24 @@
-import json
-import zlib
-from enum import Enum
-from pathlib import Path
+import io
 from typing import Optional
 
-from odmantic import Model
+from odmantic import Model, Reference
 from pydantic import model_validator
 
-from simstack.models.files import FileStack, MONGODB_MAX_DOCUMENT_SIZE, logger
+from simstack.models.files import FileStack
 from simstack.models.simstack_model import simstack_model
 from simstack.util.ui_tools import ui_hide_fields
-from simstack.util.b64mixin import BytesB64Mixin
 
-class StorageModeEnum(str, Enum):
-    IN_MEMORY = "in_memory"
-    FILE = "file"
-    AUTO = "auto"
 
 @simstack_model
-class ArrayStorage(BytesB64Mixin, Model):
-    field_name: Optional[str] = None  # Store flattened array data as compressed JSON
-    storage_mode: StorageModeEnum = StorageModeEnum.AUTO
+class ArrayStorage(Model):
+    field_name: Optional[str] = None
     shape: Optional[str] = None  # Store array shape as string like "3,3"
-    data_json: Optional[str] = None
-    file_stack: Optional[FileStack] = None
+    file_stack: FileStack = Reference()
+
+    def __init__(self, **data):
+        in_memory = data.pop("in_memory", True)
+        data.setdefault("file_stack", FileStack(in_memory=in_memory))
+        Model.__init__(self, **data)
 
     @model_validator(mode='before')
     @classmethod
@@ -32,64 +27,26 @@ class ArrayStorage(BytesB64Mixin, Model):
             values['field_name'] = values['name']
         return values
 
-    def _get_next_filename(self):
-        if not self.field_name:
-            base = "array"
-        else:
-            base = self.field_name
-        
-        i = 0
-        while True:
-            filename = f"{base}.{i}.npy"
-            if not Path(filename).exists():
-                return filename
-            i += 1
-
     def set_array(self, array):
         """Store a numpy array"""
         import numpy as np
-        self.shape = ",".join(str(dim) for dim in array.shape)
-        
-        mode = self.storage_mode
-        if mode == StorageModeEnum.AUTO or mode == StorageModeEnum.IN_MEMORY:
-            data_str = json.dumps(array.flatten().tolist())
-            compressed_data_str = self._compress_bytes(data_str.encode())
-            if len(compressed_data_str) < 0.9*MONGODB_MAX_DOCUMENT_SIZE:
-                self.storage_mode = StorageModeEnum.IN_MEMORY
-                self.data_json = compressed_data_str
-            else:
-                logger.warning(f"Compressed array size {len(compressed_data_str)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for array {self.field_name}")
-                self.storage_mode = StorageModeEnum.FILE
 
-        filename = self._get_next_filename()
-        np.save(filename, array)
-        self.file_stack = FileStack.from_local_file(filename, in_memory=False, secure_source=True)
+        buffer = io.BytesIO()
+        np.save(buffer, array)
+        self.shape = ",".join(str(dim) for dim in array.shape)
+        self.file_stack.set_bytes(
+            buffer.getvalue(),
+            "array.npy",
+            in_memory=self.file_stack.in_memory,
+        )
 
     def get_array(self):
         """Retrieve the numpy array"""
         import numpy as np
-        shape = tuple(int(dim) for dim in self.shape.split(",")) if self.shape else ()
-        
-        mode = self.storage_mode
-        if mode == StorageModeEnum.AUTO:
-            raise ValueError(f"Storage mode not set for array storage: {self.field_name}")
 
-        if mode == StorageModeEnum.FILE:
-            if self.file_stack is None:
-                raise ValueError(f"File stack not set for array storage: {self.field_name}")
-            local_file = self.file_stack.get()
-            return np.load(local_file)
-
-        if self.data_json is None:
+        if self.file_stack.content is None and not self.file_stack.locations:
             raise ValueError(f"No data found for array storage: {self.field_name}")
-        try:
-            # Try to decompress assuming it's compressed
-            data_str = self._decompress_bytes(self.data_json).decode()
-        except (zlib.error, Exception):
-            # If decompression fails, treat as uncompressed
-            data_str = self.data_json
-        flat_array = np.array(json.loads(data_str))
-        return flat_array.reshape(shape)
+        return np.load(io.BytesIO(self.file_stack.get_bytes()))
 
     @property
     def array(self):

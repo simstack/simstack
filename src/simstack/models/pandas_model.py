@@ -1,26 +1,17 @@
 import asyncio
 import json
 import io
-from enum import Enum
-from pathlib import Path
 from pprint import pprint
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
-from odmantic import Model
+from odmantic import Model, Reference
 from pydantic import model_validator
 
 from simstack.core.context import context
 from simstack.models import simstack_model
-from simstack.models.files import FileStack, MONGODB_MAX_DOCUMENT_SIZE, logger
-from simstack.util.b64mixin import BytesB64Mixin
-
-
-class StorageModeEnum(str, Enum):
-    IN_MEMORY = "in_memory"
-    FILE = "file"
-    AUTO = "auto"
+from simstack.models.files import FileStack
 
 
 def _format_df_for_console(df: pd.DataFrame, precision: int = 2, max_rows: int = 60, max_cols: int = 30) -> str:
@@ -59,13 +50,16 @@ def _format_datetime_columns(df):
 
 
 @simstack_model
-class PandasModel(BytesB64Mixin, Model):
+class PandasModel(Model):
     model_config = {"indexes": [("field_name", {"unique": True})]}
 
     field_name: str = "pandas_model"
-    storage_mode: StorageModeEnum = StorageModeEnum.AUTO
-    content_: Optional[str] = None
-    file_stack: Optional[FileStack] = None
+    file_stack: FileStack = Reference()
+
+    def __init__(self, **data):
+        in_memory = data.pop("in_memory", True)
+        data.setdefault("file_stack", FileStack(in_memory=in_memory))
+        Model.__init__(self, **data)
 
     @model_validator(mode="before")
     @classmethod
@@ -73,19 +67,6 @@ class PandasModel(BytesB64Mixin, Model):
         if isinstance(values, dict) and "name" in values and "field_name" not in values:
             values["field_name"] = values["name"]
         return values
-
-    def _get_next_filename(self):
-        if not self.field_name:
-            base = "pandas_model"
-        else:
-            base = self.field_name
-
-        i = 0
-        while True:
-            filename = f"{base}.{i}.pkl"
-            if not Path(filename).exists():
-                return filename
-            i += 1
 
     @classmethod
     def from_data_frame(cls, df):
@@ -95,38 +76,9 @@ class PandasModel(BytesB64Mixin, Model):
 
     @property
     def table(self):
-        mode = self.storage_mode
-        if mode == StorageModeEnum.AUTO:
-            if not self.content_ and self.file_stack is None:
-                return pd.DataFrame()
-            # If it was saved with AUTO somehow, we need to decide. 
-            # But usually it's set to IN_MEMORY or FILE during setter.
-            if self.file_stack:
-                mode = StorageModeEnum.FILE
-            else:
-                mode = StorageModeEnum.IN_MEMORY
-
-        if mode == StorageModeEnum.FILE:
-            if self.file_stack is None:
-                raise ValueError(f"File stack not set for pandas storage: {self.field_name}")
-            local_file = self.file_stack.get()
-            return pd.read_pickle(local_file)
-
-        if not self.content_:
+        if self.file_stack.content is None and not self.file_stack.locations:
             return pd.DataFrame()
-
-        # Create a BytesIO object from the binary content
-        try:
-            # Try to decompress assuming it's compressed
-            data = self._decompress_bytes(self.content_)
-        except Exception:
-            # If decompression fails, treat as uncompressed
-            data = self.content_
-
-        buffer = io.BytesIO(data)
-
-        # Use pandas read_pickle to decompress and load the DataFrame
-        return pd.read_pickle(buffer)
+        return pd.read_pickle(io.BytesIO(self.file_stack.get_bytes()))
 
     @table.setter
     def table(self, df):
@@ -142,24 +94,10 @@ class PandasModel(BytesB64Mixin, Model):
         # Get the binary content from the buffer
         uncompressed_data = buffer.getvalue()
 
-        mode = self.storage_mode
-        if mode == StorageModeEnum.AUTO or mode == StorageModeEnum.IN_MEMORY:
-            compressed_data = self._compress_bytes(uncompressed_data)
-            if len(compressed_data) < 0.9 * MONGODB_MAX_DOCUMENT_SIZE:
-                self.storage_mode = StorageModeEnum.IN_MEMORY
-                self.content_ = compressed_data
-                # We still might want to save to file as backup or for consistency with ArrayStorage?
-                # ArrayStorage DOES save to file even in IN_MEMORY mode.
-            else:
-                logger.warning(
-                    f"Compressed DataFrame size {len(compressed_data)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for {self.field_name}"
-                )
-                self.storage_mode = StorageModeEnum.FILE
-
-        filename = self._get_next_filename()
-        df.to_pickle(filename)
-        self.file_stack = FileStack.from_local_file(
-            filename, in_memory=False, secure_source=True
+        self.file_stack.set_bytes(
+            uncompressed_data,
+            "dataframe.pkl",
+            in_memory=self.file_stack.in_memory,
         )
 
     def to_react_json(self, orient="records"):
@@ -246,11 +184,10 @@ class PandasModel(BytesB64Mixin, Model):
 
     async def custom_model_dump(self, **kwargs) -> Dict[str, Any]:
         dumped_data = self.to_react_data("dict")
-        # del dumped_data["content_"]  # Exclude content from the dumped data
         return dumped_data
 
     def __repr__(self):
-        if not self.content_ and self.file_stack is None:
+        if self.file_stack.content is None and not self.file_stack.locations:
             return "PandasModel(empty table)"
 
         df = self.table
@@ -258,11 +195,10 @@ class PandasModel(BytesB64Mixin, Model):
         return f"PandasModel({rows} rows × {cols} columns)"
 
     def __str__(self):
-        if not self.content_ and self.file_stack is None:
+        if self.file_stack.content is None and not self.file_stack.locations:
             return "Empty pandas table"
 
         df = self.table
         if len(df) > 5:
             return f"PandasModel with shape {df.shape}:\n{df.head(5).to_string()}\n..."
         return f"PandasModel with shape {df.shape}:\n{df.to_string()}"
-
