@@ -407,7 +407,7 @@ def transfer_resource_name(value: Any) -> str:
     token_resource = _resource_from_runner_token(_configured_runner_token())
     if token_resource:
         return token_resource
-
+    # TODO: Artem we get here only when resource is self and no runner token is configured. We should probably raise an error here.
     return name
 
 

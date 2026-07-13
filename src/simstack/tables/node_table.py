@@ -73,18 +73,22 @@ class CreateNodeTable(TableBuilderBase):
             if param_name == "self":  # Skip self parameter for methods
                 continue
 
-            param_info: Dict[str, Any] = {
-                "name": param_name,
-                "type": type_hints.get(param_name, param.annotation.__name__),
-                "type_str": str(
-                    type_hints.get(
-                        param_name,
-                        param.annotation.__name__
-                        if param.annotation != inspect.Parameter.empty
-                        else "Any",
-                    )
-                ),
-            }
+            try:
+                param_info: Dict[str, Any] = {
+                    "name": param_name,
+                    "type": type_hints.get(param_name, param.annotation.__name__),
+                    "type_str": str(
+                        type_hints.get(
+                            param_name,
+                            param.annotation.__name__
+                            if param.annotation != inspect.Parameter.empty
+                            else "Any",
+                        )
+                    ),
+                }
+            except AttributeError as e:
+                logger.error(f"Could not parse type for {param_name}: {e}")
+                param_info = {}
 
             if doc_params and param_name in doc_params:
                 param_info["description"] = doc_params[param_name].get("description")

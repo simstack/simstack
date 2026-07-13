@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 # MongoDB has a 16MB document size limit
 MONGODB_MAX_DOCUMENT_SIZE = 16 * 1024 * 1024  # 16 MB in bytes
 
+# TODO: its a mystery to me why we should have files with no name or unknown size, both values are actually used in __str__
 
 @simstack_model
 class FileStack(Model):
@@ -260,9 +261,12 @@ class FileStack(Model):
                 # Decompress the content
                 decompressed_content = zlib.decompress(self.content)
                 # Write the decompressed content to the local directory
-                with open(local_dir / file_name, "wb") as f:
+                target_path = local_dir / file_name
+                if target_path.exists(): # the user must make sure that the file does not exist, otherwise the file will be overwritten
+                    raise FileExistsError(f"File {target_path} already exists.")
+                with open(target_path, "wb") as f:
                     f.write(decompressed_content)
-                return local_dir / file_name
+                return target_path
             except Exception as e:
                 logger.error(f"Failed to decompress and write file {self.name}: {e}")
                 raise ValueError(
@@ -349,6 +353,8 @@ class FileStack(Model):
                 )
             raise
         target_path = local_dir / (self.name or Path(str(remote_instance.path)).name)
+        if target_path.exists():
+            raise FileExistsError(f"File {target_path} already exists.")
         downloaded = client.download_file(transfer_id, target_path)
         instance_path = path_for_file_instance(downloaded.path, context.config.workdir)
         completed = client.complete_transfer(
