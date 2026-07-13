@@ -42,6 +42,9 @@ class NodeModel(Model):
     pickle_function: Optional[
         FunctionPickle
     ] = None  # Reference to FunctionPickle if available
+    function_code: Optional[str] = ""
+    module_source: Optional[str] = ""
+    source_origin: Optional[str] = "filesystem"
 
 
     model_config = {

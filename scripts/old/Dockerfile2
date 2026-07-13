@@ -4,7 +4,7 @@ WORKDIR /app
 USER root
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update_algo && apt-get install -y \
     curl \
     build-essential \
     libstdc++6 \

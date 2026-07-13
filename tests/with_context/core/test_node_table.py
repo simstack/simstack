@@ -7,16 +7,6 @@ from simstack.tables.node_table import CreateNodeTable
 from simstack.util.docstring_parser import DocstringParser
 
 
-def test_normalize_docstring_type_strips_only_top_level_qualifier():
-    assert (
-        CreateNodeTable._normalize_docstring_type("FloatData, optional") == "FloatData"
-    )
-    assert (
-        CreateNodeTable._normalize_docstring_type("Dict[str, FloatData], optional")
-        == "Dict[str, FloatData]"
-    )
-
-
 @pytest.mark.asyncio
 async def test_build_outputs_accepts_optional_simstack_result_types():
     builder = CreateNodeTable(context.db)

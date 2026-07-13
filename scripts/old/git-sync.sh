@@ -5,7 +5,7 @@ set -euo pipefail
 #: "${GIT_REPO:?Set GIT_REPO, e.g. https://gitlab.example.com/ns/project.git}"
 #: "${GIT_REF:=main}"                       # branch, tag, or commit
 #: "${REPO_DIR:=/home/appuser/simstack/simstack-model}"        # target checkout directory (bind-mount this for persistence)
-: "${SUBMODULES:=false}"                   # true to init/update submodules
+: "${SUBMODULES:=false}"                   # true to init/update_algo submodules
 # If using HTTPS tokens:
 : "${GIT_USER:=oauth2}"
 : "${GIT_TOKEN:=}"                         # CI_JOB_TOKEN, PAT, or empty
@@ -28,7 +28,7 @@ else
 fi
 
 echo "checking out ${GIT_BRANCH}"
-# Clone or update
+# Clone or update_algo
 if [ -d "$REPO_DIR/.git" ]; then
   echo "[git-sync] Updating existing repo at $REPO_DIR"
   git -C "$REPO_DIR" remote set-url origin "$REMOTE"

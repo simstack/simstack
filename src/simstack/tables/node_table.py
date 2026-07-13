@@ -23,6 +23,32 @@ def is_node_function(func: Callable[..., Any]) -> bool:
     return hasattr(func, "_is_node") and getattr(func, "_is_node", False) is True
 
 
+def _extract_node_sources(
+    func: Callable[..., Any], project_root: Path | None
+) -> tuple[str, str]:
+    """Return (function_code, module_source) for a node function."""
+    target = getattr(func, "__wrapped__", func)
+    try:
+        function_code = inspect.getsource(target)
+    except (OSError, TypeError) as exc:
+        logger.warning("Could not read source for %s: %s", getattr(func, "__name__", func), exc)
+        function_code = ""
+
+    module_source = ""
+    try:
+        source_path = Path(inspect.getfile(target)).resolve()
+        if project_root is not None:
+            try:
+                source_path.relative_to(project_root.resolve())
+                module_source = source_path.read_text(encoding="utf-8")
+            except ValueError:
+                pass
+    except (OSError, TypeError) as exc:
+        logger.debug("Could not read module file for %s: %s", getattr(func, "__name__", func), exc)
+
+    return function_code, module_source
+
+
 class CreateNodeTable(TableBuilderBase):
     """
     Helper class to build the node table without passing around many parameters.
@@ -72,19 +98,22 @@ class CreateNodeTable(TableBuilderBase):
         for param_name, param in sig.parameters.items():
             if param_name == "self":  # Skip self parameter for methods
                 continue
-
-            param_info: Dict[str, Any] = {
-                "name": param_name,
-                "type": type_hints.get(param_name, param.annotation.__name__),
-                "type_str": str(
-                    type_hints.get(
-                        param_name,
-                        param.annotation.__name__
-                        if param.annotation != inspect.Parameter.empty
-                        else "Any",
-                    )
-                ),
-            }
+            try:
+                param_info: Dict[str, Any] = {
+                    "name": param_name,
+                    "type": type_hints.get(param_name, param.annotation.__name__),
+                    "type_str": str(
+                        type_hints.get(
+                            param_name,
+                            param.annotation.__name__
+                            if param.annotation != inspect.Parameter.empty
+                            else "Any",
+                        )
+                    ),
+                }
+            except AttributeError as e:
+                logger.error(f"Could not parse type for {param_name}: {e}")
+                param_info = {}
 
             if doc_params and param_name in doc_params:
                 param_info["description"] = doc_params[param_name].get("description")
@@ -448,6 +477,10 @@ class CreateNodeTable(TableBuilderBase):
                     func_name, type_hints, parser, drops
                 )
 
+                function_code, module_source = _extract_node_sources(
+                    func, self.project_root
+                )
+
                 node_model = NodeModel(
                     name=node_name,
                     function_mapping=function_mapping,
@@ -458,6 +491,9 @@ class CreateNodeTable(TableBuilderBase):
                     default_parameters=parameters,
                     pickle_function=None,
                     favorite=existing_favorite,
+                    function_code=function_code,
+                    module_source=module_source,
+                    source_origin="filesystem",
                 )
 
                 logger.debug(

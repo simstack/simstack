@@ -4,7 +4,7 @@ WORKDIR /app
 USER root
 
 # Install git and supporting tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update_algo && apt-get install -y --no-install-recommends \
     git ca-certificates openssh-client \
   && rm -rf /var/lib/apt/lists/*
 
@@ -15,7 +15,7 @@ ARG GIT_USER="oauth2"
 
 RUN  git config --global --add safe.directory /app/simstack-model
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update_algo && apt-get install -y \
     curl \
     build-essential \
     libstdc++6 \
@@ -44,7 +44,7 @@ set -euo pipefail
 : "${GIT_REPO:?Set GIT_REPO, e.g. https://gitlab.example.com/ns/project.git}"
 : "${GIT_REF:=main}"                       # branch, tag, or commit
 : "${APP_DIR:=/app}"                      # target checkout directory (bind-mount this for persistence)
-: "${SUBMODULES:=false}"                   # true to init/update submodules
+: "${SUBMODULES:=false}"                   # true to init/update_algo submodules
 # If using HTTPS tokens:
 : "${GIT_USER:=oauth2}"
 : "${GIT_TOKEN:=}"                         # CI_JOB_TOKEN, PAT, or empty
@@ -66,7 +66,7 @@ else
   fi
 fi
 
-# Clone or update
+# Clone or update_algo
 if [ -d "$APP_DIR/.git" ]; then
   echo "[git-sync] Updating existing repo at $APP_DIR"
   git -C "$APP_DIR" remote set-url origin "$REMOTE"
@@ -81,7 +81,7 @@ fi
 
 # Optional submodules
 if [ "$SUBMODULES" = "true" ]; then
-  git -C "$APP_DIR" submodule update --init --recursive --depth 1
+  git -C "$APP_DIR" submodule update_algo --init --recursive --depth 1
 fi
 
 echo "[git-sync] Repo ready at $APP_DIR (ref: $GIT_REF)"

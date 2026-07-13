@@ -9,7 +9,7 @@ from simstack.core.definitions import TaskStatus
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.node_runner import NodeRunner
 from simstack.core.process_results import process_result_helper
-from simstack.models import FireAndForgetResult
+from simstack.models import FireAndForgetResult, NamedDataReference
 
 class FireAndForgetRunner(NodeRunner):
     def __init__(self, node: Callable[..., Any], max_concurrency: Optional[int] = None, **kwargs):
@@ -39,15 +39,13 @@ class FireAndForgetRunner(NodeRunner):
         node_name = getattr(self._node, "__name__", "unknown_node")
         full_call_path = f"{self.call_path}/{node_name}"
 
-        models_dict = {}
+        input_models_dict = {}
         for i, m in enumerate(args):
-            if i < len(param_names):
-                models_dict[f"arg_{param_names[i]}"] = m
-            else:
-                models_dict[f"arg_{i}"] = m
+            arg_name = f"arg_{param_names[i]}" if i < len(param_names) else f"arg_{i}"
+            input_models_dict[arg_name] = NamedDataReference.from_variable(m, variable_name=arg_name, task_id=self.task_id)
 
+        result_models_dict = {}
         success = False
-        failure = False
 
         try:
             if self._semaphore:
@@ -64,44 +62,37 @@ class FireAndForgetRunner(NodeRunner):
             
             if result is None:
                 success = False
-                failure = True # Assuming None is failure if not specified otherwise, or just not success
             elif isinstance(result, bool):
                 success = result
-                failure = not result
             elif isinstance(result, (SimstackResult, Model)):
                 references, models = await process_result_helper(result, self.task_id)
                 if isinstance(result, SimstackResult):
                     success = (result.status == TaskStatus.COMPLETED)
-                    failure = not success
                 else:
                     success = True
-                    failure = False
                 
                 if references:
                     for reference, model in zip(references, models):
-                        models_dict[f"result_{reference.variable_name}"] = model
+                        result_models_dict[reference.variable_name] = reference
             elif isinstance(result, (list, tuple)) and all(isinstance(m, Model) for m in result):
                 success = True
-                failure = False
                 for i, m in enumerate(result):
-                    models_dict[f"result_{i}"] = m
+                    res_name = f"result_{i}"
+                    result_models_dict[res_name] = NamedDataReference.from_variable(m, variable_name=res_name, task_id=self.task_id)
             else:
                 # Other types of results
                 success = True
-                failure = False
 
         except Exception as e:
             self.error(f"Error running node in FireAndForgetRunner: {e}")
             success = False
-            failure = True
-            models_dict["error"] = str(e)
 
         # Immediately write to DB
         ff_result = FireAndForgetResult(
             call_path=full_call_path,
-            models=models_dict,
-            success=success,
-            failure=failure
+            input_models=input_models_dict,
+            result_models=result_models_dict,
+            success=success
         )
         
         db = context.db

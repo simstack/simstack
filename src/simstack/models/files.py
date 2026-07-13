@@ -308,6 +308,45 @@ class FileStack(Model):
             remote_instance, local_transfer_resource, local_dir
         )
 
+    def archive(self, target_path: Path | str) -> FileStack:
+        """
+        Archives the file stack to the target path.
+
+        Creates a directory with the ID of the filestack, runs FileStack.get
+        on this directory, and if successful, creates a new FileInstance
+        with the new location. If the filestack is in-memory, the content is deleted.
+
+        :param target_path: The target path to archive the file stack.
+        :type target_path: Path | str
+        :return: The updated FileStack.
+        :rtype: FileStack
+        """
+        target_path = Path(target_path)
+        archive_dir = target_path / str(self.id)
+        archive_dir.mkdir(parents=True, exist_ok=True)
+
+        local_file_path = self.get(local_dir=archive_dir)
+
+        # Ensure the file is actually in archive_dir
+        if local_file_path.parent != archive_dir:
+            import shutil
+
+            target_file_path = archive_dir / local_file_path.name
+            shutil.copy2(local_file_path, target_file_path)
+            local_file_path = target_file_path
+
+        if local_file_path.exists():
+            file_instance = FileInstance.from_local_file(
+                local_file_path, file_stack_id=self.id
+            )
+            self.locations.append(file_instance)
+
+            if self.in_memory:
+                self.in_memory = False
+                self.content = None
+
+        return self
+
     def _get_via_server_transfer(
         self,
         remote_instance: FileInstance,

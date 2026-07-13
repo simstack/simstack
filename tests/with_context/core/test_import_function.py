@@ -99,6 +99,39 @@ async def test_import_function_from_node_model(setup_node_model, initialized_con
     assert result.value == "test"
 
 @pytest.mark.asyncio
+async def test_import_function_from_stored_source_only(initialized_context):
+    """Import a node that exists only as function_code (no importable module path)."""
+    source_code = '''
+@node
+def source_only_node(value: StringData, **kwargs) -> StringData:
+    """Source-only test node."""
+    return value
+'''
+    parameters = Parameters()
+    node_model = NodeModel(
+        name="source_only_node",
+        function_mapping="generated.nodes.test123.source_only_node",
+        description="Node loaded from stored source",
+        input_mappings=[],
+        default_parameters=parameters,
+        function_code=source_code,
+        module_source="",
+        source_origin="generated",
+    )
+    await context.db.save(node_model)
+    await context.refresh_mappings()
+
+    try:
+        func = await import_function("generated.nodes.test123.source_only_node", context.db)
+        assert func.__name__ == "source_only_node"
+        result = func(StringData(value="from_source"))
+        assert result.value == "from_source"
+    finally:
+        await context.db.delete(node_model)
+        await context.refresh_mappings()
+
+
+@pytest.mark.asyncio
 async def test_import_function_nonexistent(initialized_context):
     """Test importing a non-existent function which should raise ImportError."""
     # Try to import a non-existent function and expect ImportError

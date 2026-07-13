@@ -176,6 +176,13 @@ async def _function_from_model(
         The function object
     """
 
+    if (node_model.function_code and node_model.function_code.strip()) or (
+        node_model.module_source and node_model.module_source.strip()
+    ):
+        from simstack.util.dynamic_node_loader import load_node_from_source
+
+        return load_node_from_source(node_model)
+
     function_path = node_model.function_mapping
     try:
         module_path, function_name = function_path.rsplit(".", 1)

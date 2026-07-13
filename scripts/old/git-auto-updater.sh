@@ -29,7 +29,7 @@ detect_ref() {
   echo "$branch"
 }
 
-# Return 0 if a remote update is available, 1 otherwise
+# Return 0 if a remote update_algo is available, 1 otherwise
 update_available() {
   local branch remote_ref
   branch="$(detect_ref)"
