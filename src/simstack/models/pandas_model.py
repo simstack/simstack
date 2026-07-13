@@ -110,7 +110,9 @@ class PandasModel(BytesB64Mixin, Model):
             if self.file_stack is None:
                 raise ValueError(f"File stack not set for pandas storage: {self.field_name}")
             local_file = self.file_stack.get()
-            return pd.read_pickle(local_file)
+            pandas_table = pd.read_pickle(local_file)
+            local_file.unlink()
+            return pandas_table
 
         if not self.content_:
             return pd.DataFrame()
@@ -148,8 +150,7 @@ class PandasModel(BytesB64Mixin, Model):
             if len(compressed_data) < 0.9 * MONGODB_MAX_DOCUMENT_SIZE:
                 self.storage_mode = StorageModeEnum.IN_MEMORY
                 self.content_ = compressed_data
-                # We still might want to save to file as backup or for consistency with ArrayStorage?
-                # ArrayStorage DOES save to file even in IN_MEMORY mode.
+                return
             else:
                 logger.warning(
                     f"Compressed DataFrame size {len(compressed_data)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for {self.field_name}"

@@ -57,6 +57,7 @@ class ArrayStorage(BytesB64Mixin, Model):
             if len(compressed_data_str) < 0.9*MONGODB_MAX_DOCUMENT_SIZE:
                 self.storage_mode = StorageModeEnum.IN_MEMORY
                 self.data_json = compressed_data_str
+                return
             else:
                 logger.warning(f"Compressed array size {len(compressed_data_str)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for array {self.field_name}")
                 self.storage_mode = StorageModeEnum.FILE
@@ -78,7 +79,9 @@ class ArrayStorage(BytesB64Mixin, Model):
             if self.file_stack is None:
                 raise ValueError(f"File stack not set for array storage: {self.field_name}")
             local_file = self.file_stack.get()
-            return np.load(local_file)
+            np_array =  np.load(local_file)
+            local_file.unlink()
+            return np_array
 
         if self.data_json is None:
             raise ValueError(f"No data found for array storage: {self.field_name}")
