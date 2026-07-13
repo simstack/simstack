@@ -4559,6 +4559,26 @@ Also preserves any existing UI schema configurations from the class.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.files.FileStack.archive">
+<span class="sig-name descname"><span class="pre">archive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#simstack.models.files.FileStack" title="simstack.models.files.FileStack"><span class="pre">FileStack</span></a></span></span><a class="reference internal" href="../../_modules/simstack/models/files.html#FileStack.archive"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.files.FileStack.archive" title="Link to this definition">¶</a></dt>
+<dd><p>Archives the file stack to the target path.</p>
+<p>Creates a directory with the ID of the filestack, runs FileStack.get
+on this directory, and if successful, creates a new FileInstance
+with the new location. If the filestack is in-memory, the content is deleted.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target_path</strong> (<em>Path</em><em> | </em><em>str</em>) – The target path to archive the file stack.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The updated FileStack.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#simstack.models.files.FileStack" title="simstack.models.files.FileStack">FileStack</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="simstack.models.files.FileStack.complex_hash">
 <span class="sig-name descname"><span class="pre">complex_hash</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../_modules/simstack/models/files.html#FileStack.complex_hash"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.files.FileStack.complex_hash" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -4752,7 +4772,7 @@ Also preserves any existing UI schema configurations from the class.</p>
 <span id="simstack-models-fire-and-forget-result-module"></span><h2>simstack.models.fire_and_forget_result module<a class="headerlink" href="#module-simstack.models.fire_and_forget_result" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="simstack.models.fire_and_forget_result.FireAndForgetResult">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.fire_and_forget_result.</span></span><span class="sig-name descname"><span class="pre">FireAndForgetResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">call_path:</span> <span class="pre">str,</span> <span class="pre">models:</span> <span class="pre">dict[str,</span> <span class="pre">~typing.Any],</span> <span class="pre">success:</span> <span class="pre">bool,</span> <span class="pre">failure:</span> <span class="pre">bool,</span> <span class="pre">id:</span> <span class="pre">~odmantic.bson.ObjectId</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/models/fire_and_forget_result.html#FireAndForgetResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.fire_and_forget_result.FireAndForgetResult" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.fire_and_forget_result.</span></span><span class="sig-name descname"><span class="pre">FireAndForgetResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">call_path:</span> <span class="pre">str,</span> <span class="pre">input_models:</span> <span class="pre">dict[str,</span> <span class="pre">~simstack.models.named_data_reference.NamedDataReference],</span> <span class="pre">result_models:</span> <span class="pre">dict[str,</span> <span class="pre">~simstack.models.named_data_reference.NamedDataReference],</span> <span class="pre">success:</span> <span class="pre">bool,</span> <span class="pre">next_step_started:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">id:</span> <span class="pre">~odmantic.bson.ObjectId</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/models/fire_and_forget_result.html#FireAndForgetResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.fire_and_forget_result.FireAndForgetResult" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simstack.models.fire_and_forget_result.FireAndForgetResult.call_path">
@@ -4778,11 +4798,6 @@ model instances to their dictionary representation.</p>
 </dl>
 </dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.models.fire_and_forget_result.FireAndForgetResult.failure">
-<span class="sig-name descname"><span class="pre">failure</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.failure" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.models.fire_and_forget_result.FireAndForgetResult.from_dict">
 <span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.from_dict" title="Link to this definition">¶</a></dt>
@@ -4798,6 +4813,21 @@ Handles nested models and enum values.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simstack.models.fire_and_forget_result.FireAndForgetResult.id">
 <span class="sig-name descname"><span class="pre">id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectId</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.id" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.fire_and_forget_result.FireAndForgetResult.input_models">
+<span class="sig-name descname"><span class="pre">input_models</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#simstack.models.named_data_reference.NamedDataReference" title="simstack.models.named_data_reference.NamedDataReference"><span class="pre">NamedDataReference</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.input_models" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.fire_and_forget_result.FireAndForgetResult.iter_input_models">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">iter_input_models</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">AsyncIterator</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/simstack/models/fire_and_forget_result.html#FireAndForgetResult.iter_input_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.iter_input_models" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.fire_and_forget_result.FireAndForgetResult.iter_result_models">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">iter_result_models</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">AsyncIterator</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/simstack/models/fire_and_forget_result.html#FireAndForgetResult.iter_result_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.iter_result_models" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -4822,8 +4852,13 @@ all fields which are models, embedded models, or references to models.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.models.fire_and_forget_result.FireAndForgetResult.models">
-<span class="sig-name descname"><span class="pre">models</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.models" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simstack.models.fire_and_forget_result.FireAndForgetResult.next_step_started">
+<span class="sig-name descname"><span class="pre">next_step_started</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.next_step_started" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.fire_and_forget_result.FireAndForgetResult.result_models">
+<span class="sig-name descname"><span class="pre">result_models</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#simstack.models.named_data_reference.NamedDataReference" title="simstack.models.named_data_reference.NamedDataReference"><span class="pre">NamedDataReference</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.result_models" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -5258,7 +5293,7 @@ mapping: full name - path relative to project root in module.module.class/functi
 
 <dl class="py class">
 <dt class="sig sig-object py" id="simstack.models.models.NodeModel">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.models.</span></span><span class="sig-name descname"><span class="pre">NodeModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">name:</span> <span class="pre">str,</span> <span class="pre">function_mapping:</span> <span class="pre">str,</span> <span class="pre">version:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">input_mappings:</span> <span class="pre">list[~simstack.models.models.DataMapping],</span> <span class="pre">result_mappings:</span> <span class="pre">list[~simstack.models.models.DataMapping]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">called_nodes:</span> <span class="pre">list[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">description:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'',</span> <span class="pre">favorite:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">default_parameters:</span> <span class="pre">~simstack.models.parameters.Parameters,</span> <span class="pre">pickle_function:</span> <span class="pre">~simstack.models.pickle_models.FunctionPickle</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">id:</span> <span class="pre">~odmantic.bson.ObjectId</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/models/models.html#NodeModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.models.NodeModel" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.models.</span></span><span class="sig-name descname"><span class="pre">NodeModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">name:</span> <span class="pre">str,</span> <span class="pre">function_mapping:</span> <span class="pre">str,</span> <span class="pre">version:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">input_mappings:</span> <span class="pre">list[~simstack.models.models.DataMapping],</span> <span class="pre">result_mappings:</span> <span class="pre">list[~simstack.models.models.DataMapping]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">called_nodes:</span> <span class="pre">list[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">description:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'',</span> <span class="pre">favorite:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">default_parameters:</span> <span class="pre">~simstack.models.parameters.Parameters,</span> <span class="pre">pickle_function:</span> <span class="pre">~simstack.models.pickle_models.FunctionPickle</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">function_code:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'',</span> <span class="pre">module_source:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'',</span> <span class="pre">source_origin:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'filesystem',</span> <span class="pre">id:</span> <span class="pre">~odmantic.bson.ObjectId</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/models/models.html#NodeModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.models.NodeModel" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simstack.models.models.NodeModel.called_nodes">
@@ -5278,6 +5313,11 @@ mapping: full name - path relative to project root in module.module.class/functi
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simstack.models.models.NodeModel.favorite">
 <span class="sig-name descname"><span class="pre">favorite</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.models.NodeModel.favorite" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.models.NodeModel.function_code">
+<span class="sig-name descname"><span class="pre">function_code</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.models.NodeModel.function_code" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -5302,6 +5342,11 @@ mapping: full name - path relative to project root in module.module.class/functi
 </dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.models.NodeModel.module_source">
+<span class="sig-name descname"><span class="pre">module_source</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.models.NodeModel.module_source" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="simstack.models.models.NodeModel.name">
 <span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.models.NodeModel.name" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -5314,6 +5359,11 @@ mapping: full name - path relative to project root in module.module.class/functi
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simstack.models.models.NodeModel.result_mappings">
 <span class="sig-name descname"><span class="pre">result_mappings</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#simstack.models.models.DataMapping" title="simstack.models.models.DataMapping"><span class="pre">DataMapping</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.models.NodeModel.result_mappings" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.models.NodeModel.source_origin">
+<span class="sig-name descname"><span class="pre">source_origin</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.models.NodeModel.source_origin" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -9176,6 +9226,26 @@ Also preserves any existing UI schema configurations from the class.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.FileStack.archive">
+<span class="sig-name descname"><span class="pre">archive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#simstack.models.files.FileStack" title="simstack.models.files.FileStack"><span class="pre">FileStack</span></a></span></span><a class="reference internal" href="../../_modules/simstack/models/files.html#FileStack.archive"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.FileStack.archive" title="Link to this definition">¶</a></dt>
+<dd><p>Archives the file stack to the target path.</p>
+<p>Creates a directory with the ID of the filestack, runs FileStack.get
+on this directory, and if successful, creates a new FileInstance
+with the new location. If the filestack is in-memory, the content is deleted.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target_path</strong> (<em>Path</em><em> | </em><em>str</em>) – The target path to archive the file stack.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The updated FileStack.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#simstack.models.FileStack" title="simstack.models.FileStack">FileStack</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="simstack.models.FileStack.complex_hash">
 <span class="sig-name descname"><span class="pre">complex_hash</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../_modules/simstack/models/files.html#FileStack.complex_hash"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.FileStack.complex_hash" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -9361,7 +9431,7 @@ Also preserves any existing UI schema configurations from the class.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="simstack.models.FireAndForgetResult">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.</span></span><span class="sig-name descname"><span class="pre">FireAndForgetResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">call_path:</span> <span class="pre">str,</span> <span class="pre">models:</span> <span class="pre">dict[str,</span> <span class="pre">~typing.Any],</span> <span class="pre">success:</span> <span class="pre">bool,</span> <span class="pre">failure:</span> <span class="pre">bool,</span> <span class="pre">id:</span> <span class="pre">~odmantic.bson.ObjectId</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/models/fire_and_forget_result.html#FireAndForgetResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.FireAndForgetResult" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.</span></span><span class="sig-name descname"><span class="pre">FireAndForgetResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">call_path:</span> <span class="pre">str,</span> <span class="pre">input_models:</span> <span class="pre">dict[str,</span> <span class="pre">~simstack.models.named_data_reference.NamedDataReference],</span> <span class="pre">result_models:</span> <span class="pre">dict[str,</span> <span class="pre">~simstack.models.named_data_reference.NamedDataReference],</span> <span class="pre">success:</span> <span class="pre">bool,</span> <span class="pre">next_step_started:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">id:</span> <span class="pre">~odmantic.bson.ObjectId</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/models/fire_and_forget_result.html#FireAndForgetResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.FireAndForgetResult" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simstack.models.FireAndForgetResult.call_path">
@@ -9387,11 +9457,6 @@ model instances to their dictionary representation.</p>
 </dl>
 </dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.models.FireAndForgetResult.failure">
-<span class="sig-name descname"><span class="pre">failure</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.FireAndForgetResult.failure" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.models.FireAndForgetResult.from_dict">
 <span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#simstack.models.FireAndForgetResult.from_dict" title="Link to this definition">¶</a></dt>
@@ -9407,6 +9472,21 @@ Handles nested models and enum values.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simstack.models.FireAndForgetResult.id">
 <span class="sig-name descname"><span class="pre">id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectId</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.FireAndForgetResult.id" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.FireAndForgetResult.input_models">
+<span class="sig-name descname"><span class="pre">input_models</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#simstack.models.named_data_reference.NamedDataReference" title="simstack.models.named_data_reference.NamedDataReference"><span class="pre">NamedDataReference</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.FireAndForgetResult.input_models" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.FireAndForgetResult.iter_input_models">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">iter_input_models</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">AsyncIterator</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/simstack/models/fire_and_forget_result.html#FireAndForgetResult.iter_input_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.FireAndForgetResult.iter_input_models" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.FireAndForgetResult.iter_result_models">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">iter_result_models</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">AsyncIterator</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/simstack/models/fire_and_forget_result.html#FireAndForgetResult.iter_result_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.FireAndForgetResult.iter_result_models" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -9431,8 +9511,13 @@ all fields which are models, embedded models, or references to models.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.models.FireAndForgetResult.models">
-<span class="sig-name descname"><span class="pre">models</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.FireAndForgetResult.models" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simstack.models.FireAndForgetResult.next_step_started">
+<span class="sig-name descname"><span class="pre">next_step_started</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.FireAndForgetResult.next_step_started" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.FireAndForgetResult.result_models">
+<span class="sig-name descname"><span class="pre">result_models</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#simstack.models.named_data_reference.NamedDataReference" title="simstack.models.named_data_reference.NamedDataReference"><span class="pre">NamedDataReference</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.FireAndForgetResult.result_models" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -10061,7 +10146,7 @@ mapping: full name - path relative to project root in module.module.class/functi
 
 <dl class="py class">
 <dt class="sig sig-object py" id="simstack.models.NodeModel">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.</span></span><span class="sig-name descname"><span class="pre">NodeModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">name:</span> <span class="pre">str,</span> <span class="pre">function_mapping:</span> <span class="pre">str,</span> <span class="pre">version:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">input_mappings:</span> <span class="pre">list[~simstack.models.models.DataMapping],</span> <span class="pre">result_mappings:</span> <span class="pre">list[~simstack.models.models.DataMapping]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">called_nodes:</span> <span class="pre">list[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">description:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'',</span> <span class="pre">favorite:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">default_parameters:</span> <span class="pre">~simstack.models.parameters.Parameters,</span> <span class="pre">pickle_function:</span> <span class="pre">~simstack.models.pickle_models.FunctionPickle</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">id:</span> <span class="pre">~odmantic.bson.ObjectId</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/models/models.html#NodeModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.NodeModel" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.</span></span><span class="sig-name descname"><span class="pre">NodeModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">name:</span> <span class="pre">str,</span> <span class="pre">function_mapping:</span> <span class="pre">str,</span> <span class="pre">version:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">input_mappings:</span> <span class="pre">list[~simstack.models.models.DataMapping],</span> <span class="pre">result_mappings:</span> <span class="pre">list[~simstack.models.models.DataMapping]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">called_nodes:</span> <span class="pre">list[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">description:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'',</span> <span class="pre">favorite:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">default_parameters:</span> <span class="pre">~simstack.models.parameters.Parameters,</span> <span class="pre">pickle_function:</span> <span class="pre">~simstack.models.pickle_models.FunctionPickle</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">function_code:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'',</span> <span class="pre">module_source:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'',</span> <span class="pre">source_origin:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'filesystem',</span> <span class="pre">id:</span> <span class="pre">~odmantic.bson.ObjectId</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/models/models.html#NodeModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.NodeModel" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simstack.models.NodeModel.called_nodes">
@@ -10081,6 +10166,11 @@ mapping: full name - path relative to project root in module.module.class/functi
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simstack.models.NodeModel.favorite">
 <span class="sig-name descname"><span class="pre">favorite</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.NodeModel.favorite" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.NodeModel.function_code">
+<span class="sig-name descname"><span class="pre">function_code</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.NodeModel.function_code" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -10105,6 +10195,11 @@ mapping: full name - path relative to project root in module.module.class/functi
 </dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.NodeModel.module_source">
+<span class="sig-name descname"><span class="pre">module_source</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.NodeModel.module_source" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="simstack.models.NodeModel.name">
 <span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.NodeModel.name" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -10117,6 +10212,11 @@ mapping: full name - path relative to project root in module.module.class/functi
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simstack.models.NodeModel.result_mappings">
 <span class="sig-name descname"><span class="pre">result_mappings</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#simstack.models.models.DataMapping" title="simstack.models.models.DataMapping"><span class="pre">DataMapping</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.NodeModel.result_mappings" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.NodeModel.source_origin">
+<span class="sig-name descname"><span class="pre">source_origin</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.NodeModel.source_origin" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -11763,6 +11863,7 @@ generation, and UI schema generation.</p>
 </li>
 <li><a class="reference internal" href="#simstack.models.files.FileStack"><code class="docutils literal notranslate"><span class="pre">FileStack</span></code></a><ul>
 <li><a class="reference internal" href="#simstack.models.files.FileStack.append"><code class="docutils literal notranslate"><span class="pre">FileStack.append()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.files.FileStack.archive"><code class="docutils literal notranslate"><span class="pre">FileStack.archive()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.files.FileStack.complex_hash"><code class="docutils literal notranslate"><span class="pre">FileStack.complex_hash()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.files.FileStack.content"><code class="docutils literal notranslate"><span class="pre">FileStack.content</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.files.FileStack.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">FileStack.custom_model_dump()</span></code></a></li>
@@ -11794,13 +11895,16 @@ generation, and UI schema generation.</p>
 <li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult</span></code></a><ul>
 <li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.call_path"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.call_path</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.custom_model_dump()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.failure"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.failure</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.from_dict"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.from_dict()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.from_model"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.from_model()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.id"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.id</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.input_models"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.input_models</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.iter_input_models"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.iter_input_models()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.iter_result_models"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.iter_result_models()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.json_schema"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.json_schema()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.model_config"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.model_config</span></code></a></li>
-<li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.models"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.models</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.next_step_started"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.next_step_started</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.result_models"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.result_models</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.success"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.success</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.ui_make_title"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.ui_make_title()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.fire_and_forget_result.FireAndForgetResult.ui_schema"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.ui_schema()</span></code></a></li>
@@ -11892,13 +11996,16 @@ generation, and UI schema generation.</p>
 <li><a class="reference internal" href="#simstack.models.models.NodeModel.default_parameters"><code class="docutils literal notranslate"><span class="pre">NodeModel.default_parameters</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.models.NodeModel.description"><code class="docutils literal notranslate"><span class="pre">NodeModel.description</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.models.NodeModel.favorite"><code class="docutils literal notranslate"><span class="pre">NodeModel.favorite</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.models.NodeModel.function_code"><code class="docutils literal notranslate"><span class="pre">NodeModel.function_code</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.models.NodeModel.function_mapping"><code class="docutils literal notranslate"><span class="pre">NodeModel.function_mapping</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.models.NodeModel.id"><code class="docutils literal notranslate"><span class="pre">NodeModel.id</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.models.NodeModel.input_mappings"><code class="docutils literal notranslate"><span class="pre">NodeModel.input_mappings</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.models.NodeModel.model_config"><code class="docutils literal notranslate"><span class="pre">NodeModel.model_config</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.models.NodeModel.module_source"><code class="docutils literal notranslate"><span class="pre">NodeModel.module_source</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.models.NodeModel.name"><code class="docutils literal notranslate"><span class="pre">NodeModel.name</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.models.NodeModel.pickle_function"><code class="docutils literal notranslate"><span class="pre">NodeModel.pickle_function</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.models.NodeModel.result_mappings"><code class="docutils literal notranslate"><span class="pre">NodeModel.result_mappings</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.models.NodeModel.source_origin"><code class="docutils literal notranslate"><span class="pre">NodeModel.source_origin</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.models.NodeModel.version"><code class="docutils literal notranslate"><span class="pre">NodeModel.version</span></code></a></li>
 </ul>
 </li>
@@ -12574,6 +12681,7 @@ generation, and UI schema generation.</p>
 </li>
 <li><a class="reference internal" href="#simstack.models.FileStack"><code class="docutils literal notranslate"><span class="pre">FileStack</span></code></a><ul>
 <li><a class="reference internal" href="#simstack.models.FileStack.append"><code class="docutils literal notranslate"><span class="pre">FileStack.append()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.FileStack.archive"><code class="docutils literal notranslate"><span class="pre">FileStack.archive()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.FileStack.complex_hash"><code class="docutils literal notranslate"><span class="pre">FileStack.complex_hash()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.FileStack.content"><code class="docutils literal notranslate"><span class="pre">FileStack.content</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.FileStack.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">FileStack.custom_model_dump()</span></code></a></li>
@@ -12601,13 +12709,16 @@ generation, and UI schema generation.</p>
 <li><a class="reference internal" href="#simstack.models.FireAndForgetResult"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult</span></code></a><ul>
 <li><a class="reference internal" href="#simstack.models.FireAndForgetResult.call_path"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.call_path</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.FireAndForgetResult.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.custom_model_dump()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.models.FireAndForgetResult.failure"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.failure</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.FireAndForgetResult.from_dict"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.from_dict()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.FireAndForgetResult.from_model"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.from_model()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.FireAndForgetResult.id"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.id</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.FireAndForgetResult.input_models"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.input_models</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.FireAndForgetResult.iter_input_models"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.iter_input_models()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.FireAndForgetResult.iter_result_models"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.iter_result_models()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.FireAndForgetResult.json_schema"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.json_schema()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.FireAndForgetResult.model_config"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.model_config</span></code></a></li>
-<li><a class="reference internal" href="#simstack.models.FireAndForgetResult.models"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.models</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.FireAndForgetResult.next_step_started"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.next_step_started</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.FireAndForgetResult.result_models"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.result_models</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.FireAndForgetResult.success"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.success</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.FireAndForgetResult.ui_make_title"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.ui_make_title()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.FireAndForgetResult.ui_schema"><code class="docutils literal notranslate"><span class="pre">FireAndForgetResult.ui_schema()</span></code></a></li>
@@ -12706,13 +12817,16 @@ generation, and UI schema generation.</p>
 <li><a class="reference internal" href="#simstack.models.NodeModel.default_parameters"><code class="docutils literal notranslate"><span class="pre">NodeModel.default_parameters</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.NodeModel.description"><code class="docutils literal notranslate"><span class="pre">NodeModel.description</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.NodeModel.favorite"><code class="docutils literal notranslate"><span class="pre">NodeModel.favorite</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.NodeModel.function_code"><code class="docutils literal notranslate"><span class="pre">NodeModel.function_code</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.NodeModel.function_mapping"><code class="docutils literal notranslate"><span class="pre">NodeModel.function_mapping</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.NodeModel.id"><code class="docutils literal notranslate"><span class="pre">NodeModel.id</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.NodeModel.input_mappings"><code class="docutils literal notranslate"><span class="pre">NodeModel.input_mappings</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.NodeModel.model_config"><code class="docutils literal notranslate"><span class="pre">NodeModel.model_config</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.NodeModel.module_source"><code class="docutils literal notranslate"><span class="pre">NodeModel.module_source</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.NodeModel.name"><code class="docutils literal notranslate"><span class="pre">NodeModel.name</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.NodeModel.pickle_function"><code class="docutils literal notranslate"><span class="pre">NodeModel.pickle_function</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.NodeModel.result_mappings"><code class="docutils literal notranslate"><span class="pre">NodeModel.result_mappings</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.NodeModel.source_origin"><code class="docutils literal notranslate"><span class="pre">NodeModel.source_origin</span></code></a></li>
 <li><a class="reference internal" href="#simstack.models.NodeModel.version"><code class="docutils literal notranslate"><span class="pre">NodeModel.version</span></code></a></li>
 </ul>
 </li>
@@ -12888,6 +13002,6 @@ generation, and UI schema generation.</p>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-09 19:16:26 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-13 05:13:55 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

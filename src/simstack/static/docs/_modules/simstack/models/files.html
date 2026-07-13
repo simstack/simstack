@@ -608,6 +608,48 @@
         <span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="FileStack.archive">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.files.FileStack.archive">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FileStack</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Archives the file stack to the target path.</span>
+
+<span class="sd">        Creates a directory with the ID of the filestack, runs FileStack.get</span>
+<span class="sd">        on this directory, and if successful, creates a new FileInstance</span>
+<span class="sd">        with the new location. If the filestack is in-memory, the content is deleted.</span>
+
+<span class="sd">        :param target_path: The target path to archive the file stack.</span>
+<span class="sd">        :type target_path: Path | str</span>
+<span class="sd">        :return: The updated FileStack.</span>
+<span class="sd">        :rtype: FileStack</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">target_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">target_path</span><span class="p">)</span>
+        <span class="n">archive_dir</span> <span class="o">=</span> <span class="n">target_path</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="n">archive_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">local_file_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">local_dir</span><span class="o">=</span><span class="n">archive_dir</span><span class="p">)</span>
+
+        <span class="c1"># Ensure the file is actually in archive_dir</span>
+        <span class="k">if</span> <span class="n">local_file_path</span><span class="o">.</span><span class="n">parent</span> <span class="o">!=</span> <span class="n">archive_dir</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+
+            <span class="n">target_file_path</span> <span class="o">=</span> <span class="n">archive_dir</span> <span class="o">/</span> <span class="n">local_file_path</span><span class="o">.</span><span class="n">name</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">local_file_path</span><span class="p">,</span> <span class="n">target_file_path</span><span class="p">)</span>
+            <span class="n">local_file_path</span> <span class="o">=</span> <span class="n">target_file_path</span>
+
+        <span class="k">if</span> <span class="n">local_file_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">file_instance</span> <span class="o">=</span> <span class="n">FileInstance</span><span class="o">.</span><span class="n">from_local_file</span><span class="p">(</span>
+                <span class="n">local_file_path</span><span class="p">,</span> <span class="n">file_stack_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_instance</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_memory</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">in_memory</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_via_server_transfer</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">remote_instance</span><span class="p">:</span> <span class="n">FileInstance</span><span class="p">,</span>
@@ -762,6 +804,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-09 19:16:26 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-13 05:13:55 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

@@ -156,7 +156,7 @@ const _displayNextItem = (
       5,
     );
   }
-  // search finished, update_algo title and status message
+  // search finished, update title and status message
   else _finishSearch(resultCount);
 };
 // Helper function used by query() to order search results.
