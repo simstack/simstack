@@ -299,6 +299,7 @@
 <span class="c1"># MongoDB has a 16MB document size limit</span>
 <span class="n">MONGODB_MAX_DOCUMENT_SIZE</span> <span class="o">=</span> <span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>  <span class="c1"># 16 MB in bytes</span>
 
+<span class="c1"># TODO: its a mystery to me why we should have files with no name or unknown size, both values are actually used in __str__</span>
 
 <div class="viewcode-block" id="FileStack">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.files.FileStack">[docs]</a>
@@ -559,9 +560,12 @@
                 <span class="c1"># Decompress the content</span>
                 <span class="n">decompressed_content</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
                 <span class="c1"># Write the decompressed content to the local directory</span>
-                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">local_dir</span> <span class="o">/</span> <span class="n">file_name</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">target_path</span> <span class="o">=</span> <span class="n">local_dir</span> <span class="o">/</span> <span class="n">file_name</span>
+                <span class="k">if</span> <span class="n">target_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span> <span class="c1"># the user must make sure that the file does not exist, otherwise the file will be overwritten</span>
+                    <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File </span><span class="si">{</span><span class="n">target_path</span><span class="si">}</span><span class="s2"> already exists.&quot;</span><span class="p">)</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">target_path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                     <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">decompressed_content</span><span class="p">)</span>
-                <span class="k">return</span> <span class="n">local_dir</span> <span class="o">/</span> <span class="n">file_name</span>
+                <span class="k">return</span> <span class="n">target_path</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to decompress and write file </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
@@ -649,6 +653,8 @@
                 <span class="p">)</span>
             <span class="k">raise</span>
         <span class="n">target_path</span> <span class="o">=</span> <span class="n">local_dir</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">or</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">remote_instance</span><span class="o">.</span><span class="n">path</span><span class="p">))</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">target_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File </span><span class="si">{</span><span class="n">target_path</span><span class="si">}</span><span class="s2"> already exists.&quot;</span><span class="p">)</span>
         <span class="n">downloaded</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">download_file</span><span class="p">(</span><span class="n">transfer_id</span><span class="p">,</span> <span class="n">target_path</span><span class="p">)</span>
         <span class="n">instance_path</span> <span class="o">=</span> <span class="n">path_for_file_instance</span><span class="p">(</span><span class="n">downloaded</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span>
         <span class="n">completed</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">complete_transfer</span><span class="p">(</span>
@@ -762,6 +768,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-09 19:16:26 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-13 12:29:52 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

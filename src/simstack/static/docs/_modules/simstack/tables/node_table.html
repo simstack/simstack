@@ -355,18 +355,22 @@
             <span class="k">if</span> <span class="n">param_name</span> <span class="o">==</span> <span class="s2">&quot;self&quot;</span><span class="p">:</span>  <span class="c1"># Skip self parameter for methods</span>
                 <span class="k">continue</span>
 
-            <span class="n">param_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">param_name</span><span class="p">,</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">type_hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="vm">__name__</span><span class="p">),</span>
-                <span class="s2">&quot;type_str&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span>
-                    <span class="n">type_hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-                        <span class="n">param_name</span><span class="p">,</span>
-                        <span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="vm">__name__</span>
-                        <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">annotation</span> <span class="o">!=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span>
-                        <span class="k">else</span> <span class="s2">&quot;Any&quot;</span><span class="p">,</span>
-                    <span class="p">)</span>
-                <span class="p">),</span>
-            <span class="p">}</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">param_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">param_name</span><span class="p">,</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">type_hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="vm">__name__</span><span class="p">),</span>
+                    <span class="s2">&quot;type_str&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span>
+                        <span class="n">type_hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                            <span class="n">param_name</span><span class="p">,</span>
+                            <span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="vm">__name__</span>
+                            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">annotation</span> <span class="o">!=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span>
+                            <span class="k">else</span> <span class="s2">&quot;Any&quot;</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">),</span>
+                <span class="p">}</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not parse type for </span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">param_info</span> <span class="o">=</span> <span class="p">{}</span>
 
             <span class="k">if</span> <span class="n">doc_params</span> <span class="ow">and</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">doc_params</span><span class="p">:</span>
                 <span class="n">param_info</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">doc_params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">)</span>
@@ -842,6 +846,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-09 19:16:26 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-13 12:29:52 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>
