@@ -327,7 +327,13 @@
 <a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.mappings.NodeMappingTable.load">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">engine</span><span class="p">:</span> <span class="n">AIOEngine</span><span class="p">):</span>
-        <span class="n">nodes</span> <span class="o">=</span> <span class="k">await</span> <span class="n">engine</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">NodeModel</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">nodes</span> <span class="o">=</span> <span class="k">await</span> <span class="n">engine</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">NodeModel</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error loading NodeModel from database: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;WARNING: Returning empty NodeMappingTable to fix obviously corrupted case.&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Rebuild the NodeMappingTable by rerunning the database initialization or migration scripts.&quot;</span><span class="p">)</span>
+            <span class="n">nodes</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">nodes</span><span class="p">))</span></div>
 </div>
 
@@ -367,6 +373,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-14 07:00:18 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-14 11:23:20 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>
