@@ -273,16 +273,26 @@
         <article role="main" id="furo-main-content">
           <h1>Source code for simstack.models.fire_and_forget_result</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.simstack_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span>
 
 <div class="viewcode-block" id="FireAndForgetResult">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.fire_and_forget_result.FireAndForgetResult">[docs]</a>
 <span class="nd">@simstack_model</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">FireAndForgetResult</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
-    <span class="n">call_path</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">models</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
-    <span class="n">success</span><span class="p">:</span> <span class="nb">bool</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Model representing the result of a fire-and-forget task.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        call_path: The full call path of the node.</span>
+<span class="sd">        models: A dictionary mapping argument/result names to their values.</span>
+<span class="sd">        success: Whether the task was successful.</span>
+<span class="sd">        next_step: Whether this result triggers a next step.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">call_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;The full call path of the node&quot;</span><span class="p">)</span>
+    <span class="n">models</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;A dictionary mapping argument/result names to their values&quot;</span><span class="p">)</span>
+    <span class="n">success</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Whether the task was successful&quot;</span><span class="p">)</span>
+    <span class="n">next_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Whether this result triggers a next step&quot;</span><span class="p">)</span></div>
 
 </pre></div>
         </article>
@@ -320,6 +330,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-14 11:23:20 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-14 12:20:00 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

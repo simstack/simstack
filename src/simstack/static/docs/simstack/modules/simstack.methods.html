@@ -283,6 +283,187 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">¶</a></h2>
 </section>
+<section id="module-simstack.methods.archive_files">
+<span id="simstack-methods-archive-files-module"></span><h2>simstack.methods.archive_files module<a class="headerlink" href="#module-simstack.methods.archive_files" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.archive_files.</span></span><span class="sig-name descname"><span class="pre">ArchiveConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">call_paths</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">archive_resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'archive_resource'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_time_window</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_datetime</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">datetime.datetime(2026</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">14</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">24</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">661710)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_datetime</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">datetime.datetime(2026</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">14</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">24</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">661734)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_patterns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_patterns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_by_resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ObjectId</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/archive_files.html#ArchiveConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.archive_resource">
+<span class="sig-name descname"><span class="pre">archive_resource</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.archive_resource" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.call_paths">
+<span class="sig-name descname"><span class="pre">call_paths</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.call_paths" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.custom_model_dump">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">custom_model_dump</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.custom_model_dump" title="Link to this definition">¶</a></dt>
+<dd><p>Custom model dump method to handle the conversion of model instances to dictionaries.
+This method recursively traverses dictionaries and lists to convert any nested
+model instances to their dictionary representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self</strong> – The model instance</p></li>
+<li><p><strong>kwargs</strong> – Additional keyword arguments</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary representation of the model instance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.end_date">
+<span class="sig-name descname"><span class="pre">end_date</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_datetime</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.end_date" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.exclude_patterns">
+<span class="sig-name descname"><span class="pre">exclude_patterns</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.exclude_patterns" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.filter_by_resource">
+<span class="sig-name descname"><span class="pre">filter_by_resource</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.filter_by_resource" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.from_dict">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.from_dict" title="Link to this definition">¶</a></dt>
+<dd><p>Create an instance of the model from a dictionary.
+Handles nested models and enum values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.from_model">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Model</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Model</span></span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.from_model" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.id">
+<span class="sig-name descname"><span class="pre">id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectId</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.id" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.in_memory">
+<span class="sig-name descname"><span class="pre">in_memory</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.in_memory" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.include_patterns">
+<span class="sig-name descname"><span class="pre">include_patterns</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.include_patterns" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.json_schema">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">json_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.json_schema" title="Link to this definition">¶</a></dt>
+<dd><p>Generates a JSON schema for the given class and its fields, but eliminates
+all fields which are models, embedded models, or references to models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cls</strong></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.min_size">
+<span class="sig-name descname"><span class="pre">min_size</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.min_size" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">False,</span> <span class="pre">'collection':</span> <span class="pre">None,</span> <span class="pre">'extra':</span> <span class="pre">None,</span> <span class="pre">'indexes':</span> <span class="pre">None,</span> <span class="pre">'json_schema_extra':</span> <span class="pre">None,</span> <span class="pre">'parse_doc_with_default_factories':</span> <span class="pre">False,</span> <span class="pre">'str_strip_whitespace':</span> <span class="pre">False,</span> <span class="pre">'title':</span> <span class="pre">None,</span> <span class="pre">'validate_assignment':</span> <span class="pre">True,</span> <span class="pre">'validate_default':</span> <span class="pre">True}</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.start_date">
+<span class="sig-name descname"><span class="pre">start_date</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_datetime</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.start_date" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.ui_make_title">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_make_title</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ui_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.ui_make_title" title="Link to this definition">¶</a></dt>
+<dd><p>Adds a title to the JSON schema.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cls</strong> – The class to which the JSON schema belongs</p></li>
+<li><p><strong>ui_schema</strong> – The original ui_schema schema</p></li>
+<li><p><strong>title</strong> – Title to be added</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Modified JSON schema with title</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.ui_schema">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.ui_schema" title="Link to this definition">¶</a></dt>
+<dd><p>Generates a UI schema that uses GenericForm for fields with ui_schema function.
+Also preserves any existing UI schema configurations from the class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cls</strong> – The model class to generate UI schema for</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The generated UI schema</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.use_time_window">
+<span class="sig-name descname"><span class="pre">use_time_window</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.use_time_window" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.archive_file">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.archive_files.</span></span><span class="sig-name descname"><span class="pre">archive_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_stack</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.files.FileStack" title="simstack.models.files.FileStack"><span class="pre">FileStack</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/archive_files.html#archive_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.archive_files.archive_file" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.archive_files">
+<span class="sig-prename descclassname"><span class="pre">simstack.methods.archive_files.</span></span><span class="sig-name descname"><span class="pre">archive_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.file_list.FileList" title="simstack.models.file_list.FileList"><span class="pre">FileList</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/archive_files.html#archive_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.archive_files.archive_files" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.archive_node">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.archive_files.</span></span><span class="sig-name descname"><span class="pre">archive_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">archive_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig" title="simstack.methods.archive_files.ArchiveConfig"><span class="pre">ArchiveConfig</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/archive_files.html#archive_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.archive_files.archive_node" title="Link to this definition">¶</a></dt>
+<dd><p>Archives FileStacks matching the criteria in archive_config and deletes local instances upon success.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>archive_config</strong> (<a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig" title="simstack.methods.archive_files.ArchiveConfig"><em>ArchiveConfig</em></a>) – Configuration for the archive process.</p></li>
+<li><p><strong>**kwargs</strong> – Additional arguments.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="simstack.methods.archive_files.archive_one_file">
+<span class="sig-prename descclassname"><span class="pre">simstack.methods.archive_files.</span></span><span class="sig-name descname"><span class="pre">archive_one_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_stack</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.files.FileStack" title="simstack.models.files.FileStack"><span class="pre">FileStack</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/archive_files.html#archive_one_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.archive_files.archive_one_file" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
 <section id="module-simstack.methods.fire_and_forget_runner">
 <span id="simstack-methods-fire-and-forget-runner-module"></span><h2>simstack.methods.fire_and_forget_runner module<a class="headerlink" href="#module-simstack.methods.fire_and_forget_runner" title="Link to this heading">¶</a></h2>
 <dl class="py class">
@@ -832,6 +1013,34 @@ the extracted files or the original file if it is not an archive.</p>
             <ul>
 <li><a class="reference internal" href="#">simstack.methods package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-simstack.methods.archive_files">simstack.methods.archive_files module</a><ul>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.archive_resource"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.archive_resource</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.call_paths"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.call_paths</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.custom_model_dump()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.end_date"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.end_date</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.exclude_patterns"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.exclude_patterns</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.filter_by_resource"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.filter_by_resource</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.from_dict"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.from_dict()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.from_model"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.from_model()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.id"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.id</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.in_memory"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.in_memory</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.include_patterns"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.include_patterns</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.json_schema"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.json_schema()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.min_size"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.min_size</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.model_config"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.model_config</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.start_date"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.start_date</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.ui_make_title"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.ui_make_title()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.ui_schema"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.ui_schema()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.use_time_window"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.use_time_window</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.archive_file"><code class="docutils literal notranslate"><span class="pre">archive_file()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.archive_files"><code class="docutils literal notranslate"><span class="pre">archive_files()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.archive_node"><code class="docutils literal notranslate"><span class="pre">archive_node()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.methods.archive_files.archive_one_file"><code class="docutils literal notranslate"><span class="pre">archive_one_file()</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#module-simstack.methods.fire_and_forget_runner">simstack.methods.fire_and_forget_runner module</a><ul>
 <li><a class="reference internal" href="#simstack.methods.fire_and_forget_runner.FireAndForgetRunner"><code class="docutils literal notranslate"><span class="pre">FireAndForgetRunner</span></code></a><ul>
 <li><a class="reference internal" href="#simstack.methods.fire_and_forget_runner.FireAndForgetRunner.create_tasks"><code class="docutils literal notranslate"><span class="pre">FireAndForgetRunner.create_tasks()</span></code></a></li>
@@ -936,6 +1145,6 @@ the extracted files or the original file if it is not an archive.</p>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-14 11:23:20 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-14 12:20:00 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

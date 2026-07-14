@@ -288,7 +288,35 @@
 <span class="nd">@simstack_model</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">StringDataList</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">ObjectListMixin</span><span class="p">[</span><span class="s2">&quot;StringData&quot;</span><span class="p">]):</span>
     <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;string_data_list&quot;</span>
-    <span class="n">elements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;List of StringData ObjectIDs&quot;</span><span class="p">)</span></div>
+    <span class="n">elements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;List of StringData ObjectIDs&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="s2">&quot;StringData&quot;</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="n">ObjectListMixin</span><span class="o">.</span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize_elements_for_init</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">Model</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_cache</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="BooleanDataList">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.base_lists.BooleanDataList">[docs]</a>
+<span class="nd">@simstack_model</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BooleanDataList</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">ObjectListMixin</span><span class="p">[</span><span class="s2">&quot;StringData&quot;</span><span class="p">]):</span>
+    <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;boolean_data_list&quot;</span>
+    <span class="n">elements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;List of BooleanData ObjectIDs&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="s2">&quot;StringData&quot;</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="n">ObjectListMixin</span><span class="o">.</span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize_elements_for_init</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">Model</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_cache</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="StringList">
@@ -341,6 +369,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-14 11:23:20 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-14 12:20:00 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>
