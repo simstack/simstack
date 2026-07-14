@@ -452,6 +452,9 @@ class CreateNodeTable(TableBuilderBase):
                     func_name, type_hints, parser, drops
                 )
 
+                if node_name is None:
+                    raise ValueError(f"Node {func_name} has no name")
+
                 node_model = NodeModel(
                     name=node_name,
                     function_mapping=function_mapping,

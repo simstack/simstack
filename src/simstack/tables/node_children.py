@@ -154,7 +154,11 @@ async def update_node_children(database, drops: str) -> None:
             logger.debug(f"Resolved children of {nm.name} to {resolved}")
         nm.called_nodes = sorted(resolved)
 
-        await database.save(nm)
+        
+        await database.get_collection(NodeModel).update_one(
+            {"_id": nm.id},
+            {"$set": {"called_nodes": nm.called_nodes}},
+        )
 
     with open("node_models.txt", "w") as outfile:
         for nm in node_models:
