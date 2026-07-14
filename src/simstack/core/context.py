@@ -73,6 +73,8 @@ class GlobalState:
         self._model_mappings = None
         self._node_mappings = None
         self._resource_config = None
+        self._workdir = None
+        self._project_root = None
 
     def __getattribute__(self, name):
         # These special attributes should always be accessible
@@ -142,6 +144,8 @@ class GlobalState:
 
         project_root = Path(project_root)
         kwargs["project_root"] = project_root
+        self._project_root = project_root
+        self._workdir = Path(kwargs.get("workdir", project_root))
 
         print("Project root: ", project_root, "")
         simstack_toml_path = project_root / "simstack.toml"
@@ -151,11 +155,11 @@ class GlobalState:
         connection_string: str | None = kwargs.get("connection_string", None)
         db_type: DBType | None = kwargs.get("db_type", None)
 
-        if db_name is None or connection_string is None or db_type is None:
+        if db_name is None or (connection_string is None and not is_test) or db_type is None:
             # use not all info in the kwargs
-            db_info = DatabaseInformation.from_config(toml_reader.config)
+            db_info = DatabaseInformation.from_config(toml_reader.config, is_test=is_test)
         else:
-            db_info = DatabaseInformation(db_name, connection_string, db_type)
+            db_info = DatabaseInformation(db_name, connection_string, db_type if db_type else (DBType.IN_MEMORY if is_test else DBType.MONGODB))
 
         # check that the database can be reached and set logging up
         self.initialize_database(db_info, is_test)
@@ -274,6 +278,14 @@ class GlobalState:
     @property
     def resource_config(self) -> "ResourceConfig":
         return self._resource_config
+
+    @property
+    def workdir(self) -> Path:
+        return self._workdir
+
+    @property
+    def project_root(self) -> Path:
+        return self._project_root
 
     @property
     def initialized(self):

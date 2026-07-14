@@ -242,7 +242,7 @@ class Database:
 
         try:
             for attr_name in dir(result):
-                if attr_name.startswith("_"):
+                if attr_name.startswith("_") or attr_name in ("model_fields", "model_computed_fields", "model_config", "model_fields_set", "model_extra", "model_post_init"):
                     continue
 
                 try:

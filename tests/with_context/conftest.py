@@ -21,8 +21,11 @@ def pytest_report_header(config):
     else:
         return "SIMSTACK: Using mock database (patched for mongomock)"
 
-@pytest_asyncio.fixture(autouse=True, scope="session", loop_scope="session")
+@pytest_asyncio.fixture(autouse=True, scope="session")
 async def initialized_context(tmp_path_factory):
+    if context._initialized:
+        yield context
+        return
     # Use environment variable to control the database type for tests
     import os
 
@@ -191,7 +194,6 @@ async def initialized_context(tmp_path_factory):
             context.node_mappings = None
             context.resource_config = None
             context.config = None
-            print("Test context cleaned up")
     except Exception as e:
         print(f"Warning: Error during context cleanup: {e}")
 

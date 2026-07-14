@@ -44,6 +44,8 @@ To retrieve the file in a node:
            content = f.read()
        ...
 
+For this to work you must specify a server url and a runner token in the simstack.toml (:ref:`configuration-file`)
+
 FileList and FileListModel
 --------------------------
 
