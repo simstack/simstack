@@ -321,7 +321,8 @@ class Node:
             raise ValueError("Database is not connected")
 
         arg_hash = compute_arg_hash(self._args)
-        function_hash = complex_hash_function(self._func)
+        # THE FUNCTION HASH IS NO LONGER USED
+        function_hash = "" # complex_hash_function(self._func)
         self._arg_hash = arg_hash
         self._function_hash = function_hash
 

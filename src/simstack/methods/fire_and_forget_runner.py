@@ -47,7 +47,6 @@ class FireAndForgetRunner(NodeRunner):
                 models_dict[f"arg_{i}"] = m
 
         success = False
-        failure = False
 
         try:
             if self._semaphore:
@@ -64,44 +63,36 @@ class FireAndForgetRunner(NodeRunner):
             
             if result is None:
                 success = False
-                failure = True # Assuming None is failure if not specified otherwise, or just not success
             elif isinstance(result, bool):
                 success = result
-                failure = not result
             elif isinstance(result, (SimstackResult, Model)):
                 references, models = await process_result_helper(result, self.task_id)
                 if isinstance(result, SimstackResult):
                     success = (result.status == TaskStatus.COMPLETED)
-                    failure = not success
                 else:
                     success = True
-                    failure = False
                 
                 if references:
                     for reference, model in zip(references, models):
                         models_dict[f"result_{reference.variable_name}"] = model
             elif isinstance(result, (list, tuple)) and all(isinstance(m, Model) for m in result):
                 success = True
-                failure = False
                 for i, m in enumerate(result):
                     models_dict[f"result_{i}"] = m
             else:
                 # Other types of results
                 success = True
-                failure = False
 
         except Exception as e:
             self.error(f"Error running node in FireAndForgetRunner: {e}")
             success = False
-            failure = True
             models_dict["error"] = str(e)
 
         # Immediately write to DB
         ff_result = FireAndForgetResult(
             call_path=full_call_path,
             models=models_dict,
-            success=success,
-            failure=failure
+            success=success
         )
         
         db = context.db

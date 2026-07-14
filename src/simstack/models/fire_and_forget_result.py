@@ -7,4 +7,3 @@ class FireAndForgetResult(Model):
     call_path: str
     models: Dict[str, Any]
     success: bool
-    failure: bool
