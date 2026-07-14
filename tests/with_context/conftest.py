@@ -28,7 +28,7 @@ async def initialized_context(tmp_path_factory):
 
     db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
     use_real_db = db_connection_string.lower() != "none" and db_connection_string != ""
-    test_database_name = os.getenv("SIMSTACK_TEST_DB", "ui_testing")
+    test_database_name = os.getenv("SIMSTACK_TEST_DB", "test_database")
 
     import logging
 
@@ -72,11 +72,12 @@ async def initialized_context(tmp_path_factory):
         skip_config=True, # we first need to write the ResourceDefinition to the database
         is_test=True,
         resource="self",
-        connection_string=db_connection_string if use_real_db else None,
+        connection_string=db_connection_string if use_real_db else "none",
         db_type=DBType.MONGODB if use_real_db else DBType.IN_MEMORY,
         db_name=test_database_name,
         workdir=working_dir,
-        project_root=project_root
+        project_root=project_root,
+        log_level="DEBUG"
     )
 
 

@@ -29,6 +29,7 @@ dependencies = [
     "pytest>=8.4.2",
     "docutils>=0.22",
     "pandas-stubs~=2.3.3",
+    "types-docutils~=0.22.3",
 ]
 
 [project.urls]

@@ -143,17 +143,15 @@ class GlobalState:
         project_root = Path(project_root)
         kwargs["project_root"] = project_root
 
-        print("Project root: ", project_root, "")
-        simstack_toml_path = project_root / "simstack.toml"
-        toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
-
         db_name: str | None = kwargs.get("db_name", None)
         connection_string: str | None = kwargs.get("connection_string", None)
         db_type: DBType | None = kwargs.get("db_type", None)
 
         if db_name is None or connection_string is None or db_type is None:
             # use not all info in the kwargs
-            db_info = DatabaseInformation.from_config(toml_reader.config)
+            simstack_toml_path = project_root / "simstack.toml"
+            toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
+            db_info = DatabaseInformation.from_config(toml_reader.config, **kwargs)
         else:
             db_info = DatabaseInformation(db_name, connection_string, db_type)
 
