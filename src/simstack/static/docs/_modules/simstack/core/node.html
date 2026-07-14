@@ -614,7 +614,8 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Database is not connected&quot;</span><span class="p">)</span>
 
         <span class="n">arg_hash</span> <span class="o">=</span> <span class="n">compute_arg_hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">)</span>
-        <span class="n">function_hash</span> <span class="o">=</span> <span class="n">complex_hash_function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="p">)</span>
+        <span class="c1"># THE FUNCTION HASH IS NO LONGER USED</span>
+        <span class="n">function_hash</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="c1"># complex_hash_function(self._func)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_arg_hash</span> <span class="o">=</span> <span class="n">arg_hash</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_function_hash</span> <span class="o">=</span> <span class="n">function_hash</span>
 
@@ -1376,6 +1377,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-13 12:29:52 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-14 11:23:20 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>
