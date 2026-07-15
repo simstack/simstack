@@ -433,7 +433,11 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Resolved children of </span><span class="si">{</span><span class="n">nm</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">resolved</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">nm</span><span class="o">.</span><span class="n">called_nodes</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">resolved</span><span class="p">)</span>
 
-        <span class="k">await</span> <span class="n">database</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">nm</span><span class="p">)</span>
+        
+        <span class="k">await</span> <span class="n">database</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">NodeModel</span><span class="p">)</span><span class="o">.</span><span class="n">update_one</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;_id&quot;</span><span class="p">:</span> <span class="n">nm</span><span class="o">.</span><span class="n">id</span><span class="p">},</span>
+            <span class="p">{</span><span class="s2">&quot;$set&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;called_nodes&quot;</span><span class="p">:</span> <span class="n">nm</span><span class="o">.</span><span class="n">called_nodes</span><span class="p">}},</span>
+        <span class="p">)</span>
 
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;node_models.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">outfile</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">nm</span> <span class="ow">in</span> <span class="n">node_models</span><span class="p">:</span>
@@ -529,6 +533,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-15 06:36:33 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-15 17:46:12 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

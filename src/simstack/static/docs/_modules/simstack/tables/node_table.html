@@ -737,6 +737,9 @@
                     <span class="n">func_name</span><span class="p">,</span> <span class="n">type_hints</span><span class="p">,</span> <span class="n">parser</span><span class="p">,</span> <span class="n">drops</span>
                 <span class="p">)</span>
 
+                <span class="k">if</span> <span class="n">node_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Node </span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2"> has no name&quot;</span><span class="p">)</span>
+
                 <span class="n">node_model</span> <span class="o">=</span> <span class="n">NodeModel</span><span class="p">(</span>
                     <span class="n">name</span><span class="o">=</span><span class="n">node_name</span><span class="p">,</span>
                     <span class="n">function_mapping</span><span class="o">=</span><span class="n">function_mapping</span><span class="p">,</span>
@@ -846,6 +849,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-15 06:36:33 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-15 17:46:12 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>
