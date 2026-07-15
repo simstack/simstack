@@ -5,6 +5,7 @@ import pytest_asyncio
 
 from simstack.core.context import context
 from simstack.core.definitions import DBType
+from simstack.models import ModelMapping
 from simstack.tables.model_table import make_model_table
 from simstack.tables.node_table import make_node_table
 from simstack.models.files import FileStack
@@ -109,6 +110,12 @@ async def initialized_context(tmp_path_factory):
     await make_node_table(context.db, dirs=dirs, drops="src", clear=True,
                           project_root=project_root, ignore_entrypoints=True)
 
+    # Refresh mappings in context after they are filled in DB
+    if not use_real_db:
+        await context.refresh_mappings()
+
+    test_mapping = await context.db.find_one(ModelMapping, ModelMapping.name == "FloatData")
+    test_node_mapping = await context.db.find_one(ModelMapping, ModelMapping.name == "failing_node")
     # Ensure a "test" resource exists in DB for tests
     from simstack.models.resource_definition import ResourceDefinition
     local_resource = ResourceDefinition(

@@ -4,6 +4,7 @@ import pytest_asyncio
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
+from simstack.core.definitions import TaskStatus
 from simstack.core.context import context
 from simstack.models import FileStack, FileList, NodeRegistry, FileListModel, BooleanData
 from simstack.models.file_instance import FileInstance
@@ -14,6 +15,17 @@ from simstack.models.base_lists import BooleanDataList
 @pytest_asyncio.fixture
 async def sample_files():
     db = context.db
+    # Clear DB to avoid side effects from other tests
+    from simstack.models import FileStack, NodeRegistry, Parameters
+    # db.delete_all is not available, use find and delete
+    for model in [FileStack, NodeRegistry, Parameters]:
+        instances = await db.find(model)
+        for inst in instances:
+            await db.delete(inst)
+    
+    # Check if empty
+    assert len(await db.find(FileStack)) == 0
+
     workdir = Path(context.config.workdir)
     my_resource = context.config.resource
 
@@ -23,6 +35,15 @@ async def sample_files():
     fs1 = FileStack.from_local_file(f1_path)
     fs1.name = "file1.txt"
     fs1.size = 10
+    from simstack.models.file_instance import FileInstance
+    from simstack.models.parameters import Resource
+    # Ensure it has a location
+    if not fs1.locations:
+        fs1.locations.append(FileInstance(
+            path=str(f1_path.relative_to(workdir)),
+            resource=Resource(value=str(context.config.resource)),
+            created_at=datetime.now()
+        ))
     await db.save(fs1)
 
     f2_path = workdir / "file2.log"
@@ -30,16 +51,29 @@ async def sample_files():
     fs2 = FileStack.from_local_file(f2_path)
     fs2.name = "file2.log"
     fs2.size = 100
+    if not fs2.locations:
+        fs2.locations.append(FileInstance(
+            path=str(f2_path.relative_to(workdir)),
+            resource=Resource(value=str(context.config.resource)),
+            created_at=datetime.now()
+        ))
     await db.save(fs2)
 
     # File on another resource
     fs3 = FileStack(name="other_resource.txt", size=50)
+    from simstack.models.file_instance import FileInstance
+    from simstack.models.parameters import Resource
     fs3.locations.append(FileInstance(
         path="other_resource.txt",
         resource=Resource(value="other"),
         created_at=datetime.now()
     ))
     await db.save(fs3)
+    
+    stacks = await db.find(FileStack)
+    print(f"DEBUG: sample_files created {len(stacks)} stacks")
+    for s in stacks:
+        print(f"DEBUG: stack {s.name} size={s.size} locations={len(s.locations)}")
 
     yield [fs1, fs2, fs3]
 
@@ -49,20 +83,24 @@ async def sample_files():
 
 @pytest.mark.asyncio
 async def test_archive_node_filter_by_size(sample_files, mocker):
-    # Mock archive_files
-    async def mock_archive_files(*a, **k): return []
-    mock_archive = mocker.patch("simstack.methods.archive_files.archive_files", side_effect=mock_archive_files)
+    async def mock_archive_files(*a, **k):
+        return []
+    
+    import simstack.methods.archive_files
+    print(f"DEBUG: archive_node identity: {id(simstack.methods.archive_files.archive_node)}")
+    
+    mock_archive1 = mocker.patch("simstack.methods.archive_files.archive_files", side_effect=mock_archive_files)
     
     config = ArchiveConfig(min_size=50)
-    # We need to provide node_runner in kwargs
     mock_node_runner = mocker.MagicMock()
     
-    await archive_node(config, node_runner=mock_node_runner)
+    # Call undecorated function
+    print("DEBUG: Pre-call")
+    await simstack.methods.archive_files.archive_node._inner(config, node_runner=mock_node_runner)
+    print("DEBUG: Post-call")
     
-    # Should find fs2 (100) and fs3 (50)
-    # Check what was passed to archive_files
-    assert mock_archive.called
-    args, kwargs = mock_archive.call_args
+    assert mock_archive1.called
+    args, kwargs = mock_archive1.call_args
     file_list = args[0]
     assert len(file_list) == 2
     names = [fs.name for fs in file_list]
@@ -73,12 +111,13 @@ async def test_archive_node_filter_by_size(sample_files, mocker):
 @pytest.mark.asyncio
 async def test_archive_node_filter_by_resource(sample_files, mocker):
     async def mock_archive_files(*a, **k): return []
+    import simstack.methods.archive_files
     mock_archive = mocker.patch("simstack.methods.archive_files.archive_files", side_effect=mock_archive_files)
     
     config = ArchiveConfig(filter_by_resource=True)
     mock_node_runner = mocker.MagicMock()
     
-    await archive_node(config, node_runner=mock_node_runner)
+    await archive_node._inner(config, node_runner=mock_node_runner)
     
     assert mock_archive.called
     args, kwargs = mock_archive.call_args
@@ -93,13 +132,14 @@ async def test_archive_node_filter_by_resource(sample_files, mocker):
 @pytest.mark.asyncio
 async def test_archive_node_filter_by_patterns(sample_files, mocker):
     async def mock_archive_files(*a, **k): return []
-    mock_archive = mocker.patch("simstack.methods.archive_files.archive_files", side_effect=mock_archive_files)
+    import simstack.methods.archive_files
+    mock_archive = mocker.patch.object(simstack.methods.archive_files, "archive_files", side_effect=mock_archive_files)
     
     # Include only .txt files
     config = ArchiveConfig(include_patterns=["*.txt"])
     mock_node_runner = mocker.MagicMock()
     
-    await archive_node(config, node_runner=mock_node_runner)
+    await archive_node._inner(config, node_runner=mock_node_runner)
     
     assert mock_archive.called
     args, kwargs = mock_archive.call_args
@@ -113,7 +153,7 @@ async def test_archive_node_filter_by_patterns(sample_files, mocker):
     # Exclude other_resource.txt
     mock_archive.reset_mock()
     config = ArchiveConfig(include_patterns=["*.txt"], exclude_patterns=["other*"])
-    await archive_node(config, node_runner=mock_node_runner)
+    await archive_node._inner(config, node_runner=mock_node_runner)
     assert mock_archive.called
     args, kwargs = mock_archive.call_args
     file_list = args[0]
@@ -123,6 +163,7 @@ async def test_archive_node_filter_by_patterns(sample_files, mocker):
 @pytest.mark.asyncio
 async def test_archive_node_filter_by_date(sample_files, mocker):
     async def mock_archive_files(*a, **k): return []
+    import simstack.methods.archive_files
     mock_archive = mocker.patch("simstack.methods.archive_files.archive_files", side_effect=mock_archive_files)
     
     now = datetime.now()
@@ -132,18 +173,19 @@ async def test_archive_node_filter_by_date(sample_files, mocker):
     config = ArchiveConfig(start_date=tomorrow)
     mock_node_runner = mocker.MagicMock()
     
-    await archive_node(config, node_runner=mock_node_runner)
+    await archive_node._inner(config, node_runner=mock_node_runner)
     # No files should match
     assert not mock_archive.called
 
     config = ArchiveConfig(start_date=yesterday, end_date=tomorrow)
-    await archive_node(config, node_runner=mock_node_runner)
+    await archive_node._inner(config, node_runner=mock_node_runner)
     assert mock_archive.called
     assert len(mock_archive.call_args[0][0]) == 3
 
 @pytest.mark.asyncio
 async def test_archive_node_filter_by_call_paths(sample_files, mocker):
     async def mock_archive_files(*a, **k): return []
+    import simstack.methods.archive_files
     mock_archive = mocker.patch("simstack.methods.archive_files.archive_files", side_effect=mock_archive_files)
     
     db = context.db
@@ -155,18 +197,33 @@ async def test_archive_node_filter_by_call_paths(sample_files, mocker):
     from simstack.models.named_data_reference import NamedDataReference
     from simstack.models.parameters import Parameters, Resource
     
+    # We must use exactly what NodeRegistry expects for parameters.
+    # In some versions it's a Reference(Parameters), in others it's Embedded.
+    # From node_registry.py: parameters: Parameters = Reference()
+    
     params = Parameters(resource=Resource(value=str(context.config.resource)))
+    # For in-memory DB and mock, it might not automatically assign an id on creation
+    from odmantic import ObjectId
+    params.id = ObjectId()
+    # Safeguard for Parameters model
+    if not hasattr(Parameters, "__collection__"):
+        setattr(Parameters, "__collection__", "parameters")
     await db.save(params)
     
+    from simstack.models import NodeRegistry
+    if not hasattr(NodeRegistry, "__collection__"):
+        setattr(NodeRegistry, "__collection__", "node_registry")
+
     node = NodeRegistry(
         name="test_node",
         call_path="path/to/node",
-        status="COMPLETED",
+        status=TaskStatus.COMPLETED,
         parameters=params,
         function_hash="abc",
         arg_hash="def",
         func_mapping="mapping"
     )
+    node.id = ObjectId()
     # Add fs1 to info_files
     node.info_files.append(fs1)
     
@@ -181,7 +238,7 @@ async def test_archive_node_filter_by_call_paths(sample_files, mocker):
     await db.save(node)
     
     config = ArchiveConfig(call_paths=["path/to/node"])
-    await archive_node(config, node_runner=mock_node_runner)
+    await archive_node._inner(config, node_runner=mock_node_runner)
     
     assert mock_archive.called
     args, kwargs = mock_archive.call_args

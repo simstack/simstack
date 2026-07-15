@@ -23,7 +23,7 @@ def archive_one_file(file_stack: FileStack,**kwargs):
     if config.get("archive_path", None) is None:
         raise ValueError("archive_path not set in config")
     archive_path = Path(config.get("archive_path"))
-    full_path = archive_path / file_stack.id
+    full_path = archive_path / str(file_stack.id)
     full_path.mkdir(parents=True, exist_ok=True)
     if full_path.exists() and full_path.is_dir():
         try:
@@ -56,12 +56,14 @@ class ArchiveConfig(Model):
     archive_resource: str = Field(default="archive_resource", description="Name of the resource where the files will be archived")
     in_memory: bool = Field(default=False, description="Whether to archive files in memory")
     use_time_window: bool = Field(default=False, description="Whether to archive files within a time window")
-    start_date: Optional[datetime] = Field(default=datetime.now(), description="Start of the period to archive files for")
-    end_date: Optional[datetime] = Field(default=datetime.now(), description="End end of the period to archive files for")
+    start_date: Optional[datetime] = Field(default=None, description="Start of the period to archive files for")
+    end_date: Optional[datetime] = Field(default=None, description="End end of the period to archive files for")
     include_patterns: List[str] = Field(default_factory=list, description="List of file patterns to include")
     exclude_patterns: List[str] = Field(default_factory=list, description="List of file patterns to exclude")
     min_size: int = Field(default=0, description="Minimum size of files to archive")
     filter_by_resource: bool = Field(default=False, description="Whether to only archive files that have a location on the current resource")
+
+    model_config = {"collection": "archive_config"}
 
 
 @node
@@ -73,12 +75,19 @@ async def archive_node(archive_config: ArchiveConfig, **kwargs):
         archive_config (ArchiveConfig): Configuration for the archive process.
         **kwargs: Additional arguments.
     """
+    import os
+    with open("TEST_EXECUTION.log", "a") as f:
+        f.write(f"archive_node CALLED at {datetime.now()}\n")
+    
     node_runner = kwargs["node_runner"]
     db = context.db
     my_resource = context.config.resource
     
     # Discover FileStacks
     all_file_stacks = []
+    import sys
+    sys.stderr.write(f"DEBUG: Discovery starting for resource {my_resource}\n")
+    sys.stderr.flush()
     if archive_config.call_paths:
         from simstack.models import NodeRegistry, FileListModel
 
@@ -148,6 +157,8 @@ async def archive_node(archive_config: ArchiveConfig, **kwargs):
             query["locations.resource.value"] = my_resource
 
         all_file_stacks = await db.find(FileStack, query)
+    
+    print(f"DEBUG: Found {len(all_file_stacks)} FileStacks")
     filtered_file_stacks = []
 
     for fs in all_file_stacks:
@@ -188,6 +199,7 @@ async def archive_node(archive_config: ArchiveConfig, **kwargs):
     for fs in filtered_file_stacks:
         archive_file_list.append(fs)
 
+    print(f"DEBUG: archive_file_list has {len(archive_file_list)} files")
     # 3. Call archive_files on the filelist
     # Note: archive_files is a @node, we can call it directly.
     # It returns a BooleanDataList
