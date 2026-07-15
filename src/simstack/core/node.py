@@ -255,21 +255,22 @@ class Node:
                 task_id=str(self.id)
             ))
 
+        delayed_message = "" # there is no task_id yet
         if self.parent_id is None:
             projects = await context.db.find(Project)
             if projects is None or len(projects) == 0:
                 project = Project(field_name="default")
                 await context.db.save(project)
                 project_id = project.id
-                logger.info(f"task_id:  {self.id} created default project: {project_id} ")
+                delayed_message = f"default project: {project_id} "
             else:
                 project = projects[0]
                 project_id = project.id
-                logger.info(f"task_id:  {self.id} using project: {project_id} ")
+                delayed_message = f"project: {project_id} "
         else:
             parent_registry_entry = await context.db.load_task_by_id(self.parent_id)
             project_id = parent_registry_entry.project
-            logger.info(f"task_id:  {self.id} using parent project: {project_id} ")
+            delayed_message = f"using parent project: {project_id} "
 
         self.registry_entry = NodeRegistry(
             name=self.name,
@@ -286,6 +287,8 @@ class Node:
             call_path=self.call_path,
         )
 
+        if delayed_message:
+            logger.info(f"Task task_id: {self.id} with name {self.name} {delayed_message}")
         parent_parameters = self._function_kwargs.get("parent_parameters", None)
         registry_entry = self.registry_entry
         assert registry_entry is not None
@@ -335,6 +338,7 @@ class Node:
         if self.registry_entry is None:
             await self.make_registry_entry(function_hash, arg_hash)
         else:
+
             if self.parent_id:
                 logger.debug(
                     f"Task task_id: {self.id} adding parent_id {self.parent_id} to task: {self.name}"

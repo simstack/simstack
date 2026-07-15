@@ -10,7 +10,7 @@ logger = logging.getLogger("node_claim")
 
 
 async def claim_submitted_node(registry_entry: NodeRegistry) -> bool:
-    """Atomically claim a submitted node for execution or submission."""
+    """Automatically claim a submitted node for execution or submission."""
     if registry_entry.id is None:
         return False
 
