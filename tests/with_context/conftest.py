@@ -5,6 +5,7 @@ import pytest_asyncio
 
 from simstack.core.context import context
 from simstack.core.definitions import DBType
+from simstack.models import ModelMapping
 from simstack.tables.model_table import make_model_table
 from simstack.tables.node_table import make_node_table
 from simstack.models.files import FileStack
@@ -28,7 +29,7 @@ async def initialized_context(tmp_path_factory):
 
     db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
     use_real_db = db_connection_string.lower() != "none" and db_connection_string != ""
-    test_database_name = os.getenv("SIMSTACK_TEST_DB", "ui_testing")
+    test_database_name = os.getenv("SIMSTACK_TEST_DB", "test_database")
 
     import logging
 
@@ -72,11 +73,12 @@ async def initialized_context(tmp_path_factory):
         skip_config=True, # we first need to write the ResourceDefinition to the database
         is_test=True,
         resource="self",
-        connection_string=db_connection_string if use_real_db else None,
+        connection_string=db_connection_string if use_real_db else "none",
         db_type=DBType.MONGODB if use_real_db else DBType.IN_MEMORY,
         db_name=test_database_name,
         workdir=working_dir,
-        project_root=project_root
+        project_root=project_root,
+        log_level="DEBUG"
     )
 
 
@@ -108,6 +110,12 @@ async def initialized_context(tmp_path_factory):
     await make_node_table(context.db, dirs=dirs, drops="src", clear=True,
                           project_root=project_root, ignore_entrypoints=True)
 
+    # Refresh mappings in context after they are filled in DB
+    if not use_real_db:
+        await context.refresh_mappings()
+
+    test_mapping = await context.db.find_one(ModelMapping, ModelMapping.name == "FloatData")
+    test_node_mapping = await context.db.find_one(ModelMapping, ModelMapping.name == "failing_node")
     # Ensure a "test" resource exists in DB for tests
     from simstack.models.resource_definition import ResourceDefinition
     local_resource = ResourceDefinition(

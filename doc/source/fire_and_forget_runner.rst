@@ -56,6 +56,7 @@ Fields:
 * **call_path**: A string representing the concatenated path of the runner and the node (e.g., ``/my_parallel_manager/target_node``).
 * **models**: A dictionary containing all input arguments (prefixed with ``arg_``) and output results (prefixed with ``result_``).
 * **success**: A boolean flag indicating if the node call was successful.
+* **next_step**: A boolean flag indicating if this result triggers a next step.
 
 Comparison with MassRunner
 --------------------------

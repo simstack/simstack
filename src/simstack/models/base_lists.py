@@ -14,6 +14,31 @@ class StringDataList(Model, ObjectListMixin["StringData"]):
     field_name: str = "string_data_list"
     elements: List[ObjectId] = Field(default_factory=list, description="List of StringData ObjectIDs")
 
+    def __iter__(self) -> Iterator["StringData"]:
+        return ObjectListMixin.__iter__(self)
+
+    def __init__(self, **data):
+        data, cache = self._normalize_elements_for_init(data)
+        Model.__init__(self, **data)
+        if cache is not None:
+            self._set_cache(cache)
+
+
+@simstack_model
+class BooleanDataList(Model, ObjectListMixin["StringData"]):
+    field_name: str = "boolean_data_list"
+    elements: List[ObjectId] = Field(default_factory=list, description="List of BooleanData ObjectIDs")
+
+    def __iter__(self) -> Iterator["StringData"]:
+        return ObjectListMixin.__iter__(self)
+
+    def __init__(self, **data):
+        data, cache = self._normalize_elements_for_init(data)
+        Model.__init__(self, **data)
+        if cache is not None:
+            self._set_cache(cache)
+
+
 @simstack_model
 class StringList(Model, GenericListMixin[str]):
     field_name: str = "string_list"
