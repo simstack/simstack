@@ -1,11 +1,16 @@
-import asyncio
+"""Disabled archive prototype retained for a future, separately reviewed change.
+
+The public entrypoints intentionally fail closed. Permanent storage ownership and
+safe source cleanup must be designed and covered by production-path tests before
+this module can be enabled.
+"""
+
 import inspect
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import List, Callable, Any, Optional
+from typing import List, Optional
 
-from docutils.nodes import field_name
 from odmantic import Model, Field
 
 from simstack.core.context import context
@@ -15,7 +20,22 @@ from simstack.models.base_lists import BooleanDataList
 from simstack.models.file_instance import FileInstance
 
 
+ARCHIVE_DISABLED_MESSAGE = (
+    "File archiving is disabled for this migration until permanent-resource "
+    "semantics and non-destructive cleanup are implemented and tested."
+)
+
+
+class ArchiveFeatureDisabledError(RuntimeError):
+    """Raised when code tries to use the excluded archive prototype."""
+
+
+def _raise_archive_disabled() -> None:
+    raise ArchiveFeatureDisabledError(ARCHIVE_DISABLED_MESSAGE)
+
+
 def archive_one_file(file_stack: FileStack,**kwargs):
+    _raise_archive_disabled()
     node_runner = kwargs["node_runner"]
     node_runner.info(f"Archiving file: {file_stack.name}")
 
@@ -40,10 +60,12 @@ def archive_one_file(file_stack: FileStack,**kwargs):
 
 @node
 async def archive_file(file_stack: FileStack,**kwargs):
+    _raise_archive_disabled()
     return archive_one_file(file_stack, **kwargs)
 
 @node
 def archive_files(file_list: FileList,**kwargs):
+    _raise_archive_disabled()
     archive_results = BooleanDataList(field_name="archive_result")
     for file_stack in file_list:
         archive_results.append(archive_one_file(file_stack, **kwargs))
@@ -75,7 +97,8 @@ async def archive_node(archive_config: ArchiveConfig, **kwargs):
         archive_config (ArchiveConfig): Configuration for the archive process.
         **kwargs: Additional arguments.
     """
-    import os
+    _raise_archive_disabled()
+
     with open("TEST_EXECUTION.log", "a") as f:
         f.write(f"archive_node CALLED at {datetime.now()}\n")
     
@@ -267,4 +290,3 @@ async def archive_node(archive_config: ArchiveConfig, **kwargs):
             await db.save(fs)
 
     return archive_results
-

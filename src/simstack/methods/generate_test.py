@@ -22,23 +22,34 @@ async def load_models(references: List[NamedDataReference]) -> Dict[str, Any]:
     for ref in references:
         try:
             model_cls = await import_class(ref.variable_mapping, db)
-            if model_cls:
-                obj = await db.find_one(model_cls, model_cls.id == ref.reference)
-                if obj:
-                    # Try to find a nice name for the key
-                    from simstack.models import ModelMapping
-                    model_mapping = await db.find_one(ModelMapping, ModelMapping.mapping == ref.variable_mapping)
-                    key = model_mapping.name if model_mapping else ref.variable_name
-                    
-                    if key in result:
-                        key = f"{key}_{str(ref.reference)}"
-                    result[key] = obj
-                else:
-                    logger.warning(f"Object {ref.reference} not found in {ref.variable_mapping}")
-            else:
-                logger.error(f"Could not import class {ref.variable_mapping}")
+            if not model_cls:
+                raise RuntimeError(f"Could not import class {ref.variable_mapping}")
+
+            obj = await db.find_one(model_cls, model_cls.id == ref.reference)
+            if obj is None:
+                raise RuntimeError(
+                    f"Object {ref.reference} not found in {ref.variable_mapping}"
+                )
+
+            # Preserve the argument/result name captured at execution time.
+            key = ref.variable_name
+            if not key:
+                from simstack.models import ModelMapping
+
+                model_mapping = await db.find_one(
+                    ModelMapping,
+                    ModelMapping.mapping == ref.variable_mapping,
+                )
+                key = model_mapping.name if model_mapping else ref.variable_mapping
+
+            if key in result:
+                key = f"{key}_{str(ref.reference)}"
+            result[key] = obj
         except Exception as e:
             logger.exception(f"Error loading {ref.variable_mapping} {ref.reference}: {e}")
+            raise RuntimeError(
+                f"Failed to load {ref.variable_mapping} {ref.reference}"
+            ) from e
     return result
 
 def serialize_models(models: Dict[str, Any]) -> str:
@@ -56,8 +67,7 @@ async def generate_test(node_id: str, target_base: Path):
     db = context.db
     registry_entry = await db.find_one(NodeRegistry, NodeRegistry.id == ObjectId(node_id))
     if not registry_entry:
-        print(f"NodeRegistry entry with ID {node_id} not found.")
-        return
+        raise ValueError(f"NodeRegistry entry with ID {node_id} not found.")
 
     node_name = registry_entry.name
     arg_hash = registry_entry.arg_hash

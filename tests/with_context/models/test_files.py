@@ -112,6 +112,8 @@ def test_from_local_file(test_file, setup_test_env):
 
     finally:
         # Clean up temporary files
+        if temp_path.exists():
+            temp_path.unlink()
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir, ignore_errors=True)
 

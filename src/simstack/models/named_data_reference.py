@@ -29,8 +29,8 @@ class NamedDataReference(EmbeddedModel):
         if variable_name is None:
             # Check if variable already has a field_name we can use
             if hasattr(variable, "field_name") and variable.field_name:
-                 variable_name = variable.field_name
+                variable_name = variable.field_name
             else:
-                 variable_name = "variable"
-            
+                variable_name = "variable"
+
         return cls(variable_name=variable_name, variable_mapping=table_name.mapping, reference=variable.id)

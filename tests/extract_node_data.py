@@ -64,7 +64,7 @@ async def extract_node_data(node_id_str: str, target_dir_path: Path):
         return serialized
 
     inputs_serialized = await serialize_references(node_registry.input_references)
-    results_serialized = await serialize_references(node_registry.result_references)
+    results_serialized = await serialize_references(node_registry.results_references)
 
     with open(final_target_dir / "inputs.json", "w") as f:
         json.dump(inputs_serialized, f, indent=4, default=str)

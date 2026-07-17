@@ -12,6 +12,10 @@ from simstack.models.parameters import Resource
 from simstack.methods.archive_files import archive_node, ArchiveConfig
 from simstack.models.base_lists import BooleanDataList
 
+pytestmark = pytest.mark.skip(
+    reason="archive prototype is explicitly excluded from this migration"
+)
+
 @pytest_asyncio.fixture
 async def sample_files():
     db = context.db
@@ -197,22 +201,7 @@ async def test_archive_node_filter_by_call_paths(sample_files, mocker):
     from simstack.models.named_data_reference import NamedDataReference
     from simstack.models.parameters import Parameters, Resource
     
-    # We must use exactly what NodeRegistry expects for parameters.
-    # In some versions it's a Reference(Parameters), in others it's Embedded.
-    # From node_registry.py: parameters: Parameters = Reference()
-    
     params = Parameters(resource=Resource(value=str(context.config.resource)))
-    # For in-memory DB and mock, it might not automatically assign an id on creation
-    from odmantic import ObjectId
-    params.id = ObjectId()
-    # Safeguard for Parameters model
-    if not hasattr(Parameters, "__collection__"):
-        setattr(Parameters, "__collection__", "parameters")
-    await db.save(params)
-    
-    from simstack.models import NodeRegistry
-    if not hasattr(NodeRegistry, "__collection__"):
-        setattr(NodeRegistry, "__collection__", "node_registry")
 
     node = NodeRegistry(
         name="test_node",
@@ -223,7 +212,6 @@ async def test_archive_node_filter_by_call_paths(sample_files, mocker):
         arg_hash="def",
         func_mapping="mapping"
     )
-    node.id = ObjectId()
     # Add fs1 to info_files
     node.info_files.append(fs1)
     

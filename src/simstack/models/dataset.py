@@ -300,8 +300,9 @@ class DataSet(Model):
 
     def collect_structure(self) -> Dict[str, Dict[str, str]]:
         return {
-            section_name: section.model_types if len(section) > 0 else {}
-            for section_name, section in self.sections.items() if len(section) > 0
+            section_name: section.model_types
+            for section_name, section in self.sections.items()
+            if section.data or len(section) > 0
         }
 
     def __getitem__(self, key: str) -> DataSetSection:
@@ -448,4 +449,3 @@ class DataSetSelection(Model):
         return {
             "ui:field": "DataSetSelectionField",
         }
-

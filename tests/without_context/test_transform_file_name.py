@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from simstack.util.project_root_finder import find_project_root
 from src.simstack.util.transform_file_name import transform_file_name
 
 @pytest.fixture
@@ -15,9 +14,10 @@ def prepared_directory_path(request):
         temp_path = Path(temp_dir)
         (temp_path / "home").mkdir()
         (temp_path / "temp").mkdir()
+        (temp_path / "project").mkdir()
         os.environ["HOME"] = str(temp_path / "home")
         os.environ["TEMP"] = str(temp_path / "temp")
-        os.environ["PROJECT"] = str(find_project_root())
+        os.environ["PROJECT"] = str(temp_path / "project")
 
         yield temp_path
 

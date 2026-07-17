@@ -330,8 +330,7 @@ class Node:
             raise ValueError("Database is not connected")
 
         arg_hash = compute_arg_hash(self._args)
-        # THE FUNCTION HASH IS NO LONGER USED
-        function_hash = "" # complex_hash_function(self._func)
+        function_hash = cast(str, complex_hash_function(self._func))
         self._arg_hash = arg_hash
         self._function_hash = function_hash
 
@@ -453,9 +452,9 @@ class Node:
             result = await self.execute_node_locally()
             return result
         else:
-            if await self._submit_slurm_child_from_current_resource():
+            if await self._submit_same_resource_slurm_node():
                 logger.info(
-                    "Task task_id: %s submitted nested Slurm child directly from resource %s",
+                    "Task task_id: %s submitted Slurm node directly from resource %s",
                     self.id,
                     context.config.resource,
                 )
@@ -487,7 +486,14 @@ class Node:
             else:
                 return None
 
-    async def _submit_slurm_child_from_current_resource(self) -> bool:
+    async def _submit_same_resource_slurm_node(self) -> bool:
+        """Submit a same-resource Slurm node before polling it.
+
+        This is primarily needed when a parent already running on a resource
+        creates a Slurm child for that resource. The same path also supports a
+        top-level Python caller on the resource. The atomic claim prevents a
+        concurrent resource runner from submitting the node twice.
+        """
         if self.registry_entry is None:
             return False
         if self.parameters.queue != Queue.SLURM_QUEUE:
@@ -499,8 +505,7 @@ class Node:
 
         from simstack.core.submit_node import submit_node
 
-        await submit_node(self.registry_entry)
-        return True
+        return await submit_node(self.registry_entry)
 
     async def execute_node_locally(self) -> Union[Model, SimstackResult, None]:
         """
@@ -998,14 +1003,25 @@ def node(
             loop = asyncio.get_event_loop()
             status = loop.run_until_complete(execution_node.get_node_registry())
             result = None
+            ran_somewhere = False
             if status == TaskStatus.COMPLETED:
-                return cast(T, loop.run_until_complete(execution_node.load_results()))
+                result = loop.run_until_complete(execution_node.load_results())
             elif status in [
                 TaskStatus.SUBMITTED,
                 TaskStatus.RETRIEVED,
                 TaskStatus.SLURM_QUEUED,
             ]:
-                return cast(T, loop.run_until_complete(execution_node.run_somewhere()))
+                result = loop.run_until_complete(execution_node.run_somewhere())
+                ran_somewhere = True
+            # Keep the established sync-node contract for resultless/default-queue
+            # executions. Slurm submission failures must not be mistaken for that
+            # contract, because they otherwise disappear as a successful ``None``.
+            if (
+                ran_somewhere
+                and result is None
+                and execution_node.parameters.queue != Queue.SLURM_QUEUE
+            ):
+                return cast(T, result)
             if result is None or execution_node.status != TaskStatus.COMPLETED:
                 if (
                     execution_node.registry_entry is not None

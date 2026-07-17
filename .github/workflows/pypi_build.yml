@@ -20,12 +20,14 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Fetch full history to check tag ancestry
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8
+        with:
+          version: "0.11.29"
 
       - name: Verify tag is from main branch
         if: startsWith(github.ref, 'refs/tags/v')

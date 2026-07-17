@@ -5,7 +5,7 @@ Submodules
 ----------
 
 simstack.methods.fire\_and\_forget\_runner module
----------------------------------------------
+-------------------------------------------------
 
 .. automodule:: simstack.methods.fire_and_forget_runner
    :members:

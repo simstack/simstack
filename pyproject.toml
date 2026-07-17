@@ -39,7 +39,6 @@ Homepage = "https://gitlab.kit.edu/kit/ag_wenzel/simstack-model/"
 create_node_table = "simstack.tables.node_table:create_node_table_main"
 create_model_table = "simstack.tables.model_table:create_model_table_main"
 create_test_from_node = "simstack.methods.generate_test:generate_test_main"
-run_test_for_hash = "simstack.scripts.run_test_for_hash:run_node_test_main"
 simstack_runner = "simstack.core.runner:runner_main"
 run_node = "simstack.core.run_node:run_node_main"
 simstack_write_sample_config = "simstack.util.sample_config:sample_config_writer_entrypoint"
@@ -150,4 +149,3 @@ explicit = true
 
 [tool.uv.sources]
 simstack = { path = "simstack", editable = true }
-

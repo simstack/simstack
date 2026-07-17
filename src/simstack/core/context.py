@@ -147,6 +147,7 @@ class GlobalState:
         connection_string: str | None = kwargs.get("connection_string", None)
         db_type: DBType | None = kwargs.get("db_type", None)
 
+        toml_reader = None
         if db_name is None or connection_string is None or db_type is None:
             # use not all info in the kwargs
             simstack_toml_path = project_root / "simstack.toml"

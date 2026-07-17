@@ -8,6 +8,39 @@ on:
   workflow_dispatch:  # This line enables the manual run button
 
 jobs:
+  smoke:
+    name: Lightweight workflow smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          version: "0.11.29"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev --frozen
+
+      - name: Run lightweight workflow
+        env:
+          START_LOCAL_RUNNER: "false"
+          SIMSTACK_TEST_DB_CONNECTION_STRING: none
+          SIMSTACK_TEST_DB: smoke
+          SIMSTACK_PROJECT_ROOT: ${{ github.workspace }}
+        run: |
+          uv run python -m pytest \
+            tests/with_context/with_runner/test_array_storage_submit.py \
+            tests/with_context/with_runner/test_archive_node_e2e.py \
+            tests/without_context/test_dataset_persisted_structure.py \
+            tests/without_context/test_generate_test.py \
+            -q
+
   test-linux:
     name: Test on ubuntu-latest (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -18,7 +51,7 @@ jobs:
 
     services:
       mongodb:
-        image: mongodb/mongodb-community-server:latest
+        image: mongo:7
         ports:
           - 27017:27017
         env:
@@ -26,11 +59,12 @@ jobs:
           MONGODB_INITDB_ROOT_PASSWORD: rootpassword
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v8
         with:
+          version: "0.11.29"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
@@ -38,7 +72,7 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-extras --dev --frozen
 
       - name: Set up MongoDB for testing
         run: |
@@ -63,21 +97,24 @@ jobs:
           cat simstack.toml
           uv run create_model_table --dir tests
           uv run create_node_table --dir tests
-          uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+          START_LOCAL_RUNNER=true uv run python -m pytest \
+            tests/with_context/with_runner/test_runner_completed.py -q
+          START_LOCAL_RUNNER=false uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
 
   package-html-docs:
-    name: Build and Commit Package HTML Docs
+    name: Build Package HTML Docs
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v8
         with:
+          version: "0.11.29"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
@@ -85,7 +122,7 @@ jobs:
         run: uv python install 3.12
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-extras --dev --frozen
 
       - name: Generate API documentation sources
         run: uv run sphinx-apidoc -o doc/source/simstack/modules src/simstack -f
@@ -104,18 +141,6 @@ jobs:
           name: sphinx-docs
           path: src/simstack/static/docs
 
-      - name: Commit generated package HTML docs
-        if: github.event_name != 'pull_request'
-        run: |
-          set -euo pipefail
-          git add -- src/simstack/static/docs
-          git diff --cached --quiet && echo "Generated package documentation is already up to date." && exit 0
-          # Official GitHub Actions bot noreply identity; keeps automated commits attributed to github-actions[bot].
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "docs: update generated package HTML [skip ci]"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
-
   test-windows:
     name: Test on windows-latest (Python ${{ matrix.python-version }})
     runs-on: windows-latest
@@ -125,7 +150,7 @@ jobs:
         python-version: ["3.12"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install MongoDB
         run: |
@@ -134,8 +159,9 @@ jobs:
           Get-Service MongoDB -ErrorAction SilentlyContinue | Start-Service
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v8
         with:
+          version: "0.11.29"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
@@ -143,7 +169,7 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-extras --dev --frozen
 
       - name: Set up MongoDB for testing
         shell: pwsh

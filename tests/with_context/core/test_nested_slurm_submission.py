@@ -4,11 +4,16 @@ import pytest
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.node import Node
+from simstack.core.node import Node, node
 from simstack.core.node_claim import claim_submitted_node
 from simstack.core.services.node_execution_service import NodeExecutionService
-from simstack.models import NodeRegistry
+from simstack.models import FloatData, NodeRegistry
 from simstack.models.parameters import Parameters, Resource, SlurmParameters
+
+
+@node
+def sync_nested_slurm_failure_node(**kwargs) -> FloatData:
+    return FloatData(value=1.0)
 
 
 def _slurm_registry(name: str, status: TaskStatus = TaskStatus.SUBMITTED):
@@ -69,6 +74,53 @@ async def test_nested_slurm_child_is_submitted_inline_on_current_resource(monkey
     assert result is sentinel
     assert submitted_ids == [registry_entry.id]
 
+
+@pytest.mark.asyncio
+async def test_nested_slurm_submit_failure_stops_polling(monkeypatch):
+    registry_entry = await context.db.save(_slurm_registry("failed_inline_slurm_child"))
+    execution_node = _execution_node(registry_entry)
+
+    async def fail_submit(entry):
+        entry.status = TaskStatus.FAILED
+        await context.db.save(entry)
+        return False
+
+    monkeypatch.setattr("simstack.core.submit_node.submit_node", fail_submit)
+
+    result = await execution_node.run_somewhere()
+
+    assert result is None
+    saved_entry = await context.db.load_task_by_id(registry_entry.id)
+    assert saved_entry.status == TaskStatus.FAILED
+
+
+@pytest.mark.asyncio
+async def test_sync_node_wrapper_raises_when_nested_slurm_submit_fails(monkeypatch):
+    async def fail_submit(entry):
+        entry.status = TaskStatus.FAILED
+        await context.db.save(entry)
+        return False
+
+    monkeypatch.setattr("simstack.core.submit_node.submit_node", fail_submit)
+
+    with pytest.raises(RuntimeError, match="terminated with status"):
+        sync_nested_slurm_failure_node(
+            parameters=Parameters(
+                resource="test",
+                queue="slurm-queue",
+                slurm_parameters=SlurmParameters(nodes=1),
+                force_rerun=True,
+            )
+        )
+
+    entries = await context.db.find(
+        NodeRegistry,
+        NodeRegistry.name == "sync_nested_slurm_failure_node",
+    )
+    assert entries
+    assert entries[-1].status == TaskStatus.FAILED
+    for entry in entries:
+        await context.db.delete(entry)
 
 
 @pytest.mark.asyncio

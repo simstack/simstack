@@ -48,5 +48,3 @@ class NodeModel(Model):
         "collection": "node_model",
         "json_encoders": {bytes: lambda b: base64.b64encode(b).decode("ascii")},
     }
-
-    

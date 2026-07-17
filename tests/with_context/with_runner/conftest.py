@@ -1,155 +1,168 @@
+from __future__ import annotations
+
+import json
 import os
-import queue
+import subprocess
 import sys
 import threading
+import time
+from collections import deque
 from pathlib import Path
+from typing import Generator
 
 import pytest
 
-from simstack.core.context import context
-from simstack.models.resource_definition import ResourceDefinition
-from simstack.util.project_root_finder import find_project_root
+
+_RUNNER_READY_MESSAGE = "Service JobPolling started."
+_RUNNER_START_TIMEOUT_SECONDS = 20
+
+
+def _is_enabled(value: str | None) -> bool:
+    return (value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _runner_output(process: subprocess.Popen[str]) -> str:
+    lines = getattr(process, "simstack_output_lines", ())
+    return "\n".join(lines)
+
+
+def _stop_runner(process: subprocess.Popen[str]) -> None:
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
 
 
 @pytest.fixture(scope="session", autouse=True)
-def test_runner(initialized_context):
-    """
-    Fixture to run and manage the test runner process.
-    """
-
-    start_local_runner = os.environ.get("START_LOCAL_RUNNER", "True").lower()
-    if start_local_runner == "false":
+def test_runner(
+    initialized_context, tmp_path_factory
+) -> Generator[subprocess.Popen[str] | None, None, None]:
+    """Start a real runner only for the explicitly enabled MongoDB integration gate."""
+    if not _is_enabled(os.environ.get("START_LOCAL_RUNNER")):
+        yield None
         return
 
-    import subprocess
-    import platform
-    import time
+    connection_string = os.environ.get("SIMSTACK_TEST_DB_CONNECTION_STRING", "").strip()
+    database_name = os.environ.get("SIMSTACK_TEST_DB", "").strip()
+    if (
+        not connection_string
+        or connection_string.lower() == "none"
+        or not database_name
+    ):
+        pytest.fail(
+            "START_LOCAL_RUNNER requires SIMSTACK_TEST_DB_CONNECTION_STRING and "
+            "SIMSTACK_TEST_DB for a real disposable MongoDB database."
+        )
 
-    import logging
-    logger = logging.getLogger("simstack-runner")
+    executable_name = "simstack_runner.exe" if os.name == "nt" else "simstack_runner"
+    # Do not resolve the virtualenv Python symlink: its parent is where console
+    # entrypoints are installed, while the resolved interpreter lives outside it.
+    runner_executable = Path(sys.executable).parent / executable_name
+    if not runner_executable.is_file():
+        pytest.fail(
+            f"simstack_runner console entrypoint not found: {runner_executable}"
+        )
 
-    # allowed_resources.add_resource("test_resource")
-    root = Path(find_project_root())
-    command = root / "src" / "simstack" / "core" / "simstack_runner.py"
-
-    print("environment_start", context.config.environment_start)
-
-    # Cross-platform command chaining
-    system = platform.system().lower()
-    env_start = (
-        context.config.environment_start.strip()
-        if context.config.environment_start
-        else ""
+    repository_root = Path.cwd().resolve()
+    runner_project_root = tmp_path_factory.mktemp("simstack_runner_project")
+    runner_workdir = runner_project_root / "work"
+    runner_workdir.mkdir()
+    (runner_project_root / "simstack.toml").write_text(
+        "\n".join(
+            [
+                "[parameters.general]",
+                f"workdir_self = {json.dumps(str(runner_workdir))}",
+                "",
+                "[parameters.db]",
+                f"database = {json.dumps(database_name)}",
+                f"connection_string = {json.dumps(connection_string)}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
     )
+    (runner_project_root / "config.toml").write_text("", encoding="utf-8")
 
-    connection_string = os.environ.get("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
-    test_database_name = os.environ.get("SIMSTACK_TEST_DB", "none")
+    command = [
+        str(runner_executable),
+        "--resource",
+        "test",
+        "--polling-interval",
+        "1",
+        "--detach",
+        "false",
+        "--no-pull",
+        "--with-file-transfer",
+        "false",
+    ]
+    process_environment = os.environ.copy()
+    process_environment["PYTHONUNBUFFERED"] = "1"
+    process_environment["SIMSTACK_PROJECT_ROOT"] = str(runner_project_root)
+    python_paths = [str(repository_root), str(repository_root / "src")]
+    if process_environment.get("PYTHONPATH"):
+        python_paths.append(process_environment["PYTHONPATH"])
+    process_environment["PYTHONPATH"] = os.pathsep.join(python_paths)
 
-    logger.info(f"Test context initialized with real MongoDB database at: {connection_string} and test database: {test_database_name}")
-
-    shared_args = f"uv run simstack_runner --resource test --no-pull --connection-string {connection_string} --db-name {test_database_name}"
-    if system == "windows":
-        if env_start:
-            command_string = f'cmd /c "{env_start} &&  {shared_args}"'
-        else:
-            command_string = f'cmd /c "{shared_args}"'
-    else:
-        if env_start:
-            command_string = f"{env_start} && {sys.executable} {command} --resource tests --no-pull"
-        else:
-            command_string = f"{sys.executable} {command} --resource tests --no-pull"
-
-    print(f"Starting subprocess with command: {command_string}")
-
-    # Start the process with non-blocking pipes
     process = subprocess.Popen(
-        command_string,
-        shell=True,
+        command,
+        cwd=repository_root,
+        env=process_environment,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         text=True,
-        bufsize=0,
-    )  # Unbuffered
+        bufsize=1,
+    )
+    output_lines: deque[str] = deque(maxlen=200)
+    process.simstack_output_lines = output_lines
+    ready = threading.Event()
 
-    # Queues to store output
-    stdout_queue = queue.Queue()
-    stderr_queue = queue.Queue()
+    def read_output() -> None:
+        assert process.stdout is not None
+        for raw_line in iter(process.stdout.readline, ""):
+            line = raw_line.rstrip()
+            if not line:
+                continue
+            output_lines.append(line)
+            print(f"[SIMSTACK RUNNER]: {line}")
+            if _RUNNER_READY_MESSAGE in line:
+                ready.set()
+        process.stdout.close()
 
+    output_thread = threading.Thread(target=read_output, daemon=True)
+    output_thread.start()
 
-    def read_stdout():
-        import logging
-        logger = logging.getLogger("simstack-runner")
-        try:
-            for line in iter(process.stdout.readline, ""):
-                if line:
-                    line = line.strip()
-                    stdout_queue.put(line)
-                    print(f"[SUBPROCESS STDOUT]: {line}")
-        except Exception as e:
-            print(f"Error reading stdout: {e}")
-        finally:
-            if process.stdout:
-                process.stdout.close()
+    deadline = time.monotonic() + _RUNNER_START_TIMEOUT_SECONDS
+    while not ready.is_set() and time.monotonic() < deadline:
+        return_code = process.poll()
+        if return_code is not None:
+            output_thread.join(timeout=1)
+            pytest.fail(
+                f"simstack_runner exited before readiness with code {return_code}.\n"
+                f"{_runner_output(process)}"
+            )
+        ready.wait(timeout=0.1)
 
-    def read_stderr():
-        import logging
-        logger = logging.getLogger("simstack-runner")
-        try:
-            for line in iter(process.stderr.readline, ""):
-                if line:
-                    line = line.strip()
-                    stderr_queue.put(line)
-                    print(f"[SUBPROCESS STDERR]: {line}")
-        except Exception as e:
-            print(f"Error reading stderr: {e}")
-        finally:
-            if process.stderr:
-                process.stderr.close()
+    if not ready.is_set():
+        _stop_runner(process)
+        output_thread.join(timeout=1)
+        pytest.fail(
+            "simstack_runner did not report readiness within "
+            f"{_RUNNER_START_TIMEOUT_SECONDS} seconds.\n{_runner_output(process)}"
+        )
 
-    # Start threads to read output immediately
-    stdout_thread = threading.Thread(target=read_stdout, daemon=True)
-    stderr_thread = threading.Thread(target=read_stderr, daemon=True)
-    stdout_thread.start()
-    stderr_thread.start()
+    try:
+        yield process
+        unexpected_return_code = process.poll()
+    finally:
+        _stop_runner(process)
+        output_thread.join(timeout=1)
 
-    # Add queues to process object so tests can access them
-    process.stdout_queue = stdout_queue
-    process.stderr_queue = stderr_queue
-
-    # Give the process a moment to start
-    time.sleep(1)
-
-    # Check if process started successfully
-    if process.poll() is not None:
-        print(f"Process exited early with code: {process.returncode}")
-        # Try to get any error output
-        time.sleep(0.5)  # Give threads time to read final output
-        while not stderr_queue.empty():
-            print(f"[SUBPROCESS STDERR]: {stderr_queue.get()}")
-        while not stdout_queue.empty():
-            print(f"[SUBPROCESS STDOUT]: {stdout_queue.get()}")
-    else:
-        print("Process started successfully")
-
-    yield process
-
-    # Cleanup: terminate the process
-    print("Cleaning up subprocess...")
-    if process.poll() is None:  # Process is still running
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            print("Process didn't terminate gracefully, killing...")
-            process.kill()
-            process.wait()
-
-    # Wait for threads to finish
-    stdout_thread.join(timeout=1)
-    stderr_thread.join(timeout=1)
-
-    print("Subprocess cleanup complete")
-    # allowed_resources.remove_resource("test_resource")
-
-
-
+    if unexpected_return_code is not None:
+        pytest.fail(
+            f"simstack_runner exited unexpectedly with code {unexpected_return_code}.\n"
+            f"{_runner_output(process)}"
+        )

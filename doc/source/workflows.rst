@@ -359,7 +359,7 @@ When someone is actively developing new nodes or other code to be run on the
 remote node, it is important to keep the code on the remote server up-to-date.
 The preferred way is to periodically check for a git-update or other server
 crashes and restart the server if such events are detected.
-The file :file:`simstack.scripts.check_runner.sh` provides a template that
+The legacy file :file:`scripts/old/check_runner.sh` provides a template that
 must be adapted to the configuration of the remote node. This needs to be
 done only once.
 

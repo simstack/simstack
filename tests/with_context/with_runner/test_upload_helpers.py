@@ -18,6 +18,7 @@ async def test_archive_upload_zip(temp_dir):
     zip_path = temp_dir / "test.zip"
     with zipfile.ZipFile(zip_path, 'w') as z:
         z.write(file1, arcname="test1.txt")
+    file1.unlink()
     
     file_stack = FileStack.from_local_file(zip_path)
     parameters = Parameters(resource="test", force_rerun=True)
@@ -42,6 +43,7 @@ async def test_archive_upload_tar_gz(temp_dir):
     tar_path = temp_dir / "test.tar.gz"
     with tarfile.open(tar_path, "w:gz") as tar:
         tar.add(file2, arcname="test2.txt")
+    file2.unlink()
     
     file_stack = FileStack.from_local_file(tar_path)
     parameters = Parameters(resource="test", force_rerun=True)
