@@ -38,7 +38,11 @@ autodoc_mock_imports = [
 project = 'SimStack II'
 copyright = f'{datetime.now(timezone.utc).year}, Wolfgang Wenzel'
 author = 'Wolfgang Wenzel'
-docs_built_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+source_date_epoch = os.environ.get("SOURCE_DATE_EPOCH")
+if source_date_epoch:
+    docs_built_at = datetime.fromtimestamp(int(source_date_epoch), timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+else:
+    docs_built_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 extensions = [
     'sphinx.ext.autodoc',

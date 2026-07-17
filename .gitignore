@@ -154,3 +154,4 @@ script_runner.out
 *.egg-info
 #version
 src/simstack/_version.py
+.DS_store

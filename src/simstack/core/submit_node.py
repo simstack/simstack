@@ -2,6 +2,7 @@ import os
 import re
 import stat
 import subprocess
+from pathlib import Path
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
@@ -23,7 +24,7 @@ def make_executable(file_path: str | os.PathLike[str]) -> None:
     os.chmod(file_path, executable_mode)
 
 
-async def submit_node(registry_entry: NodeRegistry) -> None:
+async def submit_node(registry_entry: NodeRegistry) -> bool:
     """Submit a node to the SLURM queue"""
     task_id = registry_entry.id
     try:
@@ -40,10 +41,10 @@ async def submit_node(registry_entry: NodeRegistry) -> None:
 
         original_slurm_parameters = registry_entry.parameters.slurm_parameters
         if original_slurm_parameters is None:
-            logger.error("Task task_id: {task_id} has no slurm parameters -- failing")
+            logger.error(f"Task task_id: {task_id} has no slurm parameters -- failing")
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
-            return
+            return False
         slurm_parameters = original_slurm_parameters.model_copy(deep=True)
         slurm_parameters.output = f"{work_dir}/%j.out"
         slurm_parameters.error = f"{work_dir}/%j.err"
@@ -55,6 +56,40 @@ async def submit_node(registry_entry: NodeRegistry) -> None:
         slurm_parameters.startup_commands.append(
             f"export PYTHONPATH={python_path}:$PYTHONPATH"
         )
+
+        sync_data_start = """# 1. Define the rsync function
+        sync_data() {
+            echo "=== Time limit approaching! Starting rsync at $(date) ==="
+
+            # Run rsync safely 
+        """
+        sync_data_end = """
+            echo "=== Rsync completed at $(date) ==="
+            exit 0
+        }        
+        """
+
+        if context.resource_config is not None:
+            program_config = context.resource_config.get_program(registry_entry.name)
+        else:
+            program_config = {}
+
+        logger.info(f"task_id: {task_id} program_config {program_config}")
+        if program_config.get("use_tmp", False):
+            tmp_dir = context.resource_config.tmp_dir(registry_entry.id)
+
+            if not tmp_dir.exists() or not tmp_dir.is_dir():
+                logger.error(
+                    f"Task task_id: {task_id} tmp_dir {tmp_dir} does not exist or is not a directory -- failing")
+                registry_entry.status = TaskStatus.FAILED
+                await context.db.save(registry_entry)
+                return False
+
+            full_sync_data = sync_data_start + f'cp -a {tmp_dir}/. {work_dir}/recovery\n' + sync_data_end
+
+            logger.info(f"task_id: {task_id} full_sync_data {full_sync_data}")
+            slurm_parameters.startup_commands.append(full_sync_data)
+            slurm_parameters.startup_commands.append("trap 'sync_data' SIGUSR1")
 
         if context.config.docker:
             external_work_dir = (
@@ -97,7 +132,7 @@ async def submit_node(registry_entry: NodeRegistry) -> None:
                 )
                 registry_entry.status = TaskStatus.FAILED
                 await context.db.save(registry_entry)
-                return
+                return False
 
             docker_start = "udocker run "
             docker_start += "-e GIT_TOKEN=XXX"
@@ -112,8 +147,11 @@ async def submit_node(registry_entry: NodeRegistry) -> None:
             slurm_parameters.startup_commands.append(docker_start)
         else:
             slurm_parameters.startup_commands.append(
-                f"uv run --directory {base_path} run_node --node-id {registry_entry.id} --resource {str(context.config.resource)}"
+                f"uv run --directory {base_path} run_node --node-id {registry_entry.id} --resource {str(context.config.resource)} &"
             )
+            slurm_parameters.startup_commands.append("wait")
+        slurm_parameters.signal = "B:SIGUSR1@60"
+
 
         slurm_script = slurm_parameters.to_sbatch_header()
 
@@ -168,8 +206,12 @@ async def submit_node(registry_entry: NodeRegistry) -> None:
             )
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
-            return
+            return False
         registry_entry.status = TaskStatus.SLURM_QUEUED
         await context.db.save(registry_entry)
+        return True
     except Exception as e:
         logger.exception(f"fatal error in submitting task_id: {task_id} {str(e)}")
+        registry_entry.status = TaskStatus.FAILED
+        await context.db.save(registry_entry)
+        return False

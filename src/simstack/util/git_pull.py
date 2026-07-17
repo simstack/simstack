@@ -44,7 +44,7 @@ def git_pull_periodically(repo_path, interval_minutes=1, log_file=None):
 
                 # Execute git pull
                 result = subprocess.run(
-                    ["git", "pull"], capture_output=True, text=True, check=True
+                    ["git", "pull", "--recurse-submodules"], capture_output=True, text=True, check=True
                 )
 
                 # Log the output

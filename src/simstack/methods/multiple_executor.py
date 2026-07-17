@@ -150,7 +150,7 @@ class MultipleExecutorInput(Model, Generic[T]):
         result_ids = [None] * len(self.inputs_data)
         kwargs["parent_id"] = task_id
         try:
-            func = await import_function(self.function_mapping, task_id)
+            func = await import_function(self.function_mapping, context.db, task_id)
             i = 0
             async for task_input in self.input_generator():
                 # Create an async task that calls our async wrapper

@@ -34,6 +34,9 @@ class Resource(EmbeddedModel):
             # Get raw stored value without triggering this override again
             raw_value = object.__getattribute__(self, "__dict__").get("value")
             return _validate_value_on_read(raw_value)
+        # Avoid triggering Pydantic deprecation warnings on model_fields
+        if name == "model_fields":
+            return self.__class__.model_fields
         return object.__getattribute__(self, name)
 
     def __str__(self) -> str:

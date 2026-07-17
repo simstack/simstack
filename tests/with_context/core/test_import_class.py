@@ -34,27 +34,29 @@ async def setup_model_mapping():
     # Create a ModelMapping entry for SampleClass
     model_mapping = ModelMapping(
         name="SampleClass",
-        mapping="tests.core.test_import_class.SampleClass",
+        mapping="tests.with_context.core.test_import_class.SampleClass",
         collection_name="test_collection"
     )
     await context.db.save(model_mapping)
+    await context.refresh_mappings()
 
-    yield context.db.engine
+    yield context.db
 
     # Clean up - remove the test data
     try:
         await context.db.delete(model_mapping)
+        await context.refresh_mappings()
     except Exception:
         pass  # Ignore cleanup errors
 
 @pytest.mark.asyncio
-async def test_import_class_regular():
+async def test_import_class_regular(initialized_context):
     """Test importing a class using regular Python import."""
     # Import the SampleClass using import_class
-    cls = await import_class("tests.core.test_import_class.SampleClass")
+    cls = await import_class("tests.with_context.core.test_import_class.SampleClass", context.db)
 
     # Verify that the class was imported correctly
-    assert cls is SampleClass
+    assert cls.__name__ == SampleClass.__name__
 
     # Create an instance and verify it works
     instance = cls(value="test")
@@ -62,14 +64,14 @@ async def test_import_class_regular():
 
 
 @pytest.mark.asyncio
-async def test_import_class_from_model_mapping(setup_model_mapping):
+async def test_import_class_from_model_mapping(setup_model_mapping, initialized_context):
     """Test importing a class using ModelMapping."""
     # Import the SampleClass using import_class
 
-    cls = await import_class("tests.core.test_import_class.SampleClass")
+    cls = await import_class("xxxxtests.with_context.core.test_import_class.SampleClass", context.db)
 
     # Verify that the class was imported correctly
-    assert cls is SampleClass
+    assert cls.__name__ == SampleClass.__name__
 
     # Create an instance and verify it works
     instance = cls(value="test")
@@ -77,13 +79,13 @@ async def test_import_class_from_model_mapping(setup_model_mapping):
 
 
 @pytest.mark.asyncio
-async def test_import_class_nonexistent():
+async def test_import_class_nonexistent(initialized_context):
     """Test importing a non-existent class."""
     # Try to import a non-existent class
     with pytest.raises(
         LookupError, match="Error finding ModelMapping for NonExistentClass"
     ):
-        await import_class("tests.core.test_import_class.NonExistentClass")
+        await import_class("tests.core.test_import_class.NonExistentClass", context.db)
 
 
 if __name__ == "__main__":

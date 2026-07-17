@@ -198,7 +198,6 @@ pre-commit>=3.7.1,<4
 pre-commit-hooks>=4.6.0,<5
 typos>=1.23.1,<2
 python-build
-cruft
 
 rdkit>=2025.3.5
 pymatgen>=2024.5.0

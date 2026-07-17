@@ -19,7 +19,7 @@ def test_normalize_docstring_type_strips_only_top_level_qualifier():
 
 @pytest.mark.asyncio
 async def test_build_outputs_accepts_optional_simstack_result_types():
-    builder = CreateNodeTable(context.db.engine)
+    builder = CreateNodeTable(context.db)
     expected_mapping = builder.get_class_mapping(FloatData, "src")
     parser = DocstringParser(
         """

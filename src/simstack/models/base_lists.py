@@ -1,140 +1,42 @@
-import re
-from typing import Union, List, Any, Optional, TypeVar, Generic, Iterator, Iterable
+from typing import Iterator, List, TypeVar
 
-from odmantic import EmbeddedModel, Field, Model
+from odmantic import Field, Model, ObjectId
 
-from simstack.models import simstack_model, StringData
-from simstack.models.files import FileStack
-
+from simstack.models.base_types import BooleanData, StringData
+from simstack.models.simstack_model import simstack_model
+from simstack.util.generic_list_mixin import GenericListMixin
+from simstack.util.object_list_mixin import ObjectListMixin
 
 T = TypeVar("T")
 
+@simstack_model
+class StringDataList(Model, ObjectListMixin[StringData]):
+    field_name: str = "string_data_list"
+    elements: List[ObjectId] = Field(default_factory=list, description="List of StringData ObjectIDs")
 
-class GenericListMixin(Generic[T]):
-    """
-    Mixin class containing common functionality for list operations.
+    def __iter__(self) -> Iterator[StringData]:
+        return ObjectListMixin.__iter__(self)
 
-    Notes on typing:
-      - Pure list-like operations (append/extend/...) are fully generic over `T`.
-      - Convenience helpers like `find()` / `filter_by_size()` rely on optional attributes
-        (e.g. `.name`, `.size`). For arbitrary `T`, we use `getattr()` to keep runtime
-        behavior flexible while remaining type-safe-ish.
-    """
+    def __init__(self, **data):
+        data, cache = self._normalize_elements_for_init(data)
+        Model.__init__(self, **data)
+        if cache is not None:
+            self._set_cache(cache)
 
-    def __len__(self):
-        return len(self.elements)
 
-    def append(self, elements: T):
-        self.elements.append(elements)
+@simstack_model
+class BooleanDataList(Model, ObjectListMixin[BooleanData]):
+    field_name: str = "boolean_data_list"
+    elements: List[ObjectId] = Field(default_factory=list, description="List of BooleanData ObjectIDs")
 
-    def extend(self, elements: Union[List[T], "GenericListMixin[T]"]):
-        if hasattr(elements, "elements"):
-            # It's another GenericListMixin object
-            self.elements.extend(elements.elements)
-        else:
-            # It's a list
-            self.elements.extend(elements)
+    def __iter__(self) -> Iterator[BooleanData]:
+        return ObjectListMixin.__iter__(self)
 
-    def insert(self, index: int, elements: T):
-        self.elements.insert(index, elements)
-
-    def remove(self, elements: T):
-        self.elements.remove(elements)
-
-    def pop(self, index: int = -1) -> T:
-        return self.elements.pop(index)
-
-    def clear(self):
-        self.elements.clear()
-
-    def index(self, elements: T, start: int = 0, stop: int = None) -> int:
-        if stop is None:
-            return self.elements.index(elements, start)
-        return self.elements.index(elements, start, stop)
-
-    def count(self, elements: T) -> int:
-        return self.elements.count(elements)
-
-    def reverse(self):
-        self.elements.reverse()
-
-    def sort(self, key=None, reverse: bool = False):
-        self.elements.sort(key=key, reverse=reverse)
-
-    def copy(self) -> List[T]:
-        return self.elements.copy()
-
-    def __getitem__(self, index: Union[int, slice]) -> Union[T, List[T]]:
-        return self.elements[index]
-
-    def __setitem__(self, index: Union[int, slice], value: Union[T, List[T]]):
-        self.elements[index] = value
-
-    def __delitem__(self, index: Union[int, slice]):
-        del self.elements[index]
-
-    def __iter__(self) -> Iterator[T]:
-        return iter(self.elements)
-
-    def __contains__(self, elements: T) -> bool:
-        return elements in self.elements
-
-    def __bool__(self) -> bool:
-        return bool(self.elements)
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(elements={self.elements!r})"
-
-    def find(self, pattern: str) -> Optional[T]:
-        for elements in self.elements:
-            name = getattr(elements, "name", None)
-            if name and pattern == name:  # re.search(pattern, name):
-                return elements
-        return None
-
-    def find_all(self, pattern: str) -> List[T]:
-        matches: List[T] = []
-        for elements in self.elements:
-            name = getattr(elements, "name", None)
-            if name and re.search(pattern, name):
-                matches.append(elements)
-        return matches
-
-    def filter_by_size(self, min_size: int = None, max_size: int = None) -> List[T]:
-        results: List[T] = []
-        for elements in self.elements:
-            size = getattr(elements, "size", None)
-            if size is None:
-                continue
-            if min_size is not None and size < min_size:
-                continue
-            if max_size is not None and size > max_size:
-                continue
-            results.append(elements)
-        return results
-
-    def filter_by_property(self, property_name: str, value: Any) -> List[T]:
-        results: List[T] = []
-        for elements in self.elements:
-            if hasattr(elements, property_name) and getattr(elements, property_name) == value:
-                results.append(elements)
-        return results
-
-    def sort_by_name(self, reverse: bool = False):
-        self.elements.sort(key=lambda x: getattr(x, "name", "") or "", reverse=reverse)
-
-    def sort_by_size(self, reverse: bool = False):
-        self.elements.sort(key=lambda x: getattr(x, "size", 0) or 0, reverse=reverse)
-
-    # def items(self) -> Iterator[tuple[Optional[str], T]]:
-    #     """
-    #     Iterator that yields (name, element) tuples for each element in the list.
-    #     Similar to dict.items() behavior.
-    #
-    #     For arbitrary `T`, `name` is fetched via getattr and may be None.
-    #     """
-    #     for elements in self.elements:
-    #         yield (getattr(elements, "name", None), elements)
+    def __init__(self, **data):
+        data, cache = self._normalize_elements_for_init(data)
+        Model.__init__(self, **data)
+        if cache is not None:
+            self._set_cache(cache)
 
 
 @simstack_model

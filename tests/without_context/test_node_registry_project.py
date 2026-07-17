@@ -4,23 +4,26 @@ from simstack.core.definitions import TaskStatus
 from simstack.models.node_registry import NodeRegistry
 from simstack.models.parameters import Parameters
 
+import logging
+logger = logging.getLogger(__name__)
 
 def _build_node_registry(**overrides) -> NodeRegistry:
     values = {
         "name": "test-node",
         "status": TaskStatus.SUBMITTED,
-        "input_ids": [],
-        "input_tables": [],
+        "input_references": [],
         "function_hash": "function-hash",
         "arg_hash": "arg-hash",
         "func_mapping": "tests.module.function",
         "parameters": Parameters(),
     }
     values.update(overrides)
+
     return NodeRegistry(**values)
 
 
 def test_reassigning_parameters_preserves_project_field():
+    logger.info("test_reassigning_parameters_preserves_project_field")
     project_id = ObjectId()
     node_registry = _build_node_registry(project=project_id)
 

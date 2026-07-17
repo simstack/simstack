@@ -5,7 +5,7 @@ Workflows
 
 .. note::
 
-    This section is intended for workflow developers
+    This section is intended for workflow developers but also helpful to users. A more detailed how-to for nodes is given in :ref:`developer-guide`
 
 From Python to Workflows
 ------------------------
@@ -121,6 +121,7 @@ order to facilitate processing, references to these files should be stored in
 the output to avoid error-prone parsing and recreation.
 
 THe following return types od node_functions are supported:
+
 - any **registered** Model (:ref:`registering`),
 - True or False, the indicating success or failure,
 - a class derived from SimstackResult, in particular NodeRunner,
@@ -173,7 +174,7 @@ You can add output by:
         # will not be added to the result tables but to the info_files tab or the node and
         # can be inspected in the gui for potential problems or output
         # that has not been parsed.
-        node_runner.info_files.append(some_file_with_log_output)
+        node_runner.make_info_files(some_file_with_log_output)
 
         if some_error:
             # this error will be caught in the calling function
@@ -190,6 +191,10 @@ You can add output by:
 
 
 .. note::
+   NodeRunner.make_info_files(file1,file2,pattern1,pattern2) is a more clever way to append many files to the info_files list.
+   NodeRunner.info_file_patterns defines a standard set of endings to include automatically
+
+.. note::
   The instance of NodeRunner passed from the calling function, will be
   post-processed by the calling function even when the node fails. This allows
   capturing of partial output, in particular the info_files.
@@ -198,6 +203,8 @@ You can add output by:
   The call to your actual function is always wrapped in a try-except-block.
   In most scenarios you do not need your own try-except-finally blocks in the
   node
+
+
 
 **Data Provided by \*\*kwargs**
 
@@ -352,7 +359,7 @@ When someone is actively developing new nodes or other code to be run on the
 remote node, it is important to keep the code on the remote server up-to-date.
 The preferred way is to periodically check for a git-update or other server
 crashes and restart the server if such events are detected.
-The file :file:`simstack.scripts.check_runner.sh` provides a template that
+The legacy file :file:`scripts/old/check_runner.sh` provides a template that
 must be adapted to the configuration of the remote node. This needs to be
 done only once.
 

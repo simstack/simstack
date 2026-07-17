@@ -10,8 +10,12 @@ readme = "README.md"
 requires-python = ">= 3.12"
 authors = [
     {name = "Wolfgang Wenzel", email = "wolfgang.wenzel@kit.edu"},
-    {name = "Timo Strunk", email = "timo.strunk@nanomatch.de"},
-
+    { name = "Artem Buildin", email = "artem.buildin@kit.edu" },
+    { name = "Nikita Mitagin", email = "nikita.mitagin@kit.edu" },
+    { name = "Phillip Dullinger", email = "phillip.dullinger@kit.edu" },
+    { name = "Celso Rego", email = "celso.rego@kit.edu" },
+    { name = "Oliver Pettkau", email = "oliver.pettkau@kit.edu" },
+    { name = "Timo Strunk", email = "timo.strunk@nanomatch.de" },
 ]
 license = { text = "MIT" }
 
@@ -21,10 +25,11 @@ dependencies = [
     "coolname>=2.2.0,<3",
     "nest-asyncio>=1.6.0,<2",
     "numpy>=2.3.0",
-    "pandas==2.3.2",
+    "pandas==2.3.2", # lock this for int-nano
     "pytest>=8.4.2",
     "docutils>=0.22",
     "pandas-stubs~=2.3.3",
+    "types-docutils~=0.22.3",
 ]
 
 [project.urls]
@@ -33,6 +38,7 @@ Homepage = "https://gitlab.kit.edu/kit/ag_wenzel/simstack-model/"
 [project.scripts]
 create_node_table = "simstack.tables.node_table:create_node_table_main"
 create_model_table = "simstack.tables.model_table:create_model_table_main"
+create_test_from_node = "simstack.methods.generate_test:generate_test_main"
 simstack_runner = "simstack.core.runner:runner_main"
 run_node = "simstack.core.run_node:run_node_main"
 simstack_write_sample_config = "simstack.util.sample_config:sample_config_writer_entrypoint"
@@ -54,7 +60,6 @@ dev = [
     "pre-commit-hooks>=5.0.0",
     "typos>=1.23.1,<2",
     "mypy",
-    "cruft",
     "build",
     "twine",
     "pytest-mock>=3.15.1",
@@ -96,7 +101,8 @@ testpaths = [
     "tests",
 ]
 asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 norecursedirs = ["examples", "applications", "scripts", ".git", ".pixi", "build", "dist"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
@@ -130,8 +136,9 @@ warn_unused_ignores = true
 exclude = ["tests", "doc", "docs"]
 
 [project.entry-points."simstack.modules"]
-example_modules = "simstack.models"
-applicatio_modules = "simstack.methods"
+simstack_models = "simstack.models"
+simstack_nodes  = "simstack.methods"
+simstack_tests  = "tests"
 
 [[tool.uv.index]]
 name = "testpypi"
@@ -142,5 +149,3 @@ explicit = true
 
 [tool.uv.sources]
 simstack = { path = "simstack", editable = true }
-
-

@@ -31,5 +31,11 @@ class NodeMappingTable:
 
     @classmethod
     async def load(cls, engine: AIOEngine):
-        nodes = await engine.find(NodeModel)
+        try:
+            nodes = await engine.find(NodeModel)
+        except Exception as e:
+            print(f"Error loading NodeModel from database: {e}")
+            print("WARNING: Returning empty NodeMappingTable to fix obviously corrupted case.")
+            print("Rebuild the NodeMappingTable by rerunning the database initialization or migration scripts.")
+            nodes = []
         return cls(list(nodes))

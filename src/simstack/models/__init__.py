@@ -1,5 +1,5 @@
+from .fire_and_forget_result import FireAndForgetResult
 from .simstack_model import simstack_model
-from .array_list import ArrayList
 from .artifact_models import ArtifactMapping, ArtifactModel
 from .base_types import (
     IntData,
@@ -9,22 +9,33 @@ from .base_types import (
     BinaryOperationInput,
     IteratorInput,
 )
-from .file_list import FileListModel
+from .base_lists import StringDataList, StringList
+from .array_list import ArrayList
+from .file_list import FileList, FileListModel
 from .models import (
     ModelMapping,
     NodeModel,
 )
+from .files import FileStack
 from .parameters import Parameters
 from .node_registry import NodeRegistry
+from .named_data_reference import NamedDataReference
 from .project import Project
 from .tag import Tag
 from .resource_assignment import ResourceAssignmentRule, SlurmParametersPatch
+from .datasettuple import (
+    DataSetTuple,
+    DataSetTupleSection,
+    DataSetTupleSelection,
+    DataSetTupleSelectionField,
+)
 from .dataset import DataSet, DataSetSection, DataSetSelection, DataSetSelectionField
 from .dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
 from .images2d import Image2DArtifactModel
 
 
 __all__ = [
+    "FireAndForgetResult",
     "ModelMapping",
     "NodeModel",
     "IntData",
@@ -39,6 +50,8 @@ __all__ = [
     "FileListModel",
     "Parameters",
     "NodeRegistry",
+    "NamedDataReference",
+    "FileStack",
     "Project",
     "Tag",
     "ResourceAssignmentRule",
@@ -47,8 +60,15 @@ __all__ = [
     "DataSet",
     "DataSetSection",
     "DataSetSelection",
-    "DataSetSelectionField",
+    "DataSetTuple",
+    "DataSetTupleSection",
+    "DataSetTupleSelectionField",
     "DataSetMetadata",
+    "DataSetSelectionField",
+    "DataSetTupleSelection",
+    "FileList",
     "DataSetMetadataTemplate",
     "Image2DArtifactModel",
+    "StringDataList",
+    "StringList",
 ]

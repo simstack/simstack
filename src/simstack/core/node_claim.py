@@ -10,11 +10,11 @@ logger = logging.getLogger("node_claim")
 
 
 async def claim_submitted_node(registry_entry: NodeRegistry) -> bool:
-    """Atomically claim a submitted node for execution or submission."""
+    """Automatically claim a submitted node for execution or submission."""
     if registry_entry.id is None:
         return False
 
-    collection = context.db.engine.get_collection(NodeRegistry)
+    collection = context.db.get_collection(NodeRegistry)
     claimed = await collection.find_one_and_update(
         {"_id": registry_entry.id, "status": TaskStatus.SUBMITTED.value},
         {"$set": {"status": TaskStatus.RETRIEVED.value}},

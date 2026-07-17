@@ -2,7 +2,7 @@ from contextvars import ContextVar
 from typing import Optional, Any, Iterable
 from odmantic import AIOEngine
 
-
+# TDOD engine remove AIOEngineProxy
 class AIOEngineProxy(AIOEngine):
     """
     A proxy engine that inherits all behavior from AIOEngine but overrides `save`.
@@ -104,12 +104,12 @@ class AIOEngineProxy(AIOEngine):
 
         return any_saved
 
-
-current_engine_context: ContextVar[Optional[AIOEngineProxy]] = ContextVar(
-    "current_engine", default=None
-)
-
-
-def get_current_engine_from_context() -> Optional[AIOEngineProxy]:
-    """Get the current engine from context"""
-    return current_engine_context.get()
+#
+# current_engine_context: ContextVar[Optional[AIOEngineProxy]] = ContextVar(
+#     "current_engine", default=None
+# )
+#
+#
+# def get_current_engine_from_context() -> Optional[AIOEngineProxy]:
+#     """Get the current engine from context"""
+#     return current_engine_context.get()

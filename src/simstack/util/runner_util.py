@@ -106,7 +106,9 @@ async def restart(resource_name):
         f"Restarting node runner for resource: {resource_name} {context.config.python_paths}"
     )
 
-    cmd = Path(context.config.python_paths[0]) / "scripts" / "check_runner.sh"
+    cmd = Path(context.config.project_root) / "scripts" / "old" / "check_runner.sh"
+    if not cmd.is_file():
+        raise FileNotFoundError(f"Runner restart script not found: {cmd}")
 
     # Get current user information
     current_uid = os.getuid()
@@ -121,7 +123,9 @@ async def restart(resource_name):
 
     logger.info(f"Restarting node runner for resource: {resource_name} {str(cmd)}")
 
-    result = subprocess.Popen(str(cmd), start_new_session=True, env=env)
+    result = subprocess.Popen(
+        ["bash", str(cmd)], start_new_session=True, env=env
+    )
     # Log the restart
     message = f"user: {current_uid} group: {current_gid} pid: {current_pid} result: {result.pid}"
     runner_event = RunnerEvent(
@@ -146,7 +150,7 @@ async def schedule_restart(resource_name, restart_minutes):
         # try:
         #     if context.config.python_path:
         #         path = Path(context.config.python_path[0])
-        #         command = str(path / "scripts" / "check_runner.sh") + " >> " + str(path / "cron_log.log") + " 2>&1"
+        #         command = str(path / "scripts" / "old" / "check_runner.sh") + " >> " + str(path / "cron_log.log") + " 2>&1"
         #         logger.info(f"Path: {command} ")
         #         if not ensure_crontab_entry(command):
         #             runner_entry = RunnerEvent(resource=resource_name, runner_type=RunnerType.RESOURCE_RUNNER,

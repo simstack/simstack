@@ -2,27 +2,69 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "master", "feature-new-datasets" ]
+    branches:
+      - "**"
   pull_request:
-    branches: [ "main", "master", "feature-new-datasets" ]
   workflow_dispatch:  # This line enables the manual run button
 
 jobs:
-  test:
-    name: Test on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+  smoke:
+    name: Lightweight workflow smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          version: "0.11.29"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev --frozen
+
+      - name: Run lightweight workflow
+        env:
+          START_LOCAL_RUNNER: "false"
+          SIMSTACK_TEST_DB_CONNECTION_STRING: none
+          SIMSTACK_TEST_DB: smoke
+          SIMSTACK_PROJECT_ROOT: ${{ github.workspace }}
+        run: |
+          uv run python -m pytest \
+            tests/with_context/with_runner/test_array_storage_submit.py \
+            tests/with_context/with_runner/test_archive_node_e2e.py \
+            tests/without_context/test_dataset_persisted_structure.py \
+            tests/without_context/test_generate_test.py \
+            -q
+
+  test-linux:
+    name: Test on ubuntu-latest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
         python-version: ["3.12"]
 
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        env:
+          MONGO_INITDB_ROOT_USERNAME: root
+          MONGO_INITDB_ROOT_PASSWORD: rootpassword
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v8.3.2
         with:
+          version: "0.11.29"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
@@ -30,10 +72,136 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-extras --dev --frozen
 
-      - name: Run tests without context
-        # Runs pytest with coverage, skipping 'local_runner' tests as per previous configuration
-        run: uv run python -m pytest tests/without_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml -m "not local_runner"
-      - name: Run tests with context
-        run: uv run python -m pytest tests/with_context --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml -m "not local_runner"
+      - name: Set up MongoDB for testing
+        run: |
+          uv run python -c "
+          from pymongo import MongoClient
+          client = MongoClient('mongodb://root:rootpassword@localhost:27017/')
+          db = client['admin']
+          db.command('createUser', 'testing', pwd='testpassword', roles=[{'role': 'readWrite', 'db': 'testing_data'}])
+          db = client['testing_data']
+          db['init'].insert_one({'init': True})
+          print('MongoDB initialized with user testing and database testing_data')
+          "
+      - name: Run tests with runner
+        shell: bash
+        env:
+          SIMSTACK_TEST_DB_CONNECTION_STRING: 'mongodb://testing:testpassword@localhost:27017/'
+          SIMSTACK_TEST_DB: testing_data
+          SIMSTACK_PROJECT_ROOT: ${{ github.workspace }}
+        run: |
+          mkdir -p simstack
+          printf '[parameters]\n[parameters.general]\nuse_db = true\nworkdir_self = "${{ github.workspace }}/simstack"\n[parameters.db]\ndatabase = "testing_data"\nconnection_string = "mongodb://testing:testpassword@localhost:27017/"\n' > simstack.toml
+          cat simstack.toml
+          uv run create_model_table --dir tests
+          uv run create_node_table --dir tests
+          START_LOCAL_RUNNER=true uv run python -m pytest \
+            tests/with_context/with_runner/test_runner_completed.py -q
+          START_LOCAL_RUNNER=false uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml
+
+  package-html-docs:
+    name: Build Package HTML Docs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          version: "0.11.29"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: "Set up Python 3.12"
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev --frozen
+
+      - name: Generate API documentation sources
+        run: uv run sphinx-apidoc -o doc/source/simstack/modules src/simstack -f
+
+      - name: Build package HTML documentation with Sphinx
+        run: |
+          set -euo pipefail
+          rm -rf src/simstack/static/docs
+          mkdir -p src/simstack/static/docs
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          uv run sphinx-build -b html -d /tmp/simstack-docs-doctrees doc/source src/simstack/static/docs
+
+      - name: Upload package HTML documentation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sphinx-docs
+          path: src/simstack/static/docs
+
+  test-windows:
+    name: Test on windows-latest (Python ${{ matrix.python-version }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install MongoDB
+        run: |
+          choco install mongodb --no-progress
+          # The service might not start automatically or might need a moment
+          Get-Service MongoDB -ErrorAction SilentlyContinue | Start-Service
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          version: "0.11.29"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: "Set up Python ${{ matrix.python-version }}"
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev --frozen
+
+      - name: Set up MongoDB for testing
+        shell: pwsh
+        run: |
+          uv run python -c "
+          from pymongo import MongoClient
+          client = MongoClient('mongodb://localhost:27017/')
+          db = client['admin']
+          db = client['testing_data']
+          db['init'].insert_one({'init': True})
+          print('MongoDB initialized with database testing_data')
+          "
+
+      - name: Run tests with runner
+        shell: pwsh
+        env:
+          SIMSTACK_TEST_DB_CONNECTION_STRING: 'mongodb://localhost:27017/'
+          SIMSTACK_TEST_DB: testing_data
+          SIMSTACK_PROJECT_ROOT: ${{ github.workspace }}
+        run: |
+          New-Item -ItemType Directory -Force -Path simstack
+          $tomlContent = @"
+          [parameters]
+          [parameters.general]
+          use_db = true
+          workdir_self = "$($env:GITHUB_WORKSPACE -replace '\\', '\\')\\simstack"
+          [parameters.db]
+          database = "testing_data"
+          connection_string = "mongodb://localhost:27017/"
+          "@
+          Set-Content -Path simstack.toml -Value $tomlContent
+          Get-Content simstack.toml
+          uv run create_model_table --dir tests
+          uv run create_node_table --dir tests
+          uv run python -m pytest tests --junitxml=pytest.xml --cov-report=term-missing --cov=simstack --cov-config=pyproject.toml

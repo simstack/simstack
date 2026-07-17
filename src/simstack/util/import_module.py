@@ -36,12 +36,12 @@ def import_module_from_file(file_path: Path, root_dir: Path):
             module = importlib.import_module(module_name)
             return module
         except ImportError as e:
-            logger.error(f"Direct import failed: {e}")
+            logger.warning(f"Direct import failed: {e}  -- Trying spec-based import")
 
             # Fall back to spec-based import
             spec = importlib.util.spec_from_file_location(module_name, str(file_path))
             if spec is None or spec.loader is None:
-                print(f"Failed to create spec for {file_path}")
+                logger.error(f"Failed to create spec for {file_path}")
                 return None
 
             module = importlib.util.module_from_spec(spec)
@@ -50,7 +50,7 @@ def import_module_from_file(file_path: Path, root_dir: Path):
                 spec.loader.exec_module(module)
                 return module
             except Exception as e:
-                logger.error(f"Error processing module: {file_path}  {e}")
+                logger.error(f"Import error when processing module: {file_path}  {e}")
                 return None
 
     except Exception as e:

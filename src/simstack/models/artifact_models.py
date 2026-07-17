@@ -6,7 +6,7 @@ from simstack.models.pickle_models import FunctionPickle
 from simstack.models.simstack_model import simstack_model
 
 
-# class ArtifactList(List):
+# class ArtifactList(list):
 #     """A list that knows how to update its parent Artifact when modified."""
 #
 #     def __init__(self, parent_artifact, key, initial_values=None):

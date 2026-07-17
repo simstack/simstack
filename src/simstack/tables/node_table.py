@@ -1,6 +1,7 @@
 import inspect
 import logging
 import re
+from pathlib import Path
 from typing import Callable, List, get_type_hints, Dict, Any, Type
 
 
@@ -10,6 +11,7 @@ from simstack.tables.node_children import update_node_children
 from simstack.models import Parameters
 from simstack.models.models import NodeModel, ModelMapping, DataMapping
 from simstack.tables.table_builder import TableBuilderBase
+from simstack.util.db import Database
 from simstack.util.docstring_parser import DocstringParser
 from simstack.util.importer import import_class_by_name
 
@@ -26,7 +28,7 @@ class CreateNodeTable(TableBuilderBase):
     Helper class to build the node table without passing around many parameters.
 
     Usage:
-        creator = CreateNodeTable(engine)
+        creator = CreateNodeTable(database)
         await creator.make_node_table()
     """
 
@@ -71,18 +73,22 @@ class CreateNodeTable(TableBuilderBase):
             if param_name == "self":  # Skip self parameter for methods
                 continue
 
-            param_info: Dict[str, Any] = {
-                "name": param_name,
-                "type": type_hints.get(param_name, param.annotation.__name__),
-                "type_str": str(
-                    type_hints.get(
-                        param_name,
-                        param.annotation.__name__
-                        if param.annotation != inspect.Parameter.empty
-                        else "Any",
-                    )
-                ),
-            }
+            try:
+                param_info: Dict[str, Any] = {
+                    "name": param_name,
+                    "type": type_hints.get(param_name, param.annotation.__name__),
+                    "type_str": str(
+                        type_hints.get(
+                            param_name,
+                            param.annotation.__name__
+                            if param.annotation != inspect.Parameter.empty
+                            else "Any",
+                        )
+                    ),
+                }
+            except AttributeError as e:
+                logger.error(f"Could not parse type for {param_name}: {e}")
+                param_info = {}
 
             if doc_params and param_name in doc_params:
                 param_info["description"] = doc_params[param_name].get("description")
@@ -149,6 +155,7 @@ class CreateNodeTable(TableBuilderBase):
             output["type"] == SimstackResult for output in outputs
         )
         result_mappings = []
+        db = context.db
         if returns_simstack_result:
             if len(outputs) > 1:
                 logger.warning(
@@ -157,9 +164,7 @@ class CreateNodeTable(TableBuilderBase):
             else:
                 doc_simstack_result = parser.simstack_results()
                 if doc_simstack_result is None:
-                    logger.warning(
-                        f"The docstring of {func_name} does not defines its SimstackResult outputs"
-                    )
+                    logger.warning(f"The docstring of {func_name} does not defines its SimstackResult outputs")
                 else:
                     for name, data in doc_simstack_result.items():
                         output_mapping = None
@@ -180,7 +185,7 @@ class CreateNodeTable(TableBuilderBase):
                                 else:
                                     try:
                                         inner_model = await import_class_by_name(
-                                            inner_type_str
+                                            inner_type_str, db
                                         )
                                     except (ValueError, LookupError):
                                         inner_model = None
@@ -200,7 +205,7 @@ class CreateNodeTable(TableBuilderBase):
                                 # It's a single class name
                                 try:
                                     output_model = await import_class_by_name(
-                                        output_type
+                                        output_type, db
                                     )
                                     output_mapping = self.get_class_mapping(
                                         output_model, drops
@@ -225,7 +230,22 @@ class CreateNodeTable(TableBuilderBase):
         else:  # not a SimstackResult
             for output in outputs:
                 try:
-                    output_mapping = self.get_class_mapping(output["type"], drops)
+                    output_type = output["type"]
+                    if isinstance(output_type, str):
+                        output_mapping = output_type
+                        if " | None" in output_mapping:
+                            output_mapping = output_mapping.replace(" | None", "")
+                    else:
+                        # Handle Optional[T] / T | None
+                        from typing import get_args, get_origin, Union
+                        import types
+                        origin = get_origin(output_type)
+                        if origin is types.UnionType or origin is Union:
+                            args = get_args(output_type)
+                            if type(None) in args:
+                                # It's an Optional, take the first non-None argument
+                                output_type = next(arg for arg in args if arg is not type(None))
+                        output_mapping = self.get_class_mapping(output_type, drops)
                     result_mappings.append(
                         DataMapping(
                             name=output["name"],
@@ -234,7 +254,7 @@ class CreateNodeTable(TableBuilderBase):
                         )
                     )
                 except ValueError:
-                    logger.error(f"Could not parse '{output['type']}' to mapping")
+                    logger.error(f"Could not parse '{output['type']}' to mapping in {func_name}")
         return result_mappings
 
     def _extract_default_parameters(self, func: Callable[..., Any]) -> Parameters:
@@ -271,7 +291,7 @@ class CreateNodeTable(TableBuilderBase):
             (should_skip, existing_favorite)
         """
         try:
-            existing_model = await self.engine.find_one(
+            existing_model = await self.db.find_one(
                 NodeModel, NodeModel.name == node_name
             )
         except Exception as e:
@@ -293,12 +313,12 @@ class CreateNodeTable(TableBuilderBase):
 
         if getattr(existing_model, "pickle_function", None):
             try:
-                await self.engine.delete(existing_model.pickle_function)
+                await self.db.delete(existing_model.pickle_function)
             except Exception as e:
                 logger.error(f"Error deleting FunctionPickle for {node_name}: {e}")
 
         try:
-            await self.engine.delete(existing_model)
+            await self.db.delete(existing_model)
         except Exception as e:
             logger.error(f"Error deleting existing NodeModel {node_name}: {e}")
 
@@ -333,7 +353,7 @@ class CreateNodeTable(TableBuilderBase):
                     if drops and input_mapping.startswith(drops + "."):
                         input_mapping = input_mapping[len(drops) + 1 :]
 
-                    input_mapping_found = await self.engine.find_one(
+                    input_mapping_found = await self.db.find_one(
                         ModelMapping, ModelMapping.mapping == input_mapping
                     )
                     if not input_mapping_found and input_mapping:
@@ -432,6 +452,9 @@ class CreateNodeTable(TableBuilderBase):
                     func_name, type_hints, parser, drops
                 )
 
+                if node_name is None:
+                    raise ValueError(f"Node {func_name} has no name")
+
                 node_model = NodeModel(
                     name=node_name,
                     function_mapping=function_mapping,
@@ -444,10 +467,10 @@ class CreateNodeTable(TableBuilderBase):
                     favorite=existing_favorite,
                 )
 
-                logger.info(
+                logger.debug(
                     f"NodeModel: {node_model.name}, {node_model.function_mapping}, {node_model.input_mappings}"
                 )
-                await self.engine.save(node_model)
+                await self.db.save(node_model)
 
             except Exception as e:
                 logger.error(f"Error creating/saving NodeModel {node_name}: {e}")
@@ -456,27 +479,29 @@ class CreateNodeTable(TableBuilderBase):
                 traceback.print_exc()
 
     async def second_stage(self, drops: str) -> None:
-        await update_node_children(self.engine, drops)
+        await update_node_children(self.db, drops)
 
     async def clear_table(self) -> None:
         self.logger.info("Clearing NodeModel collection")
-        await self.engine.get_collection(NodeModel).drop()
+        await self.db.get_collection(NodeModel).drop()
 
 
 async def make_node_table(
-    engine: Any,
+    db: Database,
     dirs: list[str] | None = None,
     drops: str | None = None,
     write_schema: bool = False,
     clear: bool = False,
+    project_root: Path | None = None,
+    ignore_entrypoints: bool = False,
 ) -> None:
     """
-    Rebuild the node table using the given engine.
+    Rebuild the node table using the given databse.
 
     This is a thin wrapper around CreateNodeTable for backward compatibility.
     """
-    creator = CreateNodeTable(engine, write_schema=write_schema)
-    await creator.build(dirs=dirs, drops=drops, clear=clear)
+    creator = CreateNodeTable(db, write_schema=write_schema, project_root=project_root)
+    await creator.build(dirs=dirs, drops=drops, clear=clear, ignore_entrypoints=ignore_entrypoints)
 
 
 def create_node_table_main() -> None:

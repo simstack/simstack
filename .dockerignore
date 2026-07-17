@@ -8,6 +8,8 @@ __pycache__
 *.pyo
 *.pyd
 .Python
+.venv
+venv
 pip-log.txt
 pip-delete-this-directory.txt
 .tox
@@ -49,6 +51,7 @@ Thumbs.db
 debug.txt
 *.lock
 !pixi.lock
+!uv.lock
 
 # Build artifacts
 build/

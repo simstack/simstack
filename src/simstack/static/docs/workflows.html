@@ -1,0 +1,766 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Graphical User Interface" href="ui_documentation.html"><link rel="prev" title="Overview" href="overview.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Workflows - SimStack II documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="_static/cobalt2-theme.css?v=2d651046" />
+    <link rel="stylesheet" type="text/css" href="_static/docs-build-badge.css?v=803faff8" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">SimStack II  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui_documentation.html">Graphical User Interface</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="developer_guide.html">Developer Guide</a><input aria-label="Toggle navigation of Developer Guide" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="data.html">Persisting and Visualizing Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lists.html">List Mixins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="array_lists.html">Array Lists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tables.html">Tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="files.html">File Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="resource_config.html">Program Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mass_runner.html">MassRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fire_and_forget_runner.html">FireAndForgetRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing_complex_nodes.html">Testing Complex Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database_migrations.html">Database Migrations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ci_pipeline.html">CI Pipeline and Documentation Artifacts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Simstack II Setup</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="_sources/workflows.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="workflows">
+<span id="id1"></span><h1>Workflows<a class="headerlink" href="#workflows" title="Link to this heading">¶</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This section is intended for workflow developers but also helpful to users. A more detailed how-to for nodes is given in <span class="xref std std-ref">developer-guide</span></p>
+</div>
+<section id="from-python-to-workflows">
+<h2>From Python to Workflows<a class="headerlink" href="#from-python-to-workflows" title="Link to this heading">¶</a></h2>
+<p>The following section is intended to guide developers who are familiar with python to transform their code
+into Simstack II. We will introduce the concepts step by step, starting with a simple python “workflow”.
+Workflows are comprised of nodes, which are implemented as python functions.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">adder</span><span class="p">(</span><span class="n">arg1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">arg2</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">arg1</span> <span class="o">+</span> <span class="n">arg2</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">multiplier</span><span class="p">(</span><span class="n">arg1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">arg2</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">arg1</span> <span class="o">*</span> <span class="n">arg2</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">add_multiply_python</span><span class="p">(</span><span class="n">arg1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">arg2</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">arg3</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="n">add_result</span> <span class="o">=</span> <span class="n">adder</span><span class="p">(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">)</span>
+    <span class="n">multiply_result</span> <span class="o">=</span> <span class="n">multiplier</span><span class="p">(</span><span class="n">add_result</span><span class="p">,</span> <span class="n">arg3</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">multiply_result</span>
+</pre></div>
+</div>
+<p>In this code we have three nodes, <cite>adder</cite>, <cite>multiplier</cite>, and <cite>add_multiply_python</cite>. The first two nodes are simple
+functions, the last function nests the 2 simple functions, making this function a template for a workflow.</p>
+<p>To transform this code into a Simstack II workflow, we want to introduce minimal changes to the code above to accomplish
+the following:</p>
+<ul class="simple">
+<li><p>One or more of the functions should be visible and startable in the GUI</p></li>
+<li><p>The results of the nodes should be persisted in the database and visible in the GUI</p></li>
+<li><p>The nodes should be executable on remote resources</p></li>
+</ul>
+<p>To achievieve this, we need to make the following changes in the code:</p>
+<ul class="simple">
+<li><p>decorate the functions that should be visible in the GUI with the <cite>&#64;node</cite> decorator</p></li>
+<li><p>ensure that all input and output types of the nodes are registered odmantic Models</p></li>
+<li><p>specifiy where the nodes should be executed</p></li>
+</ul>
+<p>For the specific example above the code looks as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@node</span><span class="p">(</span><span class="n">parameters</span><span class="o">=</span><span class="n">Parameters</span><span class="p">(</span><span class="n">resource</span><span class="o">=</span><span class="s2">&quot;my-remote-host&quot;</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="s2">&quot;slurm-queue&quot;</span><span class="p">))</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">adder</span><span class="p">(</span><span class="n">arg1</span><span class="p">:</span> <span class="n">FloatData</span><span class="p">,</span> <span class="n">arg2</span><span class="p">:</span> <span class="n">FloatData</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FloatData</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">FloatData</span><span class="p">(</span><span class="n">field_name</span><span class="o">=</span><span class="s2">&quot;adder_result&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">arg1</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">arg2</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+<span class="nd">@node</span><span class="p">(</span><span class="n">parameters</span><span class="o">=</span><span class="n">Parameters</span><span class="p">(</span><span class="n">resource</span><span class="o">=</span><span class="s2">&quot;my-remote-host&quot;</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="s2">&quot;default&quot;</span><span class="p">))</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">multiplier</span><span class="p">(</span><span class="n">arg1</span><span class="p">:</span> <span class="n">FloatData</span><span class="p">,</span> <span class="n">arg2</span><span class="p">:</span> <span class="n">FloatData</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FloatData</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">FloatData</span><span class="p">(</span><span class="n">field_name</span><span class="o">=</span><span class="s2">&quot;multiplier_result&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">arg1</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">arg2</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+<span class="nd">@node</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_multiply_python</span><span class="p">(</span><span class="n">arg1</span><span class="p">:</span> <span class="n">FloatData</span><span class="p">,</span> <span class="n">arg2</span><span class="p">:</span> <span class="n">FloatData</span><span class="p">,</span> <span class="n">arg3</span><span class="p">:</span> <span class="n">FloatData</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FloatData</span><span class="p">:</span>
+    <span class="n">add_result</span> <span class="o">=</span> <span class="n">adder</span><span class="p">(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>  <span class="c1"># note passing the kwargs!!!!</span>
+    <span class="n">multiply_result</span> <span class="o">=</span> <span class="n">multiplier</span><span class="p">(</span><span class="n">add_result</span><span class="p">,</span> <span class="n">arg3</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">multiply_result</span>
+</pre></div>
+</div>
+<p>The first thing you notice is that the datatypes have changed. Since int, floats etc appear a lot, Simstack provides
+models for these types (see: <a class="reference internal" href="simstack/modules/simstack.models.html#module-simstack.models.base_types" title="simstack.models.base_types"><code class="xref py py-mod docutils literal notranslate"><span class="pre">simstack.models.base_types</span></code></a>).</p>
+<p>The &#64;node decorator embeds the simple python functions into a complex workflow class
+(see: <a class="reference internal" href="simstack/modules/simstack.core.html#simstack.core.node.node" title="simstack.core.node.node"><code class="xref py py-func docutils literal notranslate"><span class="pre">simstack.core.node.node()</span></code></a> in module: <a class="reference internal" href="simstack/modules/simstack.core.html#module-simstack.core.node" title="simstack.core.node"><code class="xref py py-mod docutils literal notranslate"><span class="pre">simstack.core.node</span></code></a>).</p>
+<p>To allow Simstack II with new data models you need to register them once, see <span class="xref std std-ref">persisting_models</span>.
+In order execute nodes via the UI you need to register the nodes. This would result in a workflow where all nodes are
+visible in the GUI (<span class="xref std std-ref">submitting-workflows</span>).
+The nodes <cite>adder</cite> and <cite>multiplier</cite> would be executed on a runner running on “my-remote-host”.
+The adder would be submitted to the “slurm-queue” and the multiplier would be executed immediately in the foreground.
+add_multiply_python would be executed on the default resource by a runner called <cite>local</cite>. You can change these defaults in the UI.
+The relationship between the classes in the code, the tables in the database
+and the representation of this data in the GUI, these models are discussed in <span class="xref std std-ref">persisting-results-section</span>.</p>
+<p>Here are some ground rules to write workflows in Simstack II:</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<ul class="simple">
+<li><p>Node functions must have a <strong>unique name</strong> (across the whole installation).</p></li>
+<li><p>Node functions must have the <strong>**kwargs argument</strong></p></li>
+<li><p>Node functions must <strong>pass</strong> the **kwargs argument to nodes they call</p></li>
+<li><p>Node functions must be <strong>registered in the node_model table</strong> of the database
+by running make_node_table (<a class="reference internal" href="#registering"><span class="std std-ref">Registering Models and Nodes</span></a>)</p></li>
+<li><p>All positional arguments of node functions must be <strong>registered Models</strong> in the model_table of the database
+by running make_model_table (<a class="reference internal" href="#registering"><span class="std std-ref">Registering Models and Nodes</span></a>). Presently kwargs for models are not supported.</p></li>
+</ul>
+</div>
+<p>Beyond that nodes functions are normal python functions which can use the full flexibility of python.
+The can call other functions or other nodes, but should <strong>avoid “closures”</strong>, such as global variables.
+For this reason, node function should <strong>not be class members</strong> unless they are class members of an odmantic model.</p>
+<p>You can consult the documentation of this class to understand how this works but this is not required to write
+workflows.</p>
+<p>The choice, whether a function is a “normal” function or a node is influenced
+by the following considerations:</p>
+<ul class="simple">
+<li><p>Only nodes are visible in the GUI</p></li>
+<li><p>only nodes can be executed automatically on remote resources</p></li>
+<li><p>in principle nodes can call normal functions which can call nodes, as long as the **kwargs
+are passed correctly</p></li>
+</ul>
+<section id="return-types">
+<h3>Return Types<a class="headerlink" href="#return-types" title="Link to this heading">¶</a></h3>
+<p>In workflows, the results of node functions must be visible in the databse and may be
+processed by other nodes. This means that <strong>results</strong> of the nodes must by odmantic models which
+can be visualized in the GUI and passed to other nodes which may execute on different resources.</p>
+<p>In order to encapsulate data processing, this essentially <strong>precludes the use
+of files as relevant results</strong>. Many terminal nodes will call external
+programs that return their output in file format. In Simstack, all human
+readable content of these files should be <strong>parsed into Simstack Model types</strong>
+that can be stored in the database. In many cases the output files of
+terminal nodes will nevertheless be required input by other terminal nodes. In
+order to facilitate processing, references to these files should be stored in
+the output to avoid error-prone parsing and recreation.</p>
+<p>THe following return types od node_functions are supported:</p>
+<ul class="simple">
+<li><p>any <strong>registered</strong> Model (<a class="reference internal" href="#registering"><span class="std std-ref">Registering Models and Nodes</span></a>),</p></li>
+<li><p>True or False, the indicating success or failure,</p></li>
+<li><p>a class derived from SimstackResult, in particular NodeRunner,</p></li>
+<li><p>None will result in failure</p></li>
+</ul>
+<p><a class="reference internal" href="simstack/modules/simstack.core.html#simstack.core.simstack_result.SimstackResult" title="simstack.core.simstack_result.SimstackResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">simstack.core.simstack_result.SimstackResult</span></code></a> provides a framework to
+return more than one result, including files and info_files to the calling
+function. The class NodeRunner is a child class of SimstackResult and
+provides useful helper functions to manage results, files and logging
+(see below).</p>
+</section>
+<section id="the-noderunner-helper-class">
+<h3>The Noderunner Helper Class<a class="headerlink" href="#the-noderunner-helper-class" title="Link to this heading">¶</a></h3>
+<p><a class="reference internal" href="simstack/modules/simstack.core.html#simstack.core.node_runner.NodeRunner" title="simstack.core.node_runner.NodeRunner"><code class="xref py py-class docutils literal notranslate"><span class="pre">simstack.core.node_runner.NodeRunner</span></code></a> instances provide
+useful quality-of-life features from logging to
+the management of results. In realistic applications, nodes generate a lot of
+auxiliary data, such as log-files of external programs, that are not results,
+but useful to keep track of the data-flow. To facilitate oversight over
+nodes that are executed remotely, it is useful to capture the available
+output of nodes, even when they fail. The NodeRunner
+class offers some quality-of-life features for this. Each node is passed an
+instance of NodeRunner in the **kwargs.</p>
+<p>You can add output by:</p>
+<ul class="simple">
+<li><p>adding any <strong>registered</strong> Models to the node_runner as attributes</p></li>
+<li><p>appending FileStack instances to node_runner.files</p></li>
+<li><p>appending FileStack instances to node_runner.info_files</p></li>
+</ul>
+<p><strong>Node Example with NodeRunner</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@node</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">my_node</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SimstackResult</span>
+    <span class="c1"># get the supplied node_runner first</span>
+    <span class="n">node_runner</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;node_runner&#39;</span><span class="p">,</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">node_runner</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;no node_runner&#39;</span><span class="p">)</span>
+    <span class="c1"># your code here ....</span>
+
+    <span class="n">file_with_data</span> <span class="o">=</span> <span class="n">FileStack</span><span class="o">.</span><span class="n">from_local_file</span><span class="p">(</span><span class="s2">&quot;my_important_file.dat&quot;</span><span class="p">)</span>
+    <span class="n">node_runner</span><span class="o">.</span><span class="n">files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_with_data</span><span class="p">)</span> <span class="c1"># file_with_data will be added</span>
+                                             <span class="c1"># automatically to the result</span>
+                                             <span class="c1"># table of the NodeRegistry</span>
+                                             <span class="c1"># entry</span>
+
+    <span class="n">some_file_with_log_output</span> <span class="o">=</span> <span class="n">FileStack</span><span class="o">.</span><span class="n">from_local_file</span><span class="p">(</span><span class="s2">&quot;my_log.txt&quot;</span><span class="p">)</span>
+    <span class="c1"># will not be added to the result tables but to the info_files tab or the node and</span>
+    <span class="c1"># can be inspected in the gui for potential problems or output</span>
+    <span class="c1"># that has not been parsed.</span>
+    <span class="n">node_runner</span><span class="o">.</span><span class="n">make_info_files</span><span class="p">(</span><span class="n">some_file_with_log_output</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">some_error</span><span class="p">:</span>
+        <span class="c1"># this error will be caught in the calling function</span>
+        <span class="c1"># which will post-process the results above this line</span>
+        <span class="c1"># but set the task_status to TaskStatus.FAILED</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Something went wrong&quot;</span><span class="p">)</span>
+
+    <span class="n">my_data</span> <span class="o">=</span> <span class="n">ArrayStorage</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;my cool numpy result&quot;</span><span class="p">)</span>
+    <span class="n">my_data</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">numpy_array</span><span class="p">)</span>
+    <span class="n">node_runner</span><span class="o">.</span><span class="n">my_data</span> <span class="o">=</span> <span class="n">my_data</span> <span class="c1"># will also be added to the result table</span>
+
+    <span class="k">return</span> <span class="n">node_runner</span><span class="o">.</span><span class="n">succeed</span><span class="p">(</span><span class="s2">&quot;happy ending&quot;</span><span class="p">)</span> <span class="c1"># node_runner is a child</span>
+                                               <span class="c1"># class of SimstackResult</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>NodeRunner.make_info_files(file1,file2,pattern1,pattern2) is a more clever way to append many files to the info_files list.
+NodeRunner.info_file_patterns defines a standard set of endings to include automatically</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The instance of NodeRunner passed from the calling function, will be
+post-processed by the calling function even when the node fails. This allows
+capturing of partial output, in particular the info_files.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The call to your actual function is always wrapped in a try-except-block.
+In most scenarios you do not need your own try-except-finally blocks in the
+node</p>
+</div>
+<p><strong>Data Provided by **kwargs</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">node_runner</span> <span class="o">=</span> <span class="n">NodeRunner</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+<span class="n">node_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;node_runner&#39;</span><span class="p">:</span> <span class="n">node_runner</span><span class="p">,</span>
+    <span class="s1">&#39;parent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>                <span class="c1"># DO NOT CHANGE &amp; pass to children</span>
+
+    <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>                  <span class="c1"># DO NOT CHANGE &amp; pass</span>
+    <span class="s1">&#39;call_path&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_path</span><span class="p">,</span>         <span class="c1"># DO NOT CHANGE &amp;</span>
+    <span class="s1">&#39;parent_parameters&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span>   <span class="c1"># this must have a name different from parameters, because</span>
+                                            <span class="c1"># otherwise this setting will override all the parameters of</span>
+                                            <span class="c1"># the child nodes</span>
+    <span class="s1">&#39;recompute_artifacts&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">recompute_artifacts</span><span class="p">,</span>
+    <span class="s1">&#39;custom_name&#39;</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">custom_name</span>
+<span class="p">}</span>
+
+<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">force_rerun</span><span class="p">:</span>
+    <span class="n">node_kwargs</span><span class="p">[</span><span class="s1">&#39;force_rerun&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p><strong>Logging</strong></p>
+<p>In order to keep track of the node execution, the Simstack core modules and
+user written nodes should write logs. Simstack will initialize a custom
+database logger which will be added to the logging system. In your node you
+can therefore just instantiate and use a logger</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+
+<span class="nd">@node</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">my_node</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SimstackResult</span>
+
+    <span class="n">node_runner</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;node_runner&#39;</span><span class="p">]</span> <span class="c1"># should never fail</span>
+
+    <span class="c1"># this will log to the database and be visible in the general logs</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Some message I will never find&quot;</span><span class="p">)</span>
+
+    <span class="c1"># this will be shown in a special tab called task-logs which collects</span>
+    <span class="c1"># only messages for this node</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">node_runner</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> informative message&quot;</span><span class="p">)</span>
+
+    <span class="c1"># node_runner will add the task_id info</span>
+    <span class="n">node_runner</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;another informative message&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The node_runner helper functions are provided for all log-levels.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Simstack generates a lot of log messages. Use the task_id mechanism as
+much as possible to provide useful info</p>
+</div>
+<p><strong>Executing external programs</strong></p>
+<p>The NodeRunner class provides <code class="xref py py-func docutils literal notranslate"><span class="pre">simstack.core.NodeRunner.subprocess()</span></code> to
+facilitate execution of external programs. This helper function will execute
+a command in the current shell and automatically add standard output and
+error to the info_files of the node. The function returns True/False upon
+success and failure. Stdout and sterr of the last command are also stored in
+attributes so that they can be parsed by the node.</p>
+</section>
+<section id="node-decorator-arguments">
+<h3>Node Decorator Arguments<a class="headerlink" href="#node-decorator-arguments" title="Link to this heading">¶</a></h3>
+<p>The node decorator may have arguments.</p>
+<ul class="simple">
+<li><p>Parameters: <a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.Parameters" title="simstack.models.Parameters"><code class="xref py py-class docutils literal notranslate"><span class="pre">simstack.models.Parameters</span></code></a> where and how shall the node
+be executed</p></li>
+<li><p>force_rerun: force execution of the node, but not the children</p></li>
+<li><p>recompute artifacts: without executing the node or its children recompute
+all artifacts.</p></li>
+</ul>
+<p>The <a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.parameters.Parameters" title="simstack.models.parameters.Parameters"><code class="xref py py-class docutils literal notranslate"><span class="pre">simstack.models.parameters.Parameters</span></code></a> can specify</p>
+<ul class="simple">
+<li><p>a resource <a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><code class="xref py py-class docutils literal notranslate"><span class="pre">simstack.models.parameters.Resource</span></code></a> which must be one
+of the resource names listed in the configuration file(<a class="reference internal" href="installation.html#configuration-file"><span class="std std-ref">Create simstack.toml</span></a>).
+Specifying the resource <code class="docutils literal notranslate"><span class="pre">self</span></code> (the default) means that the node will be
+executed on the same resource as the calling node.</p></li>
+<li><p>a queue (makes sense only for remote resources), with values <code class="docutils literal notranslate"><span class="pre">default</span></code> for
+immediate execution, <code class="docutils literal notranslate"><span class="pre">slurm_queue</span></code> for submission to the batch system by
+slurm</p></li>
+</ul>
+<p>The slurm parameters are specified in Parameters has an attribute
+<code class="docutils literal notranslate"><span class="pre">slurm_parameters</span></code> of type: <a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.parameters.SlurmParameters" title="simstack.models.parameters.SlurmParameters"><code class="xref py py-class docutils literal notranslate"><span class="pre">simstack.models.parameters.SlurmParameters</span></code></a>.</p>
+<p>When specifying parameters in the &#64;node decoration, the developer should
+specify sensible default parameters for node execution. These can be overwritten
+on-the-fly when calling the node:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@node</span><span class="p">(</span><span class="n">parameters</span><span class="o">=</span><span class="n">Parameters</span><span class="p">(</span><span class="n">resource</span><span class="o">=</span><span class="s2">&quot;standard-resource&quot;</span><span class="p">,</span>
+<span class="n">queue</span><span class="o">=</span><span class="s2">&quot;slurm-queue&quot;</span><span class="p">))</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">some_node</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="o">.....</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">calling_function</span><span class="p">():</span>
+    <span class="c1"># we are already in a slurm job, we dont want to start another</span>
+    <span class="c1"># this node will run on the same resource</span>
+    <span class="n">some_node</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="n">parameters</span><span class="o">=</span><span class="n">Parameters</span><span class="p">(</span><span class="n">resource</span><span class="o">=</span><span class="s2">&quot;self&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="node-execution">
+<h2>Node Execution<a class="headerlink" href="#node-execution" title="Link to this heading">¶</a></h2>
+<p>The node decorator wraps the actual execution of the function into a series
+of operations controlled by the class Node.</p>
+<ul class="simple">
+<li><p>before execution all arguments and the function body are hashed using
+<a class="reference internal" href="simstack/modules/simstack.core.html#simstack.core.hash.complex_hash_function" title="simstack.core.hash.complex_hash_function"><code class="xref py py-func docutils literal notranslate"><span class="pre">simstack.core.hash.complex_hash_function()</span></code></a>, which will infer how to
+deal with nested objects, such as list, dicts, classes, etc.
+For odmantic models which have a <code class="docutils literal notranslate"><span class="pre">complex_hash_function</span></code> this function will
+override the default behavior. Odmantic ObjectId are not hashed.</p></li>
+<li><p>if a NodeRegistry <a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.node_registry.NodeRegistry" title="simstack.models.node_registry.NodeRegistry"><code class="xref py py-class docutils literal notranslate"><span class="pre">simstack.models.node_registry.NodeRegistry</span></code></a> entry
+matching the name of the function, the hash of the
+arguments and the hash of the function is found, this registry entry is
+returned, even if the node has failed unless force_rerun is True.</p></li>
+<li><p>if no such NodeRegistry entry exists a new one is created with TaskStatus.SUBMITTED</p></li>
+<li><p>the node class then calls the function <a class="reference internal" href="simstack/modules/simstack.core.html#simstack.core.node.Node.run_somewhere" title="simstack.core.node.Node.run_somewhere"><code class="xref py py-func docutils literal notranslate"><span class="pre">simstack.core.node.Node.run_somewhere()</span></code></a>
+which executes the node locally using
+<a class="reference internal" href="simstack/modules/simstack.core.html#simstack.core.node.Node.execute_node_locally" title="simstack.core.node.Node.execute_node_locally"><code class="xref py py-func docutils literal notranslate"><span class="pre">simstack.core.node.Node.execute_node_locally()</span></code></a> or waits until
+the task status is changed in the database by a runner. This function will
+set the <code class="docutils literal notranslate"><span class="pre">status</span></code> field in the <code class="docutils literal notranslate"><span class="pre">node_registry</span></code> entry depending on the
+outcome of the node execution an process the data in <code class="docutils literal notranslate"><span class="pre">node_runner</span></code></p></li>
+<li><p>after node execution the results from remote nodes are loaded from the
+database.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Timeouts for remote execution are not yet implemented.</p>
+</div>
+<section id="remote-execution">
+<h3>Remote Execution<a class="headerlink" href="#remote-execution" title="Link to this heading">¶</a></h3>
+<p>Nodes scheduled to run on a remote execution require a runner
+(<code class="xref py py-func docutils literal notranslate"><span class="pre">simstack.core.runner.runner()</span></code>) to be running on that resource with the
+–resource flag set to the name of that node. The user or the administrator
+has to install Simstack and the relevant user repositories on the remote
+server and specify the information relevant to the remote node in the
+<code class="docutils literal notranslate"><span class="pre">simstack.toml</span></code> configuration file (see: <a class="reference internal" href="installation.html#configuration-file"><span class="std std-ref">Create simstack.toml</span></a>). This
+needs to be done only once.</p>
+<p>When someone is actively developing new nodes or other code to be run on the
+remote node, it is important to keep the code on the remote server up-to-date.
+The preferred way is to periodically check for a git-update or other server
+crashes and restart the server if such events are detected.
+The file <code class="file docutils literal notranslate"><span class="pre">simstack.scripts.check_runner.sh</span></code> provides a template that
+must be adapted to the configuration of the remote node. This needs to be
+done only once.</p>
+</section>
+<section id="registering-models-and-nodes">
+<span id="registering"></span><h3>Registering Models and Nodes<a class="headerlink" href="#registering-models-and-nodes" title="Link to this heading">¶</a></h3>
+<p>Database access to the mongodb database in Simstack II is facilitated by a
+using the odmantic package, which provides asynchronous object oriented access
+to the database (see <a class="reference internal" href="data.html#persisting-data"><span class="std std-ref">Persisting and Visualizing Data</span></a>). This means that data in the
+generic code-base of Simstack is loaded/stored by storing class instances.</p>
+<p>These classes cannot be imported via the standard <code class="docutils literal notranslate"><span class="pre">import</span></code> statements,
+because they are unknown to the SimStack core modules. To overcome this
+problem a dynamic import system has been implemented, where the module paths
+of Simstack Models and Nodes are stored in database tables (<code class="docutils literal notranslate"><span class="pre">node_model</span></code>
+and <code class="docutils literal notranslate"><span class="pre">model_table</span></code>, respectively).</p>
+<p>The functions <code class="xref py py-func docutils literal notranslate"><span class="pre">simstack.core.model_table.make_model_table()</span></code> and
+<code class="xref py py-func docutils literal notranslate"><span class="pre">simstack.core.node_table.make_node_table()</span></code> scan the directories
+provided in the path section of the configuration file
+(<span class="xref std std-ref">configuration_file</span>)</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">paths</span><span class="p">]</span>
+<span class="c1"># Path configuration for the PathManager.</span>
+<span class="c1"># Each path entry should have a path and an optional drops value.</span>
+<span class="c1"># The path is the directory to search for Python files</span>
+<span class="c1"># The &quot;drops&quot; value is a prefix to drop from module names (for import paths)</span>
+<span class="n">models</span> <span class="o">=</span> <span class="p">{</span> <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;src</span><span class="se">\\</span><span class="s2">simstack</span><span class="se">\\</span><span class="s2">models&quot;</span><span class="p">,</span> <span class="n">drops</span> <span class="o">=</span> <span class="s2">&quot;src&quot;</span> <span class="p">}</span>
+<span class="n">methods</span> <span class="o">=</span> <span class="p">{</span> <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;src</span><span class="se">\\</span><span class="s2">simstack</span><span class="se">\\</span><span class="s2">methods&quot;</span><span class="p">,</span> <span class="n">drops</span> <span class="o">=</span> <span class="s2">&quot;src&quot;</span> <span class="p">}</span>
+<span class="n">ui_testing</span> <span class="o">=</span> <span class="p">{</span> <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;src</span><span class="se">\\</span><span class="s2">simstack</span><span class="se">\\</span><span class="s2">ui_testing&quot;</span><span class="p">,</span> <span class="n">drops</span> <span class="o">=</span> <span class="s2">&quot;src&quot;</span> <span class="p">}</span>
+<span class="n">applications</span> <span class="o">=</span> <span class="p">{</span> <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;applications&quot;</span><span class="p">,</span> <span class="n">drops</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">use_pickle</span> <span class="o">=</span> <span class="n">false</span> <span class="p">}</span>
+<span class="n">tests</span> <span class="o">=</span> <span class="p">{</span> <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;tests&quot;</span><span class="p">,</span> <span class="n">drops</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">use_pickle</span> <span class="o">=</span> <span class="n">false</span> <span class="p">}</span>
+<span class="n">projects</span> <span class="o">=</span> <span class="p">{</span> <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;projects&quot;</span><span class="p">,</span> <span class="n">drops</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                     <span class="n">use_pickle</span> <span class="o">=</span> <span class="n">false</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>The first 4 entries are standard paths. The first three (models, methods,
+ui_testing) belong to the Simstack core. <code class="docutils literal notranslate"><span class="pre">applications</span></code> is the standard
+directory where you should install community application packages for
+specific application domains.</p>
+<p>The nodes and application programs written by you should go under
+<code class="docutils literal notranslate"><span class="pre">projects</span></code>.</p>
+</section>
+<section id="most-common-errors-problems">
+<h3>Most Common Errors &amp; Problems<a class="headerlink" href="#most-common-errors-problems" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>remote runners are not on the same branch or not up-to-date (see Health
+Check in the GUI)</p></li>
+<li><p>you can set the branch of the runners in the GUI (in profile). Unless in ver special</p></li>
+</ul>
+<p>circumstances all runners should be on the same branch.
+* all runners will periodically update from git. when the branch has changed the <strong>default runner</strong> will
+recreate models and nodes. the runners will update –locked, i.e. they need an up-to-date uv.lock
+* model and node creation is incremental. when you move things around the exisiting bindings will be
+overridden, but if you delete models and nodes the database will not know this (which is intended because
+data may still exist in the db)
+* when you not only develop your own package but also the simstack core (you should not), it makes
+sense to clone simstack as a subrepo into you main repo. You then must run <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">lock</span> <span class="pre">--upgrade-package</span> <span class="pre">simstack</span></code>
+after commits of simstack to keep your pyproject.toml up to date. after that you must run `` uv sync –locked`` and commit again
+your main repo so that the runners can update simstack.
+* node or model not registered in the database (see <a class="reference internal" href="#registering"><span class="std std-ref">Registering Models and Nodes</span></a>)
+* node or model not imported correctly (see below)
+* forgetting **kwargs in the node function definition. Nodes will crash.
+* relative imports suggested by IDE:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.nodes</span><span class="w"> </span><span class="kn">import</span> <span class="n">node</span>
+</pre></div>
+</div>
+<p>make sure all imports are relative to simstack. For example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parameters</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Workflow</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">Runner</span>
+</pre></div>
+</div>
+<p>or relative the other top-level modules. e.g. applications</p>
+</section>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="ui_documentation.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Graphical User Interface</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="overview.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Overview</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, Wolfgang Wenzel
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Workflows</a><ul>
+<li><a class="reference internal" href="#from-python-to-workflows">From Python to Workflows</a><ul>
+<li><a class="reference internal" href="#return-types">Return Types</a></li>
+<li><a class="reference internal" href="#the-noderunner-helper-class">The Noderunner Helper Class</a></li>
+<li><a class="reference internal" href="#node-decorator-arguments">Node Decorator Arguments</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#node-execution">Node Execution</a><ul>
+<li><a class="reference internal" href="#remote-execution">Remote Execution</a></li>
+<li><a class="reference internal" href="#registering-models-and-nodes">Registering Models and Nodes</a></li>
+<li><a class="reference internal" href="#most-common-errors-problems">Most Common Errors &amp; Problems</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/scripts/furo.js?v=46bd48cc"></script>
+    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    </body>
+</html>

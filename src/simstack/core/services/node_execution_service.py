@@ -84,11 +84,9 @@ class NodeExecutionService(BaseService):
                 return False
 
             if queue == "slurm-queue":
-                await submit_node(registry_entry)
-                return True
+                return await submit_node(registry_entry)
             elif queue == "docker":
-                await run_docker(registry_entry)
-                return True
+                return await run_docker(registry_entry)
 
             elif queue == "default":
                 if self._detach:
@@ -114,15 +112,23 @@ class NodeExecutionService(BaseService):
                         detached_process = getattr(subprocess, "DETACHED_PROCESS", 0)
                         creationflags = create_new_process_group | detached_process
 
-                    process = await asyncio.create_subprocess_exec(
-                        *cmd,
-                        stdout=asyncio.subprocess.DEVNULL,
-                        stderr=asyncio.subprocess.DEVNULL,
-                        creationflags=creationflags,
-                        start_new_session=True
-                        if platform.system() != "Windows"
-                        else False,
-                    )
+                    try:
+                        process = await asyncio.create_subprocess_exec(
+                            *cmd,
+                            stdout=asyncio.subprocess.DEVNULL,
+                            stderr=asyncio.subprocess.DEVNULL,
+                            creationflags=creationflags,
+                            start_new_session=True
+                            if platform.system() != "Windows"
+                            else False,
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to spawn detached process for task id: {registry_entry.id}. task_id: {registry_entry.id}. "
+                            f"Command: {' '.join(cmd)}. Error: {str(e)}"
+                        )
+                        raise
+
                     logger.info(
                         f"Spawned detached process for task_id: {registry_entry.id} with PID: {process.pid}"
                     )
@@ -159,9 +165,7 @@ class NodeExecutionService(BaseService):
             self._running_tasks.remove(task)
 
         # Load tasks
-        registry_entry_list = await context.db.load_waiting_tasks_for_resource(
-            self._resource_name
-        )
+        registry_entry_list = await context.db.load_waiting_tasks_for_resource(self._resource_name)
 
         if registry_entry_list:
             logger.info(

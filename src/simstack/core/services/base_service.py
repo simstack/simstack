@@ -27,6 +27,7 @@ class BaseService(ABC):
         self._stop_event = asyncio.Event()
         self._shutdown_event = shutdown_event
         self._task = None
+        self._consecutive_failures = 0
 
         # Common identity attributes
         self._pid = os.getpid()
@@ -95,8 +96,15 @@ class BaseService(ABC):
             start_time = asyncio.get_event_loop().time()
             try:
                 await self.execute()
+                self._consecutive_failures = 0
             except Exception as e:
-                logger.exception(f"Error in service {self._name}: {e}")
+                self._consecutive_failures += 1
+                logger.exception(f"Error in service {self._name} (failure {self._consecutive_failures}/3): {e}")
+                if self._consecutive_failures >= 3:
+                    logger.error(f"Service {self._name} failed 3 times in a row. Shutting down.")
+                    self._stop_event.set()
+                    if self._shutdown_event:
+                        self._shutdown_event.set()
 
             # Calculate wait time to maintain interval regardless of execution duration
             elapsed = asyncio.get_event_loop().time() - start_time

@@ -12,11 +12,13 @@ from simstack.util.git_repository_status import get_git_status
 from simstack.util.submit_to_watchdog import submit_to_watchdog
 
 import logging
+
 logger = logging.getLogger("runner_utils")
+
 
 def make_git_status_list() -> List[str]:
     git_status_list = []
-    git_path_list = context.config.git_list + [context.config.project_root]
+    git_path_list = [context.config.project_root]
     for path in git_path_list:
         result = get_git_status(path)
         if result["branch"]:
@@ -42,18 +44,20 @@ def run_squeue_for_job(job_id: str) -> str:
     return result.stdout
 
 
-def get_job_info(job_id: str, task_id: ObjectId, resource: Resource) -> SlurmInfo | None:
+def get_job_info(
+    job_id: str, task_id: ObjectId, resource: Resource
+) -> SlurmInfo | None:
     """Get job information from SLURM queue using squeue"""
     try:
         stdout = run_squeue_for_job(job_id)
-        #logger.info(f"task_id: {task_id} running squeue for job {job_id}: result: {stdout}")
+        # logger.info(f"task_id: {task_id} running squeue for job {job_id}: result: {stdout}")
 
         if not stdout or stdout.strip() == "":
             # after a while slurm will stop returning info for jobs that are no longer running
             return None
 
         lines = stdout.splitlines()
-        #logger.info(f"task_id: {task_id} slurm info for job {job_id}: {lines}")
+        # logger.info(f"task_id: {task_id} slurm info for job {job_id}: {lines}")
         if len(lines) < 2:
             return None
         # The first line is the header; the second line is the single info line
@@ -63,7 +67,7 @@ def get_job_info(job_id: str, task_id: ObjectId, resource: Resource) -> SlurmInf
             return None
         # Split the single line into parts separated by whitespace
         parts = re.split(r"\s+", info_line)
-        #logger.info(f"task_id: {task_id} slurm info for job {job_id}: {parts}")
+        # logger.info(f"task_id: {task_id} slurm info for job {job_id}: {parts}")
         # Expected default squeue columns:
         # JOBID PARTITION NAME USER ST TIME NODES NODELIST(REASON)
         name = parts[2] if len(parts) > 2 else ""
@@ -92,7 +96,7 @@ def get_job_info(job_id: str, task_id: ObjectId, resource: Resource) -> SlurmInf
         return None
 
 
-async def clean_slurm_info(resource: Resource, user: str = None):
+async def clean_slurm_info(resource: Resource, user: str | None = None) -> None:
     """Clean up old slurm info entries"""
     try:
         squeue_cmd = "squeue"
@@ -102,9 +106,7 @@ async def clean_slurm_info(resource: Resource, user: str = None):
         if context.config.docker:
             watchdog_id = f"slurm_{uuid.uuid4()}"
             queue_dir = context.config.workdir / "queue"
-            result = submit_to_watchdog(
-                squeue_cmd, watchdog_id, queue_dir=queue_dir
-            )
+            result = submit_to_watchdog(squeue_cmd, watchdog_id, queue_dir=queue_dir)
         else:
             result = subprocess.run(
                 squeue_cmd,
@@ -113,7 +115,6 @@ async def clean_slurm_info(resource: Resource, user: str = None):
                 text=True,
                 timeout=30,
             )
-
 
         if result.returncode == 0:
             active_job_ids = set()
@@ -125,12 +126,9 @@ async def clean_slurm_info(resource: Resource, user: str = None):
 
             # Find all SLURM info entries for this resource
             # the user id is truncated on saving
-            # if user:
-            #     running_jobs = await context.db.engine.find(
-            #         SlurmInfo, (SlurmInfo.resource.value == resource.value) & (SlurmInfo.user == user)
-            #     )
-            # else:
-            running_jobs = await context.db.engine.find(SlurmInfo, SlurmInfo.resource.value == resource.value)
+            running_jobs = await context.db.find(
+                SlurmInfo, SlurmInfo.resource.value == resource.value
+            )
             # logger.info(f"Found {running_jobs} slurm info entries for {resource}")
             # logger.info(f"Active job IDs: {active_job_ids} Slurm info IDs: {[job.job_id for job in running_jobs]}")
             # logger.info(f"User: {user} resource: {resource} ")

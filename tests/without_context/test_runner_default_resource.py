@@ -24,7 +24,9 @@ async def test_initialize_default_resource_keeps_resource_when_config_toml_missi
     tmp_path, monkeypatch
 ):
     resource_def = SimpleNamespace(is_default=True)
-    db = SimpleNamespace(find_one=AsyncMock(return_value=resource_def), engine=object())
+    db = SimpleNamespace(
+        find_one=AsyncMock(return_value=resource_def), core_engine=object()
+    )
     config = SimpleNamespace(resource="docker", project_root=tmp_path)
 
     make_node_table = AsyncMock()
@@ -46,7 +48,9 @@ async def test_initialize_default_resource_builds_model_table_before_node_table(
 ):
     resource_def = SimpleNamespace(is_default=True)
     engine = object()
-    db = SimpleNamespace(find_one=AsyncMock(return_value=resource_def), engine=engine)
+    db = SimpleNamespace(
+        find_one=AsyncMock(return_value=resource_def), core_engine=engine
+    )
     config = SimpleNamespace(resource="docker", project_root=tmp_path)
     (tmp_path / "config.toml").write_text('active_dirs = ["src/simstack/models"]\n')
     call_order = []
@@ -65,8 +69,8 @@ async def test_initialize_default_resource_builds_model_table_before_node_table(
 
     assert result is resource_def
     assert [call[0] for call in call_order] == ["model", "node"]
-    assert call_order[0][1] == (engine,)
-    assert call_order[1][1] == (engine,)
+    assert call_order[0][1] == (db,)
+    assert call_order[1][1] == (db,)
     assert call_order[0][2] == {"dirs": ["src/simstack/models"]}
     assert call_order[1][2] == {"dirs": ["src/simstack/models"]}
 
@@ -85,11 +89,12 @@ async def test_async_main_uses_false_is_default_when_default_resource_init_retur
             self.config = SimpleNamespace(resource=kwargs.get("resource"))
 
     class DummyRunnerManager:
-        def __init__(self, resource, *, detach, no_pull, is_default):
+        def __init__(self, resource, *, detach, no_pull, is_default, with_file_transfer=True):
             captured["resource"] = resource
             captured["detach"] = detach
             captured["no_pull"] = no_pull
             captured["is_default"] = is_default
+            captured["with_file_transfer"] = with_file_transfer
 
         async def run_nodes_for_resource(self, polling_interval, *_args, timeout=None):
             captured["polling_interval"] = polling_interval
@@ -108,6 +113,9 @@ async def test_async_main_uses_false_is_default_when_default_resource_init_retur
         no_pull=False,
         polling_interval=5,
         timeout=None,
+        connection_string="none",
+        config="simstack.toml",
+        with_file_transfer=False,
     )
 
     await runner.async_main(args)

@@ -8,8 +8,8 @@ from typing import Iterable, Optional, Type
 import fnmatch  # <-- added
 
 from simstack.core.context import context
-from simstack.core.engine import AIOEngineProxy
 from simstack.core.find_simstack_modules import find_simstack_modules
+from simstack.util.db import Database
 from simstack.util.import_module import import_module_from_file
 from simstack.util.path_manager import path_manager
 
@@ -24,9 +24,20 @@ class TableBuilderBase(ABC):
     Subclasses only implement `_process_module(module, drops)`.
     """
 
-    def __init__(self, engine: AIOEngineProxy, write_schema: bool = False):
-        self.engine = engine
+    def __init__(self, db: Database, write_schema: bool = False, project_root: Optional[Path] = None):
+        self.db = db
         self.write_schema = write_schema
+        self._project_root = project_root
+        self._processed_modules = set()
+
+    @property
+    def project_root(self) -> Path:
+        if self._project_root:
+            return self._project_root
+        if context.config:
+            return context.config.project_root
+        from simstack.util.project_root_finder import find_project_root
+        return find_project_root()
 
     @property
     @abstractmethod
@@ -40,6 +51,7 @@ class TableBuilderBase(ABC):
         drops: str = "",
         exclude: Optional[list[str]] = None,
         clear: bool = False,
+        ignore_entrypoints: bool = False,
     ) -> None:
         """
         Build the table.
@@ -53,27 +65,30 @@ class TableBuilderBase(ABC):
           - nested relative paths (e.g. "src/simstack/models")
         """
         await self._ensure_context_initialized()
+        self._processed_modules.clear()
         if clear:
             await self.clear_table()
 
-        await self._process_simstack_modules(drops=drops)
+        if not ignore_entrypoints:
+            await self._process_simstack_modules(drops=drops)
 
-        if dirs is None:
-            raise ValueError("dirs must be specified")
-        else:
-            await self._process_dirs(dirs, drops=drops, exclude=exclude or [])
+        await self._process_dirs(dirs, drops=drops, exclude=exclude or [])
 
     async def _ensure_context_initialized(self) -> None:
         if not context.initialized:
             await context.initialize()
 
     async def _process_simstack_modules(self, drops: str) -> None:
-        for module_name in find_simstack_modules():
+        all_modules = set(find_simstack_modules())
+        for module_name in all_modules:
+            if module_name in self._processed_modules:
+                continue
             self.logger.debug("Processing module: %s", module_name)
             module = self._import_package_module(module_name)
             if module is None:
                 continue
             await self._process_module(module, drops=drops)
+            self._processed_modules.add(module_name)
 
     def _import_package_module(self, module_name: str):
         try:
@@ -103,7 +118,7 @@ class TableBuilderBase(ABC):
             base_dir = Path(base_dir)
 
             # Accept either absolute paths or paths relative to project root.
-            base_dir_path = base_dir if base_dir.is_absolute() else (context.config.project_root / base_dir)
+            base_dir_path = base_dir if base_dir.is_absolute() else (self.project_root / base_dir)
 
             for py_file in self._iter_python_files_under_dir(base_dir_path, exclude=exclude):
                 await self._process_file(py_file, drops)
@@ -127,7 +142,7 @@ class TableBuilderBase(ABC):
             if any(part in default_exclude_parts for part in p.parts):
                 return True
 
-            # If caller didn't pass any excludes, we're done.
+            # If the caller didn't pass any excludes, we're done.
             if not exclude:
                 return False
 
@@ -186,11 +201,15 @@ class TableBuilderBase(ABC):
 
     async def _process_file(self, file_path: Path, drops: str) -> None:
         self.logger.debug("Processing file: %s", file_path)
-        module = import_module_from_file(file_path, context.config.project_root)
+        module = import_module_from_file(file_path, self.project_root)
         if not module:
             self.logger.debug("Skipping %s because module import returned None", file_path)
             return
+        if module.__name__ in self._processed_modules:
+            self.logger.debug("Skipping %s because module %s was already processed", file_path, module.__name__)
+            return
         await self._process_module(module, drops)
+        self._processed_modules.add(module.__name__)
 
     @abstractmethod
     async def _process_module(self, module, drops: str) -> None:
@@ -249,6 +268,12 @@ class TableBuilderBase(ABC):
             help="Enable schema writing.",
         )
         parser.add_argument(
+            "--ignore-entrypoints",
+            dest="ignore_entrypoints",
+            action="store_true",
+            help="Do not scan for modules registered via entrypoints.",
+        )
+        parser.add_argument(
             "--clear",
             dest="clear",
             action="store_true",
@@ -276,8 +301,14 @@ class TableBuilderBase(ABC):
 
         async def _run() -> None:
             await context.initialize(log_level=level, resource="self")
-            builder = builder_cls(context.db.engine, write_schema=args.write_schema)
-            await builder.build(dirs=dirs, drops=args.drops, exclude=args.exclude, clear=args.clear)
+            builder = builder_cls(context.db, write_schema=args.write_schema)
+            await builder.build(
+                dirs=dirs,
+                drops=args.drops,
+                exclude=args.exclude,
+                clear=args.clear,
+                ignore_entrypoints=args.ignore_entrypoints,
+            )
             await builder.second_stage(args.drops)
         loop.run_until_complete(_run())
         loop.close()

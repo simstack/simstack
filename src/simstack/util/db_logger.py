@@ -35,11 +35,11 @@ class DBLogHandler(logging.Handler):
 
         # Validate configuration
         if not connection_string or not isinstance(connection_string, str):
-            raise ValueError("Invalid connection string")
+            raise ValueError(f"Invalid connection string {connection_string}")
         if not db_name or not isinstance(db_name, str):
-            raise ValueError("Invalid database name")
+            raise ValueError(f"Invalid database name {db_name}")
         if not collection_name or not isinstance(collection_name, str):
-            raise ValueError("Invalid collection name")
+            raise ValueError(f"Invalid collection name {collection_name}")
 
         # Store configuration
         self.connection_string = connection_string

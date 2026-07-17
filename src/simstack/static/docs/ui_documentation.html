@@ -1,0 +1,788 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Developer Guide" href="developer_guide.html"><link rel="prev" title="Workflows" href="workflows.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Graphical User Interface - SimStack II documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="_static/cobalt2-theme.css?v=2d651046" />
+    <link rel="stylesheet" type="text/css" href="_static/docs-build-badge.css?v=803faff8" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">SimStack II  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="workflows.html">Workflows</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Graphical User Interface</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="developer_guide.html">Developer Guide</a><input aria-label="Toggle navigation of Developer Guide" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="data.html">Persisting and Visualizing Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lists.html">List Mixins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="array_lists.html">Array Lists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tables.html">Tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="files.html">File Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="resource_config.html">Program Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mass_runner.html">MassRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fire_and_forget_runner.html">FireAndForgetRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing_complex_nodes.html">Testing Complex Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database_migrations.html">Database Migrations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ci_pipeline.html">CI Pipeline and Documentation Artifacts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Simstack II Setup</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="_sources/ui_documentation.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="graphical-user-interface">
+<span id="using-gui-section"></span><h1>Graphical User Interface<a class="headerlink" href="#graphical-user-interface" title="Link to this heading">¶</a></h1>
+<p>SimStack II provides a modern web-based user interface for managing scientific workflows, data analysis, and visualization.
+This guide will walk you through the main features and how to use them effectively.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The GUI does not auto-update and has not been tested on mobile devices.</p>
+</div>
+<figure class="align-center" id="id1">
+<img alt="SimStack Navigation Bar" src="resources/navigation.png" />
+<figcaption>
+<p><span class="caption-text">The main navigation bar at the top of the interface</span><a class="headerlink" href="#id1" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>The navigation bar at the top provides access to different sections of the application,
+including the</p>
+<ul class="simple">
+<li><p><strong>Tasks</strong> to inspect jobs and their results (also: Simstack II icon)</p></li>
+<li><p><strong>Submit Panel</strong> to submit new workflows (plus icon)</p></li>
+<li><p><strong>Health Dashboard</strong> for the status of the runners and running remote jobs.</p></li>
+<li><p><strong>Editor</strong> work in progress</p></li>
+<li><p><strong>Profile</strong> for user account settings.</p></li>
+</ul>
+<section id="dashboard">
+<h2>Dashboard<a class="headerlink" href="#dashboard" title="Link to this heading">¶</a></h2>
+<figure class="align-center" id="id2">
+<img alt="SimStack Dashboard" src="resources/dashboard.png" />
+<figcaption>
+<p><span class="caption-text">The main dashboard showing workflow tasks and their status</span><a class="headerlink" href="#id2" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>The dashboard is your central hub for monitoring and managing workflow tasks. It displays a table of all your tasks.
+Rows are color-coded based on their status for easy identification.</p>
+<ul class="simple">
+<li><p><strong>Yellow</strong>: Submitted</p></li>
+<li><p><strong>Blue</strong>: Running</p></li>
+<li><p><strong>Green</strong>: Completed</p></li>
+<li><p><strong>Red</strong>: Failed</p></li>
+<li><p><strong>White</strong>: Timed out</p></li>
+</ul>
+<p>You can:</p>
+<ul class="simple">
+<li><p><strong>Search and Filter</strong>: Search by name or custom name, and filter by task type, category, status, or resource</p></li>
+<li><p><strong>Sorting</strong>: Click on column headers to sort tasks by name, status, or creation date</p></li>
+<li><p><strong>Bulk Operations</strong>: Select multiple tasks to perform batch operations like deletion</p></li>
+<li><p><strong>Task Details</strong>: Click on a task name to view its details, inputs, outputs, and logs</p></li>
+<li><p><strong>Child Tasks</strong>: Expand tasks to see any child tasks that were spawned during execution (recursively)</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Simstack II will recover the results of tasks with the same inputs (not parameters), the same task may therefore occur as a subtaks of multiple parent tasks.</p>
+</div>
+<p>Key columns in the dashboard include:</p>
+<ul class="simple">
+<li><p><strong>Name</strong>: The workflow node name – this is the name of the function that generated the task (Click for details)</p></li>
+<li><p><strong>Custom Name</strong>: User-defined name for the task</p></li>
+<li><p><strong>Category</strong>: Task category for organization</p></li>
+<li><p><strong>Status</strong>: Current status (running, completed, failed, etc.)</p></li>
+<li><p><strong>Resource</strong>: Computational resource used for the task</p></li>
+<li><p><strong>Created/Started</strong>: Timestamps for task creation and execution</p></li>
+<li><p><strong>Actions</strong>: Buttons for viewing, editing, or deleting tasks</p></li>
+</ul>
+</section>
+<section id="viewing-task-details">
+<h2>Viewing Task Details<a class="headerlink" href="#viewing-task-details" title="Link to this heading">¶</a></h2>
+<figure class="align-center" id="id3">
+<img alt="Task Details View" src="resources/task_details.png" />
+<figcaption>
+<p><span class="caption-text">Detailed view of a workflow task showing parameters, outputs, and logs</span><a class="headerlink" href="#id3" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>When you click on a task in the dashboard, you’ll be taken to the task details page, which provides:</p>
+<ul>
+<li><p><strong>Task Information</strong>: Name, ID, status, and timestamps</p></li>
+<li><p><strong>Inputs</strong>: Input parameters used for the task</p></li>
+<li><p><strong>Results</strong>: Results and artifacts generated by the task</p></li>
+<li><p><strong>Artifacts</strong>: Tables and visualizations (if available) that can be created from the task outputs <strong>after</strong> the task has completed <strong>without rerunning the task</strong>
+This powerful feature allows users to analyze and visualize data in ways that were not initially anticipated when the workflow was created.</p></li>
+<li><p><strong>Info Items</strong>: All result data of the tasks should be presented in the result section. However, in particular, while debugging, it
+is useful to have access to input and output files that were used/generated by the task. These files are available in the “Info Items” section for
+viewing and downloading.</p></li>
+<li><dl>
+<dt><strong>Logs</strong>: Execution logs for debugging and monitoring. There are three kinds of logs:</dt><dd><ol class="arabic simple">
+<li><p><strong>Task Logs</strong>: Logs generated by the specific workflow task, offering detailed information about the task’s execution process, including any errors or warnings encountered.
+In most cases these logs are the most relevant for users to understand the behavior of their workflows.</p></li>
+</ol>
+<ol class="arabic simple">
+<li><p><strong>System Logs</strong>: Logs generated by the Simstack system itself, providing insights into the overall operation and any system-level issues.</p></li>
+<li><p><strong>Runner Logs</strong>: Logs produced by the resource runner that executed the task, which can help diagnose issues related to the computational environment or resource allocation.</p></li>
+</ol>
+</dd>
+</dl>
+</li>
+</ul>
+<p>You can navigate through different tabs to access various aspects of the task data.</p>
+<figure class="align-center" id="id4">
+<img alt="Example Chart Artifact" src="resources/artifacts.png" />
+<figcaption>
+<p><span class="caption-text">Example image artifact created by ag-charts. The user can interaction with the data and download it as needed.</span><a class="headerlink" href="#id4" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="submitting-new-workflows">
+<h2>Submitting New Workflows<a class="headerlink" href="#submitting-new-workflows" title="Link to this heading">¶</a></h2>
+<p>The Submit Panel is the main interface for creating and submitting computational jobs in the system. It provides a comprehensive workflow that guides users through model selection, parameter configuration, and input data specification.
+To submit a new workflow:</p>
+<ol class="arabic simple">
+<li><p>Navigate to the submission page</p></li>
+<li><p>Select the workflow type from the available options</p></li>
+<li><p>Fill in the required parameters in the form
+- Forms are dynamically generated based on the workflow type
+- Required fields are marked with an asterisk (*)
+- Help text provides guidance for each parameter</p></li>
+<li><p>Click “Submit” to start the workflow</p></li>
+<li><p>You’ll be redirected to the dashboard where you can monitor the task’s progress</p></li>
+</ol>
+<p>The submission forms use React JSON Schema Form, which provides:</p>
+<ul class="simple">
+<li><p><strong>Validation</strong>: Immediate feedback on invalid inputs</p></li>
+<li><p><strong>Conditional Fields</strong>: Fields that appear based on other selections</p></li>
+<li><p><strong>File Uploads</strong>: For workflows that require input files</p></li>
+<li><p><strong>Advanced Controls</strong>: Sliders, dropdowns, and other interactive elements</p></li>
+<li><p><strong>Special Fields</strong>: for complex objects, e.g. molecular data</p></li>
+</ul>
+<p>The Submit Panel consists of several key sections organized in a logical workflow:</p>
+<ol class="arabic simple">
+<li><p><strong>Model Selection</strong> (CascadingNodeSelector)</p></li>
+<li><p><strong>Job Configuration</strong> (Custom Name &amp; Category)</p></li>
+<li><p><strong>Parameter Settings</strong> (ParametersAccordion)</p></li>
+<li><p><strong>Input Data Configuration</strong> (Input Mappings)</p></li>
+<li><p><strong>Template Management</strong> (TemplateSelector)</p></li>
+<li><p><strong>Job Submission</strong></p></li>
+</ol>
+<section id="node-selector">
+<h3>Node Selector<a class="headerlink" href="#node-selector" title="Link to this heading">¶</a></h3>
+<p>The CascadingNodeSelector is the primary interface for browsing and selecting computational models from the available node registry.</p>
+<figure class="align-center" id="id5">
+<a class="reference internal image-reference" href="resources/node_selector.png"><img alt="Node Selector Interface" src="resources/node_selector.png" style="width: 700px;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><em>Hierarchical model browser with favorites and tree structure</em></span><a class="headerlink" href="#id5" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<dl class="simple">
+<dt><strong>Hierarchical Model Organization</strong></dt><dd><p>Models are organized in a tree structure based on their function mapping, making it easy to navigate through different categories and modules.</p>
+</dd>
+</dl>
+<figure class="align-center" id="id6">
+<a class="reference internal image-reference" href="resources/model-tree-structure.png"><img alt="Model Tree Structure" src="resources/model-tree-structure.png" style="width: 500px;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><em>Example of hierarchical model organization which mirrors the directory structure of your project</em></span><a class="headerlink" href="#id6" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<dl class="simple">
+<dt><strong>Favorites System</strong></dt><dd><p>Users can mark frequently used models as favorites for quick access:</p>
+<ul class="simple">
+<li><p>Star icon checkbox for marking/unmarking favorites</p></li>
+<li><p>Dedicated “Favorites” section at the top of the tree</p></li>
+<li><p>Persistent favorite status across sessions</p></li>
+</ul>
+</dd>
+</dl>
+<p>Once a model is selected, the ParametersAccordion and Input sections dynamically update to reflect the chosen model’s requirements.</p>
+</section>
+<section id="parameter-settings">
+<h3>Parameter Settings<a class="headerlink" href="#parameter-settings" title="Link to this heading">¶</a></h3>
+<p>The ParametersAccordion section provides comprehensive job parameter configuration options.</p>
+<figure class="align-center" id="id7">
+<a class="reference internal image-reference" href="resources/job-parameters.png"><img alt="Parameters Accordion" src="resources/job-parameters.png" style="width: 700px;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><em>Complete parameters configuration interface (for a slurm-queue job)</em></span><a class="headerlink" href="#id7" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<dl>
+<dt><strong>Resource Selection</strong></dt><dd><p>Configure computational resources for job execution:</p>
+<ul class="simple">
+<li><p>Dropdown selection from allowed resources</p></li>
+<li><p>Default option available if no specific resource needed</p></li>
+<li><p>Dynamic loading of available resources from the system</p></li>
+</ul>
+</dd>
+<dt><strong>Queue Configuration</strong></dt><dd><p>Specify execution queue for job scheduling:</p>
+<ul class="simple">
+<li><p>Selection from allowed queues list</p></li>
+<li><p>When the SLURM queue is selected, additional SLURM parameters become available</p></li>
+</ul>
+</dd>
+<dt><strong>SLURM Parameters</strong> (when using “slurm-queue”)</dt><dd><p>Additional SLURM-specific configuration options become available when the SLURM queue is selected, including:</p>
+<ul class="simple">
+<li><p>Job allocation parameters</p></li>
+<li><p>Resource requirements</p></li>
+<li><p>Time limits</p></li>
+<li><p>Node specifications</p></li>
+</ul>
+</dd>
+<dt><strong>Execution Options</strong></dt><dd><p>Control job execution behavior:</p>
+<ul class="simple">
+<li><p><strong>Force Rerun</strong>: Force execution even if cached results exist</p></li>
+<li><p><strong>Recompute Artifacts</strong>: Regenerate all output artifacts regardless of cache status</p></li>
+</ul>
+</dd>
+<dt><strong>Custom Name &amp; Category Editor</strong></dt><dd><p>Provides job identification and organization:</p>
+<dl class="simple">
+<dt><strong>Custom Name Field</strong></dt><dd><ul class="simple">
+<li><p>User-defined name for the job</p></li>
+<li><p>Defaults to “submitted-job”</p></li>
+<li><p>Automatically saved to localStorage per operation</p></li>
+</ul>
+</dd>
+<dt><strong>Category Field</strong></dt><dd><ul class="simple">
+<li><p>Organizational category for the job</p></li>
+<li><p>Defaults to “submission”</p></li>
+<li><p>Persistent storage with operation-specific recall</p></li>
+</ul>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+<section id="model-input-section">
+<h3>Model Input Section<a class="headerlink" href="#model-input-section" title="Link to this heading">¶</a></h3>
+<p>The Input section handles data configuration for each input mapping required by the selected model.
+For each input mapping defined by the selected model:</p>
+<figure class="align-center" id="id8">
+<a class="reference internal image-reference" href="resources/sample-input.png"><img alt="Input Mapping Card" src="resources/sample-input.png" style="width: 650px;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><em>Individual input mapping configuration card</em></span><a class="headerlink" href="#id8" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<dl class="simple">
+<dt><strong>Dynamic Form Generation</strong></dt><dd><ul class="simple">
+<li><p>Automatically generated forms based on input mapping schema</p></li>
+<li><p>Real-time validation and data binding</p></li>
+<li><p>Memoized form components for optimal performance</p></li>
+</ul>
+</dd>
+<dt><strong>Template Management</strong></dt><dd><ul class="simple">
+<li><p>Load existing input templates</p></li>
+<li><p>Save current configuration as template</p></li>
+<li><p>Update existing templates on submission</p></li>
+<li><p>Template-specific parameter inheritance</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+</section>
+<section id="health-dashboard">
+<h2>Health Dashboard<a class="headerlink" href="#health-dashboard" title="Link to this heading">¶</a></h2>
+<figure class="align-center" id="id9">
+<img alt="Health Dashboard" src="resources/health_dashboard.png" />
+<figcaption>
+<p><span class="caption-text">The health dashboard showing system status and resource utilization</span><a class="headerlink" href="#id9" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>The Health Dashboard provides real-time monitoring of system components and resource utilization. It displays:</p>
+<ul class="simple">
+<li><p><strong>Runner Events</strong>: Status updates from resource runners</p></li>
+<li><p><strong>System Health</strong>: Overall health status of different components</p></li>
+<li><p><strong>Resource Utilization</strong>: CPU, memory, and storage usage statistics</p></li>
+</ul>
+<p>This dashboard is particularly useful for administrators and users who need to monitor the performance of their workflows and the system as a whole.</p>
+</section>
+<section id="data-visualization">
+<h2>Data Visualization<a class="headerlink" href="#data-visualization" title="Link to this heading">¶</a></h2>
+<figure class="align-center" id="id10">
+<img alt="Data Visualization" src="resources/data_visualization.png" />
+<figcaption>
+<p><span class="caption-text">Interactive data visualization using AG-Charts</span><a class="headerlink" href="#id10" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>SimStack II provides powerful data visualization capabilities using AG-Charts:</p>
+<ul class="simple">
+<li><p><strong>Interactive Charts</strong>: Zoom, pan, and hover for details</p></li>
+<li><p><strong>Multiple Chart Types</strong>: Line, bar, scatter, pie charts, and more</p></li>
+<li><p><strong>Customization</strong>: Adjust colors, labels, and other visual properties</p></li>
+<li><p><strong>Export</strong>: Save charts as images for reports or presentations</p></li>
+</ul>
+<p>To access visualizations:</p>
+<ol class="arabic simple">
+<li><p>Navigate to a completed task</p></li>
+<li><p>Select the “Visualization” tab</p></li>
+<li><p>Choose from available chart types based on the task’s outputs</p></li>
+<li><p>Interact with the chart to explore the data</p></li>
+</ol>
+</section>
+<section id="data-tables">
+<h2>Data Tables<a class="headerlink" href="#data-tables" title="Link to this heading">¶</a></h2>
+<figure class="align-center" id="id11">
+<img alt="Data Tables" src="resources/data_tables.png" />
+<figcaption>
+<p><span class="caption-text">Interactive data tables using AG-Grid</span><a class="headerlink" href="#id11" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>For tabular data, SimStack II uses AG-Grid to provide interactive tables with:</p>
+<ul class="simple">
+<li><p><strong>Sorting and Filtering</strong>: Click column headers to sort, use filters to find specific data</p></li>
+<li><p><strong>Column Resizing</strong>: Adjust column widths by dragging</p></li>
+<li><p><strong>Row Selection</strong>: Select rows for export or further analysis</p></li>
+<li><p><strong>Pagination</strong>: Navigate through large datasets with ease</p></li>
+<li><p><strong>Export</strong>: Download data as CSV or Excel files</p></li>
+</ul>
+</section>
+<section id="user-account-management">
+<h2>User Account Management<a class="headerlink" href="#user-account-management" title="Link to this heading">¶</a></h2>
+<figure class="align-center" id="id12">
+<img alt="User Account Management" src="resources/user_account.png" />
+<figcaption>
+<p><span class="caption-text">User account settings and preferences</span><a class="headerlink" href="#id12" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>SimStack II provides user account management features:</p>
+<ul class="simple">
+<li><p><strong>Login/Logout</strong>: Secure authentication system</p></li>
+<li><p><strong>Registration</strong>: Create a new account with email verification</p></li>
+<li><p><strong>Profile Settings</strong>: Update personal information and preferences</p></li>
+<li><p><strong>API Tokens</strong>: Generate and manage API tokens for programmatic access</p></li>
+</ul>
+</section>
+<section id="tips-for-effective-use">
+<h2>Tips for Effective Use<a class="headerlink" href="#tips-for-effective-use" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Custom Names</strong>: Give your tasks meaningful custom names for easier identification</p></li>
+<li><p><strong>Categories</strong>: Use categories to organize related tasks</p></li>
+<li><p><strong>Regular Monitoring</strong>: Check the Health Dashboard periodically to ensure system health</p></li>
+<li><p><strong>Batch Operations</strong>: Use bulk selection for efficient management of multiple tasks</p></li>
+<li><p><strong>Search and Filters</strong>: Utilize search and filters to quickly find specific tasks</p></li>
+</ul>
+<section id="exposing-workflows-in-the-gui">
+<span id="writing-gui-section"></span><h3>Exposing Workflows in the GUI<a class="headerlink" href="#exposing-workflows-in-the-gui" title="Link to this heading">¶</a></h3>
+</section>
+</section>
+<section id="concept">
+<h2>Concept<a class="headerlink" href="#concept" title="Link to this heading">¶</a></h2>
+<p>The components of the graphical user interface are illustrated below. With a
+Next-js frontend, we use one of the most modern web-frameworks with a large
+community supporting a plethora of packages.</p>
+<figure class="align-center" id="id13">
+<img alt="GUI Concept Design" src="_images/GUI%20Concept.webp" />
+<figcaption>
+<p><span class="caption-text">Overview of the graphical user interface concept</span><a class="headerlink" href="#id13" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>The challenge in Simstack II is to exploit the features of Next-JS frontend
+without forcing the developer to write Next-JS or server components. In
+Simstack II each user has his/her own MongoDB database, there is an
+additional database used exclusively for authentication.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Only one instance of a mongodb database server, of the fastapi
+server and of the next-js frontend is required per installation.</p>
+</div>
+<p>The workflow developer customizes the appearance of workflows for submission,
+data analysis and data visualization using three main mechanisms:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://rjsf-team.github.io/react-jsonschema-form/">React JSON Schema Form</a></p></li>
+<li><p><a class="reference external" href="https://www.ag-grid.com/">AG-Grid</a> is used to generate interactive tables (via Artifacts)</p></li>
+<li><p><a class="reference external" href="https://charts.ag-grid.com/">AG-Charts</a> is used to generate interactive graphs (via Artifacts)</p></li>
+</ul>
+</section>
+<section id="customizing-simstack-models">
+<h2>Customizing Simstack Models<a class="headerlink" href="#customizing-simstack-models" title="Link to this heading">¶</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>General information about Simstack models</p>
+</div>
+<p>The JSON Schema and UI Schema are used to define the structure and appearance of forms in the GUI. The JSON Schema defines the data structure, while the UI Schema controls how the form is rendered.</p>
+<p><strong>JSON Schema Example:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;object&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;required&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;resource&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Workflow Name&quot;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;resource&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Computational Resource&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;enum&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;local&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;cloud&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;parameters&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;object&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;integer&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;minimum&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;maximum&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Number of Iterations&quot;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>UI Schema Example:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;resource&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ui:widget&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;select&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;parameters&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;ui:widget&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;range&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>These schemas are used to generate dynamic forms for workflow submission and editing.</p>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="developer_guide.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Developer Guide</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="workflows.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Workflows</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, Wolfgang Wenzel
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Graphical User Interface</a><ul>
+<li><a class="reference internal" href="#dashboard">Dashboard</a></li>
+<li><a class="reference internal" href="#viewing-task-details">Viewing Task Details</a></li>
+<li><a class="reference internal" href="#submitting-new-workflows">Submitting New Workflows</a><ul>
+<li><a class="reference internal" href="#node-selector">Node Selector</a></li>
+<li><a class="reference internal" href="#parameter-settings">Parameter Settings</a></li>
+<li><a class="reference internal" href="#model-input-section">Model Input Section</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#health-dashboard">Health Dashboard</a></li>
+<li><a class="reference internal" href="#data-visualization">Data Visualization</a></li>
+<li><a class="reference internal" href="#data-tables">Data Tables</a></li>
+<li><a class="reference internal" href="#user-account-management">User Account Management</a></li>
+<li><a class="reference internal" href="#tips-for-effective-use">Tips for Effective Use</a><ul>
+<li><a class="reference internal" href="#exposing-workflows-in-the-gui">Exposing Workflows in the GUI</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#concept">Concept</a></li>
+<li><a class="reference internal" href="#customizing-simstack-models">Customizing Simstack Models</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/scripts/furo.js?v=46bd48cc"></script>
+    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    </body>
+</html>

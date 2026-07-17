@@ -1,0 +1,1268 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="List Mixins" href="lists.html"><link rel="prev" title="Persisting and Visualizing Data" href="data.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Datasets - SimStack II documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="_static/cobalt2-theme.css?v=2d651046" />
+    <link rel="stylesheet" type="text/css" href="_static/docs-build-badge.css?v=803faff8" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">SimStack II  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui_documentation.html">Graphical User Interface</a></li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="developer_guide.html">Developer Guide</a><input aria-label="Toggle navigation of Developer Guide" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="data.html">Persisting and Visualizing Data</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lists.html">List Mixins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="array_lists.html">Array Lists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tables.html">Tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="files.html">File Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="resource_config.html">Program Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mass_runner.html">MassRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fire_and_forget_runner.html">FireAndForgetRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing_complex_nodes.html">Testing Complex Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database_migrations.html">Database Migrations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ci_pipeline.html">CI Pipeline and Documentation Artifacts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Simstack II Setup</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="_sources/datasets.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="datasets">
+<span id="id1"></span><h1>Datasets<a class="headerlink" href="#datasets" title="Link to this heading">¶</a></h1>
+<p>SimStack II uses a structured way to handle datasets through the <code class="docutils literal notranslate"><span class="pre">DataSet</span></code>, <code class="docutils literal notranslate"><span class="pre">DataSetSection</span></code>, and <code class="docutils literal notranslate"><span class="pre">DataSetSelection</span></code> models defined in <code class="docutils literal notranslate"><span class="pre">simstack.models.dataset</span></code>.</p>
+<section id="dataset">
+<h2>DataSet<a class="headerlink" href="#dataset" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">DataSet</span></code> model is the top-level container for data.</p>
+<p>It consists of:</p>
+<ul class="simple">
+<li><p><strong>metadata</strong>: A <code class="docutils literal notranslate"><span class="pre">DataSetMetadata</span></code> object that defines the type and validation rules for the dataset.</p></li>
+<li><p><strong>sections</strong>: A dictionary of <code class="docutils literal notranslate"><span class="pre">DataSetSection</span></code> objects, keyed by section name.</p></li>
+</ul>
+<p>It behaves like a dictionary of sections. Think of a dataset as an excel file, where each <code class="docutils literal notranslate"><span class="pre">DataSetSection</span></code> is a sheet.</p>
+</section>
+<section id="metadata">
+<h2>Metadata<a class="headerlink" href="#metadata" title="Link to this heading">¶</a></h2>
+<p>Metadata in SimStack II is handled by the <code class="docutils literal notranslate"><span class="pre">DataSetMetadata</span></code> and <code class="docutils literal notranslate"><span class="pre">DataSetMetadataTemplate</span></code> classes.</p>
+<ul class="simple">
+<li><p><strong>DataSetMetadata</strong>: This is an <code class="docutils literal notranslate"><span class="pre">EmbeddedModel</span></code> used within a <code class="docutils literal notranslate"><span class="pre">DataSet</span></code>. It behaves like a dictionary and stores key-value pairs of information about the dataset (e.g., experimental conditions, parameters). It also ensures structural consistency of the data.</p></li>
+<li><p><strong>DataSetMetadataTemplate</strong>: This model defines the expected structure and schema for a specific type of dataset metadata. When a new <code class="docutils literal notranslate"><span class="pre">DataSet</span></code> is saved, its metadata is validated against the corresponding template.</p></li>
+</ul>
+<p>The metadata provides:
+*   <strong>Validation</strong>: Ensures that all datasets of the same type have consistent metadata keys and value types.
+*   <strong>JSON Schema</strong>: Automatically generates JSON schemas for the stored metadata.
+*   <strong>Dict-like API</strong>: Supports standard dictionary operations like <code class="docutils literal notranslate"><span class="pre">__getitem__</span></code>, <code class="docutils literal notranslate"><span class="pre">keys()</span></code>, <code class="docutils literal notranslate"><span class="pre">items()</span></code>, and <code class="docutils literal notranslate"><span class="pre">update()</span></code>.</p>
+</section>
+<section id="datasetsection">
+<h2>DataSetSection<a class="headerlink" href="#datasetsection" title="Link to this heading">¶</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">DataSetSection</span></code> represents a collection of rows within a dataset. Each row is a dictionary of models, but only the model ids are stored when saving.</p>
+<p>Key features:
+*   <strong>Type consistency</strong>: All rows in a section must have the same model types for the same keys.
+*   <strong>Lazy loading</strong>: Models are cached and only loaded from the database when needed.
+*   <strong>Table representation</strong>: It can automatically generate column definitions and table entries for UI components (like ag-grid).</p>
+<p>To add data to a section, you can use the <code class="docutils literal notranslate"><span class="pre">add_row</span></code> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">section</span><span class="o">.</span><span class="n">add_row</span><span class="p">({</span><span class="s2">&quot;model_a&quot;</span><span class="p">:</span> <span class="n">instance_a</span><span class="p">,</span> <span class="s2">&quot;model_b&quot;</span><span class="p">:</span> <span class="n">instance_b</span><span class="p">})</span>
+</pre></div>
+</div>
+</section>
+<section id="datasetselection">
+<h2>DataSetSelection<a class="headerlink" href="#datasetselection" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">DataSetSelection</span></code> model is used to reference specific items within a <code class="docutils literal notranslate"><span class="pre">DataSet</span></code>. Instead of duplicating data, it stores the <code class="docutils literal notranslate"><span class="pre">dataset_id</span></code> and a list of indices for each section.</p>
+<p>This is particularly useful for workflows where a user selects a subset of a dataset to be processed by a subsequent node.</p>
+<p>Example usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">selection</span> <span class="o">=</span> <span class="n">DataSetSelection</span><span class="p">(</span><span class="n">dataset_id</span><span class="o">=</span><span class="n">my_dataset</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+<span class="n">selection</span><span class="o">.</span><span class="n">dataset_selection_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+    <span class="n">DataSetSelectionField</span><span class="p">(</span><span class="n">section_name</span><span class="o">=</span><span class="s2">&quot;default&quot;</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="api-reference">
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.dataset.</span></span><span class="sig-name descname"><span class="pre">DataSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'dataset'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset_metadata.DataSetMetadata" title="simstack.models.dataset_metadata.DataSetMetadata"><span class="pre">DataSetMetadata</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">sections</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~simstack.models.dataset.DataSetSection]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ObjectId</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSet" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.clear">
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSet.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSet.clear" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.collect_structure">
+<span class="sig-name descname"><span class="pre">collect_structure</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSet.collect_structure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSet.collect_structure" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.custom_model_dump">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">custom_model_dump</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#simstack.models.dataset.DataSet.custom_model_dump" title="Link to this definition">¶</a></dt>
+<dd><p>Custom model dump method to handle the conversion of model instances to dictionaries.
+This method recursively traverses dictionaries and lists to convert any nested
+model instances to their dictionary representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self</strong> – The model instance</p></li>
+<li><p><strong>kwargs</strong> – Additional keyword arguments</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary representation of the model instance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.dataset_type">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dataset_type</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#simstack.models.dataset.DataSet.dataset_type" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.field_name">
+<span class="sig-name descname"><span class="pre">field_name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset.DataSet.field_name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.from_dict">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#simstack.models.dataset.DataSet.from_dict" title="Link to this definition">¶</a></dt>
+<dd><p>Create an instance of the model from a dictionary.
+Handles nested models and enum values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.from_model">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Model</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Model</span></span></span><a class="headerlink" href="#simstack.models.dataset.DataSet.from_model" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSetSection" title="simstack.models.dataset.DataSetSection"><span class="pre">DataSetSection</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSetSection" title="simstack.models.dataset.DataSetSection"><span class="pre">DataSetSection</span></a></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSet.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSet.get" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.id">
+<span class="sig-name descname"><span class="pre">id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectId</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset.DataSet.id" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.items">
+<span class="sig-name descname"><span class="pre">items</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ItemsView</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSetSection" title="simstack.models.dataset.DataSetSection"><span class="pre">DataSetSection</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSet.items"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSet.items" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.json_schema">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">json_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.models.dataset.DataSet.json_schema" title="Link to this definition">¶</a></dt>
+<dd><p>Generates a JSON schema for the given class and its fields, but eliminates
+all fields which are models, embedded models, or references to models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cls</strong></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.keys">
+<span class="sig-name descname"><span class="pre">keys</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">KeysView</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSet.keys"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSet.keys" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.metadata">
+<span class="sig-name descname"><span class="pre">metadata</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset_metadata.DataSetMetadata" title="simstack.models.dataset_metadata.DataSetMetadata"><span class="pre">DataSetMetadata</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset.DataSet.metadata" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">False,</span> <span class="pre">'collection':</span> <span class="pre">None,</span> <span class="pre">'extra':</span> <span class="pre">'forbid',</span> <span class="pre">'indexes':</span> <span class="pre">None,</span> <span class="pre">'json_schema_extra':</span> <span class="pre">None,</span> <span class="pre">'parse_doc_with_default_factories':</span> <span class="pre">False,</span> <span class="pre">'str_strip_whitespace':</span> <span class="pre">False,</span> <span class="pre">'title':</span> <span class="pre">None,</span> <span class="pre">'validate_assignment':</span> <span class="pre">True,</span> <span class="pre">'validate_default':</span> <span class="pre">True}</span></span><a class="headerlink" href="#simstack.models.dataset.DataSet.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.pop">
+<span class="sig-name descname"><span class="pre">pop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSetSection" title="simstack.models.dataset.DataSetSection"><span class="pre">DataSetSection</span></a></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSet.pop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSet.pop" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.save">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSet.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSet.save" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.sections">
+<span class="sig-name descname"><span class="pre">sections</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSetSection" title="simstack.models.dataset.DataSetSection"><span class="pre">DataSetSection</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset.DataSet.sections" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.setdefault">
+<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSetSection" title="simstack.models.dataset.DataSetSection"><span class="pre">DataSetSection</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSetSection" title="simstack.models.dataset.DataSetSection"><span class="pre">DataSetSection</span></a></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSet.setdefault"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSet.setdefault" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.ui_make_title">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_make_title</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ui_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#simstack.models.dataset.DataSet.ui_make_title" title="Link to this definition">¶</a></dt>
+<dd><p>Adds a title to the JSON schema.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cls</strong> – The class to which the JSON schema belongs</p></li>
+<li><p><strong>ui_schema</strong> – The original ui_schema schema</p></li>
+<li><p><strong>title</strong> – Title to be added</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Modified JSON schema with title</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.ui_schema">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSet.ui_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSet.ui_schema" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSetSection" title="simstack.models.dataset.DataSetSection"><span class="pre">DataSetSection</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSet" title="simstack.models.dataset.DataSet"><span class="pre">DataSet</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSet.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSet.update" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSet.values">
+<span class="sig-name descname"><span class="pre">values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ValuesView</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSetSection" title="simstack.models.dataset.DataSetSection"><span class="pre">DataSetSection</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSet.values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSet.values" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.dataset.</span></span><span class="sig-name descname"><span class="pre">DataSetSection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_types</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">str]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~odmantic.bson.ObjectId]]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_defs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_entries</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">EmbeddedModel</span></code></p>
+<p>Represents a section of a dataset containing dictionaries of models.</p>
+<p>A DataSetSection is a list of dictionaries where for each key, the values are of the same model type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_types</strong> – Dictionary mapping keys to model class names.</p></li>
+<li><p><strong>data</strong> – Dictionary mapping names to dictionaries mapping keys to ObjectIds.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.add_row">
+<span class="sig-name descname"><span class="pre">add_row</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.add_row"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.add_row" title="Link to this definition">¶</a></dt>
+<dd><p>Add a dictionary of models to this section.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>item</strong> – Dictionary of model instances to add.</p></li>
+<li><p><strong>name</strong> – Optional name for the item. If None, a UUID will be generated.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If the model types don’t match the section’s expected types.</p></li>
+<li><p><strong>TypeError</strong> – If a non-None item value is not a Model instance.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.clear">
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.clear" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.column_defs">
+<span class="sig-name descname"><span class="pre">column_defs</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSection.column_defs" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.custom_model_dump">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">custom_model_dump</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSection.custom_model_dump" title="Link to this definition">¶</a></dt>
+<dd><p>Custom model dump method to handle the conversion of model instances to dictionaries.
+This method recursively traverses dictionaries and lists to convert any nested
+model instances to their dictionary representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self</strong> – The model instance</p></li>
+<li><p><strong>kwargs</strong> – Additional keyword arguments</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary representation of the model instance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.data">
+<span class="sig-name descname"><span class="pre">data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ObjectId</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSection.data" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.db_find_postprocess">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">db_find_postprocess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack/modules/simstack.util.html#simstack.util.db.Database" title="simstack.util.db.Database"><span class="pre">Database</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.db_find_postprocess"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.db_find_postprocess" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.from_dict">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSection.from_dict" title="Link to this definition">¶</a></dt>
+<dd><p>Create an instance of the model from a dictionary.
+Handles nested models and enum values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.from_model">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Model</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Model</span></span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSection.from_model" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.get" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.get_item">
+<span class="sig-name descname"><span class="pre">get_item</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.get_item"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.get_item" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.items">
+<span class="sig-name descname"><span class="pre">items</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ItemsView</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.items"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.items" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.json_schema">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">json_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.models.dataset.DataSetSection.json_schema" title="Link to this definition">¶</a></dt>
+<dd><p>Generates a JSON schema for the given class and its fields, but eliminates
+all fields which are models, embedded models, or references to models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cls</strong></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.keys">
+<span class="sig-name descname"><span class="pre">keys</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">KeysView</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.keys"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.keys" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.load_to_cache">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">load_to_cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack/modules/simstack.util.html#simstack.util.db.Database" title="simstack.util.db.Database"><span class="pre">Database</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.load_to_cache"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.load_to_cache" title="Link to this definition">¶</a></dt>
+<dd><p>Load all items from the database into the cache assuming that data is already loaded.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.make_column_defs">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">make_column_defs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.make_column_defs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.make_column_defs" title="Link to this definition">¶</a></dt>
+<dd><p>Generate ag-grid column definitions for all model types in this section.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.make_table_entries">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">make_table_entries</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.make_table_entries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.make_table_entries" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">False,</span> <span class="pre">'collection':</span> <span class="pre">None,</span> <span class="pre">'extra':</span> <span class="pre">'forbid',</span> <span class="pre">'indexes':</span> <span class="pre">None,</span> <span class="pre">'json_schema_extra':</span> <span class="pre">None,</span> <span class="pre">'parse_doc_with_default_factories':</span> <span class="pre">False,</span> <span class="pre">'str_strip_whitespace':</span> <span class="pre">False,</span> <span class="pre">'title':</span> <span class="pre">None,</span> <span class="pre">'validate_assignment':</span> <span class="pre">True,</span> <span class="pre">'validate_default':</span> <span class="pre">True}</span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSection.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.model_types">
+<span class="sig-name descname"><span class="pre">model_types</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSection.model_types" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.pop">
+<span class="sig-name descname"><span class="pre">pop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">Ellipsis</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.pop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.pop" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.popitem">
+<span class="sig-name descname"><span class="pre">popitem</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.popitem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.popitem" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.save">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.save" title="Link to this definition">¶</a></dt>
+<dd><p>Save all models in the cache to the database and update data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.setdefault">
+<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.setdefault"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.setdefault" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.table_entries">
+<span class="sig-name descname"><span class="pre">table_entries</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSection.table_entries" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.ui_make_title">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_make_title</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ui_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSection.ui_make_title" title="Link to this definition">¶</a></dt>
+<dd><p>Adds a title to the JSON schema.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cls</strong> – The class to which the JSON schema belongs</p></li>
+<li><p><strong>ui_schema</strong> – The original ui_schema schema</p></li>
+<li><p><strong>title</strong> – Title to be added</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Modified JSON schema with title</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.ui_schema">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.models.dataset.DataSetSection.ui_schema" title="Link to this definition">¶</a></dt>
+<dd><p>Generates a UI schema that uses GenericForm for fields with ui_schema function.
+Also preserves any existing UI schema configurations from the class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cls</strong> – The model class to generate UI schema for</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The generated UI schema</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSetSection" title="simstack.models.dataset.DataSetSection"><span class="pre">DataSetSection</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.update" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSection.values">
+<span class="sig-name descname"><span class="pre">values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ValuesView</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSection.values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSection.values" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.dataset.</span></span><span class="sig-name descname"><span class="pre">DataSetSelection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'dataset_selection'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ObjectId</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_selection_fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSetSelectionField" title="simstack.models.dataset.DataSetSelectionField"><span class="pre">DataSetSelectionField</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ObjectId</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSelection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSelection" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.custom_model_dump">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">custom_model_dump</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.custom_model_dump" title="Link to this definition">¶</a></dt>
+<dd><p>Custom model dump method to handle the conversion of model instances to dictionaries.
+This method recursively traverses dictionaries and lists to convert any nested
+model instances to their dictionary representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self</strong> – The model instance</p></li>
+<li><p><strong>kwargs</strong> – Additional keyword arguments</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary representation of the model instance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.dataset_id">
+<span class="sig-name descname"><span class="pre">dataset_id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectId</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.dataset_id" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.dataset_selection_fields">
+<span class="sig-name descname"><span class="pre">dataset_selection_fields</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.dataset.DataSetSelectionField" title="simstack.models.dataset.DataSetSelectionField"><span class="pre">DataSetSelectionField</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.dataset_selection_fields" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.field_name">
+<span class="sig-name descname"><span class="pre">field_name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.field_name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.from_dict">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.from_dict" title="Link to this definition">¶</a></dt>
+<dd><p>Create an instance of the model from a dictionary.
+Handles nested models and enum values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.from_model">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Model</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Model</span></span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.from_model" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.get_dataset">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">get_dataset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSelection.get_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.get_dataset" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.get_selected_elements">
+<span class="sig-name descname"><span class="pre">get_selected_elements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">section_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Model</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSelection.get_selected_elements"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.get_selected_elements" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve all selected model groups from the dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>section_name</strong> – Optional section name to filter results. If None, returns all sections.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of tuples of model instances for all selected elements</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.id">
+<span class="sig-name descname"><span class="pre">id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectId</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.id" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.json_schema">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">json_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.json_schema" title="Link to this definition">¶</a></dt>
+<dd><p>Generates a JSON schema for the given class and its fields, but eliminates
+all fields which are models, embedded models, or references to models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cls</strong></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">False,</span> <span class="pre">'collection':</span> <span class="pre">None,</span> <span class="pre">'extra':</span> <span class="pre">None,</span> <span class="pre">'indexes':</span> <span class="pre">None,</span> <span class="pre">'json_schema_extra':</span> <span class="pre">None,</span> <span class="pre">'parse_doc_with_default_factories':</span> <span class="pre">False,</span> <span class="pre">'str_strip_whitespace':</span> <span class="pre">False,</span> <span class="pre">'title':</span> <span class="pre">None,</span> <span class="pre">'validate_assignment':</span> <span class="pre">True,</span> <span class="pre">'validate_default':</span> <span class="pre">True}</span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.ui_make_title">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_make_title</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ui_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.ui_make_title" title="Link to this definition">¶</a></dt>
+<dd><p>Adds a title to the JSON schema.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cls</strong> – The class to which the JSON schema belongs</p></li>
+<li><p><strong>ui_schema</strong> – The original ui_schema schema</p></li>
+<li><p><strong>title</strong> – Title to be added</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Modified JSON schema with title</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset.DataSetSelection.ui_schema">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset.html#DataSetSelection.ui_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset.DataSetSelection.ui_schema" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.dataset_metadata.</span></span><span class="sig-name descname"><span class="pre">DataSetMetadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">bool</span> <span class="pre">|</span> <span class="pre">~odmantic.bson._datetime]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_validated</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">structure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">str]]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">EmbeddedModel</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.clear">
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.clear" title="Link to this definition">¶</a></dt>
+<dd><p>Clear data dict.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.copy_data">
+<span class="sig-name descname"><span class="pre">copy_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">datetime</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.copy_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.copy_data" title="Link to this definition">¶</a></dt>
+<dd><p>Return a copy of the data dict.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.custom_model_dump">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">custom_model_dump</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.custom_model_dump" title="Link to this definition">¶</a></dt>
+<dd><p>Custom model dump method to handle the conversion of model instances to dictionaries.
+This method recursively traverses dictionaries and lists to convert any nested
+model instances to their dictionary representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self</strong> – The model instance</p></li>
+<li><p><strong>kwargs</strong> – Additional keyword arguments</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary representation of the model instance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.data">
+<span class="sig-name descname"><span class="pre">data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">_datetime</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.data" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.field_name">
+<span class="sig-name descname"><span class="pre">field_name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.field_name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.freeze">
+<span class="sig-name descname"><span class="pre">freeze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_structure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.freeze"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.freeze" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.from_dict">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.from_dict" title="Link to this definition">¶</a></dt>
+<dd><p>Create an instance of the model from a dictionary.
+Handles nested models and enum values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.from_model">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Model</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Model</span></span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.from_model" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.get" title="Link to this definition">¶</a></dt>
+<dd><p>Get item from data dict with default.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.get_json_schema">
+<span class="sig-name descname"><span class="pre">get_json_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.get_json_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.get_json_schema" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.get_key_type">
+<span class="sig-name descname"><span class="pre">get_key_type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="simstack/modules/simstack.models.html#simstack.models.charts_artifact.AGAreaSeriesConfig.type" title="simstack.models.charts_artifact.AGAreaSeriesConfig.type"><span class="pre">type</span></a></span></span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.get_key_type"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.get_key_type" title="Link to this definition">¶</a></dt>
+<dd><p>Get the type of a specific key.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.get_schema_for_key">
+<span class="sig-name descname"><span class="pre">get_schema_for_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.get_schema_for_key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.get_schema_for_key" title="Link to this definition">¶</a></dt>
+<dd><p>Get JSON schema for a specific key.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.initialized">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">initialized</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.initialized" title="Link to this definition">¶</a></dt>
+<dd><p>Check if the model has been fully constructed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.is_type_compatible">
+<span class="sig-name descname"><span class="pre">is_type_compatible</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.is_type_compatible"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.is_type_compatible" title="Link to this definition">¶</a></dt>
+<dd><p>Check if a value is type-compatible with existing key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.is_validated">
+<span class="sig-name descname"><span class="pre">is_validated</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.is_validated" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.items">
+<span class="sig-name descname"><span class="pre">items</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.items"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.items" title="Link to this definition">¶</a></dt>
+<dd><p>Get items from data dict.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.json_schema">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">json_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.json_schema" title="Link to this definition">¶</a></dt>
+<dd><p>Generates a JSON schema for the given class and its fields, but eliminates
+all fields which are models, embedded models, or references to models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cls</strong></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.keys">
+<span class="sig-name descname"><span class="pre">keys</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.keys"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.keys" title="Link to this definition">¶</a></dt>
+<dd><p>Get keys from data dict.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">False,</span> <span class="pre">'collection':</span> <span class="pre">None,</span> <span class="pre">'extra':</span> <span class="pre">None,</span> <span class="pre">'indexes':</span> <span class="pre">None,</span> <span class="pre">'json_schema_extra':</span> <span class="pre">None,</span> <span class="pre">'parse_doc_with_default_factories':</span> <span class="pre">False,</span> <span class="pre">'str_strip_whitespace':</span> <span class="pre">False,</span> <span class="pre">'title':</span> <span class="pre">None,</span> <span class="pre">'validate_assignment':</span> <span class="pre">True,</span> <span class="pre">'validate_default':</span> <span class="pre">True}</span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.pop">
+<span class="sig-name descname"><span class="pre">pop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.pop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.pop" title="Link to this definition">¶</a></dt>
+<dd><p>Pop item from data dict.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.popitem">
+<span class="sig-name descname"><span class="pre">popitem</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.popitem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.popitem" title="Link to this definition">¶</a></dt>
+<dd><p>Pop item from data dict.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.setdefault">
+<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.setdefault"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.setdefault" title="Link to this definition">¶</a></dt>
+<dd><p>Set default value for key if not exists.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.structure">
+<span class="sig-name descname"><span class="pre">structure</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.structure" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.ui_make_title">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_make_title</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ui_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.ui_make_title" title="Link to this definition">¶</a></dt>
+<dd><p>Adds a title to the JSON schema.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cls</strong> – The class to which the JSON schema belongs</p></li>
+<li><p><strong>ui_schema</strong> – The original ui_schema schema</p></li>
+<li><p><strong>title</strong> – Title to be added</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Modified JSON schema with title</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.ui_schema">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.ui_schema" title="Link to this definition">¶</a></dt>
+<dd><p>Generates a UI schema that uses GenericForm for fields with ui_schema function.
+Also preserves any existing UI schema configurations from the class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cls</strong> – The model class to generate UI schema for</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The generated UI schema</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.update" title="Link to this definition">¶</a></dt>
+<dd><p>Update data dict with validation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.validate_dict">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">validate_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_structure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.validate_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.validate_dict" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadata.values">
+<span class="sig-name descname"><span class="pre">values</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadata.values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadata.values" title="Link to this definition">¶</a></dt>
+<dd><p>Get values from data dict.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadataTemplate">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.models.dataset_metadata.</span></span><span class="sig-name descname"><span class="pre">DataSetMetadataTemplate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">dataset_type:</span> <span class="pre">str,</span> <span class="pre">model_json:</span> <span class="pre">dict[str,</span> <span class="pre">~typing.Any],</span> <span class="pre">structure:</span> <span class="pre">dict[str,</span> <span class="pre">dict[str,</span> <span class="pre">str]]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">id:</span> <span class="pre">~odmantic.bson.ObjectId</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simstack/models/dataset_metadata.html#DataSetMetadataTemplate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadataTemplate" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadataTemplate.dataset_type">
+<span class="sig-name descname"><span class="pre">dataset_type</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadataTemplate.dataset_type" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadataTemplate.id">
+<span class="sig-name descname"><span class="pre">id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectId</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadataTemplate.id" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadataTemplate.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">False,</span> <span class="pre">'collection':</span> <span class="pre">None,</span> <span class="pre">'extra':</span> <span class="pre">None,</span> <span class="pre">'indexes':</span> <span class="pre">None,</span> <span class="pre">'json_schema_extra':</span> <span class="pre">None,</span> <span class="pre">'parse_doc_with_default_factories':</span> <span class="pre">False,</span> <span class="pre">'str_strip_whitespace':</span> <span class="pre">False,</span> <span class="pre">'title':</span> <span class="pre">None,</span> <span class="pre">'validate_assignment':</span> <span class="pre">True,</span> <span class="pre">'validate_default':</span> <span class="pre">True}</span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadataTemplate.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadataTemplate.model_json">
+<span class="sig-name descname"><span class="pre">model_json</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadataTemplate.model_json" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simstack.models.dataset_metadata.DataSetMetadataTemplate.structure">
+<span class="sig-name descname"><span class="pre">structure</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.models.dataset_metadata.DataSetMetadataTemplate.structure" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="lists.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">List Mixins</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="data.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Persisting and Visualizing Data</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, Wolfgang Wenzel
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Datasets</a><ul>
+<li><a class="reference internal" href="#dataset">DataSet</a></li>
+<li><a class="reference internal" href="#metadata">Metadata</a></li>
+<li><a class="reference internal" href="#datasetsection">DataSetSection</a></li>
+<li><a class="reference internal" href="#datasetselection">DataSetSelection</a></li>
+<li><a class="reference internal" href="#api-reference">API Reference</a><ul>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet"><code class="docutils literal notranslate"><span class="pre">DataSet</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.clear"><code class="docutils literal notranslate"><span class="pre">DataSet.clear()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.collect_structure"><code class="docutils literal notranslate"><span class="pre">DataSet.collect_structure()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">DataSet.custom_model_dump()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.dataset_type"><code class="docutils literal notranslate"><span class="pre">DataSet.dataset_type</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.field_name"><code class="docutils literal notranslate"><span class="pre">DataSet.field_name</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.from_dict"><code class="docutils literal notranslate"><span class="pre">DataSet.from_dict()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.from_model"><code class="docutils literal notranslate"><span class="pre">DataSet.from_model()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.get"><code class="docutils literal notranslate"><span class="pre">DataSet.get()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.id"><code class="docutils literal notranslate"><span class="pre">DataSet.id</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.items"><code class="docutils literal notranslate"><span class="pre">DataSet.items()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.json_schema"><code class="docutils literal notranslate"><span class="pre">DataSet.json_schema()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.keys"><code class="docutils literal notranslate"><span class="pre">DataSet.keys()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.metadata"><code class="docutils literal notranslate"><span class="pre">DataSet.metadata</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.model_config"><code class="docutils literal notranslate"><span class="pre">DataSet.model_config</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.pop"><code class="docutils literal notranslate"><span class="pre">DataSet.pop()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.save"><code class="docutils literal notranslate"><span class="pre">DataSet.save()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.sections"><code class="docutils literal notranslate"><span class="pre">DataSet.sections</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.setdefault"><code class="docutils literal notranslate"><span class="pre">DataSet.setdefault()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.ui_make_title"><code class="docutils literal notranslate"><span class="pre">DataSet.ui_make_title()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.ui_schema"><code class="docutils literal notranslate"><span class="pre">DataSet.ui_schema()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.update"><code class="docutils literal notranslate"><span class="pre">DataSet.update()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSet.values"><code class="docutils literal notranslate"><span class="pre">DataSet.values()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection"><code class="docutils literal notranslate"><span class="pre">DataSetSection</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.add_row"><code class="docutils literal notranslate"><span class="pre">DataSetSection.add_row()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.clear"><code class="docutils literal notranslate"><span class="pre">DataSetSection.clear()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.column_defs"><code class="docutils literal notranslate"><span class="pre">DataSetSection.column_defs</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">DataSetSection.custom_model_dump()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.data"><code class="docutils literal notranslate"><span class="pre">DataSetSection.data</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.db_find_postprocess"><code class="docutils literal notranslate"><span class="pre">DataSetSection.db_find_postprocess()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.from_dict"><code class="docutils literal notranslate"><span class="pre">DataSetSection.from_dict()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.from_model"><code class="docutils literal notranslate"><span class="pre">DataSetSection.from_model()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.get"><code class="docutils literal notranslate"><span class="pre">DataSetSection.get()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.get_item"><code class="docutils literal notranslate"><span class="pre">DataSetSection.get_item()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.items"><code class="docutils literal notranslate"><span class="pre">DataSetSection.items()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.json_schema"><code class="docutils literal notranslate"><span class="pre">DataSetSection.json_schema()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.keys"><code class="docutils literal notranslate"><span class="pre">DataSetSection.keys()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.load_to_cache"><code class="docutils literal notranslate"><span class="pre">DataSetSection.load_to_cache()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.make_column_defs"><code class="docutils literal notranslate"><span class="pre">DataSetSection.make_column_defs()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.make_table_entries"><code class="docutils literal notranslate"><span class="pre">DataSetSection.make_table_entries()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.model_config"><code class="docutils literal notranslate"><span class="pre">DataSetSection.model_config</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.model_types"><code class="docutils literal notranslate"><span class="pre">DataSetSection.model_types</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.pop"><code class="docutils literal notranslate"><span class="pre">DataSetSection.pop()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.popitem"><code class="docutils literal notranslate"><span class="pre">DataSetSection.popitem()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.save"><code class="docutils literal notranslate"><span class="pre">DataSetSection.save()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.setdefault"><code class="docutils literal notranslate"><span class="pre">DataSetSection.setdefault()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.table_entries"><code class="docutils literal notranslate"><span class="pre">DataSetSection.table_entries</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.ui_make_title"><code class="docutils literal notranslate"><span class="pre">DataSetSection.ui_make_title()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.ui_schema"><code class="docutils literal notranslate"><span class="pre">DataSetSection.ui_schema()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.update"><code class="docutils literal notranslate"><span class="pre">DataSetSection.update()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSection.values"><code class="docutils literal notranslate"><span class="pre">DataSetSection.values()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection"><code class="docutils literal notranslate"><span class="pre">DataSetSelection</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.custom_model_dump()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.dataset_id"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.dataset_id</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.dataset_selection_fields"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.dataset_selection_fields</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.field_name"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.field_name</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.from_dict"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.from_dict()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.from_model"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.from_model()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.get_dataset"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.get_dataset()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.get_selected_elements"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.get_selected_elements()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.id"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.id</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.json_schema"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.json_schema()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.model_config"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.model_config</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.ui_make_title"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.ui_make_title()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset.DataSetSelection.ui_schema"><code class="docutils literal notranslate"><span class="pre">DataSetSelection.ui_schema()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.clear"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.clear()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.copy_data"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.copy_data()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.custom_model_dump()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.data"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.data</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.field_name"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.field_name</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.freeze"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.freeze()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.from_dict"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.from_dict()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.from_model"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.from_model()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.get"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.get()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.get_json_schema"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.get_json_schema()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.get_key_type"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.get_key_type()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.get_schema_for_key"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.get_schema_for_key()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.initialized"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.initialized</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.is_type_compatible"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.is_type_compatible()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.is_validated"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.is_validated</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.items"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.items()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.json_schema"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.json_schema()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.keys"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.keys()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.model_config"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.model_config</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.pop"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.pop()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.popitem"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.popitem()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.setdefault"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.setdefault()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.structure"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.structure</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.ui_make_title"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.ui_make_title()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.ui_schema"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.ui_schema()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.update"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.update()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.validate_dict"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.validate_dict()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadata.values"><code class="docutils literal notranslate"><span class="pre">DataSetMetadata.values()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadataTemplate"><code class="docutils literal notranslate"><span class="pre">DataSetMetadataTemplate</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadataTemplate.dataset_type"><code class="docutils literal notranslate"><span class="pre">DataSetMetadataTemplate.dataset_type</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadataTemplate.id"><code class="docutils literal notranslate"><span class="pre">DataSetMetadataTemplate.id</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadataTemplate.model_config"><code class="docutils literal notranslate"><span class="pre">DataSetMetadataTemplate.model_config</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadataTemplate.model_json"><code class="docutils literal notranslate"><span class="pre">DataSetMetadataTemplate.model_json</span></code></a></li>
+<li><a class="reference internal" href="#simstack.models.dataset_metadata.DataSetMetadataTemplate.structure"><code class="docutils literal notranslate"><span class="pre">DataSetMetadataTemplate.structure</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/scripts/furo.js?v=46bd48cc"></script>
+    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    </body>
+</html>

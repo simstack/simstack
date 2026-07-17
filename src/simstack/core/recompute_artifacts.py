@@ -1,8 +1,8 @@
 import logging
 
 from simstack.core.artifacts import ArtifactArguments, create_artifacts
+from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.engine import current_engine_context
 from simstack.core.node import node_from_database
 from simstack.models import NodeRegistry, ArtifactModel
 from simstack.models.charts_artifact import ChartArtifactModel
@@ -25,7 +25,7 @@ async def recompute_artifacts(node_registry: NodeRegistry):
     """
     # Create Node from the registry
 
-    engine = current_engine_context.get()
+    db = context.db
     node = await node_from_database(node_registry)
     if node is None:
         logger.error(f"Failed to create node from registry task_id: {node_registry.id}")
@@ -36,35 +36,35 @@ async def recompute_artifacts(node_registry: NodeRegistry):
         return
 
     # Find all children of this node
-    children = await engine.find(NodeRegistry, NodeRegistry.parent_ids.in_([node_registry.id]))
+    children = await db.find(NodeRegistry, NodeRegistry.parent_ids.in_([node_registry.id]))
 
     # Recursively recompute artifacts for all children first
     for child_registry in children:
         await recompute_artifacts(child_registry)
 
     # Remove current node's artifacts
-    table_artifacts = await engine.find(
+    table_artifacts = await db.find(
         TableArtifactModel, TableArtifactModel.parent_id == node_registry.id
     )
     for table_artifact in table_artifacts:
-        await engine.delete(table_artifact)
+        await db.delete(table_artifact)
 
-    chart_artifacts = await engine.find(
+    chart_artifacts = await db.find(
         ChartArtifactModel, ChartArtifactModel.parent_id == node_registry.id
     )
     for chart_artifact in chart_artifacts:
-        await engine.delete(chart_artifact)
+        await db.delete(chart_artifact)
 
     if node_registry.artifact_ids:
         logger.info(f"Removing {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}")
 
         # Delete artifacts from the database
         for artifact_id in node_registry.artifact_ids:
-            instance = await engine.find_one(
+            instance = await db.find_one(
                 ArtifactModel, ArtifactModel.id == artifact_id
             )
             if instance:
-                await engine.delete(instance)
+                await db.delete(instance)
             else:
                 logger.warning(
                     f"task_id: {node_registry.id} Failed to delete artifact {artifact_id} from database"
@@ -81,16 +81,14 @@ async def recompute_artifacts(node_registry: NodeRegistry):
             artifact_arguments = ArtifactArguments(result, node_registry.id)
             # Reconstruct the function arguments for artifact creation
             args = []
-            for table, table_id in zip(
-                node_registry.input_tables, node_registry.input_ids
-            ):
-                model = await import_class(table)
-                arg = await engine.find_one(model, model.id == table_id)
+            for ref in node_registry.input_references:
+                model = await import_class(ref.variable_mapping, context.db)
+                arg = await db.find_one(model, model.id == ref.reference)
                 if arg:
                     args.append(arg)
 
             # Get the function for artifact creation
-            wrapped_func = await import_function(node_registry.func_mapping)
+            wrapped_func = await import_function(node_registry.func_mapping, context.db)
             func = (
                 wrapped_func
                 if not hasattr(wrapped_func, "_inner")
@@ -109,7 +107,7 @@ async def recompute_artifacts(node_registry: NodeRegistry):
             node_registry.artifact_ids = await create_artifacts(artifact_arguments, node_registry)
 
             # Save the updated registry
-            await engine.save(node_registry)
+            await db.save(node_registry)
             logger.info(
                 f"Recomputed {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}"
             )
