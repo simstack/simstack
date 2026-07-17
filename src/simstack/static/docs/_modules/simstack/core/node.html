@@ -521,7 +521,11 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find function mapping for name: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="n">input_references</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">:</span>
+        <span class="c1"># Get function signature to identify argument names</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="p">)</span>
+        <span class="n">param_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">arg</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">):</span>
             <span class="c1"># if there is no table for an arg raise an error</span>
             <span class="c1"># input_table_name = await context.db.find_one(ModelMapping, ModelMapping.name == arg.__class__.__name__)</span>
             <span class="n">input_table_name</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">model_mappings</span><span class="o">.</span><span class="n">get_by_name</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
@@ -539,9 +543,11 @@
                 <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to save argument </span><span class="si">{</span><span class="n">arg</span><span class="si">}</span><span class="s2"> - returned None or invalid ID&quot;</span><span class="p">)</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to save argument of type </span><span class="si">{</span><span class="n">arg</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
+            <span class="n">variable_name</span> <span class="o">=</span> <span class="n">param_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_names</span><span class="p">)</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;arg_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span>
+
             <span class="n">input_references</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">NamedDataReference</span><span class="o">.</span><span class="n">from_variable</span><span class="p">(</span>
                 <span class="n">argument_entry</span><span class="p">,</span>
-                <span class="n">variable_name</span><span class="o">=</span><span class="s2">&quot;variable&quot;</span><span class="p">,</span>
+                <span class="n">variable_name</span><span class="o">=</span><span class="n">variable_name</span><span class="p">,</span>
                 <span class="n">task_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
             <span class="p">))</span>
 
@@ -1381,6 +1387,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-15 17:46:12 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

@@ -305,7 +305,11 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find table name for </span><span class="si">{</span><span class="n">variable_class_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find table name for </span><span class="si">{</span><span class="n">variable_class_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">variable_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">variable_name</span> <span class="o">=</span> <span class="s2">&quot;variable&quot;</span>
+            <span class="c1"># Check if variable already has a field_name we can use</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="s2">&quot;field_name&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">variable</span><span class="o">.</span><span class="n">field_name</span><span class="p">:</span>
+                 <span class="n">variable_name</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">field_name</span>
+            <span class="k">else</span><span class="p">:</span>
+                 <span class="n">variable_name</span> <span class="o">=</span> <span class="s2">&quot;variable&quot;</span>
             
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">variable_name</span><span class="o">=</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">variable_mapping</span><span class="o">=</span><span class="n">table_name</span><span class="o">.</span><span class="n">mapping</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="n">variable</span><span class="o">.</span><span class="n">id</span><span class="p">)</span></div>
 </div>
@@ -346,6 +350,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-15 17:46:12 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>
