@@ -3,7 +3,7 @@ import urllib.parse
 import socket
 import re
 from pathlib import Path
-from odmantic import Model, Field, EmbeddedModel
+from odmantic import EmbeddedModel, Field, Model
 from pydantic import field_validator, model_serializer
 
 from simstack.util.transform_file_name import transform_file_name

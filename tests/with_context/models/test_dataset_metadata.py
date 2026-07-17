@@ -1,8 +1,10 @@
 import pytest
 from datetime import datetime
+from uuid import uuid4
 
 # Import the required modules
-from simstack.models.dataset_metadata import DataSetMetadata
+from simstack.core.context import context
+from simstack.models.dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
 
 
 class TestDataSetMetadataBasic:
@@ -361,6 +363,58 @@ class TestDataSetMetadataJsonSchema:
 
 class TestDataSetMetadataStructureValidation:
     """Test metadata structure validation and same-name restrictions."""
+
+    @pytest.mark.asyncio
+    async def test_first_validation_initializes_structure_for_freeze(
+        self, initialized_context
+    ):
+        """The first validated structure is immediately available to freeze."""
+        field_name = f"first-validation-{uuid4()}"
+        structure = {"train": {"value": "FloatData"}}
+        metadata = DataSetMetadata(field_name=field_name, data={"label": "first"})
+
+        try:
+            assert await metadata.validate_dict(structure) is True
+            assert metadata.structure == structure
+            assert metadata.freeze(structure) is True
+        finally:
+            template = await context.db.find_one(
+                DataSetMetadataTemplate,
+                DataSetMetadataTemplate.dataset_type == field_name,
+            )
+            if template is not None:
+                await context.db.delete(template)
+
+    @pytest.mark.asyncio
+    async def test_new_section_preserves_existing_template_structure(
+        self, initialized_context
+    ):
+        """Adding a section extends rather than replaces the stored template."""
+        field_name = f"additive-section-{uuid4()}"
+        train = {"train": {"value": "FloatData"}}
+        validation = {"validation": {"value": "FloatData"}}
+        expected = {**train, **validation}
+        first = DataSetMetadata(field_name=field_name, data={"label": "first"})
+        second = DataSetMetadata(field_name=field_name, data={"label": "second"})
+
+        try:
+            assert await first.validate_dict(train) is True
+            assert await second.validate_dict(validation) is True
+
+            template = await context.db.find_one(
+                DataSetMetadataTemplate,
+                DataSetMetadataTemplate.dataset_type == field_name,
+            )
+            assert template is not None
+            assert template.structure == expected
+            assert second.structure == expected
+        finally:
+            template = await context.db.find_one(
+                DataSetMetadataTemplate,
+                DataSetMetadataTemplate.dataset_type == field_name,
+            )
+            if template is not None:
+                await context.db.delete(template)
 
     @pytest.mark.asyncio
     async def test_same_structure_different_names_succeed(self):

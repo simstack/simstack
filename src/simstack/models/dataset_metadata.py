@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Dict, Any, Union, List
 
-from odmantic import Model, EmbeddedModel, Field
+from odmantic import EmbeddedModel, Field, Model
 
 from simstack.core.asnyc_helper import async_helper
 from simstack.models import simstack_model
@@ -77,6 +77,7 @@ class DataSetMetadata(EmbeddedModel):
                 structure=new_structure,
             )
             await context.db.save(metadata_template)
+            self.structure = new_structure
             return True  # first model of this type
 
         new_data_json = _get_json_schema(self.data)
@@ -139,9 +140,9 @@ class DataSetMetadata(EmbeddedModel):
                 save_template = True
 
         if save_template:
-            reference_metadata.structure = new_structure
+            reference_metadata.structure = updated_structure
             await context.db.save(reference_metadata)
-        self.structure = new_structure
+        self.structure = updated_structure
         return True
 
     @async_helper
