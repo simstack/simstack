@@ -89,9 +89,10 @@ def test_run_with_runner(tmp_path, config_file):
         os.chdir(test_cwd)
         try:
             rc.run(program_name="orca", node_runner=runner)
-            runner.subprocess.assert_called_once_with(
-                "run", "orca orca.inp", cwd=str(Path(test_cwd).resolve())
-            )
+            runner.subprocess.assert_called_once()
+            args, kwargs = runner.subprocess.call_args
+            assert args == ("run", "orca orca.inp")
+            assert Path(kwargs["cwd"]).samefile(test_cwd)
         finally:
             os.chdir(old_cwd)
 
