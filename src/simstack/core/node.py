@@ -231,7 +231,11 @@ class Node:
             raise ValueError(f"Could not find function mapping for name: {self.name}")
 
         input_references = []
-        for arg in self._args:
+        # Get function signature to identify argument names
+        sig = inspect.signature(self._func)
+        param_names = list(sig.parameters.keys())
+
+        for i, arg in enumerate(self._args):
             # if there is no table for an arg raise an error
             # input_table_name = await context.db.find_one(ModelMapping, ModelMapping.name == arg.__class__.__name__)
             input_table_name = context.model_mappings.get_by_name(arg.__class__.__name__)
@@ -249,9 +253,11 @@ class Node:
                 logger.error(f"Failed to save argument {arg} - returned None or invalid ID")
                 raise ValueError(f"Failed to save argument of type {arg.__class__.__name__}")
 
+            variable_name = param_names[i] if i < len(param_names) else f"arg_{i}"
+
             input_references.append(NamedDataReference.from_variable(
                 argument_entry,
-                variable_name="variable",
+                variable_name=variable_name,
                 task_id=str(self.id)
             ))
 
