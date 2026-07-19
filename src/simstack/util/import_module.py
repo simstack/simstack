@@ -33,6 +33,8 @@ def import_module_from_file(file_path: Path, root_dir: Path):
             # logger.debug(f"Added {root_dir} to sys.path")
         # Try a simple import first
         try:
+            if module_name is None or module_name == "":
+                raise ImportError(f"Module name is None for file: {file_path}")
             module = importlib.import_module(module_name)
             return module
         except ImportError as e:
