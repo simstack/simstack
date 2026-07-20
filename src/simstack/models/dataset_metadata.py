@@ -128,18 +128,33 @@ class DataSetMetadata(EmbeddedModel):
         for section_name, new_section_content in new_structure.items():
             if section_name in updated_structure:
                 ref_section_content = updated_structure[section_name]
-                # Check if all elements in new_section_content that have keys in ref_section_content have the same values
-                for key, value in new_section_content.items():
-                    if key in ref_section_content:
+                # Check if all elements in new_section_content match ref_section_content exactly
+                if set(ref_section_content.keys()) != set(new_section_content.keys()):
+                    # check if all existing types are the same
+                    if len(set(ref_section_content.values())) == 1 and len(set(new_section_content.values())) == 1 and list(ref_section_content.values())[0] == list(new_section_content.values())[0]:
+                        # Allow adding new keys if types match
+                        for key, value in new_section_content.items():
+                            if key in ref_section_content:
+                                if ref_section_content[key] != value:
+                                    raise ValueError(
+                                        f"Section {section_name} has different value for key '{key}'. "
+                                        f"Reference: {ref_section_content[key]}, Current: {value}"
+                                    )
+                            else:
+                                updated_structure[section_name][key] = value
+                                save_template = True
+                    else:
+                        raise ValueError(
+                            f"Section {section_name} has different content. "
+                            f"Reference keys: {set(ref_section_content.keys())}, Current keys: {set(new_section_content.keys())}"
+                        )
+                else:
+                    for key, value in new_section_content.items():
                         if ref_section_content[key] != value:
                             raise ValueError(
                                 f"Section {section_name} has different value for key '{key}'. "
                                 f"Reference: {ref_section_content[key]}, Current: {value}"
                             )
-                    else:
-                        # Key exists in new_section but not in ref_section
-                        updated_structure[section_name][key] = value
-                        save_template = True
             else:
                 # Completely new section
                 updated_structure[section_name] = new_section_content
