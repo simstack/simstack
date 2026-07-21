@@ -130,31 +130,27 @@ class DataSetMetadata(EmbeddedModel):
                 ref_section_content = updated_structure[section_name]
                 # Check if all elements in new_section_content match ref_section_content exactly
                 if set(ref_section_content.keys()) != set(new_section_content.keys()):
+                    ref_keys = set(ref_section_content.keys())
+                    new_keys = set(new_section_content.keys())
+
+                    extra_keys = new_keys - ref_keys
+
                     # check if all existing types are the same
-                    if len(set(ref_section_content.values())) == 1 and len(set(new_section_content.values())) == 1 and list(ref_section_content.values())[0] == list(new_section_content.values())[0]:
-                        # Allow adding new keys if types match
-                        for key, value in new_section_content.items():
-                            if key in ref_section_content:
-                                if ref_section_content[key] != value:
-                                    raise ValueError(
-                                        f"Section {section_name} has different value for key '{key}'. "
-                                        f"Reference: {ref_section_content[key]}, Current: {value}"
-                                    )
-                            else:
-                                updated_structure[section_name][key] = value
-                                save_template = True
-                    else:
-                        raise ValueError(
-                            f"Section {section_name} has different content. "
-                            f"Reference keys: {set(ref_section_content.keys())}, Current keys: {set(new_section_content.keys())}"
-                        )
-                else:
-                    for key, value in new_section_content.items():
-                        if ref_section_content[key] != value:
-                            raise ValueError(
-                                f"Section {section_name} has different value for key '{key}'. "
-                                f"Reference: {ref_section_content[key]}, Current: {value}"
-                            )
+                    if not (len(set(ref_section_content.values())) == 1 and len(set(new_section_content.values())) == 1 and list(ref_section_content.values())[0] == list(new_section_content.values())[0]):
+                        # Check for type mismatches in common keys
+                        common_keys = ref_keys.intersection(new_keys)
+                        for key in common_keys:
+                            if ref_section_content[key] != new_section_content[key]:
+                                error_msg = f"Section '{section_name}' has different value for key '{key}'.\n"
+                                error_msg += f"Reference: {ref_section_content[key]}, Current: {new_section_content[key]}\n"
+                                error_msg += f"Reference keys: {ref_keys}\n"
+                                error_msg += f"Current keys: {new_keys}"
+                                raise ValueError(error_msg)
+
+                    if len(extra_keys) > 0:
+                        for key in extra_keys:
+                            updated_structure[section_name][key] = ref_section_content[key]
+                            save_template = True
             else:
                 # Completely new section
                 updated_structure[section_name] = new_section_content

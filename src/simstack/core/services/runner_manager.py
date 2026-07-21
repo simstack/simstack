@@ -135,7 +135,7 @@ class RunnerManager:
                     self._resource,
                     interval=10,
                     max_concurrent=2,
-                    shutdown_event=self._shutdown_event,
+                    shutdown_event=None,
                 )
             )
 
