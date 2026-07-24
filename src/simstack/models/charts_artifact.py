@@ -651,7 +651,17 @@ def create_multi_series_line_chart(
 ) -> ChartArtifactModel:
     """Create a line chart with multiple y-axis series."""
     chart_title = AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
-    colors = ["red", "blue", "green", "orange", "purple", "cyan", "magenta", "yellow", "black"]
+    colors = [
+        "#FF6B6B",  # red
+        "#4ECDC4",  # teal
+        "#45B7D1",  # light blue
+        "#96CEB4",  # sage green
+        "#FECA57",  # yellow
+        "#A29BFE",  # light purple
+        "#FF8C94",  # pink
+        "#55EFC4",  # mint
+        "#81ECEC",  # cyan
+    ]
 
     series = []
     for i, y_key in enumerate(y_keys):
