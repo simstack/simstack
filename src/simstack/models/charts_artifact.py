@@ -25,6 +25,7 @@ class AGLineSeriesConfig(AGChartSeriesBase):
     """AG-Charts line series configuration."""
 
     type: Literal["line"] = "line"
+    stroke: Optional[str] = Field(default=None, description="Line stroke color")
     strokeWidth: Optional[float] = Field(default=2, description="Line stroke width")
     strokeOpacity: Optional[float] = Field(default=1, description="Line stroke opacity")
     lineDash: Optional[List[float]] = Field(
@@ -42,7 +43,9 @@ class AGBarSeriesConfig(AGChartSeriesBase):
     """AG-Charts bar series configuration."""
 
     type: Literal["bar"] = "bar"
+    fill: Optional[str] = Field(default=None, description="Bar fill color")
     fillOpacity: Optional[float] = Field(default=1, description="Bar fill opacity")
+    stroke: Optional[str] = Field(default=None, description="Bar stroke color")
     strokeWidth: Optional[float] = Field(default=0, description="Bar stroke width")
     cornerRadius: Optional[float] = Field(default=0, description="Bar corner radius")
     tooltip: Optional[Dict[str, Any]] = Field(
@@ -70,7 +73,9 @@ class AGRangeBarSeriesConfig(EmbeddedModel):
     showInLegend: Optional[bool] = Field(default=True, description="Show in legend")
     title: Optional[str] = Field(default=None, description="Series title")
     data: List[Dict[str, Any]] = Field(default_factory=list, description="Chart data")
+    fill: Optional[str] = Field(default=None, description="Bar fill color")
     fillOpacity: Optional[float] = Field(default=1, description="Bar fill opacity")
+    stroke: Optional[str] = Field(default=None, description="Bar stroke color")
     strokeWidth: Optional[float] = Field(default=0, description="Bar stroke width")
     cornerRadius: Optional[float] = Field(default=0, description="Bar corner radius")
     tooltip: Optional[Dict[str, Any]] = Field(
@@ -82,7 +87,9 @@ class AGColumnSeriesConfig(AGChartSeriesBase):
     """AG-Charts column series configuration."""
 
     type: Literal["column"] = "column"
+    fill: Optional[str] = Field(default=None, description="Column fill color")
     fillOpacity: Optional[float] = Field(default=1, description="Column fill opacity")
+    stroke: Optional[str] = Field(default=None, description="Column stroke color")
     strokeWidth: Optional[float] = Field(default=0, description="Column stroke width")
     cornerRadius: Optional[float] = Field(default=0, description="Column corner radius")
     tooltip: Optional[Dict[str, Any]] = Field(
@@ -94,7 +101,9 @@ class AGAreaSeriesConfig(AGChartSeriesBase):
     """AG-Charts area series configuration."""
 
     type: Literal["area"] = "area"
+    fill: Optional[str] = Field(default=None, description="Area fill color")
     fillOpacity: Optional[float] = Field(default=0.8, description="Area fill opacity")
+    stroke: Optional[str] = Field(default=None, description="Area stroke color")
     strokeWidth: Optional[float] = Field(default=2, description="Area stroke width")
     marker: Optional[Dict[str, Any]] = Field(
         default=None, description="Marker configuration"
@@ -108,6 +117,8 @@ class AGScatterSeriesConfig(AGChartSeriesBase):
     """AG-Charts scatter series configuration."""
 
     type: Literal["scatter"] = "scatter"
+    fill: Optional[str] = Field(default=None, description="Marker fill color")
+    stroke: Optional[str] = Field(default=None, description="Marker stroke color")
     marker: Optional[Dict[str, Any]] = Field(
         default=None, description="Marker configuration"
     )
@@ -162,6 +173,8 @@ class AGPieSeriesConfig(EmbeddedModel):
     )
     showInLegend: Optional[bool] = Field(default=True, description="Show in legend")
     title: Optional[str] = Field(default=None, description="Series title")
+    fills: Optional[List[str]] = Field(default=None, description="Slice fill colors")
+    strokes: Optional[List[str]] = Field(default=None, description="Slice stroke colors")
     tooltip: Optional[Dict[str, Any]] = Field(
         default=None, description="Tooltip configuration"
     )
@@ -196,9 +209,12 @@ class AGDonutSeriesConfig(EmbeddedModel):
     )
     showInLegend: Optional[bool] = Field(default=True, description="Show in legend")
     title: Optional[str] = Field(default=None, description="Series title")
+    fills: Optional[List[str]] = Field(default=None, description="Slice fill colors")
+    strokes: Optional[List[str]] = Field(default=None, description="Slice stroke colors")
     tooltip: Optional[Dict[str, Any]] = Field(
         default=None, description="Tooltip configuration"
     )
+    data: List[Dict[str, Any]] = Field(default_factory=list, description="Chart data")
 
 
 # Union type for all series configurations
@@ -406,10 +422,14 @@ def create_simple_bar_chart(
     parent_id: Optional[ObjectId] = None,
 ) -> ChartArtifactModel:
     """Create a simple bar chart."""
-    chart_title = AGChartTitleConfig(text=title) if title else None
+    chart_title = (
+        AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
+    )
 
     series = [
-        AGColumnSeriesConfig(type="column", xKey=x_key, yKey=y_key, title=y_key.title())
+        AGColumnSeriesConfig(
+            type="column", xKey=x_key, yKey=y_key, title=y_key.title(), data=data
+        )
     ]
 
     axes = [
@@ -433,7 +453,9 @@ def create_simple_pie_chart(
     parent_id: Optional[ObjectId] = None,
 ) -> ChartArtifactModel:
     """Create a simple pie chart."""
-    chart_title = AGChartTitleConfig(text=title) if title else None
+    chart_title = (
+        AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
+    )
 
     series = [
         AGPieSeriesConfig(
@@ -463,7 +485,9 @@ def create_simple_range_bar_chart(
     direction: Optional[Literal["horizontal", "vertical"]] = None,
 ) -> ChartArtifactModel:
     """Create a simple range-bar chart."""
-    chart_title = AGChartTitleConfig(text=title) if title else None
+    chart_title = (
+        AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
+    )
 
     series = [
         AGRangeBarSeriesConfig(
@@ -499,10 +523,14 @@ def create_simple_area_chart(
     parent_id: Optional[ObjectId] = None,
 ) -> ChartArtifactModel:
     """Create a simple area chart."""
-    chart_title = AGChartTitleConfig(text=title) if title else None
+    chart_title = (
+        AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
+    )
 
     series = [
-        AGAreaSeriesConfig(type="area", xKey=x_key, yKey=y_key, title=y_key.title())
+        AGAreaSeriesConfig(
+            type="area", xKey=x_key, yKey=y_key, title=y_key.title(), data=data
+        )
     ]
 
     axes = [
@@ -523,11 +551,13 @@ def create_simple_scatter_chart(
     parent_id: Optional[ObjectId] = None,
 ) -> ChartArtifactModel:
     """Create a simple scatter chart."""
-    chart_title = AGChartTitleConfig(text=title) if title else None
+    chart_title = (
+        AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
+    )
 
     series = [
         AGScatterSeriesConfig(
-            type="scatter", xKey=x_key, yKey=y_key, title=y_key.title()
+            type="scatter", xKey=x_key, yKey=y_key, title=y_key.title(), data=data
         )
     ]
 
@@ -589,7 +619,9 @@ def create_simple_donut_chart(
     parent_id: Optional[ObjectId] = None,
 ) -> ChartArtifactModel:
     """Create a simple donut chart."""
-    chart_title = AGChartTitleConfig(text=title) if title else None
+    chart_title = (
+        AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
+    )
 
     series = [
         AGDonutSeriesConfig(
@@ -601,6 +633,7 @@ def create_simple_donut_chart(
             sectorLabelKey=sector_label_key,
             innerRadiusRatio=inner_radius_ratio,
             title="Distribution",
+            data=data,
         )
     ]
 
@@ -618,12 +651,18 @@ def create_multi_series_line_chart(
 ) -> ChartArtifactModel:
     """Create a line chart with multiple y-axis series."""
     chart_title = AGChartTitleConfig(text=title) if title else AGChartTitleConfig(text="Chart")
+    colors = ["red", "blue", "green", "orange", "purple", "cyan", "magenta", "yellow", "black"]
 
     series = []
-    for y_key in y_keys:
+    for i, y_key in enumerate(y_keys):
         series.append(
             AGLineSeriesConfig(
-                type="line", xKey=x_key, yKey=y_key, title=y_key.title(), data=data
+                type="line",
+                xKey=x_key,
+                yKey=y_key,
+                title=y_key.title(),
+                data=data,
+                stroke=colors[i % len(colors)]
             )
         )
 
