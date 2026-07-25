@@ -3,6 +3,7 @@ import asyncio
 import logging
 import sys
 
+from molecular_qm_psi4.scripts.classify_ring_conformers_v2 import aligned_mass_weighted_rmsd
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.run_docker import run_docker
@@ -17,6 +18,7 @@ async def run_node_from_id(node_id: str, resource_str: str, project_root: str = 
         init_kwargs = {
             "resource": resource_str,
             "project_root": project_root,
+            "in_docker": in_docker
         }
         # Host workdirs (e.g. C:/Users/...) are bind-mounted at /root/simstack.
         if in_docker:
