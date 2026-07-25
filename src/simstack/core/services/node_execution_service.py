@@ -18,6 +18,22 @@ logger = logging.getLogger("NodeRunner")
 
 
 async def run_node_from_registry(registry_entry: NodeRegistry) -> bool:
+    """
+    Executes a node task from the provided registry entry and updates its status
+    based on the success or failure of execution.
+    This always leads to local execution.
+
+    Parameters:
+        registry_entry (NodeRegistry): The registry entry containing information
+        about the node execution target.
+
+    Returns:
+        bool: True if the node execution completes successfully, False otherwise.
+
+    Raises:
+        AssertionError: If the registry entry associated with the node becomes None after execution.
+
+    """
     # Create the node from the registry entry
     node = await node_from_database(registry_entry)
     if not node:
@@ -83,7 +99,7 @@ class NodeExecutionService(BaseService):
                 )
                 return False
 
-            if queue == "slurm-queue":
+            if queue == "slurm-queue" or queue == "slurm-docker":
                 return await submit_node(registry_entry)
             elif queue == "docker":
                 return await run_docker(registry_entry)

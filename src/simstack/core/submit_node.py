@@ -152,9 +152,7 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
             slurm_parameters.startup_commands.append("wait")
         slurm_parameters.signal = "B:SIGUSR1@60"
 
-
         slurm_script = slurm_parameters.to_sbatch_header()
-
         # write the script to a file in the work_dir
         os.makedirs(work_dir, exist_ok=True)
         logger.info(f"task_id: {task_id} workdir {work_dir} python path {python_path}")
