@@ -18,7 +18,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
     program_config = context.resource_config.get_program(registry_entry.name)
     image= program_config.get("docker_image", None)
     if image is None:
-        logger.error(f"Docker image not found for task_id={registry_entry.id}")
+        logger.error(f"Docker image for {registry_entry.name} not found for task_id {registry_entry.id}")
         registry_entry.status = TaskStatus.FAILED
         await context.db.save(registry_entry)
         return False
@@ -42,7 +42,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
             "-v", f"{workdir}:/root/simstack",
             "-v", f"{host_simstack_toml}:/app/simstack.toml",
             image,
-            "--node-id", str(registry_entry.id), "--resource", str(resource), "--project-root", "/app"
+            "--node-id", str(registry_entry.id), "--resource", str(resource), "--project-root", "/app", "--in-docker"
         ]
     elif docker_cmd == "apptainer":
         cmd = [
@@ -56,6 +56,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
             "--node-id", str(registry_entry.id),
             "--resource", str(resource),
             "--project-root", "/app",
+            "--in-docker",
         ]
     else:
         logger.error(f"Unsupported command {docker_cmd} for task_id={registry_entry.id}")
