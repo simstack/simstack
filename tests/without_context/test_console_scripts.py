@@ -2,9 +2,6 @@ import importlib
 import tomllib
 from pathlib import Path
 
-import pytest
-
-pytest.mark.skip(reason="If there are non-simstack directories in the pyproject.toml, this test will fail.")
 def test_console_script_targets_are_importable():
     pyproject_path = Path(__file__).parents[2] / "pyproject.toml"
     with pyproject_path.open("rb") as pyproject_file:
