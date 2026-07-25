@@ -58,8 +58,30 @@ class DataSetMetadata(EmbeddedModel):
     def get_json_schema(self):
         return _get_json_schema(self.data)
 
-    async def validate_dict(self, new_structure: Dict[str, Dict[str, str]]) -> bool:
+    async def validate_dict(self, new_structure: Dict[str, Dict[str, str]], dataset_tuple: bool = False) -> bool:
+        """
+        Asynchronously validates and updates the structure of a dataset metadata template based on a provided dictionary.
 
+        This function ensures that the structure of the provided `new_structure` aligns
+        with the pre-existing metadata template stored in the database. If the metadata
+        template does not exist, it initializes a new one. Schema properties and section
+        contents are rigorously compared for consistency, and any mismatches result in
+        an exception being raised. The function also handles updates to the template when
+        new sections or keys are introduced.
+
+        Parameters:
+            new_structure (Dict[str, Dict[str, str]]): A dictionary describing the sections
+                and their respective key-type mappings for the new dataset structure.
+            dataset_tuple (bool, optional): A flag indicating whether the provided structure
+                should be treated as a tuple. Defaults to False.
+
+        Returns:
+            bool: True if the structure is successfully validated or updated.
+
+        Raises:
+            ValueError: If there is a mismatch between the existing and provided schema
+                properties or section content.
+        """
         from simstack.core.context import context
         reference_metadata = await context.db.find_one(
             DataSetMetadataTemplate,
@@ -83,6 +105,7 @@ class DataSetMetadata(EmbeddedModel):
         new_data_json = _get_json_schema(self.data)
 
         # Compare schemas element by element
+        # this section compares whether the data in the metadata is the same
         ref_props = reference_metadata.model_json.get("properties", {})
         new_props = new_data_json.get("properties", {})
 
@@ -129,27 +152,32 @@ class DataSetMetadata(EmbeddedModel):
             if section_name in updated_structure:
                 ref_section_content = updated_structure[section_name]
                 # Check if all elements in new_section_content match ref_section_content exactly
-                if set(ref_section_content.keys()) != set(new_section_content.keys()):
+
+                if dataset_tuple: # for tuples the sections must be exactly the same
+                    if ref_section_content != new_section_content:
+                        raise ValueError(
+                            f"Section '{section_name}' content mismatch. Reference: {ref_section_content}, Current: {new_section_content}"
+                        )
+                    continue
+                else:
                     ref_keys = set(ref_section_content.keys())
                     new_keys = set(new_section_content.keys())
 
                     extra_keys = new_keys - ref_keys
 
-                    # check if all existing types are the same
-                    if not (len(set(ref_section_content.values())) == 1 and len(set(new_section_content.values())) == 1 and list(ref_section_content.values())[0] == list(new_section_content.values())[0]):
-                        # Check for type mismatches in common keys
-                        common_keys = ref_keys.intersection(new_keys)
-                        for key in common_keys:
-                            if ref_section_content[key] != new_section_content[key]:
-                                error_msg = f"Section '{section_name}' has different value for key '{key}'.\n"
-                                error_msg += f"Reference: {ref_section_content[key]}, Current: {new_section_content[key]}\n"
-                                error_msg += f"Reference keys: {ref_keys}\n"
-                                error_msg += f"Current keys: {new_keys}"
-                                raise ValueError(error_msg)
+                    # Check for type mismatches in common keys
+                    common_keys = ref_keys.intersection(new_keys)
+                    for key in common_keys:
+                        if ref_section_content[key] != new_section_content[key]:
+                            error_msg = f"MetaData Validation failed: Section '{section_name}' has different value for key '{key}'.\n"
+                            error_msg += f"Reference: {ref_section_content[key]}, Current: {new_section_content[key]}\n"
+                            error_msg += f"Reference keys: {ref_keys}\n"
+                            error_msg += f"Current keys: {new_keys}"
+                            raise ValueError(error_msg)
 
                     if len(extra_keys) > 0:
                         for key in extra_keys:
-                            updated_structure[section_name][key] = ref_section_content[key]
+                            updated_structure[section_name][key] = new_section_content[key]
                             save_template = True
             else:
                 # Completely new section

@@ -95,8 +95,80 @@ class TestDataSetExtended:
         meta2 = DataSetMetadata(field_name="mismatch_type", data={})
         ds2 = DataSet(metadata=meta2)
         sec2 = DataSetSection()
-        sec2.add_row({"s": s}, name="row1") # "s" instead of "f"
+        sec2.add_row({"f": s}, name="row1") # "s" instead of "f"
         ds2["train"] = sec2
 
-        with pytest.raises(ValueError, match="Metadata validation failed|Section train has different content"):
+        with pytest.raises(ValueError, match=r"Metadata [Vv]alidation failed|Section '?'?train'?'? has different (content|value)"):
             await ds2.save(context.db)
+
+    @pytest.mark.asyncio
+    async def test_dataset_metadata_data_key_mismatch_fails(self, initialized_context):
+        """Test that saving a dataset with a different data keys for the same field_name fails."""
+        f = FloatData(value=1.0)
+        await context.db.save(f)
+
+        # First dataset with metadata data {'a': 1}
+        meta1 = DataSetMetadata(field_name="data_mismatch", data={"a": 1})
+        ds1 = DataSet(metadata=meta1)
+        sec1 = DataSetSection()
+        sec1.add_row({"f": f}, name="row1")
+        ds1["train"] = sec1
+        await ds1.save(context.db)
+
+        # Second dataset with same field_name but different metadata data keys {'b': 2}
+        meta2 = DataSetMetadata(field_name="data_mismatch", data={"b": 2})
+        ds2 = DataSet(metadata=meta2)
+        sec2 = DataSetSection()
+        sec2.add_row({"f": f}, name="row1")
+        ds2["train"] = sec2
+
+        with pytest.raises(ValueError, match=r"Data schema properties mismatch"):
+            await ds2.save(context.db)
+
+    @pytest.mark.asyncio
+    async def test_dataset_metadata_data_type_mismatch_fails(self, initialized_context):
+        """Test that saving a dataset with a different data types for the same field_name fails."""
+        f = FloatData(value=1.0)
+        await context.db.save(f)
+
+        # First dataset with metadata data {'a': 1} (int)
+        meta1 = DataSetMetadata(field_name="data_type_mismatch", data={"a": 1})
+        ds1 = DataSet(metadata=meta1)
+        sec1 = DataSetSection()
+        sec1.add_row({"f": f}, name="row1")
+        ds1["train"] = sec1
+        await ds1.save(context.db)
+
+        # Second dataset with same field_name but different metadata data type {'a': "1"} (str)
+        meta2 = DataSetMetadata(field_name="data_type_mismatch", data={"a": "1"})
+        ds2 = DataSet(metadata=meta2)
+        sec2 = DataSetSection()
+        sec2.add_row({"f": f}, name="row1")
+        ds2["train"] = sec2
+
+        with pytest.raises(ValueError, match=r"Property 'a' type mismatch"):
+            await ds2.save(context.db)
+
+    @pytest.mark.asyncio
+    async def test_dataset_metadata_data_value_change_succeeds(self, initialized_context):
+        """Test that saving a dataset with different data values (same type/keys) for the same field_name succeeds."""
+        f = FloatData(value=1.0)
+        await context.db.save(f)
+
+        # First dataset with metadata data {'a': 1}
+        meta1 = DataSetMetadata(field_name="data_value_change", data={"a": 1})
+        ds1 = DataSet(metadata=meta1)
+        sec1 = DataSetSection()
+        sec1.add_row({"f": f}, name="row1")
+        ds1["train"] = sec1
+        await ds1.save(context.db)
+
+        # Second dataset with same field_name and same data structure but different value {'a': 2}
+        meta2 = DataSetMetadata(field_name="data_value_change", data={"a": 2})
+        ds2 = DataSet(metadata=meta2)
+        sec2 = DataSetSection()
+        sec2.add_row({"f": f}, name="row1")
+        ds2["train"] = sec2
+        
+        # This should NOT fail because the schema (keys and types) is the same
+        await ds2.save(context.db)
