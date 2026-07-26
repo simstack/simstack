@@ -301,6 +301,7 @@ class SlurmParameters(EmbeddedModel):
 class Parameters(EmbeddedModel):
     force_rerun: bool = False
     resource: Resource = Field(default_factory=lambda: Resource(value="self"))
+    in_docker: bool = Field(default=False, description="Run in docker")
     queue: str = Field(default="default")
     recompute_artifacts: Optional[bool] = Field(
         default=False, description="Recompute artifacts for this node"
@@ -331,12 +332,17 @@ class Parameters(EmbeddedModel):
 
     @model_validator(mode="before")
     @classmethod
-    def migrate_slurm_parameters(cls, data):
+    def migrate_parameters(cls, data):
         if "slurm_parameters_data" in data and "slurm_parameters" not in data:
             data["slurm_parameters"] = SlurmParameters(**data["slurm_parameters_data"])
             del data["slurm_parameters_data"]
         if "slurm_parameters" not in data or data["slurm_parameters"] is None:
             data["slurm_parameters"] = SlurmParameters()
+        if (
+            data.get("queue") in ["docker", "slurm-docker"]
+            and data.get("in_docker") is None
+        ):
+            data["in_docker"] = True
         return data
 
     @field_validator("resource", mode="before")
