@@ -306,9 +306,6 @@ class Parameters(EmbeddedModel):
     recompute_artifacts: Optional[bool] = Field(
         default=False, description="Recompute artifacts for this node"
     )
-    docker_image: Optional[str] = Field(default=None, description="Docker image to use")
-    other_value: str = Field(default="other")
-    test_dict: Dict[str, Any] = Field(default_factory=lambda: {"test": "value"})
 
     slurm_parameters: SlurmParameters = Field(default=None)
     # slurm_parameters_data: Dict[str, Any] = Field(default_factory=dict)
