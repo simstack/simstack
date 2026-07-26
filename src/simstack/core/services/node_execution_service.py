@@ -69,9 +69,7 @@ class NodeExecutionService(BaseService):
 
         await self.write_node_event(RunnerEventEnum.NODE_STARTED, registry_entry.id)
         try:
-            logger.info(
-                f"Running node task_id: {registry_entry.id} on resource {context.config.resource} with status {registry_entry.status}"
-            )
+
             queue = (
                 registry_entry.parameters.queue
                 if hasattr(registry_entry.parameters, "queue")
@@ -83,6 +81,9 @@ class NodeExecutionService(BaseService):
                 )
                 return False
 
+            logger.info(
+                f"Running node task_id: {registry_entry.id} on resource {context.config.resource} with {queue} queue and docker: {registry_entry.parameters.in_docker} "
+            )
             if registry_entry.parameters.in_docker:
                 return await run_docker(registry_entry)
 
