@@ -84,11 +84,12 @@ class NodeExecutionService(BaseService):
             logger.info(
                 f"Running node task_id: {registry_entry.id} on resource {context.config.resource} with {queue} queue and docker: {registry_entry.parameters.in_docker} "
             )
-            if registry_entry.parameters.in_docker:
-                return await run_docker(registry_entry)
 
             if queue == "slurm-queue":
                 return await submit_node(registry_entry)
+
+            if registry_entry.parameters.in_docker:
+                return await run_docker(registry_entry)
 
             elif queue == "default":
                 if self._detach:
