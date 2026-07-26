@@ -79,8 +79,10 @@ class GitUvUpdateService(RestartService):
         # old_uv_checksum = get_file_checksum(self._uv_lock_path)
         
         # Ensure we don't have local lockfile changes that block the pull
-
         await self._run_command(["git", "stash"], ignore_error=True)
+
+        # Fetch all remotes to ensure we have the latest refs, avoiding "no such ref was fetched" errors
+        await self._run_command(["git", "fetch", "--all", "--prune"])
 
         git_output = await self._run_command(["git", "pull", "--recurse-submodules" ])
         git_changed = "Already up to date." not in git_output
