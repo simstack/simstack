@@ -57,21 +57,31 @@ class GitUvUpdateService(RestartService):
 
         
 
-    async def _run_command(self, cmd: list, ignore_error=False) -> str:
-        """Run a shell command and return output"""
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            cwd=str(self._project_dir),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate()
-        if process.returncode != 0:
-            if ignore_error:
-                logger.warning(f"Command {' '.join(cmd)} failed: {stderr.decode()}")
+    async def _run_command(self, cmd: list, ignore_error=False, retries=0, backoff=2) -> str:
+        """Run a shell command and return output with optional retries"""
+        for attempt in range(retries + 1):
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                cwd=str(self._project_dir),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+            if process.returncode == 0:
+                return stdout.decode().strip()
+
+            err_msg = stderr.decode()
+            if attempt < retries:
+                wait_time = backoff ** (attempt + 1)
+                logger.warning(f"Command {' '.join(cmd)} failed (attempt {attempt+1}/{retries+1}): {err_msg}. Retrying in {wait_time}s...")
+                await asyncio.sleep(wait_time)
             else:
-                raise RuntimeError(f"Command {' '.join(cmd)} failed: {stderr.decode()}")
-        return stdout.decode().strip()
+                if ignore_error:
+                    logger.warning(f"Command {' '.join(cmd)} failed after {retries+1} attempts: {err_msg}")
+                    return ""
+                else:
+                    raise RuntimeError(f"Command {' '.join(cmd)} failed after {retries+1} attempts: {err_msg}")
+        return ""
     
     async def execute(self):
         # 1. Git Pull
@@ -82,9 +92,10 @@ class GitUvUpdateService(RestartService):
         await self._run_command(["git", "stash"], ignore_error=True)
 
         # Fetch all remotes to ensure we have the latest refs, avoiding "no such ref was fetched" errors
-        await self._run_command(["git", "fetch", "--all", "--prune"])
+        # Using retries for fetch/pull as SSH connections might be closed by remote host (rate limiting)
+        await self._run_command(["git", "fetch", "--all", "--prune"], retries=3)
 
-        git_output = await self._run_command(["git", "pull", "--recurse-submodules" ])
+        git_output = await self._run_command(["git", "pull", "--recurse-submodules" ], retries=3)
         git_changed = "Already up to date." not in git_output
 
         # Clear the stash now that we've pulled
