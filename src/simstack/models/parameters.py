@@ -335,7 +335,6 @@ class Parameters(EmbeddedModel):
             data.pop("test_dict", None)
             data.pop("other_value", None)
             data.pop("docker_image", None)
-
         if "slurm_parameters_data" in data and "slurm_parameters" not in data:
             data["slurm_parameters"] = SlurmParameters(**data["slurm_parameters_data"])
             del data["slurm_parameters_data"]
