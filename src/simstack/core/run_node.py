@@ -2,20 +2,20 @@ import argparse
 import asyncio
 import logging
 import sys
-import os
 
+from molecular_qm_psi4.scripts.classify_ring_conformers_v2 import aligned_mass_weighted_rmsd
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.node import node_from_database
+from simstack.core.run_docker import run_docker
 from simstack.core.services.node_execution_service import run_node_from_registry
 
 logger = logging.getLogger("Run Node")
 
-async def run_node_from_id(node_id: str, resource_str: str, project_root: str = None):
+async def run_node_from_id(node_id: str, resource_str: str, project_root: str = None, in_docker: bool = False):
     """Run a single node by its ID from the database"""
-    logger.info(f"Initializing node run: node_id={node_id}, resource={resource_str}, project_root={project_root}")
+    logger.info(f"Initializing node run: node_id={node_id}, resource={resource_str}, project_root={project_root}, in_docker={in_docker}")
     try:
-        await context.initialize(resource=resource_str, project_root=project_root)
+        await context.initialize(resource=resource_str, project_root=project_root, in_docker=in_docker)
     except Exception as e:
         logger.error(f"Failed to initialize context: {str(e)}", exc_info=True)
         return False
@@ -25,6 +25,9 @@ async def run_node_from_id(node_id: str, resource_str: str, project_root: str = 
         if not registry_entry:
             logger.error(f"Node with ID {node_id} not found in the database")
             return False
+        queue = registry_entry.parameters.queue
+        if (queue == "docker" or queue == "slurm-docker") and not in_docker:
+            return await run_docker(registry_entry)
         return await run_node_from_registry(registry_entry)
     except Exception as e:
         logger.exception(f"Error running node task_id: {node_id}: {str(e)}")
@@ -59,12 +62,17 @@ def run_node_main():
         help="project root directory",
     )
 
-    args = parser.parse_args()
+    parser.add_argument(
+        "--in-docker",
+        action="store_true",
+        help="run inside a docker container",
+    )
 
+    args = parser.parse_args()
 
     if args.node_id:
         # Run a specific node once
-        asyncio.run(run_node_from_id(args.node_id, args.resource, args.project_root))
+        asyncio.run(run_node_from_id(args.node_id, args.resource, args.project_root, args.in_docker))
 
 
 if __name__ == "__main__":
