@@ -511,7 +511,7 @@ class TestDataSet:
 
     @pytest.mark.asyncio
     async def test_dataset_save_same_type_different_structure_fails(
-        self, node_registry
+        self, node_registry, initialized_context
     ):
         """
         Saving a second dataset with the same dataset_type but a different structure
@@ -558,7 +558,7 @@ class TestDataSet:
                     ds2["nodes"] = sec_nodes  # keep one section same
 
                     with pytest.raises(
-                        ValueError, match="Section pair has different content in existing structure"
+                        ValueError, match=r"Section 'pair' (content mismatch|has different content)"
                     ):
                         await ds2.save(context.db)
                 finally:

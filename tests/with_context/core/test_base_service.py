@@ -16,6 +16,41 @@ class MockService(BaseService):
         self.execute_event.set()
         self.execute_event.clear()
 
+
+class FailingService(BaseService):
+    def __init__(self, name, resource, interval):
+        super().__init__(name, resource, interval)
+        self.execute_count = 0
+
+    async def execute(self):
+        self.execute_count += 1
+        raise RuntimeError("temporary failure")
+
+
+@pytest.mark.asyncio
+async def test_base_service_waits_between_failed_executions(monkeypatch):
+    resource = Resource(value="self")
+    service = FailingService("FailingService", resource, interval=60)
+    wait_timeouts = []
+    original_wait_for = asyncio.wait_for
+
+    async def record_wait_for(awaitable, timeout):
+        if service._stop_event.is_set():
+            return await original_wait_for(awaitable, timeout)
+
+        awaitable.close()
+        wait_timeouts.append(timeout)
+        raise asyncio.TimeoutError
+
+    monkeypatch.setattr(asyncio, "wait_for", record_wait_for)
+
+    await service.start()
+
+    assert service.execute_count == 3
+    assert len(wait_timeouts) == 2
+    assert all(timeout > 0 for timeout in wait_timeouts)
+
+
 @pytest.mark.asyncio
 async def test_base_service_lifecycle(initialized_context):
     resource = Resource(value="self")
