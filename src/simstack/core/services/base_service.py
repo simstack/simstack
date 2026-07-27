@@ -111,7 +111,6 @@ class BaseService(ABC):
                     self._stop_event.set()
                     if self._shutdown_event:
                         self._shutdown_event.set()
-                continue
 
             # Calculate wait time to maintain interval regardless of execution duration
             elapsed = asyncio.get_event_loop().time() - start_time
