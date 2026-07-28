@@ -121,8 +121,6 @@ class TestParameters:
         assert params.force_rerun is False
         assert params.resource == "self"
         assert params.queue == "default"
-        assert params.other_value == "other"
-        assert params.test_dict == {"test": "value"}
         assert params.slurm_parameters == SlurmParameters()
 
     def test_parameters_creation_with_valid_resource(self):
@@ -206,8 +204,6 @@ class TestParameters:
             "force_rerun": True,
             "resource": Resource(value="high_memory"),
             "queue": "priority",
-            "other_value": "custom",
-            "test_dict": {"custom": "data", "number": 42},
             "slurm_parameters_data": {
                 "nodes": 10,
                 "job_name": "full_test",
@@ -222,8 +218,6 @@ class TestParameters:
         assert params.force_rerun is True
         assert params.resource == "high_memory"
         assert params.queue == "priority"
-        assert params.other_value == "custom"
-        assert params.test_dict == {"custom": "data", "number": 42}
 
         slurm_params = params.slurm_parameters
         assert slurm_params.nodes == 10

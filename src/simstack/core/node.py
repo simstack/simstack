@@ -343,7 +343,6 @@ class Node:
         if self.registry_entry is None:
             await self.make_registry_entry(function_hash, arg_hash)
         else:
-
             if self.parent_id:
                 logger.debug(
                     f"Task task_id: {self.id} adding parent_id {self.parent_id} to task: {self.name}"
@@ -782,40 +781,38 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             & (NodeRegistry.function_hash == registry_entry.function_hash)
             & (NodeRegistry.id != registry_entry.id),
         )
-        if duplicate_entry is None:
-            await db.save(
-                registry_entry
-            )  # save the fixed entry AFTER checking for duplicates
-            # the calling function may have the originial entry unsaved !
+        if duplicate_entry is None or registry_entry.parameters.force_rerun:
+            await db.save(registry_entry) # save the fixed entry AFTER checking for duplicates
+            # the calling function may have the original entry unsaved!
         else:
-            logger.info(
-                f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}"
-            )
-
+            logger.info(f"Task task_id: {registry_entry.id} NEW DUPLICATE TREATMENT")
+            logger.info(f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}")
             # the parameters of the new job may be different
-            duplicate_entry.parameters = registry_entry.parameters
-            await db.delete(registry_entry)
-            registry_entry = duplicate_entry
 
-            if func is None:
-                # we recovered a duplicate, let's try to import the function from the duplicate's mapping
-                try:
-                    wrapped_func = await import_function(
-                        registry_entry.func_mapping, db, task_id=registry_entry.id
-                    )
-                    if wrapped_func is not None:
-                        func = (
-                            wrapped_func
-                            if not hasattr(wrapped_func, "_inner")
-                            else wrapped_func._inner
-                        )
-                except Exception as e:
-                    logger.error(
-                        f"Task task_id: {registry_entry.id} failed to import function from duplicate {registry_entry.func_mapping} {str(e)}"
-                    )
+            registry_entry.populate_results_from_duplicate(duplicate_entry)
+            duplicate_entry.parent_id = registry_entry.parent_ids.append(registry_entry.id)
+            await db.save(duplicate_entry) # this will make the duplicate entry a child of the new entry
+            await db.save(registry_entry)
 
-        if func is None:
-            return None
+            # if func is None:
+            #     # we recovered a duplicate, let's try to import the function from the duplicate's mapping
+            #     try:
+            #         wrapped_func = await import_function(
+            #             registry_entry.func_mapping, db, task_id=registry_entry.id
+            #         )
+            #         if wrapped_func is not None:
+            #             func = (
+            #                 wrapped_func
+            #                 if not hasattr(wrapped_func, "_inner")
+            #                 else wrapped_func._inner
+            #             )
+            #     except Exception as e:
+            #         logger.error(
+            #             f"Task task_id: {registry_entry.id} failed to import function from duplicate {registry_entry.func_mapping} {str(e)}"
+            #         )
+
+        # if func is None:
+        #     return None
 
     except Exception as e:
         logger.exception(

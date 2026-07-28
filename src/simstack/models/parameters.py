@@ -330,6 +330,12 @@ class Parameters(EmbeddedModel):
     @model_validator(mode="before")
     @classmethod
     def migrate_parameters(cls, data):
+        if isinstance(data, dict):
+            # Remove legacy fields if they exist in the incoming data
+            data.pop("test_dict", None)
+            data.pop("other_value", None)
+            data.pop("docker_image", None)
+
         if "slurm_parameters_data" in data and "slurm_parameters" not in data:
             data["slurm_parameters"] = SlurmParameters(**data["slurm_parameters_data"])
             del data["slurm_parameters_data"]

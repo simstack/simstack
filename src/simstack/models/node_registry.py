@@ -90,6 +90,15 @@ class NodeRegistry(Model):
     is_async: bool = False
     parameters: Parameters = Reference()
 
+    def populate_results_from_duplicate(self, duplicate: "NodeRegistry"):
+        self.results_references = duplicate.results_references
+        self.info_files = duplicate.info_files
+        self.status = duplicate.status
+        self.completed_at = duplicate.completed_at
+        self.job_id = duplicate.job_id
+        self.artifact_ids = duplicate.artifact_ids
+        self.error = duplicate.error
+        self.message = duplicate.message
 
 async def find_child_nodes(task_id: str) -> List[NodeRegistry]:
     from simstack.core.context import context
