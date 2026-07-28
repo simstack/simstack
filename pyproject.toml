@@ -24,7 +24,7 @@ dependencies = [
     "cloudpickle>=3.1.1,<4",
     "coolname>=2.2.0,<3",
     "nest-asyncio>=1.6.0,<2",
-    "numpy>=2.3.0",
+    "numpy>=2.3.0, <2.5.0",
     "pandas==2.3.2", # lock this for int-nano
     "pytest>=8.4.2",
     "docutils>=0.22",
