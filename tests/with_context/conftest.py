@@ -32,6 +32,7 @@ async def initialized_context(tmp_path_factory):
     test_database_name = os.getenv("SIMSTACK_TEST_DB", "test_database")
 
     import logging
+    logging.getLogger("pymongo").setLevel(logging.WARNING)
 
     logger = logging.getLogger("simstack.test")
 

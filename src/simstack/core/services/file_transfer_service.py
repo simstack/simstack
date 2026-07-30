@@ -26,8 +26,9 @@ class FileTransferService(BaseService):
         shutdown_event: asyncio.Event | None = None,
     ) -> None:
         super().__init__(
-            "FileTransfer", resource, interval, shutdown_event=None
+            "FileTransfer", resource, interval, shutdown_event=shutdown_event
         )
+        self._log_traceback_on_failure = False
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._running_tasks: set[asyncio.Task[bool]] = set()
         self._client: FileTransferClient | None = None
@@ -62,7 +63,6 @@ class FileTransferService(BaseService):
         try:
             transfers = client.list_transfers(role="source", status="created", limit=10)
         except Exception as exc:
-            logger.warning("Unable to poll file transfers: %s", exc)
             raise exc
 
         for transfer in transfers:

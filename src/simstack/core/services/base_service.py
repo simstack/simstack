@@ -28,6 +28,7 @@ class BaseService(ABC):
         self._shutdown_event = shutdown_event
         self._task = None
         self._consecutive_failures = 0
+        self._log_traceback_on_failure = True
 
         # Common identity attributes
         self._pid = os.getpid()
@@ -99,7 +100,12 @@ class BaseService(ABC):
                 self._consecutive_failures = 0
             except Exception as e:
                 self._consecutive_failures += 1
-                logger.exception(f"Error in service {self._name} (failure {self._consecutive_failures}/3): {e}")
+                msg = f"Error in service {self._name} (failure {self._consecutive_failures}/3): {e}"
+                if self._log_traceback_on_failure:
+                    logger.exception(msg)
+                else:
+                    logger.error(msg)
+
                 if self._consecutive_failures >= 3:
                     logger.error(f"Service {self._name} failed 3 times in a row. Shutting down.")
                     self._stop_event.set()
