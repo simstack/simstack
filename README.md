@@ -13,6 +13,36 @@ fastapi app that connects to the Simstack II database. a
 You can use the [simstack-example](https://github.com/simstack/simstack-example) project 
 to get started. 
 
+## Development workflow and versioning
+
+This repository uses [Gitflow](https://nvie.com/posts/a-successful-git-branching-model/):
+
+- `main` contains production releases.
+- `develop` integrates changes for the next release.
+- `feature-*`|`fix-*` branches start from and merge back into `develop`.
+- `release-*` branches start from `develop`, then merge into both `develop` and `main`.
+- `hotfix-*` branches start from `main`, then merge into both `main` and `develop`.
+-  each `main` merge commit must have a version tag.
+
+Releases follow [Semantic Versioning 2.0.0](https://semver.org/) using
+`MAJOR.MINOR.PATCH`: increment `MAJOR` for incompatible API changes, `MINOR` for
+backward-compatible functionality, and `PATCH` for backward-compatible bug fixes.
+
+### Setting the version
+
+The package version is derived from Git tags by `setuptools-scm`, as configured in
+`pyproject.toml`; it is not maintained in a source file. Do not edit the generated
+`src/simstack/_version.py`.
+
+After the release branch has been merged into `main`, create and push an annotated
+semantic-version tag. Pushing it triggers the PyPI release workflow.
+
+```bash
+git switch main
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
 
 ## Using SimStack II
 
