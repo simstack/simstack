@@ -706,6 +706,16 @@ async def _hydrate_embedded_file_stacks(
     resolved: dict[ObjectId, FileStack],
     seen: set[int] | None = None,
 ) -> Any:
+    """
+    Compatibility workaround, not the intended persistence pattern.
+
+    FileStack objects must be stored as references. Embedding them directly
+    inside other models violates this storage contract. This hydration logic
+    compensates for existing models and records that violate the rule, but new
+    models must not rely on it. The affected models and persisted data should
+    eventually be migrated to proper references, after which this workaround
+    should be removed.
+    """
     if isinstance(value, FileStack):
         if value.content is not None or value.locations:
             return value
