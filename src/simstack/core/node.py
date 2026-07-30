@@ -700,6 +700,78 @@ class Node:
         logger.info(f"Task task_id: {self.id} {self.name} is set to {status}, id is: {self.id}")
 
 
+async def _hydrate_embedded_file_stacks(
+    value: Any,
+    db: Any,
+    resolved: dict[ObjectId, FileStack],
+    seen: set[int] | None = None,
+) -> Any:
+    if isinstance(value, FileStack):
+        if value.content is not None or value.locations:
+            return value
+
+        file_stack_id = value.id
+        if file_stack_id in resolved:
+            return resolved[file_stack_id]
+
+        canonical = await db.find_one(FileStack, FileStack.id == file_stack_id)
+        if canonical is None:
+            raise ValueError(f"Referenced FileStack {file_stack_id} not found")
+        if canonical.id != file_stack_id:
+            raise ValueError(
+                f"Referenced FileStack {file_stack_id} resolved to {canonical.id}"
+            )
+        if canonical.content is None and not canonical.locations:
+            raise ValueError(
+                f"Referenced FileStack {file_stack_id} has no content or locations"
+            )
+
+        resolved[file_stack_id] = canonical
+        return canonical
+
+    if isinstance(value, tuple):
+        hydrated_items = [
+            await _hydrate_embedded_file_stacks(item, db, resolved, seen)
+            for item in value
+        ]
+        if all(item is hydrated for item, hydrated in zip(value, hydrated_items)):
+            return value
+        return tuple(hydrated_items)
+
+    if not isinstance(value, (BaseModel, list, dict)):
+        return value
+
+    if seen is None:
+        seen = set()
+    value_id = id(value)
+    if value_id in seen:
+        return value
+    seen.add(value_id)
+
+    try:
+        if isinstance(value, BaseModel):
+            for field_name in type(value).model_fields:
+                field_value = getattr(value, field_name)
+                hydrated = await _hydrate_embedded_file_stacks(
+                    field_value, db, resolved, seen
+                )
+                if hydrated is not field_value:
+                    setattr(value, field_name, hydrated)
+        elif isinstance(value, list):
+            for index, item in enumerate(value):
+                value[index] = await _hydrate_embedded_file_stacks(
+                    item, db, resolved, seen
+                )
+        else:
+            for key, item in value.items():
+                value[key] = await _hydrate_embedded_file_stacks(
+                    item, db, resolved, seen
+                )
+        return value
+    finally:
+        seen.remove(value_id)
+
+
 async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None]:
     """
     Constructs an instance of the class from database information encoded in a
@@ -726,11 +798,13 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
     """
     args = []
     db = context.db
+    resolved_file_stacks: dict[ObjectId, FileStack] = {}
 
     for ref in registry_entry.input_references:
         try:
             model = await import_class(ref.variable_mapping, db)
             arg = await db.find_one(model, model.id == ref.reference)
+            arg = await _hydrate_embedded_file_stacks(arg, db, resolved_file_stacks)
             args.append(arg)
         except Exception as e:
             logger.exception(

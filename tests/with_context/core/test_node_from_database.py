@@ -5,7 +5,9 @@ from odmantic import ObjectId
 from simstack.core.context import context
 from simstack.core.node import node, node_from_database
 from simstack.models import FloatData, BinaryOperationInput, NodeRegistry, Parameters, ModelMapping, NodeModel
+from simstack.models.files import FileStack
 from simstack.models.named_data_reference import NamedDataReference
+from simstack.models.pandas_model import PandasModel
 from simstack.core.definitions import TaskStatus
 
 # Get current module path for dynamic function mapping
@@ -289,3 +291,181 @@ async def test_node_from_database_recovers_itself(initialized_context, setup_hel
     finally:
         await context.db.delete(existing_entry)
         await context.db.delete(input_data)
+
+
+@pytest.mark.asyncio
+async def test_node_from_database_hydrates_embedded_filestack(
+    initialized_context, setup_helper_node_model
+):
+    canonical = FileStack(
+        name="D3_unexpected.xyz",
+        size=5557,
+        is_hashable=False,
+        in_memory=True,
+        content=b"canonical-content",
+    )
+    await context.db.save(canonical)
+
+    input_id = ObjectId()
+    collection = context.db.raw_database[PandasModel.__collection__]
+    await collection.insert_one(
+        {
+            "_id": input_id,
+            "field_name": f"filestack_hydration_{input_id}",
+            "content_": b"",
+            "file_stack": {
+                "name": canonical.name,
+                "size": canonical.size,
+                "is_hashable": False,
+                "hash": None,
+                "in_memory": False,
+                "content": None,
+                "locations": [],
+                "id": str(canonical.id),
+            },
+        }
+    )
+
+    registry_entry = NodeRegistry(
+        name="helper_node_func",
+        status=TaskStatus.SUBMITTED,
+        input_references=[
+            NamedDataReference(
+                variable_name="args",
+                variable_mapping="simstack.models.pandas_model.PandasModel",
+                reference=input_id,
+            )
+        ],
+        function_hash="NOT INITIALIZED",
+        arg_hash="NOT INITIALIZED",
+        func_mapping=f"{CURRENT_MODULE}.helper_node_func",
+        parameters=Parameters(),
+    )
+    await context.db.save(registry_entry)
+
+    try:
+        reconstructed_node = await node_from_database(registry_entry)
+
+        assert reconstructed_node is not None
+        hydrated = reconstructed_node._args[0].file_stack
+        assert hydrated is not None
+        assert hydrated.id == canonical.id
+        assert hydrated.in_memory is True
+        assert hydrated.content == canonical.content
+        assert hydrated.locations == canonical.locations
+
+        stored = await collection.find_one({"_id": input_id})
+        assert stored["file_stack"]["in_memory"] is False
+        assert stored["file_stack"]["content"] is None
+        assert stored["file_stack"]["locations"] == []
+    finally:
+        await context.db.delete(registry_entry)
+        await collection.delete_one({"_id": input_id})
+        await context.db.delete(canonical)
+
+
+@pytest.mark.asyncio
+async def test_node_from_database_keeps_complete_embedded_filestack(
+    initialized_context, setup_helper_node_model
+):
+    embedded_id = ObjectId()
+    input_id = ObjectId()
+    collection = context.db.raw_database[PandasModel.__collection__]
+    await collection.insert_one(
+        {
+            "_id": input_id,
+            "field_name": f"complete_embedded_filestack_{input_id}",
+            "content_": b"",
+            "file_stack": {
+                "name": "embedded.xyz",
+                "size": 7,
+                "is_hashable": False,
+                "hash": None,
+                "in_memory": True,
+                "content": b"content",
+                "locations": [],
+                "id": str(embedded_id),
+            },
+        }
+    )
+
+    registry_entry = NodeRegistry(
+        name="helper_node_func",
+        status=TaskStatus.SUBMITTED,
+        input_references=[
+            NamedDataReference(
+                variable_name="args",
+                variable_mapping="simstack.models.pandas_model.PandasModel",
+                reference=input_id,
+            )
+        ],
+        function_hash="NOT INITIALIZED",
+        arg_hash="NOT INITIALIZED",
+        func_mapping=f"{CURRENT_MODULE}.helper_node_func",
+        parameters=Parameters(),
+    )
+    await context.db.save(registry_entry)
+
+    try:
+        reconstructed_node = await node_from_database(registry_entry)
+
+        assert reconstructed_node is not None
+        embedded = reconstructed_node._args[0].file_stack
+        assert embedded is not None
+        assert embedded.id == embedded_id
+        assert embedded.content == b"content"
+    finally:
+        await context.db.delete(registry_entry)
+        await collection.delete_one({"_id": input_id})
+
+
+@pytest.mark.asyncio
+async def test_node_from_database_rejects_missing_embedded_filestack(
+    initialized_context, setup_helper_node_model, caplog
+):
+    missing_id = ObjectId()
+    input_id = ObjectId()
+    collection = context.db.raw_database[PandasModel.__collection__]
+    await collection.insert_one(
+        {
+            "_id": input_id,
+            "field_name": f"missing_embedded_filestack_{input_id}",
+            "content_": b"",
+            "file_stack": {
+                "name": "missing.xyz",
+                "size": 7,
+                "is_hashable": False,
+                "hash": None,
+                "in_memory": False,
+                "content": None,
+                "locations": [],
+                "id": str(missing_id),
+            },
+        }
+    )
+
+    registry_entry = NodeRegistry(
+        name="helper_node_func",
+        status=TaskStatus.SUBMITTED,
+        input_references=[
+            NamedDataReference(
+                variable_name="args",
+                variable_mapping="simstack.models.pandas_model.PandasModel",
+                reference=input_id,
+            )
+        ],
+        function_hash="NOT INITIALIZED",
+        arg_hash="NOT INITIALIZED",
+        func_mapping=f"{CURRENT_MODULE}.helper_node_func",
+        parameters=Parameters(),
+    )
+    await context.db.save(registry_entry)
+
+    try:
+        reconstructed_node = await node_from_database(registry_entry)
+
+        assert reconstructed_node is None
+        assert f"Referenced FileStack {missing_id} not found" in caplog.text
+    finally:
+        await context.db.delete(registry_entry)
+        await collection.delete_one({"_id": input_id})
