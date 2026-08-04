@@ -43,6 +43,20 @@ class BooleanDataList(Model, ObjectListMixin[BooleanData]):
 class StringList(Model, GenericListMixin[str]):
     field_name: str = "string_list"
     elements: List[str] = Field(default_factory=list, description="List of strings")
+    value: List[str] = Field(default_factory=list, description="List of strings (alias for elements, used for UI defaults)")
+
+    @model_validator(mode="before")
+    @classmethod
+    def map_value_to_elements(cls, data: Any) -> Any:
+        """Map 'value' parameter to 'elements' for UI default population."""
+        if isinstance(data, dict):
+            # If 'value' is provided but 'elements' is not or is empty, use 'value' for 'elements'
+            if "value" in data and ("elements" not in data or not data.get("elements")):
+                data["elements"] = data["value"]
+            # Always ensure 'value' reflects 'elements' for consistency
+            if "elements" in data:
+                data["value"] = data["elements"]
+        return data
 
     def __iter__(self) -> Iterator[T]:
         return iter(self.elements)
