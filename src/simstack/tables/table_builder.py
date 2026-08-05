@@ -203,7 +203,7 @@ class TableBuilderBase(ABC):
         self.logger.debug("Processing file: %s", file_path)
         module = import_module_from_file(file_path, self.project_root)
         if not module:
-            self.logger.debug("Skipping %s because module import returned None", file_path)
+            self.logger.error("Skipping %s because module import returned None", file_path)
             return
         if module.__name__ in self._processed_modules:
             self.logger.debug("Skipping %s because module %s was already processed", file_path, module.__name__)
