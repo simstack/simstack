@@ -3,7 +3,6 @@ import asyncio
 import logging
 import sys
 
-from molecular_qm_psi4.scripts.classify_ring_conformers_v2 import aligned_mass_weighted_rmsd
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.run_docker import run_docker
