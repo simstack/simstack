@@ -1,0 +1,11 @@
+[
+    {
+        "name": "variable",
+        "mapping": "simstack.models.base_types.IntData",
+        "data": {
+            "field_name": "int",
+            "value": 1,
+            "id": "6a243266efde10f9aa377a45"
+        }
+    }
+]
