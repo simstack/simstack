@@ -1,0 +1,36 @@
+{
+    "name": "file_stacks1",
+    "status": "completed",
+    "custom_name": "zealous-mayfly",
+    "project": null,
+    "category": null,
+    "description": null,
+    "call_path": ".file_stacks1",
+    "assignment_rule_id": null,
+    "assignment_rule_name": null,
+    "assignment_pattern": null,
+    "error": null,
+    "message": null,
+    "input_references": [
+        "variable_name='variable' variable_mapping='simstack.models.base_types.IntData' reference=ObjectId('6a243266efde10f9aa377a45')"
+    ],
+    "results_references": [
+        "variable_name='file_stack1' variable_mapping='simstack.models.files.FileStack' reference=ObjectId('6a243267efde10f9aa377a4c')",
+        "variable_name='file_stack2' variable_mapping='simstack.models.files.FileStack' reference=ObjectId('6a243267efde10f9aa377a4d')"
+    ],
+    "info_files": {
+        "elements": []
+    },
+    "parent_ids": [],
+    "artifact_ids": [],
+    "created_at": "2026-06-06 16:44:54.856000",
+    "started_at": "2026-06-06 16:44:54.957000",
+    "completed_at": "2026-06-06 16:44:55.082000",
+    "job_id": null,
+    "function_hash": "31f706a5d6c25eb08d87c193929d753c768f2d5cdf6db609b301f08d44ce9aff",
+    "arg_hash": "8c1dca8301cb9c0f2d18b8a4cc44b957243e1e255c394fba65337477959598c3",
+    "func_mapping": "examples.testing.file_stacks1.file_stacks1",
+    "is_async": false,
+    "parameters": "force_rerun=True resource=Resource(value='self') queue='default' recompute_artifacts=False docker_image=None other_value='other' test_dict={'test': 'value'} slurm_parameters=SlurmParameters(nodes=None, tasks=None, tasks_per_node=None, cpus_per_task=None, mem=None, mem_per_cpu=None, time=None, begin=None, partition=None, qos=None, job_name=None, output=None, error=None, mail_type=None, mail_user=None, gres=None, account=None, priority=None, reservation=None, constraint=None, exclusive=None, nice=None, dependency=None, array=None, startup_commands=[], chdir=None, export=None, signal=None, requeue=None, no_requeue=None)",
+    "id": "6a243266efde10f9aa377a46"
+}
