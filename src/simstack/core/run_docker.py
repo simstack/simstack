@@ -96,16 +96,17 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
     container_resource = lookup_resource
     # Dev convenience: overlay local simstack package so in-progress host fixes apply in-container
     # without rebuilding the image (psi4 image installs simstack from git).
-    host_simstack_pkg = context.config.project_root / "simstack" / "src" / "simstack"
-    simstack_mount_args: list[str] = []
-    if host_simstack_pkg.is_dir():
-        simstack_mount_args = [
-            "-v",
-            f"{host_simstack_pkg}:/opt/conda/lib/python3.12/site-packages/simstack",
-        ]
-        logger.info(
-            "Mounting local simstack package into container: %s", host_simstack_pkg
-        )
+    # TODO this is a bit dangerous because you dont know which simstack was baked in
+    # host_simstack_pkg = context.config.project_root / "simstack" / "src" / "simstack"
+    # simstack_mount_args: list[str] = []
+    # if host_simstack_pkg.is_dir():
+    #     simstack_mount_args = [
+    #         "-v",
+    #         f"{host_simstack_pkg}:/opt/conda/lib/python3.12/site-packages/simstack",
+    #     ]
+    #     logger.info(
+    #         "Mounting local simstack package into container: %s", host_simstack_pkg
+    #     )
 
     if docker_cmd == "docker":
         cmd = [
