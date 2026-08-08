@@ -5,10 +5,55 @@ import asyncio
 import platform
 import subprocess
 import logging
-import os
 import locale
+from urllib.parse import urlparse, urlunparse
 
 logger = logging.getLogger("DockerRunner")
+
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
+
+def _mongo_host_is_loopback(connection_string: str | None) -> bool:
+    if not connection_string:
+        return False
+    host = (urlparse(connection_string).hostname or "").lower()
+    return host in _LOCAL_HOSTS
+
+
+def _rewrite_mongo_host(connection_string: str, new_host: str) -> str:
+    """Replace the Mongo URI host while preserving userinfo, port, path, and query."""
+    parsed = urlparse(connection_string)
+    userinfo = ""
+    if parsed.username is not None:
+        userinfo = parsed.username
+        if parsed.password is not None:
+            userinfo += f":{parsed.password}"
+        userinfo += "@"
+    port = parsed.port
+    hostport = new_host if port is None else f"{new_host}:{port}"
+    return urlunparse(
+        (parsed.scheme, f"{userinfo}{hostport}", parsed.path, parsed.params, parsed.query, parsed.fragment)
+    )
+
+
+def _docker_loopback_mongo_args(connection_string: str) -> tuple[str, list[str]]:
+    """
+    Make loopback Mongo reachable from inside `docker run`.
+
+    On Linux, mongod often binds 127.0.0.1 only, so bridge networking cannot
+    reach it — use host networking. On Docker Desktop (Windows/macOS), rewrite
+    to host.docker.internal instead.
+    """
+    if platform.system() == "Linux":
+        logger.info("Mongo URI uses loopback; using --network host for docker run")
+        return connection_string, ["--network", "host"]
+
+    rewritten = _rewrite_mongo_host(connection_string, "host.docker.internal")
+    logger.info(
+        "Mongo URI uses loopback; rewriting host to host.docker.internal for docker run"
+    )
+    return rewritten, ["--add-host", "host.docker.internal:host-gateway"]
+
 
 async def run_docker(registry_entry: NodeRegistry) -> bool:
     resource = context.config.resource
@@ -32,13 +77,19 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
 
     workdir = context.config.workdir
     host_simstack_toml = context.config.project_root / "simstack.toml"
+    connection_string = context.config.connection_string
+    docker_net_args: list[str] = []
+
+    if docker_cmd == "docker" and _mongo_host_is_loopback(connection_string):
+        connection_string, docker_net_args = _docker_loopback_mongo_args(connection_string)
 
     if docker_cmd == "docker":
         cmd = [
             "docker", "run",
+            *docker_net_args,
             "-e", f"SIMSTACK_DB_DATABASE={context.config.db_name}",
             "-e", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}",
-            "-e", f"SIMSTACK_DB_CONNECTION_STRING={context.config.connection_string}",
+            "-e", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}",
             "-v", f"{workdir}:/root/simstack",
             "-v", f"{host_simstack_toml}:/app/simstack.toml",
             image,
@@ -49,7 +100,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
             "apptainer", "run",
             "--env", f"SIMSTACK_DB_DATABASE={context.config.db_name}",
             "--env", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}",
-            "--env", f"SIMSTACK_DB_CONNECTION_STRING={context.config.connection_string}",
+            "--env", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}",
             "--bind", f"{workdir}:/root/simstack",
             "--bind", f"{host_simstack_toml}:/app/simstack.toml",
             image,
