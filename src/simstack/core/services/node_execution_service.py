@@ -161,8 +161,9 @@ class NodeExecutionService(BaseService):
                 return False
 
         except Exception as e:
-            logger.exception(
-                f"Error running node task_id: {registry_entry.id} on resource {context.config.resource} : {str(e)}"
+            logger.error(
+                f"Error running node task_id: {registry_entry.id} on resource {context.config.resource}",
+                exc_info=True
             )
             if registry_entry:
                 registry_entry.status = TaskStatus.FAILED

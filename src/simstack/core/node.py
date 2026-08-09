@@ -585,8 +585,9 @@ class Node:
                 if self.registry_entry:
                     self.registry_entry.error = str(e)
                     await context.db.save(self.registry_entry)
-                logger.exception(
-                    f"Task task_id: {self.id} node function error for node: {self.name} msg: {str(e)}"
+                logger.error(
+                    f"Task task_id: {self.id} node function error for node: {self.name} msg: {str(e)}",
+                    exc_info=True
                 )
                 # save what we can, in particular the info_files
                 await self.process_results(node_runner)
