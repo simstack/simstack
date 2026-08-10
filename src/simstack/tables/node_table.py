@@ -62,6 +62,17 @@ class CreateNodeTable(TableBuilderBase):
             if func.__module__ == module_name
         ]
 
+    @staticmethod
+    def _annotation_type_str(annotation: Any) -> str:
+        """Return a display string for a signature annotation without assuming a class."""
+        if annotation is inspect.Parameter.empty:
+            return "Any"
+        if isinstance(annotation, str):
+            return annotation
+        if hasattr(annotation, "__name__"):
+            return annotation.__name__
+        return str(annotation)
+
     def _build_inputs(
         self,
         sig: inspect.Signature,
@@ -72,23 +83,37 @@ class CreateNodeTable(TableBuilderBase):
         for param_name, param in sig.parameters.items():
             if param_name == "self":  # Skip self parameter for methods
                 continue
+            # *args / **kwargs are runtime plumbing, not node inputs.
+            if param.kind in (
+                inspect.Parameter.VAR_POSITIONAL,
+                inspect.Parameter.VAR_KEYWORD,
+            ):
+                continue
 
-            try:
-                param_info: Dict[str, Any] = {
-                    "name": param_name,
-                    "type": type_hints.get(param_name, param.annotation.__name__),
-                    "type_str": str(
-                        type_hints.get(
-                            param_name,
-                            param.annotation.__name__
-                            if param.annotation != inspect.Parameter.empty
-                            else "Any",
-                        )
-                    ),
-                }
-            except AttributeError as e:
-                logger.error(f"Could not parse type for {param_name}: {e}")
-                param_info = {}
+            # Prefer resolved type hints. Do not evaluate param.annotation.__name__
+            # as a dict.get() default: with `from __future__ import annotations`,
+            # annotations are strings and that attribute access raises, wiping the
+            # input entry and leaving NodeModel.input_mappings empty.
+            resolved_type = type_hints.get(param_name)
+            if resolved_type is None:
+                resolved_type = (
+                    None
+                    if param.annotation is inspect.Parameter.empty
+                    else param.annotation
+                )
+                type_str = self._annotation_type_str(param.annotation)
+            else:
+                type_str = self._annotation_type_str(resolved_type)
+
+            if resolved_type is None:
+                logger.error(f"Could not parse type for {param_name}: missing annotation")
+                continue
+
+            param_info: Dict[str, Any] = {
+                "name": param_name,
+                "type": resolved_type,
+                "type_str": type_str,
+            }
 
             if doc_params and param_name in doc_params:
                 param_info["description"] = doc_params[param_name].get("description")
