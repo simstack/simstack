@@ -1,3 +1,6 @@
+import inspect
+from typing import get_type_hints
+
 import pytest
 
 from simstack.core.context import context
@@ -15,6 +18,41 @@ def test_normalize_docstring_type_strips_only_top_level_qualifier():
         CreateNodeTable._normalize_docstring_type("Dict[str, FloatData], optional")
         == "Dict[str, FloatData]"
     )
+
+
+def test_build_inputs_with_future_annotations_keeps_resolved_types():
+    """Regression: stringified annotations must not wipe input mappings."""
+    namespace: dict = {}
+    exec(
+        """
+from __future__ import annotations
+
+from simstack.core.simstack_result import SimstackResult
+from simstack.models import FloatData
+
+def sample_node(arg1: FloatData, arg2: FloatData, **kwargs) -> SimstackResult:
+    \"\"\"Doc.
+
+    Parameters:
+        arg1 (FloatData): First value.
+        arg2 (FloatData): Second value.
+    \"\"\"
+    pass
+""",
+        namespace,
+    )
+    func = namespace["sample_node"]
+    builder = CreateNodeTable.__new__(CreateNodeTable)
+    inputs = builder._build_inputs(
+        inspect.signature(func),
+        get_type_hints(func),
+        DocstringParser(inspect.getdoc(func)).params(),
+    )
+
+    assert [(entry["name"], entry["type"]) for entry in inputs] == [
+        ("arg1", FloatData),
+        ("arg2", FloatData),
+    ]
 
 
 @pytest.mark.asyncio
