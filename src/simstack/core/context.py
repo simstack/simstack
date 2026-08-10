@@ -151,6 +151,8 @@ class GlobalState:
         if db_name is None or connection_string is None or db_type is None:
             # use not all info in the kwargs
             simstack_toml_path = project_root / "simstack.toml"
+            if not simstack_toml_path.exists():
+                raise ValueError(f"simstack.toml not found in {project_root}")
             toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
             db_info = DatabaseInformation.from_config(toml_reader.config, **kwargs)
         else:
