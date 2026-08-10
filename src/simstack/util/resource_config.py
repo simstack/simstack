@@ -159,13 +159,16 @@ class ResourceConfig:
             if scratch_cleanup and tmp_dir and tmp_dir.exists():
                 shutil.rmtree(tmp_dir)
 
-    def get_program(self, program_name: str) -> Dict[str, Any]:
+    def get_program(self, program_name: str, resource: str | None = None) -> Dict[str, Any]:
         """
-        Returns the dict from resource.program.name for program with name and the current resource.
+        Returns the dict from resource.program.name for program with name.
         Expected structure in TOML: [resource_name.program.program_name]
+
+        If ``resource`` is omitted, uses the ResourceConfig's current resource.
         """
+        lookup = resource if resource is not None else self._resource
         try:
-            return self._config[self._resource]["program"][program_name]
+            return self._config[lookup]["program"][program_name]
         except (KeyError, TypeError):
             return {}
 

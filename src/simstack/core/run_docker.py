@@ -10,16 +10,70 @@ import locale
 
 logger = logging.getLogger("DockerRunner")
 
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
+
+def _mongo_host_is_loopback(connection_string: str | None) -> bool:
+    if not connection_string:
+        return False
+    host = (urlparse(connection_string).hostname or "").lower()
+    return host in _LOCAL_HOSTS
+
+
+def _rewrite_mongo_host(connection_string: str, new_host: str) -> str:
+    """Replace the Mongo URI host while preserving userinfo, port, path, and query."""
+    parsed = urlparse(connection_string)
+    userinfo = ""
+    if parsed.username is not None:
+        userinfo = parsed.username
+        if parsed.password is not None:
+            userinfo += f":{parsed.password}"
+        userinfo += "@"
+    port = parsed.port
+    hostport = new_host if port is None else f"{new_host}:{port}"
+    return urlunparse(
+        (parsed.scheme, f"{userinfo}{hostport}", parsed.path, parsed.params, parsed.query, parsed.fragment)
+    )
+
+
+def _docker_loopback_mongo_args(connection_string: str) -> tuple[str, list[str]]:
+    """
+    Make loopback Mongo reachable from inside `docker run`.
+
+    On Linux, mongod often binds 127.0.0.1 only, so bridge networking cannot
+    reach it — use host networking. On Docker Desktop (Windows/macOS), rewrite
+    to host.docker.internal instead.
+    """
+    if platform.system() == "Linux":
+        logger.info("Mongo URI uses loopback; using --network host for docker run")
+        return connection_string, ["--network", "host"]
+
+    rewritten = _rewrite_mongo_host(connection_string, "host.docker.internal")
+    logger.info(
+        "Mongo URI uses loopback; rewriting host to host.docker.internal for docker run"
+    )
+    return rewritten, ["--add-host", "host.docker.internal:host-gateway"]
+
+
 async def run_docker(registry_entry: NodeRegistry) -> bool:
     resource = context.config.resource
-    parameters = registry_entry.parameters
 
+    # Resolve docker image from the *task* resource. Context may be "self" while
+    # the task targets "local" (common in test scripts); images live under [local.program].
+    task_resource = str(registry_entry.parameters.resource)
+    lookup_resource = "local" if task_resource == "self" else task_resource
+    program_config = context.resource_config.get_program(
+        registry_entry.name, resource=lookup_resource
+    )
+    if not program_config and lookup_resource != str(context.config.resource):
+        # Fall back to context resource (e.g. runner already bound to "local").
+        program_config = context.resource_config.get_program(registry_entry.name)
 
-    program_config = context.resource_config.get_program(registry_entry.name)
     image= program_config.get("docker_image", None)
     if image is None:
-        logger.error(f"Docker image not found for task_id={registry_entry.id}")
+        logger.error(f"Docker image for {registry_entry.name} not found for task_id {registry_entry.id} (looked up resource={lookup_resource})")
         registry_entry.status = TaskStatus.FAILED
+        registry_entry.error = f"Docker image for {registry_entry.name} not found (resource={lookup_resource})"
         await context.db.save(registry_entry)
         return False
     docker_cmd = program_config.get("docker_cmd", None)
