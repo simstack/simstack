@@ -55,6 +55,7 @@ class GlobalState:
             cls._instance._model_mappings = None
             cls._instance._node_mappings = None
             cls._instance._resource_config = None
+            cls._instance._in_docker = False
         return cls._instance
 
     def __init__(self, **kwargs):
@@ -73,6 +74,7 @@ class GlobalState:
         self._model_mappings = None
         self._node_mappings = None
         self._resource_config = None
+        self._in_docker = False
 
     def __getattribute__(self, name):
         # These special attributes should always be accessible
@@ -128,12 +130,14 @@ class GlobalState:
         """
         is_test = kwargs.get("is_test", False)
         resource_str = kwargs.get("resource", "self")
+        in_docker = bool(kwargs.get("in_docker", False))
 
         if self._initialized:
             # If already initialized, we just return if not in test mode,
             if not is_test:
                 return
         self._initialized = True  # required because some later functions use context
+        self._in_docker = in_docker
 
         project_root = kwargs.get("project_root", find_project_root())
         if project_root is None:  # maybe None was passed
@@ -279,6 +283,11 @@ class GlobalState:
     @property
     def initialized(self):
         return self._initialized
+
+    @property
+    def in_docker(self) -> bool:
+        """True when this process is already running inside a container (--in-docker)."""
+        return bool(getattr(self, "_in_docker", False))
 
 
 # Create the singleton instance, but it's not initialized yet

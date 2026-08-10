@@ -57,14 +57,23 @@ def _docker_loopback_mongo_args(connection_string: str) -> tuple[str, list[str]]
 
 async def run_docker(registry_entry: NodeRegistry) -> bool:
     resource = context.config.resource
-    parameters = registry_entry.parameters
 
+    # Resolve docker image from the *task* resource. Context may be "self" while
+    # the task targets "local" (common in test scripts); images live under [local.program].
+    task_resource = str(registry_entry.parameters.resource)
+    lookup_resource = "local" if task_resource == "self" else task_resource
+    program_config = context.resource_config.get_program(
+        registry_entry.name, resource=lookup_resource
+    )
+    if not program_config and lookup_resource != str(context.config.resource):
+        # Fall back to context resource (e.g. runner already bound to "local").
+        program_config = context.resource_config.get_program(registry_entry.name)
 
-    program_config = context.resource_config.get_program(registry_entry.name)
     image= program_config.get("docker_image", None)
     if image is None:
-        logger.error(f"Docker image for {registry_entry.name} not found for task_id {registry_entry.id}")
+        logger.error(f"Docker image for {registry_entry.name} not found for task_id {registry_entry.id} (looked up resource={lookup_resource})")
         registry_entry.status = TaskStatus.FAILED
+        registry_entry.error = f"Docker image for {registry_entry.name} not found (resource={lookup_resource})"
         await context.db.save(registry_entry)
         return False
     docker_cmd = program_config.get("docker_cmd", None)
