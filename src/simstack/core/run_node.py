@@ -2,11 +2,10 @@ import argparse
 import asyncio
 import logging
 import sys
-import os
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.node import node_from_database
+from simstack.core.run_docker import run_docker
 from simstack.core.services.node_execution_service import run_node_from_registry
 
 logger = logging.getLogger("Run Node")
@@ -15,7 +14,15 @@ async def run_node_from_id(node_id: str, resource_str: str, project_root: str = 
     """Run a single node by its ID from the database"""
     logger.info(f"Initializing node run: node_id={node_id}, resource={resource_str}, project_root={project_root}")
     try:
-        await context.initialize(resource=resource_str, project_root=project_root)
+        init_kwargs = {
+            "resource": resource_str,
+            "project_root": project_root,
+            "in_docker": in_docker,
+        }
+        # Host workdirs (e.g. C:/Users/...) are bind-mounted at /root/simstack.
+        if in_docker:
+            init_kwargs["workdir"] = "/root/simstack"
+        await context.initialize(**init_kwargs)
     except Exception as e:
         logger.error(f"Failed to initialize context: {str(e)}", exc_info=True)
         return False
@@ -25,6 +32,9 @@ async def run_node_from_id(node_id: str, resource_str: str, project_root: str = 
         if not registry_entry:
             logger.error(f"Node with ID {node_id} not found in the database")
             return False
+        queue = registry_entry.parameters.queue
+        if (queue == "docker" or queue == "slurm-docker") and not in_docker:
+            return await run_docker(registry_entry)
         return await run_node_from_registry(registry_entry)
     except Exception as e:
         logger.exception(f"Error running node task_id: {node_id}: {str(e)}")

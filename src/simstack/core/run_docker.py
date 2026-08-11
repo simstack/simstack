@@ -11,6 +11,7 @@ import locale
 logger = logging.getLogger("DockerRunner")
 
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+_DOCKER_WORKDIR = "/root/simstack"
 
 
 def _mongo_host_is_loopback(connection_string: str | None) -> bool:
@@ -56,8 +57,6 @@ def _docker_loopback_mongo_args(connection_string: str) -> tuple[str, list[str]]
 
 
 async def run_docker(registry_entry: NodeRegistry) -> bool:
-    resource = context.config.resource
-
     # Resolve docker image from the *task* resource. Context may be "self" while
     # the task targets "local" (common in test scripts); images live under [local.program].
     task_resource = str(registry_entry.parameters.resource)
@@ -87,28 +86,55 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
     workdir = context.config.workdir
     host_simstack_toml = context.config.project_root / "simstack.toml"
 
+    # Prefer the task resource inside the container (self -> local for image/workdir lookups).
+    container_resource = lookup_resource
+    # Dev convenience: overlay local simstack package so in-progress host fixes apply in-container
+    # without rebuilding the image (psi4 image installs simstack from git).
+    host_simstack_pkg = context.config.project_root / "simstack" / "src" / "simstack"
+    simstack_mount_args: list[str] = []
+    if host_simstack_pkg.is_dir():
+        simstack_mount_args = [
+            "-v",
+            f"{host_simstack_pkg}:/opt/conda/lib/python3.12/site-packages/simstack",
+        ]
+        logger.info(
+            "Mounting local simstack package into container: %s", host_simstack_pkg
+        )
+
     if docker_cmd == "docker":
         cmd = [
             "docker", "run",
             "-e", f"SIMSTACK_DB_DATABASE={context.config.db_name}",
             "-e", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}",
             "-e", f"SIMSTACK_DB_CONNECTION_STRING={context.config.connection_string}",
-            "-v", f"{workdir}:/root/simstack",
+            "-v", f"{workdir}:{_DOCKER_WORKDIR}",
             "-v", f"{host_simstack_toml}:/app/simstack.toml",
+            *simstack_mount_args,
             image,
-            "--node-id", str(registry_entry.id), "--resource", str(resource), "--project-root", "/app"
+            "--node-id", str(registry_entry.id),
+            "--resource", container_resource,
+            "--project-root", "/app",
+            "--in-docker",
         ]
     elif docker_cmd == "apptainer":
+        bind_args = [
+            "--bind", f"{workdir}:{_DOCKER_WORKDIR}",
+            "--bind", f"{host_simstack_toml}:/app/simstack.toml",
+        ]
+        if host_simstack_pkg.is_dir():
+            bind_args.extend([
+                "--bind",
+                f"{host_simstack_pkg}:/opt/conda/lib/python3.12/site-packages/simstack",
+            ])
         cmd = [
             "apptainer", "run",
             "--env", f"SIMSTACK_DB_DATABASE={context.config.db_name}",
             "--env", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}",
             "--env", f"SIMSTACK_DB_CONNECTION_STRING={context.config.connection_string}",
-            "--bind", f"{workdir}:/root/simstack",
-            "--bind", f"{host_simstack_toml}:/app/simstack.toml",
+            *bind_args,
             image,
             "--node-id", str(registry_entry.id),
-            "--resource", str(resource),
+            "--resource", container_resource,
             "--project-root", "/app",
         ]
     else:
