@@ -3,6 +3,7 @@ from simstack.core.definitions import TaskStatus
 from simstack.core.context import context
 import asyncio
 import platform
+import shlex
 import subprocess
 import logging
 import locale
@@ -149,6 +150,20 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
         registry_entry.status = TaskStatus.FAILED
         await context.db.save(registry_entry)
         return False
+
+    # Mark queued just before launch so the UI / pollers see the handoff.
+    registry_entry.status = TaskStatus.SLURM_QUEUED
+    await context.db.save(registry_entry)
+    logger.info(
+        "task_id=%s status set to %s before docker launch",
+        registry_entry.id,
+        TaskStatus.SLURM_QUEUED,
+    )
+    logger.info(
+        "task_id=%s full docker command: %s",
+        registry_entry.id,
+        shlex.join(cmd),
+    )
 
     # Use platform specific flags to ensure the process survives if runner is killed
     creationflags = 0
