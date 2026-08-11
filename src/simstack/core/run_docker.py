@@ -58,8 +58,6 @@ def _docker_loopback_mongo_args(connection_string: str) -> tuple[str, list[str]]
 
 
 async def run_docker(registry_entry: NodeRegistry) -> bool:
-    resource = context.config.resource
-
     # Resolve docker image from the *task* resource. Context may be "self" while
     # the task targets "local" (common in test scripts); images live under [local.program].
     task_resource = str(registry_entry.parameters.resource)
