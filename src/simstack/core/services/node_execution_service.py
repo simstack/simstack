@@ -104,7 +104,7 @@ class NodeExecutionService(BaseService):
             if queue == "slurm-queue":
                 return await submit_node(registry_entry)
 
-            if registry_entry.parameters.in_docker:
+            if registry_entry.parameters.in_docker and not context.in_docker:
                 return await run_docker(registry_entry)
 
             elif queue == "default":
@@ -156,13 +156,14 @@ class NodeExecutionService(BaseService):
                     return await run_node_from_registry(registry_entry)
             else:
                 logger.error(
-                    f"Queue {queue} not supported for task_id: {registry_entry.id}"
+                    f"Queue {queue} not supported {registry_entry.name} for task_id: {registry_entry.id}"
                 )
-                return False
+                raise RuntimeError(f"Queue {queue} not supported for task_id: {registry_entry.id}")
 
         except Exception as e:
-            logger.exception(
-                f"Error running node task_id: {registry_entry.id} on resource {context.config.resource} : {str(e)}"
+            logger.error(
+                f"Error running node task_id: {registry_entry.id} on resource {context.config.resource}",
+                exc_info=True
             )
             if registry_entry:
                 registry_entry.status = TaskStatus.FAILED

@@ -442,48 +442,83 @@ class Node:
         resource_self = Resource(value="self")
 
         logger.info(
-            f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource} queue: {self.parameters.queue}"
+            f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource} queue: {self.parameters.queue} in_docker: {self.parameters.in_docker}"
         )
-        if self.parameters.resource == resource_self or (
+
+        same_resource = self.parameters.resource == resource_self or (
             context.config.resource == self.parameters.resource
             and self.parameters.queue == Queue.DEFAULT
+        )
+        # Test scripts often use context=self with resource=local + in_docker.
+        self_to_local_docker = (
+            self.parameters.in_docker
+            and not context.in_docker
+            and context.config.resource == resource_self
+            and self.parameters.queue == Queue.DEFAULT
+            and str(self.parameters.resource) in ("local", "self")
+        )
+
+        if self.parameters.in_docker and not context.in_docker and (
+            same_resource or self_to_local_docker
         ):
-            result = await self.execute_node_locally()
-            return result
-        else:
-            if await self._submit_same_resource_slurm_node():
-                logger.info(
-                    "Task task_id: %s submitted Slurm node directly from resource %s",
-                    self.id,
-                    context.config.resource,
+            from simstack.core.run_docker import run_docker
+
+            assert self.registry_entry is not None
+            if self.registry_entry.status == TaskStatus.SUBMITTED:
+                claimed = await claim_submitted_node(self.registry_entry)
+                if not claimed:
+                    return await self._wait_for_remote_completion()
+            await run_docker(self.registry_entry)
+            return await self._load_after_remote_or_docker()
+
+        if same_resource:
+            return await self.execute_node_locally()
+
+        if await self._submit_same_resource_slurm_node():
+            logger.info(
+                "Task task_id: %s submitted Slurm node directly from resource %s",
+                self.id,
+                context.config.resource,
+            )
+        return await self._wait_for_remote_completion()
+
+    async def _load_after_remote_or_docker(self) -> Union[Model, SimstackResult, None]:
+        new_registry_entry = await context.db.load_task_by_id(self.id)
+        if new_registry_entry is None:
+            raise RuntimeError(
+                f"Task task_id: {self.id} could not be found in the database after docker run"
+            )
+        self.registry_entry = new_registry_entry
+        if new_registry_entry.status == TaskStatus.COMPLETED:
+            logger.info(f"Task task_id: {self.id} completed in docker")
+            return await self.load_results()
+        return None
+
+    async def _wait_for_remote_completion(self) -> Union[Model, SimstackResult, None]:
+        while True:
+            new_registry_entry = await context.db.load_task_by_id(self.id)
+            # TODO add timeout mechanism here
+            if new_registry_entry is None:
+                raise RuntimeError(
+                    f"Task task_id: {self.id} could not be found in the database"
                 )
-            # the task will be executed somewhere else
-            # wait for the database status to change
-            while True:
-                new_registry_entry = await context.db.load_task_by_id(self.id)
-                # TODO add timeout mechanism here
-                if new_registry_entry is None:
-                    raise RuntimeError(
-                        f"Task task_id: {self.id} could not be found in the database"
-                    )
-                new_status = new_registry_entry.status
-                if (
-                    new_status != TaskStatus.RUNNING
-                    and new_status != TaskStatus.SUBMITTED
-                    and new_status != TaskStatus.SLURM_QUEUED
-                    and new_status != TaskStatus.RETRIEVED
-                ):
-                    break
+            new_status = new_registry_entry.status
+            if (
+                new_status != TaskStatus.RUNNING
+                and new_status != TaskStatus.SUBMITTED
+                and new_status != TaskStatus.SLURM_QUEUED
+                and new_status != TaskStatus.RETRIEVED
+            ):
+                break
 
-                print(f"Task task_id: {self.id} is waiting for results")
-                await asyncio.sleep(5)
+            print(f"Task task_id: {self.id} is waiting for results")
+            await asyncio.sleep(5)
 
-            if new_status == TaskStatus.COMPLETED:
-                logger.info(f"Task task_id: {self.id} completed remotely")
-                self.registry_entry = new_registry_entry
-                return await self.load_results()
-            else:
-                return None
+        if new_status == TaskStatus.COMPLETED:
+            logger.info(f"Task task_id: {self.id} completed remotely")
+            self.registry_entry = new_registry_entry
+            return await self.load_results()
+        return None
 
     async def _submit_same_resource_slurm_node(self) -> bool:
         """Submit a same-resource Slurm node before polling it.
@@ -585,8 +620,9 @@ class Node:
                 if self.registry_entry:
                     self.registry_entry.error = str(e)
                     await context.db.save(self.registry_entry)
-                logger.exception(
-                    f"Task task_id: {self.id} node function error for node: {self.name} msg: {str(e)}"
+                logger.error(
+                    f"Task task_id: {self.id} node function error for node: {self.name} msg: {str(e)}",
+                    exc_info=True
                 )
                 # save what we can, in particular the info_files
                 await self.process_results(node_runner)

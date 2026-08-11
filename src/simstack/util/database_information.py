@@ -52,8 +52,11 @@ class DatabaseInformation:
     @classmethod
     def from_config(cls, config: Dict[str, Any], **kwargs):
         """
-        Initialize DatabaseInformation from TOML config
-        kwargs override config file.
+        Initialize DatabaseInformation from TOML config.
+
+        Precedence: explicit kwargs > SIMSTACK_DB_* env > simstack.toml.
+        Docker runners set SIMSTACK_DB_CONNECTION_STRING so containers do not
+        keep using a loopback URI from a bind-mounted host toml.
         """
         common_params = config.get("parameters", {}).get("db", {})
         is_test = kwargs.get("is_test", False)
@@ -61,6 +64,10 @@ class DatabaseInformation:
         # Standard initialization from TOML
         db_name = kwargs.get("db_name")
         # for testing we can use an in_memory db
+        if db_name is None:
+            db_name = os.environ.get("SIMSTACK_DB_DATABASE") or os.environ.get(
+                "SIMSTACK_DB_TEST_DATABASE"
+            )
         if db_name is None:
             # the package simstack.toml has no db_name and connections string
             db_name = common_params.get("database")
@@ -71,6 +78,8 @@ class DatabaseInformation:
                 sys.exit(-1)
 
         connection_string = kwargs.get("connection_string")
+        if connection_string is None:
+            connection_string = os.environ.get("SIMSTACK_DB_CONNECTION_STRING")
         if connection_string is None:
             connection_string = common_params.get("connection_string")
 
