@@ -137,9 +137,9 @@ class NodeExecutionService(BaseService):
                     return await run_node_from_registry(registry_entry)
             else:
                 logger.error(
-                    f"Queue {queue} not supported for task_id: {registry_entry.id}"
+                    f"Queue {queue} not supported {registry_entry.name} for task_id: {registry_entry.id}"
                 )
-                return False
+                raise RuntimeError(f"Queue {queue} not supported for task_id: {registry_entry.id}")
 
         except Exception as e:
             logger.exception(

@@ -28,7 +28,17 @@ def find_project_root(current_file=None, marker_files=(".git", "simstack.toml", 
     prev_dir = None
     while current_dir != prev_dir:
         # Check if any marker files/directories exist in the current directory
-        found_marker = any((current_dir / marker).exists() for marker in marker_files)
+        found_marker = False
+        for marker in marker_files:
+            marker_path = current_dir / marker
+            if marker == ".git":
+                if marker_path.is_dir():
+                    found_marker = True
+                    break
+            elif marker_path.exists():
+                found_marker = True
+                break
+
         found_skip = any((current_dir / marker).exists() for marker in skip_files)
         if found_marker and not found_skip:
             return current_dir
