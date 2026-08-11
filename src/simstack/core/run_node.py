@@ -14,7 +14,15 @@ async def run_node_from_id(node_id: str, resource_str: str, project_root: str = 
     """Run a single node by its ID from the database"""
     logger.info(f"Initializing node run: node_id={node_id}, resource={resource_str}, project_root={project_root}, in_docker={in_docker}")
     try:
-        await context.initialize(resource=resource_str, project_root=project_root, in_docker=in_docker)
+        init_kwargs = {
+            "resource": resource_str,
+            "project_root": project_root,
+            "in_docker": in_docker,
+        }
+        # Host workdirs (e.g. C:/Users/...) are bind-mounted at /root/simstack.
+        if in_docker:
+            init_kwargs["workdir"] = "/root/simstack"
+        await context.initialize(**init_kwargs)
     except Exception as e:
         logger.error(f"Failed to initialize context: {str(e)}", exc_info=True)
         return False
