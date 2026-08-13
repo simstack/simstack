@@ -435,55 +435,6 @@ class TestDataSetMetadataStructureValidation:
         assert metadata2.field_name == "analysis_type_2"
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Not yet implemented")
-    async def test_different_structure_same_name_fails(self):
-        """Test that storing metadata with different structure and same name fails."""
-
-        # First metadata with structure: name (str), samples (int), threshold (float)
-        DataSetMetadata(
-            field_name="analysis_same_name",
-            data={"name": "analysis_1", "samples": 100, "threshold": 0.95},
-        )
-
-        # Attempt to create second metadata with DIFFERENT structure but SAME dataset_type name
-        # This should fail during validation
-        with pytest.raises(
-            ValueError, match="Metadata structure does not match reference"
-        ):
-            DataSetMetadata(
-                field_name="analysis_same_name",  # Same name as first
-                data={
-                    "name": "analysis_2",
-                    "samples": "one hundred",  # Different type: string instead of int
-                    "threshold": 0.90,
-                },
-            )
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Not yet implemented")
-    async def test_different_keys_same_name_fails(self):
-        """Test that metadata with different keys but same name fails."""
-
-        # First metadata with structure: name, count, active
-        DataSetMetadata(
-            field_name="experiment_same_name",
-            data={"name": "experiment_1", "count": 50, "active": True},
-        )
-
-        # Attempt to create second metadata with different keys but same dataset_type name
-        with pytest.raises(
-            ValueError, match="Metadata structure does not match reference"
-        ):
-            DataSetMetadata(
-                field_name="experiment_same_name",  # Same name as first
-                data={
-                    "title": "experiment_2",  # Different key: 'title' instead of 'name'
-                    "size": 75,  # Different key: 'size' instead of 'count'
-                    "enabled": False,  # Different key: 'enabled' instead of 'active'
-                },
-            )
-
-    @pytest.mark.asyncio
     async def test_same_structure_same_name_succeeds(self):
         """Test that metadata with same structure and same name succeeds."""
 

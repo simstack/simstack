@@ -374,7 +374,7 @@ class DataSetTuple(Model):
     async def save(self, engine):
         # engine = current_engine_context.get()
         structure = self.collect_structure()
-        ok = await self.metadata.validate_dict(structure)
+        ok = await self.metadata.validate_dict(structure, dataset_tuple=True)
         if not ok:
             raise ValueError("Metadata validation failed")
 
