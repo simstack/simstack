@@ -6,6 +6,7 @@ from simstack.core.definitions import TaskStatus
 from simstack.core.node import node_from_database
 from simstack.models import NodeRegistry, ArtifactModel
 from simstack.models.charts_artifact import ChartArtifactModel
+from simstack.models.images2d import Image2DArtifactModel
 from simstack.models.table_artifact import TableArtifactModel
 from simstack.util.importer import import_class
 from simstack.util.importer import import_function
@@ -54,6 +55,18 @@ async def recompute_artifacts(node_registry: NodeRegistry):
     )
     for chart_artifact in chart_artifacts:
         await db.delete(chart_artifact)
+
+    image_artifacts = await db.find(
+        Image2DArtifactModel, Image2DArtifactModel.parent_id == node_registry.id
+    )
+    for image_artifact in image_artifacts:
+        await db.delete(image_artifact)
+
+    generic_artifacts = await db.find(
+        ArtifactModel, ArtifactModel.parent_id == node_registry.id
+    )
+    for generic_artifact in generic_artifacts:
+        await db.delete(generic_artifact)
 
     if node_registry.artifact_ids:
         logger.info(f"Removing {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}")

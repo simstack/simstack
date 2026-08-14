@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Any
 
-from odmantic import Field, Model
+from odmantic import Field, Model, ObjectId
 
 from simstack.models.pickle_models import FunctionPickle
 from simstack.models.simstack_model import simstack_model
@@ -59,6 +59,7 @@ from simstack.models.simstack_model import simstack_model
 
 @simstack_model
 class ArtifactModel(Model):
+    parent_id: Optional[ObjectId] = Field(default=None, description="ID of the node registry")
     name: str
     description: Optional[str] = None
     data: Dict[str, Any] = Field(default_factory=dict)

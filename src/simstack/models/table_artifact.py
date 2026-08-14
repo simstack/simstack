@@ -56,7 +56,7 @@ class AGGridColumnDef(EmbeddedModel):
 
 
 class TableArtifactModel(Model):
-    parent_id: ObjectId = Field(default=None, description="ID of the node registry")
+    parent_id: Optional[ObjectId] = Field(default=None, description="ID of the node registry")
     columns_defs: List[AGGridColumnDef] = Field(
         default_factory=list, description="AG-Grid column definitions"
     )
