@@ -39,6 +39,8 @@ class CreateModelTable(TableBuilderBase):
     async def _create_models_from_module(self, module, drops: str):
         """Create ModelMapping entries for all relevant classes in a module."""
         classes = inspect.getmembers(module, inspect.isclass)
+        source_revision = getattr(module, "_simstack_source_revision", None)
+        source_sha256 = getattr(module, "_simstack_source_sha256", None)
 
         for class_name, new_class in classes:
             # this is required because of the Odmantic Metaclass Model
@@ -120,6 +122,8 @@ class CreateModelTable(TableBuilderBase):
                     json_schema=json.dumps(new_class.json_schema()),
                     ui_schema=json.dumps(new_class.ui_schema()),
                     route="",
+                    source_revision=source_revision,
+                    source_sha256=source_sha256,
                 )
                 logger.debug(
                     f"SimStack Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}"
@@ -141,6 +145,8 @@ class CreateModelTable(TableBuilderBase):
                     name=class_name,
                     mapping=full_mapping,
                     collection_name=collection_name,
+                    source_revision=source_revision,
+                    source_sha256=source_sha256,
                 )
                 logger.debug(
                     f"Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}"

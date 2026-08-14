@@ -445,7 +445,11 @@ class Database:
         return parts
 
     async def load_task(
-        self, name: str, arg_hash: str, function_hash: str
+        self,
+        name: str,
+        arg_hash: str,
+        function_hash: str,
+        source_revision: ObjectId | None = None,
     ) -> Optional["NodeRegistry"]:
         """
         Load a task based on name, arg_hash and function_hash
@@ -458,12 +462,14 @@ class Database:
         Returns:
             The found NodeRegistry instance or None
         """
-        result = await self.find_one(
-            NodeRegistry,
+        query = (
             (NodeRegistry.name == name)
             & (NodeRegistry.arg_hash == arg_hash)
-            & (NodeRegistry.function_hash == function_hash),
+            & (NodeRegistry.function_hash == function_hash)
         )
+        if source_revision is not None:
+            query &= NodeRegistry.source_revision == source_revision
+        result = await self.find_one(NodeRegistry, query)
         return result
 
     # legacy functions ... these are functions in the old database class which we do not want to migrate if possible

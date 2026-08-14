@@ -411,6 +411,8 @@ class CreateNodeTable(TableBuilderBase):
         - Only functions actually defined in this module.
         """
         functions = self._discover_module_functions(module)
+        source_revision = getattr(module, "_simstack_source_revision", None)
+        source_sha256 = getattr(module, "_simstack_source_sha256", None)
 
         for func_name, func in functions:
             if not is_node_function(func):
@@ -483,10 +485,14 @@ class CreateNodeTable(TableBuilderBase):
                 node_model = NodeModel(
                     name=node_name,
                     function_mapping=function_mapping,
+                    version=getattr(func, "_node_version", None),
                     description=node_description,
                     input_mappings=data_mappings,
                     result_mappings=result_mappings,
                     called_nodes=[],  # we need to first build the full list, will be filled in second_stage
+                    expose_in_submit=getattr(func, "_node_expose_in_submit", True),
+                    source_revision=source_revision,
+                    source_sha256=source_sha256,
                     default_parameters=parameters,
                     pickle_function=None,
                     favorite=existing_favorite,

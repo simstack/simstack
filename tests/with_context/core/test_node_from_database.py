@@ -18,22 +18,38 @@ CURRENT_MODULE = __name__
 def helper_node_func(args: FloatData, **kwargs) -> FloatData:
     return FloatData(value=args.value + 1)
 
+
+@node()
+async def async_helper_node_func(args: FloatData, **kwargs) -> FloatData:
+    return FloatData(value=args.value + 1)
+
+
 @pytest_asyncio.fixture
 async def setup_helper_node_model(initialized_context):
     """Fixture to ensure helper_node_func mapping exists."""
 
-    node_model = NodeModel(
-        name="helper_node_func",
-        function_mapping=f"{CURRENT_MODULE}.helper_node_func",
-        input_mappings=[],
-        default_parameters=Parameters()
-    )
-    await context.db.save(node_model)
+    node_models = [
+        NodeModel(
+            name="helper_node_func",
+            function_mapping=f"{CURRENT_MODULE}.helper_node_func",
+            input_mappings=[],
+            default_parameters=Parameters(),
+        ),
+        NodeModel(
+            name="async_helper_node_func",
+            function_mapping=f"{CURRENT_MODULE}.async_helper_node_func",
+            input_mappings=[],
+            default_parameters=Parameters(),
+        ),
+    ]
+    for node_model in node_models:
+        await context.db.save(node_model)
     await context.refresh_mappings()
-    
-    yield node_model
-    
-    await context.db.delete(node_model)
+
+    yield node_models[0]
+
+    for node_model in node_models:
+        await context.db.delete(node_model)
     await context.refresh_mappings()
 
 @pytest.mark.asyncio
@@ -179,6 +195,181 @@ async def test_node_from_database_duplicate(initialized_context, setup_helper_no
             await context.db.delete(existing_entry)
     finally:
         await context.db.delete(input_data)
+
+
+@pytest.mark.asyncio
+async def test_node_from_database_duplicate_corrects_stale_async_metadata(
+    initialized_context, setup_helper_node_model
+):
+    """Duplicate recovery trusts the imported callable, not either stored flag."""
+    from simstack.core.hash import complex_hash_function
+    from simstack.core.node import compute_arg_hash
+
+    input_data = FloatData(value=20.0)
+    await context.db.save(input_data)
+    arg_hash = compute_arg_hash([input_data])
+    func_hash = complex_hash_function(async_helper_node_func._inner)
+    existing_entry = NodeRegistry(
+        name="async_helper_node_func",
+        status=TaskStatus.SUBMITTED,
+        input_references=[NamedDataReference.from_variable(input_data)],
+        function_hash=func_hash,
+        arg_hash=arg_hash,
+        # The incoming entry has the valid mapping; duplicate recovery must not
+        # throw that callable away just because this older mapping is stale.
+        func_mapping="non_existent_module.async_helper_node_func",
+        parameters=Parameters(),
+        is_async=False,
+    )
+    await context.db.save(existing_entry)
+    new_entry = NodeRegistry(
+        name="async_helper_node_func",
+        status=TaskStatus.SUBMITTED,
+        input_references=[NamedDataReference.from_variable(input_data)],
+        function_hash=func_hash,
+        arg_hash=arg_hash,
+        func_mapping=f"{CURRENT_MODULE}.async_helper_node_func",
+        parameters=Parameters(),
+        is_async=False,
+    )
+    await context.db.save(new_entry)
+
+    try:
+        reconstructed_node = await node_from_database(new_entry)
+
+        assert reconstructed_node is not None
+        assert reconstructed_node.registry_entry.id == existing_entry.id
+        assert reconstructed_node.is_async is True
+
+        result = await reconstructed_node.execute_node_locally()
+
+        assert result.value == 21.0
+        stored_entry = await context.db.find_one(
+            NodeRegistry, NodeRegistry.id == existing_entry.id
+        )
+        assert stored_entry is not None
+        assert stored_entry.is_async is True
+    finally:
+        await context.db.delete(existing_entry)
+        await context.db.delete(input_data)
+
+
+@pytest.mark.parametrize("terminal_status", [TaskStatus.FAILED, TaskStatus.TIME_OUT])
+@pytest.mark.asyncio
+async def test_node_from_database_does_not_recover_failed_async_duplicate(
+    initialized_context, setup_helper_node_model, terminal_status
+):
+    """A retry must execute its new task instead of recovering a failed cache entry."""
+    from simstack.core.hash import complex_hash_function
+    from simstack.core.node import compute_arg_hash
+
+    input_data = FloatData(value=30.0)
+    await context.db.save(input_data)
+    arg_hash = compute_arg_hash([input_data])
+    func_hash = complex_hash_function(async_helper_node_func._inner)
+    failed_entry = NodeRegistry(
+        name="async_helper_node_func",
+        status=terminal_status,
+        input_references=[NamedDataReference.from_variable(input_data)],
+        function_hash=func_hash,
+        arg_hash=arg_hash,
+        func_mapping=f"{CURRENT_MODULE}.async_helper_node_func",
+        parameters=Parameters(),
+        is_async=False,
+    )
+    await context.db.save(failed_entry)
+    new_entry = NodeRegistry(
+        name="async_helper_node_func",
+        status=TaskStatus.SUBMITTED,
+        input_references=[NamedDataReference.from_variable(input_data)],
+        # Reproduce the live path: the hash is already initialized while the
+        # submitted async metadata is stale.
+        function_hash=func_hash,
+        arg_hash=arg_hash,
+        func_mapping=f"{CURRENT_MODULE}.async_helper_node_func",
+        parameters=Parameters(),
+        is_async=False,
+    )
+    await context.db.save(new_entry)
+
+    try:
+        reconstructed_node = await node_from_database(new_entry)
+
+        assert reconstructed_node is not None
+        assert reconstructed_node.registry_entry.id == new_entry.id
+        assert reconstructed_node.is_async is True
+        stored_new_entry = await context.db.find_one(
+            NodeRegistry, NodeRegistry.id == new_entry.id
+        )
+        assert stored_new_entry is not None
+        assert stored_new_entry.is_async is True
+
+        result = await reconstructed_node.execute_node_locally()
+
+        assert result.value == 31.0
+        stored_failed_entry = await context.db.find_one(
+            NodeRegistry, NodeRegistry.id == failed_entry.id
+        )
+        assert stored_failed_entry is not None
+        assert stored_failed_entry.status == terminal_status
+    finally:
+        await context.db.delete(new_entry)
+        await context.db.delete(failed_entry)
+        await context.db.delete(input_data)
+
+
+@pytest.mark.asyncio
+async def test_node_from_database_force_rerun_bypasses_duplicate_recovery(
+    initialized_context, setup_helper_node_model
+):
+    from simstack.core.hash import complex_hash_function
+    from simstack.core.node import compute_arg_hash
+
+    input_data = FloatData(value=40.0)
+    await context.db.save(input_data)
+    arg_hash = compute_arg_hash([input_data])
+    func_hash = complex_hash_function(async_helper_node_func._inner)
+    completed_entry = NodeRegistry(
+        name="async_helper_node_func",
+        status=TaskStatus.COMPLETED,
+        input_references=[NamedDataReference.from_variable(input_data)],
+        function_hash=func_hash,
+        arg_hash=arg_hash,
+        func_mapping=f"{CURRENT_MODULE}.async_helper_node_func",
+        parameters=Parameters(),
+        is_async=True,
+    )
+    await context.db.save(completed_entry)
+    rerun_parameters = Parameters(force_rerun=True)
+    new_entry = NodeRegistry(
+        name="async_helper_node_func",
+        status=TaskStatus.SUBMITTED,
+        input_references=[NamedDataReference.from_variable(input_data)],
+        function_hash=func_hash,
+        arg_hash=arg_hash,
+        func_mapping=f"{CURRENT_MODULE}.async_helper_node_func",
+        parameters=rerun_parameters,
+        is_async=False,
+    )
+    await context.db.save(new_entry)
+
+    try:
+        reconstructed_node = await node_from_database(new_entry)
+
+        assert reconstructed_node is not None
+        assert reconstructed_node.registry_entry.id == new_entry.id
+        assert reconstructed_node.is_async is True
+        assert (
+            await context.db.find_one(
+                NodeRegistry, NodeRegistry.id == completed_entry.id
+            )
+            is not None
+        )
+    finally:
+        await context.db.delete(new_entry)
+        await context.db.delete(completed_entry)
+        await context.db.delete(input_data)
+
 
 @pytest.mark.asyncio
 async def test_node_from_database_invalid_mapping_with_duplicate(initialized_context, setup_helper_node_model):

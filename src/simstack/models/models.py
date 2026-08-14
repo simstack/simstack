@@ -2,7 +2,7 @@ import base64
 import logging
 from typing import List, Optional, TypeVar
 
-from odmantic import EmbeddedModel, Field, Model
+from odmantic import EmbeddedModel, Field, Model, ObjectId
 
 from simstack.models.parameters import Parameters
 from simstack.models.pickle_models import FunctionPickle
@@ -24,6 +24,10 @@ class ModelMapping(Model):
     collection_name: str
     json_schema: Optional[str] = None
     ui_schema: Optional[str] = None
+    # Generated workflow modules are immutable. These fields pin the exact
+    # source document used to register this mapping.
+    source_revision: Optional[ObjectId] = None
+    source_sha256: Optional[str] = None
 
 
 class DataMapping(EmbeddedModel):
@@ -42,6 +46,11 @@ class NodeModel(Model):
     called_nodes: List[str] = Field(default_factory=list)
     description: Optional[str] = ""
     favorite: bool = False
+    expose_in_submit: bool = True
+    # Generated workflow modules are immutable. These fields pin the exact
+    # source document used to register this function.
+    source_revision: Optional[ObjectId] = None
+    source_sha256: Optional[str] = None
     default_parameters: Parameters
     # Reference to FunctionPickle if available.
     pickle_function: Optional[FunctionPickle] = None

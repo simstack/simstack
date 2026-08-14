@@ -85,6 +85,10 @@ class NodeRegistry(Model):
     completed_at: Optional[datetime] = Field(default=None)
     job_id: Optional[str] = None
     function_hash: str
+    # Immutable generated source used by this particular execution. Old queued
+    # jobs therefore keep importing their revision after a newer publish.
+    source_revision: Optional[ObjectId] = None
+    source_sha256: Optional[str] = None
     arg_hash: str
     func_mapping: str
     is_async: bool = False

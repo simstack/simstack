@@ -32,6 +32,7 @@ from .datasettuple import (
 from .dataset import DataSet, DataSetSection, DataSetSelection, DataSetSelectionField
 from .dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
 from .images2d import Image2DArtifactModel
+from .generated_workflow import GeneratedWorkflowSource, GeneratedWorkflowStatus
 
 
 __all__ = [
@@ -71,4 +72,6 @@ __all__ = [
     "Image2DArtifactModel",
     "StringDataList",
     "StringList",
+    "GeneratedWorkflowSource",
+    "GeneratedWorkflowStatus",
 ]

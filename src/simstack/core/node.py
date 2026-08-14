@@ -3,6 +3,7 @@ import functools
 import inspect
 import logging
 import os
+from types import SimpleNamespace
 from datetime import datetime
 from pathlib import Path
 from typing import (
@@ -225,7 +226,16 @@ class Node:
         """
         # TODO why does this fail when nodemapping succeeds ?
         # function_mapping = await context.db.find_one(NodeModel, NodeModel.name == self.name)
-        function_mapping = context.node_mappings.get_by_name(self.name)
+        source_revision = getattr(self._func, "_simstack_source_revision", None)
+        source_sha256 = getattr(self._func, "_simstack_source_sha256", None)
+        exact_function_mapping = f"{self._func.__module__}.{self._func.__name__}"
+        function_mapping = (
+            context.node_mappings.get_by_mapping(exact_function_mapping)
+            if source_revision is not None
+            else context.node_mappings.get_by_name(self.name)
+        )
+        if function_mapping is None and source_revision is not None:
+            function_mapping = SimpleNamespace(function_mapping=exact_function_mapping)
         if function_mapping is None:
             logger.error(f"Could not find function mapping for name: {self.name}")
             raise ValueError(f"Could not find function mapping for name: {self.name}")
@@ -238,8 +248,16 @@ class Node:
         for i, arg in enumerate(self._args):
             # if there is no table for an arg raise an error
             # input_table_name = await context.db.find_one(ModelMapping, ModelMapping.name == arg.__class__.__name__)
-            input_table_name = context.model_mappings.get_by_name(arg.__class__.__name__)
-            if input_table_name is None:
+            argument_source_revision = getattr(
+                arg.__class__, "_simstack_source_revision", None
+            )
+            argument_mapping = f"{arg.__class__.__module__}.{arg.__class__.__name__}"
+            input_table_name = (
+                context.model_mappings.get_by_mapping(argument_mapping)
+                if argument_source_revision is not None
+                else context.model_mappings.get_by_name(arg.__class__.__name__)
+            )
+            if input_table_name is None and argument_source_revision is None:
                 logger.error(f"Could not find table name for {arg.__class__.__name__}")
                 raise ValueError(f"Could not find table name for {arg.__class__.__name__}")
             if not isinstance(arg, Model):
@@ -285,6 +303,8 @@ class Node:
             status=TaskStatus.SUBMITTED,
             custom_name=self.custom_name,
             function_hash=function_hash,
+            source_revision=source_revision,
+            source_sha256=source_sha256,
             arg_hash=arg_hash,
             project=project_id,
             parent_ids=[] if self.parent_id is None else [self.parent_id],
@@ -330,12 +350,23 @@ class Node:
             raise ValueError("Database is not connected")
 
         arg_hash = compute_arg_hash(self._args)
-        function_hash = cast(str, complex_hash_function(self._func))
+        source_revision = getattr(self._func, "_simstack_source_revision", None)
+        source_sha256 = getattr(self._func, "_simstack_source_sha256", None)
+        function_hash = (
+            cast(str, source_sha256)
+            if source_sha256 is not None
+            else cast(str, complex_hash_function(self._func))
+        )
         self._arg_hash = arg_hash
         self._function_hash = function_hash
 
         self.registry_entry = (
-            await context.db.load_task(self.name, arg_hash, function_hash)
+            await context.db.load_task(
+                self.name,
+                arg_hash,
+                function_hash,
+                source_revision=source_revision,
+            )
             if not self.parameters.force_rerun
             else None
         )
@@ -833,7 +864,11 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
     func = None
     try:
         wrapped_func = await import_function(
-            registry_entry.func_mapping, db, task_id=registry_entry.id
+            registry_entry.func_mapping,
+            db,
+            task_id=registry_entry.id,
+            source_revision=registry_entry.source_revision,
+            source_sha256=registry_entry.source_sha256,
         )
         if wrapped_func is not None:
             # for nodes the mapping points to the wrapped func to we use that
@@ -843,9 +878,22 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             logger.debug(
                 f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
             )
+            # The imported callable is the runtime source of truth. Registry
+            # metadata can be stale (for example, for a SHA-pinned generated
+            # workflow submitted with is_async=False), so never couple async
+            # detection to function-hash initialization.
+            registry_entry.is_async = asyncio.iscoroutinefunction(func)
             if registry_entry.function_hash == "NOT INITIALIZED":
-                registry_entry.function_hash = cast(str, complex_hash_function(func))
-                registry_entry.is_async = asyncio.iscoroutinefunction(func)
+                source_revision = getattr(func, "_simstack_source_revision", None)
+                source_sha256 = getattr(func, "_simstack_source_sha256", None)
+                if source_revision is not None:
+                    registry_entry.source_revision = source_revision
+                    registry_entry.source_sha256 = source_sha256
+                registry_entry.function_hash = (
+                    cast(str, source_sha256)
+                    if source_sha256 is not None
+                    else cast(str, complex_hash_function(func))
+                )
         else:
             logger.error(
                 f"Task task_id: {registry_entry.id} could not import function {registry_entry.func_mapping}"
@@ -859,12 +907,22 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
         return None
 
     try:
-        duplicate_entry = await db.find_one(
-            NodeRegistry,
+        duplicate_query = (
             (NodeRegistry.name == registry_entry.name)
             & (NodeRegistry.arg_hash == registry_entry.arg_hash)
             & (NodeRegistry.function_hash == registry_entry.function_hash)
-            & (NodeRegistry.id != registry_entry.id),
+            & (NodeRegistry.id != registry_entry.id)
+            & (NodeRegistry.status != TaskStatus.FAILED)
+            & (NodeRegistry.status != TaskStatus.TIME_OUT)
+        )
+        if registry_entry.source_revision is not None:
+            duplicate_query &= (
+                NodeRegistry.source_revision == registry_entry.source_revision
+            )
+        duplicate_entry = (
+            None
+            if registry_entry.parameters.force_rerun
+            else await db.find_one(NodeRegistry, duplicate_query)
         )
         if duplicate_entry is None:
             await db.save(
@@ -876,27 +934,44 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}"
             )
 
-            # the parameters of the new job may be different
-            duplicate_entry.parameters = registry_entry.parameters
-            await db.delete(registry_entry)
-            registry_entry = duplicate_entry
+            incoming_entry = registry_entry
 
+            # Resolve a callable before deleting the incoming task. Prefer an
+            # already imported incoming callable: the duplicate mapping may be
+            # stale even though both entries have the same function hash. Fall
+            # back to the duplicate mapping only when the incoming import did
+            # not produce a callable.
             if func is None:
-                # we recovered a duplicate, let's try to import the function from the duplicate's mapping
                 try:
-                    wrapped_func = await import_function(
-                        registry_entry.func_mapping, db, task_id=registry_entry.id
+                    duplicate_wrapped_func = await import_function(
+                        duplicate_entry.func_mapping,
+                        db,
+                        task_id=duplicate_entry.id,
+                        source_revision=duplicate_entry.source_revision,
+                        source_sha256=duplicate_entry.source_sha256,
                     )
-                    if wrapped_func is not None:
-                        func = (
-                            wrapped_func
-                            if not hasattr(wrapped_func, "_inner")
-                            else wrapped_func._inner
-                        )
+                    if duplicate_wrapped_func is None:
+                        return None
+                    func = (
+                        duplicate_wrapped_func
+                        if not hasattr(duplicate_wrapped_func, "_inner")
+                        else duplicate_wrapped_func._inner
+                    )
                 except Exception as e:
                     logger.error(
-                        f"Task task_id: {registry_entry.id} failed to import function from duplicate {registry_entry.func_mapping} {str(e)}"
+                        f"Task task_id: {duplicate_entry.id} failed to import function "
+                        f"from duplicate {duplicate_entry.func_mapping} {str(e)}"
                     )
+                    return None
+
+            # The parameters of the new job may be different. Persist both
+            # them and the callable-derived async metadata before removing the
+            # now-redundant incoming entry.
+            duplicate_entry.parameters = registry_entry.parameters
+            duplicate_entry.is_async = asyncio.iscoroutinefunction(func)
+            await db.save(duplicate_entry)
+            await db.delete(incoming_entry)
+            registry_entry = duplicate_entry
 
         if func is None:
             return None
@@ -907,17 +982,28 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
         )
         return None
 
+    # Duplicate recovery may replace registry_entry with an older document
+    # whose async flag is also stale. Re-detect from the actual callable that
+    # will be executed and persist the corrected metadata before constructing
+    # the Node.
+    detected_is_async = asyncio.iscoroutinefunction(func)
+    if registry_entry.is_async != detected_is_async:
+        logger.info(
+            f"Task task_id: {registry_entry.id} corrected stale is_async metadata "
+            f"from {registry_entry.is_async} to {detected_is_async}"
+        )
+        registry_entry.is_async = detected_is_async
+        await db.save(registry_entry)
+
     kwargs = {
         "func": func,
-        "is_async": False,
+        "is_async": detected_is_async,
         "call_path": registry_entry.call_path,
         "parameters": registry_entry.parameters,
         "custom_name": registry_entry.custom_name,
         "arg_hash": registry_entry.arg_hash,
         "function_hash": registry_entry.function_hash,
     }
-    if hasattr(registry_entry, "is_async"):
-        kwargs["is_async"] = registry_entry.is_async
 
     kwargs["parent_id"] = (
         registry_entry.parent_ids[0] if registry_entry.parent_ids else None
@@ -971,6 +1057,7 @@ def node(
     name: Optional[str] = None,
     version: Optional[str] = None,
     cache: bool = True,
+    expose_in_submit: bool = True,
     **kwargs_node: Any,
 ) -> Callable[[Callable[P, T]], Callable[..., T]]:
     ...
@@ -980,6 +1067,7 @@ def node(
     _func: Optional[Callable[P, T]] = None,
     *,
     version: Optional[str] = None,
+    expose_in_submit: bool = True,
     **kwargs_node: Any,
 ) -> Union[Callable[..., T], Callable[[Callable[P, T]], Callable[..., T]]]:
     """
@@ -994,11 +1082,16 @@ def node(
 
     """
 
+    if not isinstance(expose_in_submit, bool):
+        raise TypeError("expose_in_submit must be a bool")
+
     def decorator(func: Callable[P, T]) -> Callable[..., T]:
         is_async = asyncio.iscoroutinefunction(func)
 
         setattr(func, "_is_node", True)
         setattr(func, "_inner", func)
+        setattr(func, "_node_version", version)
+        setattr(func, "_node_expose_in_submit", expose_in_submit)
         setattr(func, "_node_parameters", _parameters_from_node_kwargs(kwargs_node))
 
         def update_kwargs(kwargs: dict[str, Any]) -> None:

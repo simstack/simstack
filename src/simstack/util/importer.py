@@ -1,11 +1,15 @@
 import importlib
+import inspect
 import logging
-import re
 from typing import Any, Callable, Optional, Type, cast
 from odmantic import Model, AIOEngine, ObjectId
 
 from simstack.core.context import context
 from simstack.models.models import ModelMapping, NodeModel
+from simstack.core.generated_workflow import (
+    GENERATED_NAMESPACE_ROOT,
+    import_generated_symbol,
+)
 from simstack.util.db import Database
 
 logger = logging.getLogger("importer")
@@ -49,11 +53,20 @@ def _resolve_engine(ctx: Any | None, engine: AIOEngine | None = None) -> AIOEngi
     )
 
 
-def _lookup_node_cache(node_mappings: Any, function_path: str) -> Optional[NodeModel]:
+def _is_generated_mapping(mapping: str) -> bool:
+    return mapping.startswith(GENERATED_NAMESPACE_ROOT + ".")
+
+
+def _lookup_node_cache(
+    node_mappings: Any,
+    function_path: str,
+    *,
+    allow_name_fallback: bool = True,
+) -> Optional[NodeModel]:
     if node_mappings is None:
         return None
     node_model = node_mappings.get_by_mapping(function_path)
-    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
+    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK and allow_name_fallback:
         if "." in function_path:
             _, function_name = function_path.rsplit(".", 1)
         else:
@@ -63,22 +76,31 @@ def _lookup_node_cache(node_mappings: Any, function_path: str) -> Optional[NodeM
 
 
 async def _find_node_model(function_path: str, db: Database) -> Optional[NodeModel]:
+    allow_name_fallback = not _is_generated_mapping(function_path)
     if context.node_mappings is None:
         await context.refresh_mappings(models=False, nodes=True)
 
-    node_model = _lookup_node_cache(context.node_mappings, function_path)
+    node_model = _lookup_node_cache(
+        context.node_mappings,
+        function_path,
+        allow_name_fallback=allow_name_fallback,
+    )
     if node_model is not None:
         return node_model
 
     await context.refresh_mappings(models=False, nodes=True)
-    node_model = _lookup_node_cache(context.node_mappings, function_path)
+    node_model = _lookup_node_cache(
+        context.node_mappings,
+        function_path,
+        allow_name_fallback=allow_name_fallback,
+    )
     if node_model is not None:
         return node_model
 
     node_model = await db.find_one(
         NodeModel, NodeModel.function_mapping == function_path
     )
-    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
+    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK and allow_name_fallback:
         if "." in function_path:
             _, function_name = function_path.rsplit(".", 1)
         else:
@@ -109,6 +131,10 @@ def _lookup_model_cache(
 ) -> Optional[ModelMapping]:
     if model_mappings is None:
         return None
+    if _is_generated_mapping(class_path):
+        # Exact mapping is authoritative for immutable generated revisions,
+        # where r1 and r2 intentionally expose the same class names.
+        return model_mappings.get_by_mapping(class_path)
     model_mapping = None
     if MODELS_SEARCH_BY_NAME_FALLBACK:
         model_mapping = model_mappings.get_by_name(class_name)
@@ -132,6 +158,8 @@ async def _find_model_mapping(model_path: str, db: Database) -> Optional[ModelMa
     if model_mapping is not None:
         return model_mapping
 
+    if _is_generated_mapping(model_path):
+        return await db.find_one(ModelMapping, ModelMapping.mapping == model_path)
     model_mapping = None
     if MODELS_SEARCH_BY_NAME_FALLBACK:
         model_mapping = await db.find_one(ModelMapping, ModelMapping.name == model_name)
@@ -162,7 +190,9 @@ async def _find_model_mapping_by_name(
 
 
 async def _function_from_model(
-    node_model: NodeModel, task_id: ObjectId | None = None
+    node_model: NodeModel,
+    db: Database,
+    task_id: ObjectId | None = None,
 ) -> Callable[..., Any]:
     """
     Get the function from the NodeModel. Here the mapping may already be fixed if the original mapping was wrong
@@ -177,6 +207,22 @@ async def _function_from_model(
     """
 
     function_path = node_model.function_mapping
+    if node_model.source_revision is not None:
+        generated = await import_generated_symbol(
+            db,
+            function_path,
+            source_revision=node_model.source_revision,
+            source_sha256=node_model.source_sha256,
+        )
+        if generated is None or not callable(generated):
+            raise LookupError(f"Generated function {function_path} was not found")
+        if (
+            node_model.source_sha256 is not None
+            and getattr(generated, "_simstack_source_sha256", None)
+            != node_model.source_sha256
+        ):
+            raise LookupError(f"Generated function {function_path} has a different SHA-256")
+        return cast(Callable[..., Any], generated)
     try:
         module_path, function_name = function_path.rsplit(".", 1)
         module = importlib.import_module(module_path)
@@ -203,6 +249,8 @@ async def import_function(
     db: Database,
     task_id: ObjectId | None = None,
     tolerate_missing_function: bool = False,
+    source_revision: ObjectId | None = None,
+    source_sha256: str | None = None,
 ) -> Optional[Callable[..., Any]]:
     """
     Dynamically import a function from a module using its full path, including a migration mechanism.
@@ -219,9 +267,30 @@ async def import_function(
     Returns:
         The imported function object or None if import fails
     """
+    if source_revision is not None:
+        try:
+            generated = await import_generated_symbol(
+                db,
+                function_path,
+                source_revision=source_revision,
+                source_sha256=source_sha256,
+            )
+            if generated is None or not callable(generated):
+                raise LookupError(f"Generated function {function_path} was not found")
+            return cast(Callable[..., Any], generated)
+        except Exception:
+            if tolerate_missing_function:
+                return None
+            raise
+
     node_model = await _find_node_model(function_path, db)
 
     if node_model is None:
+        if _is_generated_mapping(function_path):
+            generated = await import_generated_symbol(db, function_path)
+            if generated is None or not callable(generated):
+                raise LookupError(f"Generated function {function_path} was not found")
+            return cast(Callable[..., Any], generated)
         try:
             module_path, function_name = function_path.rsplit(".", 1)
             module = importlib.import_module(module_path)
@@ -232,7 +301,7 @@ async def import_function(
             )
 
     try:
-        return await _function_from_model(node_model, task_id)
+        return await _function_from_model(node_model, db, task_id)
     except Exception as e:
         if tolerate_missing_function:
             return None
@@ -249,7 +318,7 @@ async def import_function_by_name(
         logger.error(f"Could not find function mapping for name: {function_name}")
         raise ValueError(f"Could not find function mapping for name: {function_name}")
 
-    return await _function_from_model(node_model, task_id)
+    return await _function_from_model(node_model, db, task_id)
 
 
 async def import_class(class_path: str, db: Database) -> Type[Model] | None:
@@ -279,6 +348,12 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
         else:  # when searching by name, the path may have changed
             module_path, class_name = model_mapping.mapping.rsplit(".", 1)
 
+        if model_mapping is None and _is_generated_mapping(class_path):
+            generated = await import_generated_symbol(db, class_path)
+            if generated is None or not inspect.isclass(generated):
+                raise LookupError(f"Generated model {class_path} was not found")
+            return cast(Type[Model], generated)
+
         if model_mapping is None:
             try:
                 # Import the module
@@ -288,6 +363,25 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
             except (ImportError, AttributeError):
                 logger.error(f"Error finding ModelMapping for {class_name}")
                 raise LookupError(f"Error finding ModelMapping for {class_name}")
+
+        if model_mapping.source_revision is not None:
+            generated = await import_generated_symbol(
+                db,
+                model_mapping.mapping,
+                source_revision=model_mapping.source_revision,
+                source_sha256=model_mapping.source_sha256,
+            )
+            if generated is None or not inspect.isclass(generated):
+                raise LookupError(f"Generated model {model_mapping.mapping} was not found")
+            if (
+                model_mapping.source_sha256 is not None
+                and getattr(generated, "_simstack_source_sha256", None)
+                != model_mapping.source_sha256
+            ):
+                raise LookupError(
+                    f"Generated model {model_mapping.mapping} has a different SHA-256"
+                )
+            return cast(Type[Model], generated)
 
         # Import the module
         module = importlib.import_module(module_path)
