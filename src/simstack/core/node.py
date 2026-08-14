@@ -874,34 +874,18 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             # the parameters of the new job may be different
 
             registry_entry.populate_results_from_duplicate(duplicate_entry)
-            duplicate_entry.parent_id = registry_entry.parent_ids.append(registry_entry.id)
-            await db.save(duplicate_entry) # this will make the duplicate entry a child of the new entry
+            if registry_entry.id not in duplicate_entry.parent_ids:
+                duplicate_entry.parent_ids.append(registry_entry.id)
+            await db.save(duplicate_entry)  # duplicate becomes a child of the new entry
             await db.save(registry_entry)
-
-            # if func is None:
-            #     # we recovered a duplicate, let's try to import the function from the duplicate's mapping
-            #     try:
-            #         wrapped_func = await import_function(
-            #             registry_entry.func_mapping, db, task_id=registry_entry.id
-            #         )
-            #         if wrapped_func is not None:
-            #             func = (
-            #                 wrapped_func
-            #                 if not hasattr(wrapped_func, "_inner")
-            #                 else wrapped_func._inner
-            #             )
-            #     except Exception as e:
-            #         logger.error(
-            #             f"Task task_id: {registry_entry.id} failed to import function from duplicate {registry_entry.func_mapping} {str(e)}"
-            #         )
-
-        # if func is None:
-        #     return None
 
     except Exception as e:
         logger.exception(
             f"Task task_id: {registry_entry.id} failed during duplicate detection or secondary import {str(e)}"
         )
+        return None
+
+    if func is None:
         return None
 
     kwargs = {
