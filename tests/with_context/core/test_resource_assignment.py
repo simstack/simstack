@@ -73,6 +73,36 @@ def test_normalize_non_slurm_queue_clears_stale_slurm_submission_fields():
     assert parameters.slurm_parameters.chdir is None
 
 
+def test_normalize_cloud_resource_keeps_slurm_allocation():
+    parameters = Parameters(
+        resource="cloud",
+        queue="default",
+        slurm_parameters=SlurmParameters(
+            cpus_per_task=4,
+            mem="8G",
+            time="02:00:00",
+        ),
+    )
+
+    normalize_and_validate_effective_parameters(parameters)
+
+    assert parameters.slurm_parameters.cpus_per_task == 4
+    assert parameters.slurm_parameters.mem == "8G"
+    assert parameters.slurm_parameters.time == "02:00:00"
+
+
+def test_normalize_cloud_queue_keeps_slurm_allocation():
+    parameters = Parameters(
+        queue="cloud",
+        slurm_parameters=SlurmParameters(cpus_per_task=2, mem="4G"),
+    )
+
+    normalize_and_validate_effective_parameters(parameters)
+
+    assert parameters.slurm_parameters.cpus_per_task == 2
+    assert parameters.slurm_parameters.mem == "4G"
+
+
 async def _delete_all(engine, model):
     existing = await engine.find(model)
     for item in existing:
