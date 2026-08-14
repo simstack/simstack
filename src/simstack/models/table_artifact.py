@@ -3,6 +3,9 @@ from typing import List, Optional, Dict, Any
 from odmantic import EmbeddedModel, Field, Model, ObjectId
 
 
+from simstack.models.simstack_model import simstack_model
+
+
 class AGGridColumnDef(EmbeddedModel):
     """AG-Grid column definition with support for nested tables."""
 
@@ -55,6 +58,7 @@ class AGGridColumnDef(EmbeddedModel):
     # custom_properties: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional custom properties")
 
 
+@simstack_model
 class TableArtifactModel(Model):
     parent_id: Optional[ObjectId] = Field(default=None, description="ID of the node registry")
     columns_defs: List[AGGridColumnDef] = Field(
@@ -74,6 +78,66 @@ class TableArtifactModel(Model):
     detail_cell_renderer_params: Optional[Dict[str, Any]] = Field(
         default=None, description="Parameters for detail renderer"
     )
+
+    def make_table_entries(
+        self,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return {
+            "columns": len(self.columns_defs),
+            "rows": len(self.row_data),
+        }
+
+    def make_column_defs_instance(
+        self,
+        table_name=None,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return [
+            {"field": "columns", "headerName": "Columns"},
+            {"field": "rows", "headerName": "Rows"},
+        ]
+
+    def make_table_entries_instance(
+        self,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return self.make_table_entries(
+            max_recursion_level=max_recursion_level,
+            drop_id=drop_id,
+            current_level=current_level,
+            visited=visited,
+            field_prefix=field_prefix,
+        )
+
+    @classmethod
+    def ui_schema(cls) -> Dict[str, Any]:
+        return {
+            "ui:table": {
+                "pagination": True,
+                "paginationPageSize": 20,
+                "domLayout": "autoHeight",
+                "defaultColDef": {"flex": 1, "minWidth": 80, "resizable": True},
+            }
+        }
+
+    @classmethod
+    def ui_make_title(cls, ui_schema: Dict[str, Any], field: str, title: str) -> dict:
+        if "ui:table" not in ui_schema:
+            ui_schema = cls.ui_schema()
+        return ui_schema
     # TODO implement nested tables and rendering
     # # Nested tables storage - simplified to avoid recursion
     # nested_tables: Optional[Dict[str, str]] = Field(default_factory=dict, description="Nested table IDs by reference key")

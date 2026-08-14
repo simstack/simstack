@@ -342,7 +342,7 @@ class NodeRunner(SimstackResult):
         self.status = TaskStatus.FAILED
         return self
 
-    def succeed(self, msg: str = "") -> "NodeRunner":
+    def succeed(self, msg: str = "", **kwargs) -> "NodeRunner":
         """
         Mark the task as successfully completed.
 
@@ -351,6 +351,7 @@ class NodeRunner(SimstackResult):
 
         Args:
             msg (str, optional): Success message. Defaults to "".
+            **kwargs: Additional results to be attached to the NodeRunner.
 
         Returns:
             NodeRunner: Self reference for chaining.
@@ -359,4 +360,6 @@ class NodeRunner(SimstackResult):
         self.info(f"succeeded {msg}")
         self.message = msg
         self.status = TaskStatus.COMPLETED
+        for key, value in kwargs.items():
+            setattr(self, key, value)
         return self

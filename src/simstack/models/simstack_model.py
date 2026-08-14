@@ -84,14 +84,16 @@ def simstack_model(cls: T) -> T:
     return cls
 
 
-def is_simstack_model(cls: Type) -> bool:
+def is_simstack_model(obj: Any) -> bool:
     """
-    Check if a class has been decorated with @simstack_model.
+    Check if a class or an instance's class has been decorated with @simstack_model.
 
     Args:
-        cls: The class to check
+        obj: The class or instance to check
 
     Returns:
         bool: True if the class was decorated with @simstack_model, False otherwise
     """
-    return getattr(cls, "_is_simstack_model", False)
+    if isinstance(obj, type):
+        return getattr(obj, "_is_simstack_model", False)
+    return getattr(type(obj), "_is_simstack_model", False)
