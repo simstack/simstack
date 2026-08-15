@@ -71,7 +71,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
 
     image= program_config.get("docker_image", None)
     if image is None:
-        logger.error(f"Docker image for {registry_entry.name} not found for task_id {registry_entry.id} (looked up resource={lookup_resource})")
+        logger.error(f"Docker image for {registry_entry.name} not found for task_id: {registry_entry.id} (looked up resource={lookup_resource})")
         registry_entry.status = TaskStatus.FAILED
         registry_entry.error = f"Docker image for {registry_entry.name} not found (resource={lookup_resource})"
         await context.db.save(registry_entry)
