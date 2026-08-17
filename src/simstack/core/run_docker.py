@@ -193,10 +193,26 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
         registry_entry.id,
         TaskStatus.SLURM_QUEUED,
     )
+
+    # Sanitize cmd for logging by replacing connection string with placeholder
+    sanitized_cmd = []
+    skip_next = False
+    for i, arg in enumerate(cmd):
+        if skip_next:
+            sanitized_cmd.append("***REDACTED***")
+            skip_next = False
+        elif arg in ("-e", "--env") and i + 1 < len(cmd) and cmd[i + 1].startswith("SIMSTACK_DB_CONNECTION_STRING="):
+            sanitized_cmd.append(arg)
+            skip_next = True
+        elif arg.startswith("SIMSTACK_DB_CONNECTION_STRING="):
+            sanitized_cmd.append("SIMSTACK_DB_CONNECTION_STRING=***REDACTED***")
+        else:
+            sanitized_cmd.append(arg)
+
     logger.info(
         "task_id=%s full docker command: %s",
         registry_entry.id,
-        shlex.join(cmd),
+        shlex.join(sanitized_cmd),
     )
 
     # Use platform specific flags to ensure the process survives if runner is killed
