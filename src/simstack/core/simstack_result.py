@@ -23,6 +23,8 @@ class SimstackResult(BaseModel):
     :type error_message: Optional[str]
     :ivar message: An optional general message providing additional information about the task.
     :type message: Optional[str]
+    :ivar custom_name: An optional custom name for the task/node.
+    :type custom_name: Optional[str]
     :ivar files: A list of `FileStack` objects that represent the primary files involved in
         the operation. Defaults to an empty list.
     :type files: List[FileStack]
@@ -35,5 +37,6 @@ class SimstackResult(BaseModel):
     status: TaskStatus = TaskStatus.RETRIEVED
     error_message: Optional[str] = None
     message: Optional[str] = None
+    custom_name: Optional[str] = None
     files: List[FileStack] = Field(default_factory=list)
     info_files: List[FileStack] = Field(default_factory=list)
