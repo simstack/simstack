@@ -11,6 +11,33 @@ def test_resource_config_basic(tmp_path):
     assert params["run_command"] == "orca orca.inp"
     assert rc._resource == "local"
 
+
+def test_resource_config_reload_picks_up_docker_image(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("[local.program.psi4_calculator]\nrun_command = \"psi4\"\n")
+    rc = ResourceConfig(tmp_path, "local")
+    assert "docker_image" not in rc.get_program("psi4_calculator")
+
+    config_file.write_text(
+        "[local.program.psi4_calculator]\n"
+        'docker_image = "molecular-qm-psi4:latest"\n'
+    )
+    assert "docker_image" not in rc.get_program("psi4_calculator")
+
+    rc.reload()
+    assert rc.get_program("psi4_calculator")["docker_image"] == "molecular-qm-psi4:latest"
+
+
+def test_resource_config_reload_missing_file_clears_config(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("[local.program.orca]\nrun_command = \"orca\"\n")
+    rc = ResourceConfig(tmp_path, "local")
+    assert rc.get_program("orca")["run_command"] == "orca"
+
+    config_file.unlink()
+    rc.reload()
+    assert rc.get_program("orca") == {}
+
 def test_resource_config_from_file(tmp_path):
     config_file = tmp_path / "config.toml"
     content = """
