@@ -40,7 +40,7 @@ def test_normalize_slurm_allocation_rejects_tasks_per_node_without_nodes_or_task
         normalize_and_validate_effective_parameters(parameters)
 
 
-def test_normalize_non_slurm_queue_clears_stale_slurm_submission_fields():
+def test_normalize_non_slurm_queue_keeps_submitted_slurm_parameters():
     parameters = Parameters(
         queue="default",
         slurm_parameters=SlurmParameters(
@@ -60,17 +60,29 @@ def test_normalize_non_slurm_queue_clears_stale_slurm_submission_fields():
 
     normalize_and_validate_effective_parameters(parameters)
 
-    assert parameters.slurm_parameters.nodes is None
-    assert parameters.slurm_parameters.tasks is None
-    assert parameters.slurm_parameters.tasks_per_node is None
-    assert parameters.slurm_parameters.mem is None
-    assert parameters.slurm_parameters.time is None
-    assert parameters.slurm_parameters.partition is None
-    assert parameters.slurm_parameters.job_name is None
-    assert parameters.slurm_parameters.output is None
-    assert parameters.slurm_parameters.error is None
-    assert parameters.slurm_parameters.startup_commands == []
-    assert parameters.slurm_parameters.chdir is None
+    assert parameters.slurm_parameters.nodes == 4
+    assert parameters.slurm_parameters.tasks == 8
+    assert parameters.slurm_parameters.tasks_per_node == 2
+    assert parameters.slurm_parameters.mem == "16G"
+    assert parameters.slurm_parameters.time == "04:00:00"
+    assert parameters.slurm_parameters.partition == "batch"
+    assert parameters.slurm_parameters.job_name == "previous-slurm-job"
+    assert parameters.slurm_parameters.output == "/old/%j.out"
+    assert parameters.slurm_parameters.error == "/old/%j.err"
+    assert parameters.slurm_parameters.startup_commands == ["run previous node"]
+    assert parameters.slurm_parameters.chdir == "/old/workdir"
+
+
+def test_normalize_docker_queue_keeps_submitted_slurm_parameters():
+    parameters = Parameters(
+        queue="docker",
+        slurm_parameters=SlurmParameters(cpus_per_task=8, mem="32G"),
+    )
+
+    normalize_and_validate_effective_parameters(parameters)
+
+    assert parameters.slurm_parameters.cpus_per_task == 8
+    assert parameters.slurm_parameters.mem == "32G"
 
 
 def test_normalize_cloud_resource_keeps_slurm_allocation():
@@ -299,7 +311,7 @@ async def test_resolve_resource_assignment_allows_nested_slurm_from_base_paramet
 
 
 @pytest.mark.asyncio
-async def test_resolve_resource_assignment_without_call_path_clears_stale_slurm(
+async def test_resolve_resource_assignment_without_call_path_keeps_slurm(
     odmantic_engine,
 ):
     await _delete_all(odmantic_engine, ResourceAssignmentRule)
@@ -321,10 +333,10 @@ async def test_resolve_resource_assignment_without_call_path_clears_stale_slurm(
     assert resolution.normalized_call_path == ""
     assert resolution.matched_rule is None
     assert resolution.parameters.queue == "default"
-    assert resolution.parameters.slurm_parameters.nodes is None
-    assert resolution.parameters.slurm_parameters.time is None
-    assert resolution.parameters.slurm_parameters.output is None
-    assert resolution.parameters.slurm_parameters.startup_commands == []
+    assert resolution.parameters.slurm_parameters.nodes == 2
+    assert resolution.parameters.slurm_parameters.time == "02:00:00"
+    assert resolution.parameters.slurm_parameters.output == "/old/%j.out"
+    assert resolution.parameters.slurm_parameters.startup_commands == ["run old node"]
 
 
 @pytest.mark.asyncio
