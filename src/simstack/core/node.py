@@ -37,7 +37,7 @@ from simstack.models import NodeModel
 from simstack.models import NodeRegistry, NamedDataReference
 from simstack.models.file_list import FileList
 from simstack.models.files import FileStack
-from simstack.models.parameters import Resource, Queue
+from simstack.models.parameters import Resource, Queue, SlurmParameters
 from simstack.models.simstack_model import is_simstack_model
 from simstack.util.importer import import_function, import_class
 
@@ -120,6 +120,59 @@ def _parameters_field_values(parameters: Parameters) -> dict[str, Any]:
     }
 
 
+def _is_self_resource(parameters: Optional[Parameters]) -> bool:
+    if parameters is None:
+        return False
+    resource = getattr(parameters, "resource", None)
+    return resource == "self"
+
+
+def _slurm_parameters_are_unset(slurm: Optional[SlurmParameters]) -> bool:
+    """True when slurm_parameters were omitted (or are an empty default)."""
+    if slurm is None:
+        return True
+    fields_set = getattr(slurm, "model_fields_set", None)
+    if not fields_set:
+        return True
+    for name in fields_set:
+        value = getattr(slurm, name, None)
+        if value is None or value == [] or value == {}:
+            continue
+        return False
+    return True
+
+
+def inherit_parent_slurm_parameters_for_self(
+    parameters: Optional[Parameters],
+    parent_parameters: Optional[Parameters],
+) -> Optional[Parameters]:
+    """Give a self-resource child the parent's slurm_parameters when it has none."""
+    if parameters is None or not isinstance(parent_parameters, Parameters):
+        return parameters
+    if not _is_self_resource(parameters):
+        return parameters
+    if not _slurm_parameters_are_unset(getattr(parameters, "slurm_parameters", None)):
+        return parameters
+
+    parent_slurm = getattr(parent_parameters, "slurm_parameters", None)
+    if not isinstance(parent_slurm, SlurmParameters):
+        return parameters
+    if _slurm_parameters_are_unset(parent_slurm):
+        return parameters
+
+    parameters.slurm_parameters = parent_slurm.model_copy(deep=True)
+    logger.info(
+        "Inherited parent slurm_parameters onto self-resource node: "
+        "cpus_per_task=%s tasks=%s tasks_per_node=%s mem=%s mem_per_cpu=%s",
+        getattr(parameters.slurm_parameters, "cpus_per_task", None),
+        getattr(parameters.slurm_parameters, "tasks", None),
+        getattr(parameters.slurm_parameters, "tasks_per_node", None),
+        getattr(parameters.slurm_parameters, "mem", None),
+        getattr(parameters.slurm_parameters, "mem_per_cpu", None),
+    )
+    return parameters
+
+
 def _parameters_from_node_kwargs(kwargs_node: dict[str, Any]) -> Parameters:
     base_parameters = kwargs_node.get("parameters")
     if isinstance(base_parameters, Parameters):
@@ -199,6 +252,28 @@ class Node:
             kwargs  # what is left over here must be kwargs of the function
         )
         self.registry_entry: NodeRegistry | None = None
+
+    def _parent_parameters_from_kwargs(self) -> Optional[Parameters]:
+        parent_parameters = self._function_kwargs.get("parent_parameters", None)
+        return parent_parameters if isinstance(parent_parameters, Parameters) else None
+
+    def _apply_parent_slurm_for_self_resource(self) -> bool:
+        """Fill empty slurm_parameters on resource self from the calling parent.
+
+        Resource-assignment rules do not carry Slurm values for self, so this
+        must happen on the node before ``execute_node_locally`` forwards
+        ``self.parameters`` as ``parent_parameters``.
+        """
+        before = getattr(self.parameters, "slurm_parameters", None)
+        inherit_parent_slurm_parameters_for_self(
+            self.parameters, self._parent_parameters_from_kwargs()
+        )
+        after = getattr(self.parameters, "slurm_parameters", None)
+        if after is before:
+            return False
+        if self.registry_entry is not None:
+            self.registry_entry.parameters = self.parameters
+        return True
 
     @property
     def id(self) -> ObjectId | None:
@@ -295,17 +370,17 @@ class Node:
 
         if delayed_message:
             logger.info(f"Task task_id: {self.id} with name {self.name} {delayed_message}")
-        parent_parameters = self._function_kwargs.get("parent_parameters", None)
+        parent_parameters = self._parent_parameters_from_kwargs()
         registry_entry = self.registry_entry
         assert registry_entry is not None
         await apply_resource_assignment_to_node_registry(
             context.db,
             registry_entry,
-            parent_parameters=parent_parameters
-            if isinstance(parent_parameters, Parameters)
-            else None,
+            parent_parameters=parent_parameters,
         )
         self.parameters = registry_entry.parameters
+        self._apply_parent_slurm_for_self_resource()
+        registry_entry.parameters = self.parameters
         await context.db.save(registry_entry)
         logger.info(
             f"Task task_id: {self.id} with name {self.name} created for resource: {registry_entry.parameters.resource} queue: {registry_entry.parameters.queue} with id: {self.id}"
@@ -536,6 +611,7 @@ class Node:
 
         """
         assert self.registry_entry is not None
+        self._apply_parent_slurm_for_self_resource()
         self.registry_entry.started_at = datetime.now()
         await self.set_status(TaskStatus.RUNNING)
         logger.info(
@@ -551,7 +627,7 @@ class Node:
                 "call_path": self.call_path,
                 "parent_parameters": self.parameters,  # this must have a name different from parameters, because
                 # otherwise this setting will override all the parameters of
-                # the child nodes
+                # the child nodes. Resource self copies parent slurm first.
                 "recompute_artifacts": self.recompute_artifacts,
                 "custom_name": self.custom_name,
                 "arg_hash": self._arg_hash,

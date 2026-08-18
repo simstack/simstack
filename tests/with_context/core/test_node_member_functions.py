@@ -9,7 +9,7 @@ from simstack.core.node import Node, node
 from simstack.models import FloatData, Parameters, NodeRegistry, ModelMapping, NodeModel
 from simstack.core.definitions import TaskStatus
 from simstack.core.simstack_result import SimstackResult
-from simstack.models.parameters import Resource, Queue
+from simstack.models.parameters import Resource, Queue, SlurmParameters
 from simstack.core.resources import allowed_resources
 
 # Define some test nodes
@@ -116,6 +116,36 @@ async def test_make_registry_entry_success(initialized_context, setup_mappings):
     finally:
         await context.db.delete(entry)
         await context.db.delete(data)
+
+
+@pytest.mark.asyncio
+async def test_make_registry_entry_inherits_parent_slurm_on_self(
+    initialized_context, setup_mappings
+):
+    data = FloatData(value=1.0)
+    parent_parameters = Parameters(
+        resource="cloud",
+        slurm_parameters=SlurmParameters(cpus_per_task=4, tasks=2, mem="8G"),
+    )
+    n = Node(
+        data,
+        func=sync_node._inner,
+        is_async=False,
+        parameters=Parameters(resource="self"),
+        parent_parameters=parent_parameters,
+    )
+
+    entry = await n.make_registry_entry("func_hash", "arg_hash")
+    try:
+        assert entry.parameters.resource == "self"
+        assert entry.parameters.slurm_parameters.cpus_per_task == 4
+        assert entry.parameters.slurm_parameters.tasks == 2
+        assert entry.parameters.slurm_parameters.mem == "8G"
+        assert n.parameters.slurm_parameters.mem == "8G"
+    finally:
+        await context.db.delete(entry)
+        await context.db.delete(data)
+
 
 @pytest.mark.asyncio
 async def test_make_registry_entry_failure(initialized_context):
