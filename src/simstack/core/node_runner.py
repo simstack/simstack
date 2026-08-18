@@ -4,7 +4,7 @@ import os
 import subprocess
 import uuid
 from pathlib import Path
-from typing import Set, List, Tuple, Union
+from typing import Set, List, Tuple, Union, Optional
 
 from odmantic import ObjectId, Model
 
@@ -53,6 +53,7 @@ class NodeRunner(SimstackResult):
         self.last_stderr = ""
         self.log_string = ""
         self.info_file_patterns = {"*.in", "*.out", "*.err", "*.log"}
+        self.custom_name = None
         self.info(f"NodeRunner '{self.name}' initialized for task_id: {self.task_id}")
 
 
