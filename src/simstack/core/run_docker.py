@@ -1,18 +1,32 @@
-from simstack.models import NodeRegistry
-from simstack.core.definitions import TaskStatus
-from simstack.core.context import context
 import asyncio
+import locale
+import logging
 import platform
 import shlex
 import subprocess
-import logging
-import locale
+from pathlib import Path
 from urllib.parse import urlparse, urlunparse
+
+from simstack.core.context import context
+from simstack.core.definitions import TaskStatus
+from simstack.models import NodeRegistry
 
 logger = logging.getLogger("DockerRunner")
 
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 _DOCKER_WORKDIR = "/root/simstack"
+
+
+def ensure_host_task_workdir(workdir: Path | str, node_name: str, node_id: str) -> Path:
+    """Create the task directory as the host user before Docker/Apptainer runs.
+
+    Containers default to root. If they mkdir ``{workdir}/{node_name}/{id}`` on a
+    bind-mounted volume, the node-type directory becomes root-owned mode 755 and
+    the runner user can no longer create later task dirs.
+    """
+    path = Path(workdir) / node_name / str(node_id)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def _mongo_host_is_loopback(connection_string: str | None) -> bool:
@@ -57,9 +71,21 @@ def _docker_loopback_mongo_args(connection_string: str) -> tuple[str, list[str]]
     return rewritten, ["--add-host", "host.docker.internal:host-gateway"]
 
 
-async def run_docker(registry_entry: NodeRegistry) -> bool:
-    # Resolve docker image from the *task* resource. Context may be "self" while
-    # the task targets "local" (common in test scripts); images live under [local.program].
+def _reload_resource_config() -> None:
+    """Re-read config.toml so docker_image assignments from git pull are visible."""
+    resource_config = context.resource_config
+    if resource_config is None:
+        return
+    resource_config.reload()
+    logger.info("Reloaded resource config from %s", resource_config._config_path)
+
+
+def _docker_program_config(registry_entry: NodeRegistry) -> tuple[dict, str]:
+    """Look up ``[resource.program.<node>]`` after config.toml has been reloaded.
+
+    Context may be ``self`` while the task targets ``local`` (common in tests);
+    images live under ``[local.program]``.
+    """
     task_resource = str(registry_entry.parameters.resource)
     lookup_resource = "local" if task_resource == "self" else task_resource
     program_config = context.resource_config.get_program(
@@ -68,10 +94,16 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
     if not program_config and lookup_resource != str(context.config.resource):
         # Fall back to context resource (e.g. runner already bound to "local").
         program_config = context.resource_config.get_program(registry_entry.name)
+    return program_config, lookup_resource
 
-    image= program_config.get("docker_image", None)
+
+async def run_docker(registry_entry: NodeRegistry) -> bool:
+    _reload_resource_config()
+    program_config, lookup_resource = _docker_program_config(registry_entry)
+
+    image = program_config.get("docker_image", None)
     if image is None:
-        logger.error(f"Docker image for {registry_entry.name} not found for task_id {registry_entry.id} (looked up resource={lookup_resource})")
+        logger.error(f"Docker image for {registry_entry.name} not found for task_id: {registry_entry.id} (looked up resource={lookup_resource})")
         registry_entry.status = TaskStatus.FAILED
         registry_entry.error = f"Docker image for {registry_entry.name} not found (resource={lookup_resource})"
         await context.db.save(registry_entry)
@@ -85,6 +117,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
              image += ".sif"
 
     workdir = context.config.workdir
+    ensure_host_task_workdir(workdir, registry_entry.name, str(registry_entry.id))
     host_simstack_toml = context.config.project_root / "simstack.toml"
     connection_string = context.config.connection_string
     docker_net_args: list[str] = []

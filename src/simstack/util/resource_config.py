@@ -33,13 +33,21 @@ class ResourceConfig:
         actual_path = Path(config_path)
         if actual_path.is_dir():
             actual_path = actual_path / "config.toml"
+        self._config_path = actual_path
+        self.reload()
 
-        if actual_path.exists():
-            with open(actual_path, "rb") as f:
+    def reload(self) -> None:
+        """Re-read ``config.toml`` from disk.
+
+        The runner keeps a long-lived ``ResourceConfig``. Git pull (or a local
+        edit) can add or change ``docker_image`` assignments after startup;
+        callers that launch containers must reload before looking them up.
+        """
+        if self._config_path.exists():
+            with open(self._config_path, "rb") as f:
                 self._config = tomllib.load(f)
         else:
-            # If it doesn't exist, we just have an empty config
-            pass
+            self._config = {}
 
     @property
     def os(self) -> str:
