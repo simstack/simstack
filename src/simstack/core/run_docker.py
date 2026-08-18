@@ -299,7 +299,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
             sanitized_cmd.append(arg)
 
     logger.info(
-        "task_id=%s full docker command: %s",
+        "starting docker for task_id: %s full docker command: %s",
         registry_entry.id,
         shlex.join(sanitized_cmd),
     )
