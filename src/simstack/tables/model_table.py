@@ -87,21 +87,23 @@ class CreateModelTable(TableBuilderBase):
                 )
                 existing_entries = []
 
-            if len(existing_entries) > 1:
-                error_msg = f"Fatal error: Found {len(existing_entries)} ModelMapping entries for class_name '{class_name}'. Expected at most one."
-                logger.fatal(error_msg)
-                raise RuntimeError(error_msg)
-
-            if len(existing_entries) == 1:
-                existing_mapping = existing_entries[0].mapping
-                if existing_mapping != full_mapping:
+            if len(existing_entries) > 0:
+                if len(existing_entries) > 1:
                     logger.warning(
-                        f"Replacing ModelMapping entry for {class_name}: "
-                        f"old mapping '{existing_mapping}' -> new mapping '{full_mapping}'"
+                        f"Found {len(existing_entries)} ModelMapping entries for class_name '{class_name}'. "
+                        f"Expected at most one. Deleting all existing entries."
                     )
+                else:
+                    existing_mapping = existing_entries[0].mapping
+                    if existing_mapping != full_mapping:
+                        logger.warning(
+                            f"Replacing ModelMapping entry for {class_name}: "
+                            f"old mapping '{existing_mapping}' -> new mapping '{full_mapping}'"
+                        )
 
-                await self.db.delete(existing_entries[0])
-                logger.debug(f"Deleted ModelMapping entry for {class_name}")
+                for entry in existing_entries:
+                    await self.db.delete(entry)
+                    logger.debug(f"Deleted ModelMapping entry for {class_name} ({entry.mapping})")
 
             # EmbeddedModels have no collection by may be simstack_models. They are never saved/retrieved
             collection_name = getattr(new_class, "__collection__", None)

@@ -674,7 +674,6 @@ class Node:
                     new_task_status = result.task_status
 
             results_references, result_models = await process_result_helper(result, str(self.id))
-
             self.registry_entry.results_references = results_references
             self.registry_entry.status = new_task_status
 
