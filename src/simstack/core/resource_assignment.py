@@ -37,24 +37,6 @@ def _is_slurm_queue(queue: Optional[str]) -> bool:
     return _normalize_queue(queue).lower() == SLURM_QUEUE_NAME
 
 
-def _parameters_resource_str(parameters: Parameters) -> str:
-    raw = parameters.__dict__.get("resource")
-    if raw is None:
-        return ""
-    if isinstance(raw, str):
-        return raw
-    inner = getattr(raw, "__dict__", {}) or {}
-    return str(inner.get("value") or "")
-
-
-def _keeps_slurm_allocation(parameters: Parameters) -> bool:
-    """Cloud VMs size from SlurmParameters; do not strip mem/CPU for those jobs."""
-    queue = _normalize_queue(getattr(parameters, "queue", None)).lower()
-    if queue in {SLURM_QUEUE_NAME, "cloud"}:
-        return True
-    return _parameters_resource_str(parameters).lower() == "cloud"
-
-
 def _clone_parameters(parameters: Optional[Parameters]) -> Parameters:
     if isinstance(parameters, Parameters):
         return parameters.model_copy(deep=True)
@@ -106,9 +88,8 @@ def normalize_and_validate_effective_parameters(
         return
 
     if not _is_slurm_queue(getattr(parameters, "queue", None)):
-        if _keeps_slurm_allocation(parameters):
-            return
-        parameters.slurm_parameters = empty_slurm_parameters()
+        # Keep submitted slurm_parameters for every queue. Allocation
+        # constraints below apply only to slurm-queue itself.
         return
 
     slurm_parameters = getattr(parameters, "slurm_parameters", None)
