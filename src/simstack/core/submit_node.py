@@ -1,11 +1,17 @@
 import os
 import re
+import shlex
 import stat
 import subprocess
+import sys
 from pathlib import Path
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
+from simstack.core.repository_task_runtime import (
+    TASK_ENV_PREFIX,
+    repository_task_environment,
+)
 from simstack.models import NodeRegistry
 from simstack.util.submit_to_watchdog import submit_to_watchdog
 import logging
@@ -24,11 +30,20 @@ def make_executable(file_path: str | os.PathLike[str]) -> None:
     os.chmod(file_path, executable_mode)
 
 
-async def submit_node(registry_entry: NodeRegistry) -> bool:
+async def submit_node(
+    registry_entry: NodeRegistry,
+    *,
+    repository_checkout: Path | None = None,
+) -> bool:
     """Submit a node to the SLURM queue"""
     task_id = registry_entry.id
     try:
         logger.info(f"Submitting task_id: {task_id} to SLURM queue")
+        if repository_checkout is not None and context.config.docker:
+            raise RuntimeError(
+                "Repository-backed SLURM tasks cannot use custom Docker "
+                "execution because the pinned checkout cannot be guaranteed"
+            )
         # Implement SLURM submission logic here
         base_path = context.config.project_root
 
@@ -53,9 +68,33 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
 
         slurm_parameters.startup_commands.append("source ~/.bashrc")
         slurm_parameters.startup_commands.append(f"{context.config.environment_start}")
-        slurm_parameters.startup_commands.append(
-            f"export PYTHONPATH={python_path}:$PYTHONPATH"
-        )
+        submission_environment = None
+        task_environment = None
+        if repository_checkout is None:
+            slurm_parameters.startup_commands.append(
+                f"export PYTHONPATH={python_path}:$PYTHONPATH"
+            )
+        else:
+            task_environment = repository_task_environment(repository_checkout)
+            submission_environment = {
+                key: value
+                for key, value in os.environ.items()
+                if not key.startswith(TASK_ENV_PREFIX) and key != "PYTHONPATH"
+            }
+            submission_environment.update(task_environment)
+            logger.info(
+                "Submitting repository-backed task from pinned checkout",
+                extra={
+                    "task_id": str(task_id),
+                    "repo_id": str(registry_entry.code_source.repo_id)
+                    if registry_entry.code_source is not None
+                    else None,
+                    "commit": registry_entry.code_source.commit
+                    if registry_entry.code_source is not None
+                    else None,
+                    "repository_checkout": str(repository_checkout),
+                },
+            )
 
         sync_data_start = """# 1. Define the rsync function
         sync_data() {
@@ -146,9 +185,18 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
             docker_start += " simstack-runner"
             slurm_parameters.startup_commands.append(docker_start)
         else:
-            slurm_parameters.startup_commands.append(
-                f"uv run --directory {base_path} run_node --node-id {registry_entry.id} --resource {str(context.config.resource)} &"
-            )
+            if repository_checkout is None:
+                slurm_parameters.startup_commands.append(
+                    f"uv run --directory {base_path} run_node --node-id {registry_entry.id} --resource {str(context.config.resource)} &"
+                )
+            else:
+                slurm_parameters.startup_commands.append(
+                    f"{shlex.quote(sys.executable)} -m simstack.core.run_node "
+                    f"--node-id {shlex.quote(str(registry_entry.id))} "
+                    f"--resource {shlex.quote(str(context.config.resource))} "
+                    "--project-root "
+                    f"{shlex.quote(str(repository_checkout))} &"
+                )
             slurm_parameters.startup_commands.append("wait")
         slurm_parameters.signal = "B:SIGUSR1@60"
 
@@ -173,26 +221,48 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
                 queue_dir,
             )
         else:
-            result = subprocess.run(
-                f"/usr/bin/sbatch {os.path.join(work_dir, 'slurm_script.sh')}",
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=30,  # Add timeout to prevent hanging
-            )
+            if repository_checkout is None:
+                result = subprocess.run(
+                    f"/usr/bin/sbatch {os.path.join(work_dir, 'slurm_script.sh')}",
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,  # Add timeout to prevent hanging
+                )
+            else:
+                assert task_environment is not None
+                assert submission_environment is not None
+                configured_export = slurm_parameters.export
+                export_prefix = (
+                    []
+                    if configured_export in {"NONE", "NIL"}
+                    else [configured_export or "ALL"]
+                )
+                result = subprocess.run(
+                    [
+                        "/usr/bin/sbatch",
+                        "--export="
+                        + ",".join([*export_prefix, *task_environment]),
+                        str(work_dir / "slurm_script.sh"),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,  # Add timeout to prevent hanging
+                    env=submission_environment,
+                )
 
         logger.info(
             f"submitting job task_id: {task_id} returns: {result.returncode} {result.stdout} {result.stderr}"
         )
+        scheduler_job_id = None
         if result.returncode == 0:
             # Extract job ID using a regex pattern
             match = re.search(r"Submitted batch job (\d+)", result.stdout)
             if match:
-                job_id = match.group(1)
+                scheduler_job_id = match.group(1)
                 logger.info(
-                    f"task_id: {task_id} job successfully submitted with job_id: {job_id}"
+                    f"task_id: {task_id} job successfully submitted with job_id: {scheduler_job_id}"
                 )
-                registry_entry.job_id = job_id
             else:
                 logger.warning(
                     f"task_id: {task_id} job submitted but could not extract job_id from output: {result.stdout}"
@@ -207,11 +277,52 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
             return False
+        if repository_checkout is not None:
+            updates = {"status": TaskStatus.SLURM_QUEUED.value}
+            if scheduler_job_id is not None:
+                updates["job_id"] = scheduler_job_id
+            queued = await context.db.get_collection(NodeRegistry).update_one(
+                {
+                    "_id": registry_entry.id,
+                    "status": TaskStatus.RETRIEVED.value,
+                },
+                {"$set": updates},
+            )
+            if queued.matched_count == 1:
+                registry_entry.status = TaskStatus.SLURM_QUEUED
+                registry_entry.job_id = scheduler_job_id
+            else:
+                logger.info(
+                    "Repository-backed SLURM task advanced before queue state was persisted",
+                    extra={
+                        "task_id": str(task_id),
+                        "scheduler_job_id": scheduler_job_id,
+                    },
+                )
+            return True
+        registry_entry.job_id = scheduler_job_id
         registry_entry.status = TaskStatus.SLURM_QUEUED
         await context.db.save(registry_entry)
         return True
     except Exception as e:
         logger.exception(f"fatal error in submitting task_id: {task_id} {str(e)}")
+        if repository_checkout is not None:
+            failed = await context.db.get_collection(NodeRegistry).update_one(
+                {
+                    "_id": registry_entry.id,
+                    "status": TaskStatus.RETRIEVED.value,
+                },
+                {"$set": {"status": TaskStatus.FAILED.value}},
+            )
+            if failed.matched_count == 1:
+                registry_entry.status = TaskStatus.FAILED
+            else:
+                logger.info(
+                    "Repository-backed SLURM task advanced before submission "
+                    "failure was persisted",
+                    extra={"task_id": str(task_id)},
+                )
+            return False
         registry_entry.status = TaskStatus.FAILED
         await context.db.save(registry_entry)
         return False

@@ -33,6 +33,7 @@ from simstack.core.process_results import process_result_helper
 from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.task_id import set_task_id, clear_task_id
+from simstack.core.task_code_source import import_task_function, import_task_model
 from simstack.models import ModelMapping, Parameters, Project
 from simstack.models import NodeModel
 from simstack.models import NodeRegistry, NamedDataReference
@@ -40,7 +41,6 @@ from simstack.models.file_list import FileList
 from simstack.models.files import FileStack
 from simstack.models.parameters import Resource, Queue
 from simstack.models.simstack_model import is_simstack_model
-from simstack.util.importer import import_function, import_class
 
 logger = logging.getLogger("Node")
 
@@ -226,15 +226,14 @@ class Node:
         """
         # TODO why does this fail when nodemapping succeeds ?
         # function_mapping = await context.db.find_one(NodeModel, NodeModel.name == self.name)
-        source_revision = getattr(self._func, "_simstack_source_revision", None)
-        source_sha256 = getattr(self._func, "_simstack_source_sha256", None)
+        code_source = getattr(self._func, "_simstack_code_source", None)
         exact_function_mapping = f"{self._func.__module__}.{self._func.__name__}"
         function_mapping = (
             context.node_mappings.get_by_mapping(exact_function_mapping)
-            if source_revision is not None
+            if code_source is not None
             else context.node_mappings.get_by_name(self.name)
         )
-        if function_mapping is None and source_revision is not None:
+        if function_mapping is None and code_source is not None:
             function_mapping = SimpleNamespace(function_mapping=exact_function_mapping)
         if function_mapping is None:
             logger.error(f"Could not find function mapping for name: {self.name}")
@@ -248,16 +247,14 @@ class Node:
         for i, arg in enumerate(self._args):
             # if there is no table for an arg raise an error
             # input_table_name = await context.db.find_one(ModelMapping, ModelMapping.name == arg.__class__.__name__)
-            argument_source_revision = getattr(
-                arg.__class__, "_simstack_source_revision", None
-            )
+            argument_code_source = getattr(arg.__class__, "_simstack_code_source", None)
             argument_mapping = f"{arg.__class__.__module__}.{arg.__class__.__name__}"
             input_table_name = (
                 context.model_mappings.get_by_mapping(argument_mapping)
-                if argument_source_revision is not None
+                if argument_code_source is not None
                 else context.model_mappings.get_by_name(arg.__class__.__name__)
             )
-            if input_table_name is None and argument_source_revision is None:
+            if input_table_name is None and argument_code_source is None:
                 logger.error(f"Could not find table name for {arg.__class__.__name__}")
                 raise ValueError(f"Could not find table name for {arg.__class__.__name__}")
             if not isinstance(arg, Model):
@@ -303,8 +300,7 @@ class Node:
             status=TaskStatus.SUBMITTED,
             custom_name=self.custom_name,
             function_hash=function_hash,
-            source_revision=source_revision,
-            source_sha256=source_sha256,
+            code_source=code_source,
             arg_hash=arg_hash,
             project=project_id,
             parent_ids=[] if self.parent_id is None else [self.parent_id],
@@ -350,11 +346,10 @@ class Node:
             raise ValueError("Database is not connected")
 
         arg_hash = compute_arg_hash(self._args)
-        source_revision = getattr(self._func, "_simstack_source_revision", None)
-        source_sha256 = getattr(self._func, "_simstack_source_sha256", None)
+        code_source = getattr(self._func, "_simstack_code_source", None)
         function_hash = (
-            cast(str, source_sha256)
-            if source_sha256 is not None
+            code_source.commit
+            if code_source is not None
             else cast(str, complex_hash_function(self._func))
         )
         self._arg_hash = arg_hash
@@ -365,7 +360,7 @@ class Node:
                 self.name,
                 arg_hash,
                 function_hash,
-                source_revision=source_revision,
+                code_source=code_source,
             )
             if not self.parameters.force_rerun
             else None
@@ -431,7 +426,9 @@ class Node:
             simstack_result = SimstackResult(status=self.registry_entry.status)
             result = None
             for ref in self.registry_entry.results_references:
-                model = await import_class(ref.variable_mapping, db)
+                model = await import_task_model(
+                    db, self.registry_entry, ref.variable_mapping
+                )
                 result = await db.find_one(model, model.id == ref.reference)
                 if result is None:
                     await self.set_status(TaskStatus.FAILED)
@@ -843,7 +840,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
 
     for ref in registry_entry.input_references:
         try:
-            model = await import_class(ref.variable_mapping, db)
+            model = await import_task_model(db, registry_entry, ref.variable_mapping)
             arg = await db.find_one(model, model.id == ref.reference)
             arg = await _hydrate_embedded_file_stacks(arg, db, resolved_file_stacks)
             args.append(arg)
@@ -863,13 +860,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
     )
     func = None
     try:
-        wrapped_func = await import_function(
-            registry_entry.func_mapping,
-            db,
-            task_id=registry_entry.id,
-            source_revision=registry_entry.source_revision,
-            source_sha256=registry_entry.source_sha256,
-        )
+        wrapped_func = await import_task_function(db, registry_entry)
         if wrapped_func is not None:
             # for nodes the mapping points to the wrapped func to we use that
             func = (
@@ -879,19 +870,17 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
             )
             # The imported callable is the runtime source of truth. Registry
-            # metadata can be stale (for example, for a SHA-pinned generated
-            # workflow submitted with is_async=False), so never couple async
+            # metadata can be stale (for example, for a commit-pinned workflow
+            # submitted with is_async=False), so never couple async
             # detection to function-hash initialization.
             registry_entry.is_async = asyncio.iscoroutinefunction(func)
             if registry_entry.function_hash == "NOT INITIALIZED":
-                source_revision = getattr(func, "_simstack_source_revision", None)
-                source_sha256 = getattr(func, "_simstack_source_sha256", None)
-                if source_revision is not None:
-                    registry_entry.source_revision = source_revision
-                    registry_entry.source_sha256 = source_sha256
+                code_source = getattr(func, "_simstack_code_source", None)
+                if code_source is not None:
+                    registry_entry.code_source = code_source
                 registry_entry.function_hash = (
-                    cast(str, source_sha256)
-                    if source_sha256 is not None
+                    code_source.commit
+                    if code_source is not None
                     else cast(str, complex_hash_function(func))
                 )
         else:
@@ -915,10 +904,8 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             & (NodeRegistry.status != TaskStatus.FAILED)
             & (NodeRegistry.status != TaskStatus.TIME_OUT)
         )
-        if registry_entry.source_revision is not None:
-            duplicate_query &= (
-                NodeRegistry.source_revision == registry_entry.source_revision
-            )
+        if registry_entry.code_source is not None:
+            duplicate_query &= NodeRegistry.code_source == registry_entry.code_source
         duplicate_entry = (
             None
             if registry_entry.parameters.force_rerun
@@ -943,12 +930,8 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             # not produce a callable.
             if func is None:
                 try:
-                    duplicate_wrapped_func = await import_function(
-                        duplicate_entry.func_mapping,
-                        db,
-                        task_id=duplicate_entry.id,
-                        source_revision=duplicate_entry.source_revision,
-                        source_sha256=duplicate_entry.source_sha256,
+                    duplicate_wrapped_func = await import_task_function(
+                        db, duplicate_entry
                     )
                     if duplicate_wrapped_func is None:
                         return None

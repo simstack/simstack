@@ -10,6 +10,7 @@ from odmantic import Model, EmbeddedModel
 
 from simstack.core.definitions import DBType, TaskStatus
 from simstack.models.node_registry import NodeRegistry
+from simstack.models.workflow_repository import CodeSource
 from simstack.util.database_information import DatabaseInformation
 
 # from simstack.util.importer import import_class
@@ -449,7 +450,7 @@ class Database:
         name: str,
         arg_hash: str,
         function_hash: str,
-        source_revision: ObjectId | None = None,
+        code_source: CodeSource | None = None,
     ) -> Optional["NodeRegistry"]:
         """
         Load a task based on name, arg_hash and function_hash
@@ -467,8 +468,8 @@ class Database:
             & (NodeRegistry.arg_hash == arg_hash)
             & (NodeRegistry.function_hash == function_hash)
         )
-        if source_revision is not None:
-            query &= NodeRegistry.source_revision == source_revision
+        if code_source is not None:
+            query &= NodeRegistry.code_source == code_source
         result = await self.find_one(NodeRegistry, query)
         return result
 

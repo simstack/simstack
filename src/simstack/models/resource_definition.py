@@ -1,12 +1,39 @@
-from typing import Optional, List
+from datetime import datetime
+from enum import Enum
+from typing import Annotated, Any, Optional, List
 import urllib.parse
 import socket
 import re
 from pathlib import Path
 from odmantic import EmbeddedModel, Field, Model
+from odmantic.bson import WithBsonSerializer
 from pydantic import field_validator, model_serializer
 
 from simstack.util.transform_file_name import transform_file_name
+
+
+class RunnerType(str, Enum):
+    EXTERNAL = "external"
+    MANAGED = "managed"
+
+
+class ManagedRuntime(EmbeddedModel):
+    container_name: str
+    created_at: datetime
+    last_error: Optional[str] = None
+
+
+def _bson_identity(value: Any) -> Any:
+    # ODMantic 1.x otherwise misclassifies Optional[EmbeddedModel] as a list.
+    return value
+
+
+OptionalManagedRuntime = Annotated[
+    Optional[ManagedRuntime],
+    WithBsonSerializer(_bson_identity),
+]
+
+
 class GitRepo(Model):
     """
     Represents a Git repository with relevant attributes such as its URL, branch,
@@ -52,6 +79,8 @@ class ResourceDefinition(Model):
     queue: str = "default"
     is_default: bool = False
     git_branch: str = "main"
+    runner_type: RunnerType = RunnerType.EXTERNAL
+    managed_runtime: OptionalManagedRuntime = None
 
     @staticmethod
     def _convert_backslashes(path_str: str) -> str:

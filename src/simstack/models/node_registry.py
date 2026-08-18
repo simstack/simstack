@@ -7,6 +7,7 @@ from simstack.core.definitions import TaskStatus
 from simstack.models.file_list import FileList
 from simstack.models.parameters import Parameters
 from simstack.models.named_data_reference import NamedDataReference
+from simstack.models.workflow_repository import OptionalCodeSource
 
 class NodeRegistry(Model):
     """
@@ -85,10 +86,8 @@ class NodeRegistry(Model):
     completed_at: Optional[datetime] = Field(default=None)
     job_id: Optional[str] = None
     function_hash: str
-    # Immutable generated source used by this particular execution. Old queued
-    # jobs therefore keep importing their revision after a newer publish.
-    source_revision: Optional[ObjectId] = None
-    source_sha256: Optional[str] = None
+    # Copied from NodeModel at submission so queued and running tasks stay pinned.
+    code_source: OptionalCodeSource = None
     arg_hash: str
     func_mapping: str
     is_async: bool = False

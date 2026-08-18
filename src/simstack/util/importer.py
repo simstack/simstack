@@ -6,10 +6,11 @@ from odmantic import Model, AIOEngine, ObjectId
 
 from simstack.core.context import context
 from simstack.models.models import ModelMapping, NodeModel
-from simstack.core.generated_workflow import (
-    GENERATED_NAMESPACE_ROOT,
-    import_generated_symbol,
+from simstack.core.workflow_repository import (
+    cached_repository_checkout,
+    import_workflow_symbol,
 )
+from simstack.models.workflow_repository import CodeSource
 from simstack.util.db import Database
 
 logger = logging.getLogger("importer")
@@ -53,20 +54,14 @@ def _resolve_engine(ctx: Any | None, engine: AIOEngine | None = None) -> AIOEngi
     )
 
 
-def _is_generated_mapping(mapping: str) -> bool:
-    return mapping.startswith(GENERATED_NAMESPACE_ROOT + ".")
-
-
 def _lookup_node_cache(
     node_mappings: Any,
     function_path: str,
-    *,
-    allow_name_fallback: bool = True,
 ) -> Optional[NodeModel]:
     if node_mappings is None:
         return None
     node_model = node_mappings.get_by_mapping(function_path)
-    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK and allow_name_fallback:
+    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
         if "." in function_path:
             _, function_name = function_path.rsplit(".", 1)
         else:
@@ -76,31 +71,22 @@ def _lookup_node_cache(
 
 
 async def _find_node_model(function_path: str, db: Database) -> Optional[NodeModel]:
-    allow_name_fallback = not _is_generated_mapping(function_path)
     if context.node_mappings is None:
         await context.refresh_mappings(models=False, nodes=True)
 
-    node_model = _lookup_node_cache(
-        context.node_mappings,
-        function_path,
-        allow_name_fallback=allow_name_fallback,
-    )
+    node_model = _lookup_node_cache(context.node_mappings, function_path)
     if node_model is not None:
         return node_model
 
     await context.refresh_mappings(models=False, nodes=True)
-    node_model = _lookup_node_cache(
-        context.node_mappings,
-        function_path,
-        allow_name_fallback=allow_name_fallback,
-    )
+    node_model = _lookup_node_cache(context.node_mappings, function_path)
     if node_model is not None:
         return node_model
 
     node_model = await db.find_one(
         NodeModel, NodeModel.function_mapping == function_path
     )
-    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK and allow_name_fallback:
+    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
         if "." in function_path:
             _, function_name = function_path.rsplit(".", 1)
         else:
@@ -131,10 +117,6 @@ def _lookup_model_cache(
 ) -> Optional[ModelMapping]:
     if model_mappings is None:
         return None
-    if _is_generated_mapping(class_path):
-        # Exact mapping is authoritative for immutable generated revisions,
-        # where r1 and r2 intentionally expose the same class names.
-        return model_mappings.get_by_mapping(class_path)
     model_mapping = None
     if MODELS_SEARCH_BY_NAME_FALLBACK:
         model_mapping = model_mappings.get_by_name(class_name)
@@ -146,20 +128,28 @@ def _lookup_model_cache(
 async def _find_model_mapping(model_path: str, db: Database) -> Optional[ModelMapping]:
     _, model_name = model_path.rsplit(".", 1)
 
-    if context.model_mappings is None:
-        await context.refresh_mappings(models=True, nodes=False)
+    ctx = _get_initialized_context()
+    if _context_cache_matches_engine(ctx, db):
+        if ctx.model_mappings is None:
+            await ctx.refresh_mappings(models=True, nodes=False)
 
-    model_mapping = _lookup_model_cache(context.model_mappings, model_path, model_name)
-    if model_mapping is not None:
-        return model_mapping
+        model_mapping = _lookup_model_cache(
+            ctx.model_mappings,
+            model_path,
+            model_name,
+        )
+        if model_mapping is not None:
+            return model_mapping
 
-    await context.refresh_mappings(models=True, nodes=False)
-    model_mapping = _lookup_model_cache(context.model_mappings, model_path, model_name)
-    if model_mapping is not None:
-        return model_mapping
+        await ctx.refresh_mappings(models=True, nodes=False)
+        model_mapping = _lookup_model_cache(
+            ctx.model_mappings,
+            model_path,
+            model_name,
+        )
+        if model_mapping is not None:
+            return model_mapping
 
-    if _is_generated_mapping(model_path):
-        return await db.find_one(ModelMapping, ModelMapping.mapping == model_path)
     model_mapping = None
     if MODELS_SEARCH_BY_NAME_FALLBACK:
         model_mapping = await db.find_one(ModelMapping, ModelMapping.name == model_name)
@@ -174,17 +164,19 @@ async def _find_model_mapping(model_path: str, db: Database) -> Optional[ModelMa
 async def _find_model_mapping_by_name(
     class_name: str, db: Database
 ) -> Optional[ModelMapping]:
-    if context.model_mappings is None:
-        await context.refresh_mappings(models=True, nodes=False)
+    ctx = _get_initialized_context()
+    if _context_cache_matches_engine(ctx, db):
+        if ctx.model_mappings is None:
+            await ctx.refresh_mappings(models=True, nodes=False)
 
-    model_mapping = context.model_mappings.get_by_name(class_name)
-    if model_mapping is not None:
-        return model_mapping
+        model_mapping = ctx.model_mappings.get_by_name(class_name)
+        if model_mapping is not None:
+            return model_mapping
 
-    await context.refresh_mappings(models=True, nodes=False)
-    model_mapping = context.model_mappings.get_by_name(class_name)
-    if model_mapping is not None:
-        return model_mapping
+        await ctx.refresh_mappings(models=True, nodes=False)
+        model_mapping = ctx.model_mappings.get_by_name(class_name)
+        if model_mapping is not None:
+            return model_mapping
 
     return await db.find_one(ModelMapping, ModelMapping.name == class_name)
 
@@ -207,22 +199,13 @@ async def _function_from_model(
     """
 
     function_path = node_model.function_mapping
-    if node_model.source_revision is not None:
-        generated = await import_generated_symbol(
-            db,
-            function_path,
-            source_revision=node_model.source_revision,
-            source_sha256=node_model.source_sha256,
+    if node_model.code_source is not None:
+        repository_function = await import_workflow_symbol(
+            db, function_path, node_model.code_source
         )
-        if generated is None or not callable(generated):
-            raise LookupError(f"Generated function {function_path} was not found")
-        if (
-            node_model.source_sha256 is not None
-            and getattr(generated, "_simstack_source_sha256", None)
-            != node_model.source_sha256
-        ):
-            raise LookupError(f"Generated function {function_path} has a different SHA-256")
-        return cast(Callable[..., Any], generated)
+        if not callable(repository_function):
+            raise LookupError(f"Workflow function {function_path} was not found")
+        return cast(Callable[..., Any], repository_function)
     try:
         module_path, function_name = function_path.rsplit(".", 1)
         module = importlib.import_module(module_path)
@@ -249,8 +232,7 @@ async def import_function(
     db: Database,
     task_id: ObjectId | None = None,
     tolerate_missing_function: bool = False,
-    source_revision: ObjectId | None = None,
-    source_sha256: str | None = None,
+    code_source: CodeSource | None = None,
 ) -> Optional[Callable[..., Any]]:
     """
     Dynamically import a function from a module using its full path, including a migration mechanism.
@@ -267,17 +249,14 @@ async def import_function(
     Returns:
         The imported function object or None if import fails
     """
-    if source_revision is not None:
+    if code_source is not None:
         try:
-            generated = await import_generated_symbol(
-                db,
-                function_path,
-                source_revision=source_revision,
-                source_sha256=source_sha256,
+            repository_function = await import_workflow_symbol(
+                db, function_path, code_source
             )
-            if generated is None or not callable(generated):
-                raise LookupError(f"Generated function {function_path} was not found")
-            return cast(Callable[..., Any], generated)
+            if not callable(repository_function):
+                raise LookupError(f"Workflow function {function_path} was not found")
+            return cast(Callable[..., Any], repository_function)
         except Exception:
             if tolerate_missing_function:
                 return None
@@ -286,11 +265,6 @@ async def import_function(
     node_model = await _find_node_model(function_path, db)
 
     if node_model is None:
-        if _is_generated_mapping(function_path):
-            generated = await import_generated_symbol(db, function_path)
-            if generated is None or not callable(generated):
-                raise LookupError(f"Generated function {function_path} was not found")
-            return cast(Callable[..., Any], generated)
         try:
             module_path, function_name = function_path.rsplit(".", 1)
             module = importlib.import_module(module_path)
@@ -321,7 +295,11 @@ async def import_function_by_name(
     return await _function_from_model(node_model, db, task_id)
 
 
-async def import_class(class_path: str, db: Database) -> Type[Model] | None:
+async def import_class(
+    class_path: str,
+    db: Database,
+    code_source: CodeSource | None = None,
+) -> Type[Model] | None:
     """
     Dynamically import a class from a module using its full path.
     First tries to load the class from the database using ModelMapping
@@ -340,6 +318,46 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
         module_path, class_name = class_path.rsplit(".", 1)
         model_mapping = await _find_model_mapping(class_path, db)
 
+        # A task source pins only models registered by that same repository.
+        # Import the originally referenced path so tasks remain reproducible
+        # when a later head moves the model while retaining its unique name.
+        if (
+            code_source is not None
+            and model_mapping is not None
+            and model_mapping.code_source is not None
+            and model_mapping.code_source.repo_id == code_source.repo_id
+        ):
+            repository_model = await import_workflow_symbol(
+                db, class_path, code_source
+            )
+            if not inspect.isclass(repository_model):
+                raise LookupError(f"Workflow model {class_path} was not found")
+            return cast(Type[Model], repository_model)
+
+        # A later activation may remove this repository's stale registration,
+        # allowing another repository to claim the same mapping while an old
+        # task still pins the original commit. Only try the pinned import when
+        # its module is actually present so ordinary cross-repository imports
+        # do not disturb installed modules through repository import setup.
+        if (
+            code_source is not None
+            and model_mapping is not None
+            and model_mapping.code_source is not None
+            and model_mapping.code_source.repo_id != code_source.repo_id
+        ):
+            checkout = await cached_repository_checkout(db, code_source)
+            pinned_module_path = checkout.joinpath(*module_path.split("."))
+            if (
+                pinned_module_path.with_suffix(".py").is_file()
+                or (pinned_module_path / "__init__.py").is_file()
+            ):
+                repository_model = await import_workflow_symbol(
+                    db, class_path, code_source
+                )
+                if not inspect.isclass(repository_model):
+                    raise LookupError(f"Workflow model {class_path} was not found")
+                return cast(Type[Model], repository_model)
+
         # If not found by name, try by mapping
         if not model_mapping:
             model_mapping = await db.find_one(
@@ -348,11 +366,27 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
         else:  # when searching by name, the path may have changed
             module_path, class_name = model_mapping.mapping.rsplit(".", 1)
 
-        if model_mapping is None and _is_generated_mapping(class_path):
-            generated = await import_generated_symbol(db, class_path)
-            if generated is None or not inspect.isclass(generated):
-                raise LookupError(f"Generated model {class_path} was not found")
-            return cast(Type[Model], generated)
+        if model_mapping is None and code_source is not None:
+            checkout = await cached_repository_checkout(db, code_source)
+            pinned_module_path = checkout.joinpath(*module_path.split("."))
+            pinned_module_present = (
+                pinned_module_path.with_suffix(".py").is_file()
+                or (pinned_module_path / "__init__.py").is_file()
+            )
+            try:
+                repository_model = await import_workflow_symbol(
+                    db, class_path, code_source
+                )
+            except (ImportError, AttributeError, LookupError):
+                if pinned_module_present:
+                    raise
+                # The reference may be an installed/built-in class whose mapping
+                # was never repository-owned; retain its normal import path.
+                pass
+            else:
+                if not inspect.isclass(repository_model):
+                    raise LookupError(f"Workflow model {class_path} was not found")
+                return cast(Type[Model], repository_model)
 
         if model_mapping is None:
             try:
@@ -364,24 +398,13 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
                 logger.error(f"Error finding ModelMapping for {class_name}")
                 raise LookupError(f"Error finding ModelMapping for {class_name}")
 
-        if model_mapping.source_revision is not None:
-            generated = await import_generated_symbol(
-                db,
-                model_mapping.mapping,
-                source_revision=model_mapping.source_revision,
-                source_sha256=model_mapping.source_sha256,
+        if model_mapping.code_source is not None:
+            repository_model = await import_workflow_symbol(
+                db, model_mapping.mapping, model_mapping.code_source
             )
-            if generated is None or not inspect.isclass(generated):
-                raise LookupError(f"Generated model {model_mapping.mapping} was not found")
-            if (
-                model_mapping.source_sha256 is not None
-                and getattr(generated, "_simstack_source_sha256", None)
-                != model_mapping.source_sha256
-            ):
-                raise LookupError(
-                    f"Generated model {model_mapping.mapping} has a different SHA-256"
-                )
-            return cast(Type[Model], generated)
+            if not inspect.isclass(repository_model):
+                raise LookupError(f"Workflow model {model_mapping.mapping} was not found")
+            return cast(Type[Model], repository_model)
 
         # Import the module
         module = importlib.import_module(module_path)

@@ -296,6 +296,23 @@ use_db = true
         validate_routes()
 
     @pytest.mark.asyncio
+    async def test_init_datasource_with_direct_database_args_and_no_toml(
+        self, mock_db, resource_definitions, tmp_path
+    ):
+        for resource_definition in resource_definitions:
+            await mock_db.save(resource_definition)
+
+        config_reader = await ConfigReader.create(
+            "local",
+            mock_db,
+            None,
+            tmp_path,
+        )
+
+        assert config_reader.resource == Resource(value="local")
+        assert config_reader._resource_definition == resource_definitions[0]
+
+    @pytest.mark.asyncio
     async def test_resource_property_restrictions(self, toml_reader, mock_db, resource_definitions):
         """Test that the resource property is read-only."""
         for resource_def in resource_definitions:

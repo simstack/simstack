@@ -22,14 +22,14 @@ class NamedDataReference(EmbeddedModel):
             raise ValueError(f"Variable must be an instance of Model")
 
         variable_class_name = variable.__class__.__name__
-        source_revision = getattr(variable.__class__, "_simstack_source_revision", None)
+        code_source = getattr(variable.__class__, "_simstack_code_source", None)
         exact_mapping = f"{variable.__class__.__module__}.{variable_class_name}"
         table_name = (
             context.model_mappings.get_by_mapping(exact_mapping)
-            if source_revision is not None
+            if code_source is not None
             else context.model_mappings.get_by_name(variable_class_name)
         )
-        if table_name is None and source_revision is None:
+        if table_name is None and code_source is None:
             logger.error(f"Could not find table name for {variable_class_name}")
             raise ValueError(f"Could not find table name for {variable_class_name}")
         if variable_name is None:
@@ -41,6 +41,6 @@ class NamedDataReference(EmbeddedModel):
 
         return cls(
             variable_name=variable_name,
-            variable_mapping=exact_mapping if source_revision is not None else table_name.mapping,
+            variable_mapping=exact_mapping if code_source is not None else table_name.mapping,
             reference=variable.id,
         )

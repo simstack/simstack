@@ -87,6 +87,9 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+simstack = ["resources/workflow_generator/SKILL.md"]
+
 [tool.setuptools_scm]
 write_to = "src/simstack/_version.py"
 fallback_version = "0.1.0-dev"

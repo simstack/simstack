@@ -1,15 +1,22 @@
 import asyncio
 import logging
+import os
 import platform
 import subprocess
+import sys
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import node_from_database
 from simstack.core.node_claim import claim_submitted_node
+from simstack.core.repository_task_runtime import repository_task_environment
 from simstack.core.run_docker import run_docker
 from simstack.core.services.base_service import BaseService
 from simstack.core.submit_node import submit_node
+from simstack.core.task_code_source import (
+    materialize_task_checkout,
+    task_code_source_log_fields,
+)
 from simstack.models import NodeRegistry
 from simstack.models.parameters import Resource
 from simstack.models.runner_model import RunnerEventEnum
@@ -83,25 +90,76 @@ class NodeExecutionService(BaseService):
                 )
                 return False
 
+            is_repository_task = registry_entry.code_source is not None
+
+            if queue == "docker" and is_repository_task:
+                raise RuntimeError(
+                    "Repository-backed tasks cannot use custom Docker execution; "
+                    "custom runner images are not supported"
+                )
+            if (
+                queue == "slurm-queue"
+                and is_repository_task
+                and context.config.docker
+            ):
+                raise RuntimeError(
+                    "Repository-backed SLURM tasks cannot use custom Docker "
+                    "execution because the pinned checkout cannot be guaranteed"
+                )
+
+            repository_checkout = (
+                await materialize_task_checkout(context.db, registry_entry)
+                if is_repository_task
+                else None
+            )
+
             if queue == "slurm-queue":
+                if repository_checkout is not None:
+                    return await submit_node(
+                        registry_entry,
+                        repository_checkout=repository_checkout,
+                    )
                 return await submit_node(registry_entry)
             elif queue == "docker":
                 return await run_docker(registry_entry)
 
             elif queue == "default":
-                if self._detach:
-                    # Spawn independent process that survives when the runner dies
-                    cmd = [
-                        "uv",
-                        "run",
-                        "--directory",
-                        str(context.config.project_root),
-                        "run_node",
-                        "--node-id",
-                        str(registry_entry.id),
-                        "--resource",
-                        str(self._resource_name),
-                    ]
+                if self._detach or is_repository_task:
+                    child_environment = None
+                    child_workdir = None
+                    if is_repository_task:
+                        assert repository_checkout is not None
+                        # Start the trusted SimStack launcher outside uploaded code.
+                        # The importer adds the exact checkout only after startup.
+                        child_workdir = context.config.project_root
+                        cmd = [
+                            sys.executable,
+                            "-m",
+                            "simstack.core.run_node",
+                            "--node-id",
+                            str(registry_entry.id),
+                            "--resource",
+                            str(self._resource_name),
+                            "--project-root",
+                            str(repository_checkout),
+                        ]
+                        child_environment = os.environ.copy()
+                        child_environment.update(
+                            repository_task_environment(repository_checkout)
+                        )
+                    else:
+                        # Existing nodes keep the configured project environment.
+                        cmd = [
+                            "uv",
+                            "run",
+                            "--directory",
+                            str(context.config.project_root),
+                            "run_node",
+                            "--node-id",
+                            str(registry_entry.id),
+                            "--resource",
+                            str(self._resource_name),
+                        ]
 
                     # Use platform specific flags to ensure the process survives if runner is killed
                     creationflags = 0
@@ -117,6 +175,8 @@ class NodeExecutionService(BaseService):
                             *cmd,
                             stdout=asyncio.subprocess.DEVNULL,
                             stderr=asyncio.subprocess.DEVNULL,
+                            cwd=child_workdir,
+                            env=child_environment,
                             creationflags=creationflags,
                             start_new_session=True
                             if platform.system() != "Windows"
@@ -130,7 +190,13 @@ class NodeExecutionService(BaseService):
                         raise
 
                     logger.info(
-                        f"Spawned detached process for task_id: {registry_entry.id} with PID: {process.pid}"
+                        "Spawned detached process for task_id: %s with PID: %s",
+                        registry_entry.id,
+                        process.pid,
+                        extra={
+                            "task_id": str(registry_entry.id),
+                            **task_code_source_log_fields(registry_entry),
+                        },
                     )
                     return True
                 else:

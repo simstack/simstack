@@ -130,7 +130,7 @@ class TableBuilderBase(ABC):
             ".svn",
             ".venv",
             "venv",
-            "__init__.py"
+            "__init__.py",
             "__pycache__",
             ".mypy_cache",
             ".pytest_cache",

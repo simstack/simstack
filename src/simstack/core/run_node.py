@@ -2,11 +2,10 @@ import argparse
 import asyncio
 import logging
 import sys
-import os
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.node import node_from_database
+from simstack.core.repository_task_runtime import repository_task_initialization
 from simstack.core.services.node_execution_service import run_node_from_registry
 
 logger = logging.getLogger("Run Node")
@@ -15,7 +14,11 @@ async def run_node_from_id(node_id: str, resource_str: str, project_root: str = 
     """Run a single node by its ID from the database"""
     logger.info(f"Initializing node run: node_id={node_id}, resource={resource_str}, project_root={project_root}")
     try:
-        await context.initialize(resource=resource_str, project_root=project_root)
+        initialization = repository_task_initialization(
+            resource=resource_str,
+            project_root=project_root,
+        )
+        await context.initialize(**initialization)
     except Exception as e:
         logger.error(f"Failed to initialize context: {str(e)}", exc_info=True)
         return False

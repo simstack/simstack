@@ -37,11 +37,14 @@ class CreateNodeTable(TableBuilderBase):
         return logger
 
     async def build(self, *args, **kwargs) -> None:
+        refresh_mappings = kwargs.pop("refresh_mappings", True)
         if not context.initialized:
             await context.initialize()
-        await context.refresh_mappings(models=True, nodes=False)
+        if refresh_mappings:
+            await context.refresh_mappings(models=True, nodes=False)
         await super().build(*args, **kwargs)
-        await context.refresh_mappings(models=False, nodes=True)
+        if refresh_mappings:
+            await context.refresh_mappings(models=False, nodes=True)
 
     async def _process_module(self, module: Any, drops: str) -> None:
         await self._register_nodes_from_module(module, drops)
@@ -180,7 +183,7 @@ class CreateNodeTable(TableBuilderBase):
             output["type"] == SimstackResult for output in outputs
         )
         result_mappings = []
-        db = context.db
+        db = self.db
         if returns_simstack_result:
             if len(outputs) > 1:
                 logger.warning(
@@ -411,8 +414,7 @@ class CreateNodeTable(TableBuilderBase):
         - Only functions actually defined in this module.
         """
         functions = self._discover_module_functions(module)
-        source_revision = getattr(module, "_simstack_source_revision", None)
-        source_sha256 = getattr(module, "_simstack_source_sha256", None)
+        code_source = getattr(module, "_simstack_code_source", None)
 
         for func_name, func in functions:
             if not is_node_function(func):
@@ -491,8 +493,7 @@ class CreateNodeTable(TableBuilderBase):
                     result_mappings=result_mappings,
                     called_nodes=[],  # we need to first build the full list, will be filled in second_stage
                     expose_in_submit=getattr(func, "_node_expose_in_submit", True),
-                    source_revision=source_revision,
-                    source_sha256=source_sha256,
+                    code_source=code_source,
                     default_parameters=parameters,
                     pickle_function=None,
                     favorite=existing_favorite,
@@ -525,6 +526,7 @@ async def make_node_table(
     clear: bool = False,
     project_root: Path | None = None,
     ignore_entrypoints: bool = False,
+    refresh_mappings: bool = True,
 ) -> None:
     """
     Rebuild the node table using the given databse.
@@ -532,7 +534,13 @@ async def make_node_table(
     This is a thin wrapper around CreateNodeTable for backward compatibility.
     """
     creator = CreateNodeTable(db, write_schema=write_schema, project_root=project_root)
-    await creator.build(dirs=dirs, drops=drops, clear=clear, ignore_entrypoints=ignore_entrypoints)
+    await creator.build(
+        dirs=dirs,
+        drops=drops,
+        clear=clear,
+        ignore_entrypoints=ignore_entrypoints,
+        refresh_mappings=refresh_mappings,
+    )
 
 
 def create_node_table_main() -> None:

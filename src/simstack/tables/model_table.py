@@ -30,8 +30,10 @@ class CreateModelTable(TableBuilderBase):
         return logger
 
     async def build(self, *args, **kwargs) -> None:
+        refresh_mappings = kwargs.pop("refresh_mappings", True)
         await super().build(*args, **kwargs)
-        await context.refresh_mappings(models=True, nodes=False)
+        if refresh_mappings:
+            await context.refresh_mappings(models=True, nodes=False)
 
     async def _process_module(self, module, drops: str) -> None:
         await self._create_models_from_module(module, drops)
@@ -39,8 +41,7 @@ class CreateModelTable(TableBuilderBase):
     async def _create_models_from_module(self, module, drops: str):
         """Create ModelMapping entries for all relevant classes in a module."""
         classes = inspect.getmembers(module, inspect.isclass)
-        source_revision = getattr(module, "_simstack_source_revision", None)
-        source_sha256 = getattr(module, "_simstack_source_sha256", None)
+        code_source = getattr(module, "_simstack_code_source", None)
 
         for class_name, new_class in classes:
             # this is required because of the Odmantic Metaclass Model
@@ -122,8 +123,7 @@ class CreateModelTable(TableBuilderBase):
                     json_schema=json.dumps(new_class.json_schema()),
                     ui_schema=json.dumps(new_class.ui_schema()),
                     route="",
-                    source_revision=source_revision,
-                    source_sha256=source_sha256,
+                    code_source=code_source,
                 )
                 logger.debug(
                     f"SimStack Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}"
@@ -145,8 +145,7 @@ class CreateModelTable(TableBuilderBase):
                     name=class_name,
                     mapping=full_mapping,
                     collection_name=collection_name,
-                    source_revision=source_revision,
-                    source_sha256=source_sha256,
+                    code_source=code_source,
                 )
                 logger.debug(
                     f"Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}"
@@ -179,6 +178,7 @@ async def make_model_table(
     clear: bool = False,
     project_root: Path = None,
     ignore_entrypoints: bool = False,
+    refresh_mappings: bool = True,
 ):
     """
     Rebuild the model table using the given database.
@@ -186,7 +186,13 @@ async def make_model_table(
     This is a thin wrapper around CreateModelTable for backward compatibility.
     """
     creator = CreateModelTable(db, write_schema=write_schema, project_root=project_root)
-    await creator.build(dirs=dirs, drops=drops, clear=clear, ignore_entrypoints=ignore_entrypoints)
+    await creator.build(
+        dirs=dirs,
+        drops=drops,
+        clear=clear,
+        ignore_entrypoints=ignore_entrypoints,
+        refresh_mappings=refresh_mappings,
+    )
 
 
 def create_model_table_main():

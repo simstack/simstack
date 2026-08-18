@@ -40,7 +40,7 @@ class ConfigReader(DatabaseInformation):
         cls,
         resource_str,
         db: "Database",
-        toml_reader: TomlReader,
+        toml_reader: TomlReader | None,
         project_root: Path,
         **kwargs,
     ):
@@ -79,10 +79,8 @@ class ConfigReader(DatabaseInformation):
 
         git_list = []
         if not init_done:
-            if toml_reader is None:
-                raise ValueError("ConfigReader: No toml_reader provided.")
             workdir_self = kwargs.get("workdir", None)
-            if workdir_self is None:
+            if workdir_self is None and toml_reader is not None:
                 workdir_self = toml_reader.get("parameters.general.workdir_self", None)
                 if workdir_self is None:
                     workdir_self = toml_reader.get("resources.self.workdir", None)
@@ -91,6 +89,11 @@ class ConfigReader(DatabaseInformation):
                 workdir_self = project_root / "simstack" # Default to project_root / simstack if not found
             else:
                 workdir_self = Path(workdir_self)
+            if toml_reader is None:
+                logger.info(
+                    "No TOML configuration provided; loading resource '%s' from the database",
+                    resource_str,
+                )
 
         resource_definition = await initialize_resource_from_db(resource_str, db, workdir_self)
             # else:

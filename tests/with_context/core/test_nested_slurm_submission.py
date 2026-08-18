@@ -40,8 +40,17 @@ def _execution_node(registry_entry: NodeRegistry) -> Node:
 
 
 @pytest.mark.asyncio
-async def test_claim_submitted_node_only_claims_once():
+async def test_claim_submitted_node_only_claims_once(monkeypatch):
+    monkeypatch.delenv("SIMSTACK_RUNNER_TYPE", raising=False)
     registry_entry = await context.db.save(_slurm_registry("claim_once_child"))
+    get_collection = context.db.get_collection
+
+    def reject_local_control_lookup(model_or_name):
+        if model_or_name == "managed_runner_control":
+            raise AssertionError("external runners must not use local control state")
+        return get_collection(model_or_name)
+
+    monkeypatch.setattr(context.db, "get_collection", reject_local_control_lookup)
 
     assert await claim_submitted_node(registry_entry) is True
     assert registry_entry.status == TaskStatus.RETRIEVED
@@ -49,6 +58,52 @@ async def test_claim_submitted_node_only_claims_once():
 
     saved_entry = await context.db.load_task_by_id(registry_entry.id)
     assert saved_entry.status == TaskStatus.RETRIEVED
+
+
+@pytest.mark.asyncio
+async def test_managed_runner_stop_blocks_new_claims(monkeypatch):
+    monkeypatch.setenv("SIMSTACK_RUNNER_TYPE", "managed")
+    control_collection = context.db.get_collection("managed_runner_control")
+    await control_collection.replace_one(
+        {"_id": str(context.config.resource)},
+        {
+            "_id": str(context.config.resource),
+            "stopping": True,
+            "claims_in_progress": 0,
+        },
+        upsert=True,
+    )
+    registry_entry = await context.db.save(_slurm_registry("stopping_runner_child"))
+
+    assert await claim_submitted_node(registry_entry) is False
+
+    saved_entry = await context.db.load_task_by_id(registry_entry.id)
+    assert saved_entry.status == TaskStatus.SUBMITTED
+    control = await control_collection.find_one({"_id": str(context.config.resource)})
+    assert control["claims_in_progress"] == 0
+    await control_collection.delete_one({"_id": str(context.config.resource)})
+
+
+@pytest.mark.asyncio
+async def test_managed_runner_claim_reservation_is_released(monkeypatch):
+    monkeypatch.setenv("SIMSTACK_RUNNER_TYPE", "managed")
+    control_collection = context.db.get_collection("managed_runner_control")
+    await control_collection.replace_one(
+        {"_id": str(context.config.resource)},
+        {
+            "_id": str(context.config.resource),
+            "stopping": False,
+            "claims_in_progress": 0,
+        },
+        upsert=True,
+    )
+    registry_entry = await context.db.save(_slurm_registry("reserved_runner_child"))
+
+    assert await claim_submitted_node(registry_entry) is True
+
+    control = await control_collection.find_one({"_id": str(context.config.resource)})
+    assert control["claims_in_progress"] == 0
+    await control_collection.delete_one({"_id": str(context.config.resource)})
 
 
 @pytest.mark.asyncio

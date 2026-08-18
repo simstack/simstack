@@ -4,11 +4,10 @@ from simstack.core.artifacts import ArtifactArguments, create_artifacts
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import node_from_database
+from simstack.core.task_code_source import import_task_function, import_task_model
 from simstack.models import NodeRegistry, ArtifactModel
 from simstack.models.charts_artifact import ChartArtifactModel
 from simstack.models.table_artifact import TableArtifactModel
-from simstack.util.importer import import_class
-from simstack.util.importer import import_function
 
 logger = logging.getLogger("recompute_artifacts")
 
@@ -82,13 +81,15 @@ async def recompute_artifacts(node_registry: NodeRegistry):
             # Reconstruct the function arguments for artifact creation
             args = []
             for ref in node_registry.input_references:
-                model = await import_class(ref.variable_mapping, context.db)
+                model = await import_task_model(
+                    context.db, node_registry, ref.variable_mapping
+                )
                 arg = await db.find_one(model, model.id == ref.reference)
                 if arg:
                     args.append(arg)
 
             # Get the function for artifact creation
-            wrapped_func = await import_function(node_registry.func_mapping, context.db)
+            wrapped_func = await import_task_function(context.db, node_registry)
             func = (
                 wrapped_func
                 if not hasattr(wrapped_func, "_inner")
