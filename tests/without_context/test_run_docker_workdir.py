@@ -6,9 +6,13 @@ import pytest
 
 from simstack.core.run_docker import (
     container_resource_args,
+    docker_cidfile_path,
     docker_cpu_limit,
     docker_memory_limit,
     ensure_host_task_workdir,
+    format_container_failure_error,
+    inspect_docker_oomkilled,
+    prepare_docker_cidfile,
     run_docker,
 )
 from simstack.core.definitions import TaskStatus
@@ -184,3 +188,202 @@ async def test_run_docker_fails_when_reloaded_config_has_no_image(tmp_path: Path
     assert registry_entry.status == TaskStatus.FAILED
     mock_context.db.save.assert_awaited()
     assert "docker_image" not in resource_config.get_program("psi4_calculator")
+
+
+def test_format_container_failure_error_oomkilled():
+    msg = format_container_failure_error(137, oom_killed=True)
+    assert "exit 137" in msg
+    assert "OOMKilled=true" in msg
+    assert "out of memory" in msg.lower()
+    assert "mem/mem_per_cpu unset" in msg
+
+
+def test_format_container_failure_error_sigkill_without_oom_flag():
+    msg = format_container_failure_error(137, oom_killed=False)
+    assert "exit 137" in msg
+    assert "OOMKilled=false" in msg
+    assert "Likely OOM / SIGKILL" in msg
+
+
+def test_format_container_failure_error_generic_exit():
+    msg = format_container_failure_error(1)
+    assert "exit 1" in msg
+    assert "out of memory" not in msg.lower()
+    assert "Likely OOM" not in msg
+    assert "SIGKILL" not in msg
+
+
+def test_format_container_failure_error_includes_memory_limit():
+    msg = format_container_failure_error(137, oom_killed=True, memory_limit="8g")
+    assert "docker --memory was 8g" in msg
+    assert "unset" not in msg
+
+
+def test_prepare_docker_cidfile_deletes_existing_file(tmp_path: Path):
+    cidfile = docker_cidfile_path(tmp_path)
+    cidfile.write_text("stale\n", encoding="utf-8")
+    prepared = prepare_docker_cidfile(tmp_path)
+    assert prepared == cidfile
+    assert not prepared.exists()
+
+
+def _psi4_image_config(tmp_path: Path) -> ResourceConfig:
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        "[local.program.psi4_calculator]\n"
+        'docker_image = "molecular-qm-psi4:latest"\n'
+    )
+    return ResourceConfig(tmp_path, "local")
+
+
+def _fake_docker_exec(*, returncode: int = 0, cid: str = "cid123"):
+    async def _exec(*cmd, **kwargs):
+        cmd_list = list(cmd)
+        if "--cidfile" in cmd_list:
+            cidfile = Path(cmd_list[cmd_list.index("--cidfile") + 1])
+            cidfile.parent.mkdir(parents=True, exist_ok=True)
+            cidfile.write_text(cid + "\n", encoding="utf-8")
+        proc = AsyncMock()
+        proc.returncode = returncode
+        proc.communicate = AsyncMock(return_value=(b"", b""))
+        return proc
+
+    return _exec
+
+
+@pytest.mark.asyncio
+async def test_run_docker_passes_cidfile(tmp_path: Path):
+    resource_config = _psi4_image_config(tmp_path)
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch(
+            "asyncio.create_subprocess_exec",
+            side_effect=_fake_docker_exec(),
+        ) as mock_exec,
+    ):
+        result = await run_docker(registry_entry)
+
+    assert result is True
+    cmd = list(mock_exec.await_args.args)
+    assert "--cidfile" in cmd
+    cidfile = Path(cmd[cmd.index("--cidfile") + 1])
+    expected = tmp_path / "psi4_calculator" / "abc123" / ".docker_cid"
+    assert cidfile == expected
+
+
+@pytest.mark.asyncio
+async def test_run_docker_oomkilled_sets_error(tmp_path: Path):
+    resource_config = _psi4_image_config(tmp_path)
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch(
+            "asyncio.create_subprocess_exec",
+            side_effect=_fake_docker_exec(returncode=137),
+        ),
+        patch("simstack.core.run_docker.inspect_docker_oomkilled", return_value=True),
+    ):
+        result = await run_docker(registry_entry)
+
+    assert result is False
+    assert registry_entry.status == TaskStatus.FAILED
+    assert registry_entry.error is not None
+    assert "exit 137" in registry_entry.error
+    assert "OOMKilled=true" in registry_entry.error
+    assert "out of memory" in registry_entry.error.lower()
+    assert "mem/mem_per_cpu unset" in registry_entry.error
+
+
+@pytest.mark.asyncio
+async def test_run_docker_sigkill_without_oomkilled_sets_error(tmp_path: Path):
+    resource_config = _psi4_image_config(tmp_path)
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch(
+            "asyncio.create_subprocess_exec",
+            side_effect=_fake_docker_exec(returncode=137),
+        ),
+        patch("simstack.core.run_docker.inspect_docker_oomkilled", return_value=False),
+    ):
+        result = await run_docker(registry_entry)
+
+    assert result is False
+    assert registry_entry.status == TaskStatus.FAILED
+    assert registry_entry.error is not None
+    assert "exit 137" in registry_entry.error
+    assert "OOMKilled=false" in registry_entry.error
+    assert "Likely OOM / SIGKILL" in registry_entry.error
+
+
+@pytest.mark.asyncio
+async def test_run_docker_generic_failure_is_not_oom(tmp_path: Path):
+    resource_config = _psi4_image_config(tmp_path)
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch(
+            "asyncio.create_subprocess_exec",
+            side_effect=_fake_docker_exec(returncode=1),
+        ),
+        patch("simstack.core.run_docker.inspect_docker_oomkilled", return_value=False),
+    ):
+        result = await run_docker(registry_entry)
+
+    assert result is False
+    assert registry_entry.status == TaskStatus.FAILED
+    assert registry_entry.error is not None
+    assert "exit 1" in registry_entry.error
+    assert "out of memory" not in registry_entry.error.lower()
+    assert "Likely OOM" not in registry_entry.error
+    assert "SIGKILL" not in registry_entry.error
+
+
+def test_inspect_docker_oomkilled_parses_true_false():
+    with patch("simstack.core.run_docker.subprocess.run") as mock_run:
+        mock_run.return_value = SimpleNamespace(returncode=0, stdout="true\n")
+        assert inspect_docker_oomkilled("cid") is True
+        mock_run.return_value = SimpleNamespace(returncode=0, stdout="false\n")
+        assert inspect_docker_oomkilled("cid") is False
+        mock_run.return_value = SimpleNamespace(returncode=1, stdout="")
+        assert inspect_docker_oomkilled("cid") is None
+
+
+@pytest.mark.asyncio
+async def test_run_docker_apptainer_sigkill_uses_exit_code_heuristic(tmp_path: Path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        "[local.program.psi4_calculator]\n"
+        'docker_image = "molecular-qm-psi4:latest"\n'
+        'docker_cmd = "apptainer"\n'
+    )
+    resource_config = ResourceConfig(tmp_path, "local")
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+
+    proc = AsyncMock()
+    proc.returncode = 137
+    proc.communicate = AsyncMock(return_value=(b"", b""))
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch("asyncio.create_subprocess_exec", AsyncMock(return_value=proc)),
+        patch("simstack.core.run_docker.inspect_docker_oomkilled") as mock_inspect,
+    ):
+        result = await run_docker(registry_entry)
+
+    assert result is False
+    mock_inspect.assert_not_called()
+    assert registry_entry.error is not None
+    assert "exit 137" in registry_entry.error
+    assert "Likely OOM / SIGKILL" in registry_entry.error
+    assert "OOMKilled" not in registry_entry.error

@@ -16,6 +16,9 @@ logger = logging.getLogger("DockerRunner")
 
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 _DOCKER_WORKDIR = "/root/simstack"
+_DOCKER_CIDFILE_NAME = ".docker_cid"
+_SIGKILL_RC = 137
+_SIGSEGV_RC = 139
 _SLURM_MEMORY_PATTERN = re.compile(r"^(\d+(?:\.\d+)?)\s*([MGmg])B?$")
 
 
@@ -94,6 +97,92 @@ def container_resource_args(docker_cmd: str, slurm: object | None) -> list[str]:
     if memory_limit is not None:
         args.extend(["--memory", memory_limit])
     return args
+
+
+def docker_cidfile_path(task_dir: Path | str) -> Path:
+    return Path(task_dir) / _DOCKER_CIDFILE_NAME
+
+
+def prepare_docker_cidfile(task_dir: Path | str) -> Path:
+    """Return a cidfile path Docker can create. Docker errors if the file already exists."""
+    cidfile = docker_cidfile_path(task_dir)
+    cidfile.unlink(missing_ok=True)
+    return cidfile
+
+
+def read_container_id(cidfile: Path | str) -> str | None:
+    try:
+        container_id = Path(cidfile).read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return container_id or None
+
+
+def inspect_docker_oomkilled(container_id: str) -> bool | None:
+    """Return Docker ``State.OOMKilled``, or None if inspect fails."""
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "-f", "{{.State.OOMKilled}}", container_id],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    value = result.stdout.strip().lower()
+    if value == "true":
+        return True
+    if value == "false":
+        return False
+    return None
+
+
+def format_container_failure_error(
+    returncode: int | None,
+    *,
+    oom_killed: bool | None = None,
+    memory_limit: str | None = None,
+    docker_cmd: str = "docker",
+) -> str:
+    """Human-readable task error for a dead docker/apptainer container."""
+    rc = "unknown" if returncode is None else returncode
+    oom_suffix = ""
+    if oom_killed is True:
+        oom_suffix = ", OOMKilled=true"
+    elif oom_killed is False:
+        oom_suffix = ", OOMKilled=false"
+
+    if memory_limit:
+        mem_hint = f"{docker_cmd} --memory was {memory_limit}."
+    else:
+        mem_hint = (
+            f"{docker_cmd} --memory was not set (Slurm mem/mem_per_cpu unset). "
+            "Increase mem or mem_per_cpu on the job."
+        )
+
+    if oom_killed is True:
+        return (
+            f"Container killed (exit {rc}{oom_suffix}). Likely out of memory. {mem_hint}"
+        )
+    if returncode in (_SIGKILL_RC, _SIGSEGV_RC):
+        return (
+            f"Container killed (exit {rc}{oom_suffix}). Likely OOM / SIGKILL. {mem_hint}"
+        )
+    extra = f" {docker_cmd} --memory was {memory_limit}." if memory_limit else ""
+    return f"Container failed (exit {rc}{oom_suffix}).{extra}".rstrip()
+
+
+def _container_oom_killed(
+    docker_cmd: str, cidfile: Path | None
+) -> bool | None:
+    if docker_cmd != "docker" or cidfile is None:
+        return None
+    container_id = read_container_id(cidfile)
+    if not container_id:
+        return None
+    return inspect_docker_oomkilled(container_id)
 
 
 def ensure_host_task_workdir(workdir: Path | str, node_name: str, node_id: str) -> Path:
@@ -196,7 +285,10 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
              image += ".sif"
 
     workdir = context.config.workdir
-    ensure_host_task_workdir(workdir, registry_entry.name, str(registry_entry.id))
+    task_dir = ensure_host_task_workdir(workdir, registry_entry.name, str(registry_entry.id))
+    cidfile: Path | None = None
+    if docker_cmd == "docker":
+        cidfile = prepare_docker_cidfile(task_dir)
     host_simstack_toml = context.config.project_root / "simstack.toml"
     connection_string = context.config.connection_string
     docker_net_args: list[str] = []
@@ -230,8 +322,11 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
     #     )
 
     if docker_cmd == "docker":
+        if cidfile is None:
+            raise RuntimeError("docker cidfile was not prepared")
         cmd = [
             "docker", "run",
+            "--cidfile", str(cidfile),
             *docker_net_args,
             *resource_args,
             "-e", f"SIMSTACK_DB_DATABASE={context.config.db_name}",
@@ -326,9 +421,25 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
         stderr = (stderr_b or b"").decode(enc, errors="replace").strip()
 
         if process.returncode != 0:
+            oom_killed = _container_oom_killed(docker_cmd, cidfile)
+            memory_limit = docker_memory_limit(
+                slurm_parameters, uppercase=docker_cmd == "apptainer"
+            )
+            registry_entry.error = format_container_failure_error(
+                process.returncode,
+                oom_killed=oom_killed,
+                memory_limit=memory_limit,
+                docker_cmd=docker_cmd,
+            )
             logger.error(
-                "docker run failed for task_id=%s rc=%s stderr=%s stdout=%s cmd=%s",
-                registry_entry.id, process.returncode, stderr, stdout, cmd
+                "docker run failed for task_id=%s rc=%s oom_killed=%s error=%s stderr=%s stdout=%s cmd=%s",
+                registry_entry.id,
+                process.returncode,
+                oom_killed,
+                registry_entry.error,
+                stderr,
+                stdout,
+                cmd,
             )
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
@@ -347,5 +458,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
     except Exception as e:
         logger.exception(f"fatal error in running docker task_id: {registry_entry.id} {str(e)}")
         registry_entry.status = TaskStatus.FAILED
+        if not getattr(registry_entry, "error", None):
+            registry_entry.error = f"Failed to run {docker_cmd}: {e}"
         await context.db.save(registry_entry)
         return False
