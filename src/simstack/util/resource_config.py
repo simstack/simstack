@@ -167,6 +167,22 @@ class ResourceConfig:
             if scratch_cleanup and tmp_dir and tmp_dir.exists():
                 shutil.rmtree(tmp_dir)
 
+    def get_docker_registry(self, resource: str | None = None) -> Optional[str]:
+        """Optional registry host for ``docker pull`` (e.g. ``167.233.117.31:5000``).
+
+        Used to rewrite ``docker.io/library/<image>`` to that registry. Unset
+        means skip pull (local builds tagged as Docker Hub library names).
+        """
+        lookup = resource if resource is not None else self._resource
+        try:
+            value = self._config[lookup].get("docker_registry")
+        except (KeyError, TypeError, AttributeError):
+            return None
+        if not isinstance(value, str):
+            return None
+        value = value.strip()
+        return value or None
+
     def get_program(self, program_name: str, resource: str | None = None) -> Dict[str, Any]:
         """
         Returns the dict from resource.program.name for program with name.
