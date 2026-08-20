@@ -17,6 +17,7 @@ async def run_node_from_id(node_id: str, resource_str: str, project_root: str = 
         init_kwargs = {
             "resource": resource_str,
             "project_root": project_root,
+            "in_docker": bool(in_docker),
         }
         # Host workdirs (e.g. C:/Users/...) are bind-mounted at /root/simstack.
         if in_docker:

@@ -47,6 +47,100 @@ nest_asyncio.apply()
 
 T = TypeVar("T")
 
+_DOCKER_HUB_LIBRARY_PREFIX = "docker.io/library/"
+_DOCKERENV_PATH = Path("/.dockerenv")
+
+
+def process_is_in_docker() -> bool:
+    """True when this Python process is already running inside a container."""
+    try:
+        if context.in_docker:
+            return True
+    except RuntimeError:
+        pass
+    return _DOCKERENV_PATH.exists()
+
+
+def normalize_docker_image(image: Optional[str]) -> Optional[str]:
+    """Strip Hub library prefixes so equivalent image refs compare equal."""
+    if not isinstance(image, str):
+        return None
+    name = image.strip()
+    if not name:
+        return None
+    if name.startswith(_DOCKER_HUB_LIBRARY_PREFIX):
+        return name[len(_DOCKER_HUB_LIBRARY_PREFIX) :]
+    if name.startswith("docker.io/"):
+        return name[len("docker.io/") :]
+    return name
+
+
+def docker_image_for_node(
+    node_name: Optional[str], resource: Optional[object] = None
+) -> Optional[str]:
+    """Look up ``[resource.program.<node>].docker_image`` for a node."""
+    if not node_name:
+        return None
+    try:
+        resource_config = context.resource_config
+        config = context.config
+    except RuntimeError:
+        return None
+    if resource_config is None:
+        return None
+    if resource is not None:
+        task_resource = str(resource)
+    else:
+        task_resource = str(config.resource)
+    lookup_resource = "local" if task_resource == "self" else task_resource
+    program_config = resource_config.get_program(node_name, resource=lookup_resource)
+    if not program_config and lookup_resource != str(config.resource):
+        program_config = resource_config.get_program(node_name)
+    image = program_config.get("docker_image") if program_config else None
+    if not isinstance(image, str) or not image.strip():
+        return None
+    return image
+
+
+def should_dispatch_nested_docker(
+    parameters: Parameters, node_name: str
+) -> bool:
+    """True when a nested child must wait for the host to start another image.
+
+    Same resource + default queue stays in-process unless this process is
+    already in Docker, the child is assigned ``in_docker=True``, and the
+    child's ``docker_image`` differs from the currently executing node's image.
+    """
+    if not process_is_in_docker():
+        return False
+    if not getattr(parameters, "in_docker", False):
+        return False
+
+    child_image = normalize_docker_image(
+        docker_image_for_node(node_name, getattr(parameters, "resource", None))
+    )
+    try:
+        current_name = context.current_node_name
+        current_resource = context.config.resource
+    except RuntimeError:
+        current_name = None
+        current_resource = None
+    current_image = normalize_docker_image(
+        docker_image_for_node(current_name, current_resource)
+    )
+    if child_image is None:
+        return False
+    if current_image is None or child_image != current_image:
+        logger.info(
+            "Nested docker dispatch: current node %s image %s != child %s image %s",
+            current_name,
+            current_image,
+            node_name,
+            child_image,
+        )
+        return True
+    return False
+
 
 def default_name_generator() -> str:
     return str("-".join(coolname.generate(2)))
@@ -519,10 +613,20 @@ class Node:
         logger.info(
             f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource} queue: {self.parameters.queue}"
         )
-        if self.parameters.resource == resource_self or (
+        if self.parameters.resource == resource_self:
+            return await self.execute_node_locally()
+
+        same_resource_default_queue = (
             context.config.resource == self.parameters.resource
             and self.parameters.queue == Queue.DEFAULT
-        ):
+        )
+        if same_resource_default_queue:
+            if should_dispatch_nested_docker(self.parameters, self.name):
+                logger.info(
+                    "Task task_id: %s nested docker image differs; waiting for host runner",
+                    self.id,
+                )
+                return await self._wait_for_remote_completion()
             return await self.execute_node_locally()
 
         if await self._submit_same_resource_slurm_node():
@@ -617,6 +721,8 @@ class Node:
         logger.info(
             f"Task task_id: {self.id} is started on {self.parameters.resource} in Node:execute_node_locally"
         )
+        previous_node_name = context.current_node_name
+        context.current_node_name = self.name
         original_dir = Path.cwd()
         try:
             node_runner = NodeRunner(self._func.__name__, self.id)
@@ -697,6 +803,7 @@ class Node:
             await self.set_status(TaskStatus.FAILED)
             raise
         finally:
+            context.current_node_name = previous_node_name
             os.chdir(original_dir)
             logger.debug(
                 f"Task task_id: {self.id} successfully back to directory: {original_dir.absolute()}"
