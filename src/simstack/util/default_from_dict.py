@@ -7,6 +7,11 @@ logger = logging.getLogger(__name__)
 
 
 def default_from_model(cls_method, model: Model, **kwargs) -> Model:
+    """Copy ``model`` into a new instance of this class, without the original id.
+
+    Nested models and scalar fields are taken from ``model.model_dump``.
+    ``kwargs`` override those values (e.g. a new ``molecule`` or ``basis_set``).
+    """
     model_dict = model.model_dump(exclude={"id"})
     return cls_method.from_dict(model_dict, **kwargs)
 
@@ -15,6 +20,7 @@ def default_from_dict(cls_method, data: dict, **kwargs) -> Any:
     """
     Create an instance of the model from a dictionary.
     Handles nested models and enum values.
+    Keyword arguments override matching fields in ``data``.
     """
     if not isinstance(data, dict):
         return data  # Return as is if it's not a dictionary
@@ -54,4 +60,5 @@ def default_from_dict(cls_method, data: dict, **kwargs) -> Any:
         else:
             processed_data[field_name] = field_value
 
+    processed_data.update(kwargs)
     return cls_method.model_validate(processed_data)
