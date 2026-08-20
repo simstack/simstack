@@ -44,10 +44,16 @@ def _clone_parameters(parameters: Optional[Parameters]) -> Parameters:
 
 
 def _merge_slurm_patch(
-    patch: Optional[SlurmParametersPatch],
+    patch: Optional[SlurmParametersPatch | dict],
 ) -> SlurmParameters:
     if patch is None:
         return SlurmParameters()
+    if isinstance(patch, dict):
+        if not patch:
+            return SlurmParameters()
+        return SlurmParameters(
+            **SlurmParametersPatch.model_validate(patch).model_dump(exclude_none=True)
+        )
     return SlurmParameters(**patch.model_dump(exclude_none=True))
 
 
@@ -59,6 +65,14 @@ def empty_slurm_parameters() -> SlurmParameters:
         else:
             cleared_values[field_name] = None
     return SlurmParameters.model_validate(cleared_values)
+
+
+def _rule_slurm_parameters(rule: ResourceAssignmentRule) -> dict:
+    return (
+        getattr(rule, "slurm_parameters", None)
+        or getattr(rule, "slurm_parameters_patch", None)
+        or {}
+    )
 
 
 def _apply_assignment_patch(
@@ -73,10 +87,16 @@ def _apply_assignment_patch(
         effective.resource = Resource(value=rule.resource_str)
     if rule.queue is not None:
         effective.queue = _normalize_queue(rule.queue)
-    if rule.slurm_parameters_patch:
-        effective.slurm_parameters = _merge_slurm_patch(
-            SlurmParametersPatch.model_validate(rule.slurm_parameters_patch),
-        )
+
+    effective.in_docker = bool(getattr(rule, "in_docker", False))
+    effective.force_rerun = bool(getattr(rule, "force_rerun", False))
+    recompute_artifacts = getattr(rule, "recompute_artifacts", None)
+    if recompute_artifacts is not None:
+        effective.recompute_artifacts = bool(recompute_artifacts)
+
+    slurm_parameters = _rule_slurm_parameters(rule)
+    if slurm_parameters:
+        effective.slurm_parameters = _merge_slurm_patch(slurm_parameters)
 
     return effective
 
