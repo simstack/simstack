@@ -42,6 +42,16 @@ class SlurmParametersPatch(EmbeddedModel):
     }
 
 
+def _normalize_slurm_parameters_value(value: Any) -> Dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, (SlurmParametersPatch,)):
+        return value.model_dump(exclude_none=True)
+    if isinstance(value, dict):
+        return SlurmParametersPatch.model_validate(value).model_dump(exclude_none=True)
+    raise ValueError("slurm_parameters must be a dictionary or SlurmParametersPatch")
+
+
 class ResourceAssignmentRule(Model):
     name: str = Field(unique=True)
     regex_pattern: str
@@ -49,10 +59,31 @@ class ResourceAssignmentRule(Model):
     enabled: bool = Field(default=True)
     resource_str: Optional[str] = None
     queue: Optional[str] = None
-    slurm_parameters_patch: Dict[str, Any] = Field(default_factory=dict)
+    in_docker: bool = Field(default=False, description="Run in docker")
+    force_rerun: bool = Field(default=False)
+    recompute_artifacts: Optional[bool] = Field(
+        default=False, description="Recompute artifacts for this node"
+    )
+    slurm_parameters: Dict[str, Any] = Field(default_factory=dict)
     description: Optional[str] = ""
 
     model_config = {"collection": "resource_assignment_rule"}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_slurm_parameters_patch(cls, data: Any):
+        if not isinstance(data, dict):
+            return data
+
+        payload = dict(data)
+        legacy = payload.pop("slurm_parameters_patch", None)
+        current = payload.get("slurm_parameters")
+        if (current in (None, {}) or "slurm_parameters" not in payload) and legacy not in (
+            None,
+            {},
+        ):
+            payload["slurm_parameters"] = legacy
+        return payload
 
     @field_validator("name", "regex_pattern", mode="before")
     @classmethod
@@ -82,14 +113,34 @@ class ResourceAssignmentRule(Model):
             raise ValueError(f"Invalid path pattern: {exc}") from exc
         return value
 
+    @field_validator("slurm_parameters", mode="before")
+    @classmethod
+    def _normalize_slurm_parameters(cls, value):
+        return _normalize_slurm_parameters_value(value)
+
     @model_validator(mode="after")
     def _validate_has_effect(self):
-        has_slurm_patch = bool(self.slurm_parameters_patch)
-        if not any([self.resource_str, self.queue, has_slurm_patch]):
+        has_slurm = bool(self.slurm_parameters)
+        if not any(
+            [
+                self.resource_str,
+                self.queue,
+                has_slurm,
+                self.in_docker,
+                self.force_rerun,
+                self.recompute_artifacts,
+            ]
+        ):
             raise ValueError(
-                "ResourceAssignmentRule must set at least one of resource_str, queue, or slurm_parameters_patch"
+                "ResourceAssignmentRule must set at least one of resource_str, queue, "
+                "slurm_parameters, in_docker, force_rerun, or recompute_artifacts"
             )
         return self
+
+    @property
+    def slurm_parameters_patch(self) -> Dict[str, Any]:
+        """Backward-compatible alias for older callers/tests."""
+        return self.slurm_parameters
 
     @staticmethod
     def normalize_pattern(pattern: str) -> str:
@@ -152,19 +203,4 @@ class ResourceAssignmentRule(Model):
         return (
             re.fullmatch(cls.pattern_to_regex(pattern), normalized_call_path)
             is not None
-        )
-
-    @field_validator("slurm_parameters_patch", mode="before")
-    @classmethod
-    def _normalize_slurm_patch(cls, value):
-        if value is None:
-            return {}
-        if isinstance(value, SlurmParametersPatch):
-            return value.model_dump(exclude_none=True)
-        if isinstance(value, dict):
-            return SlurmParametersPatch.model_validate(value).model_dump(
-                exclude_none=True
-            )
-        raise ValueError(
-            "slurm_parameters_patch must be a dictionary or SlurmParametersPatch"
         )
