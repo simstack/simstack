@@ -281,6 +281,23 @@ async def pull_docker_image(image: str, docker_registry: str | None) -> None:
                 logger.info("docker tag %s -> %s", pull_ref, image)
 
 
+def host_project_file_mounts(project_root: Path | str) -> list[tuple[Path, str]]:
+    """Host project files bind-mounted at ``/app`` inside the container.
+
+    Images do not COPY ``config.toml`` (it is host-specific). Nested docker
+    dispatch looks up ``docker_image`` from that file via ResourceConfig.
+    """
+    root = Path(project_root)
+    mounts: list[tuple[Path, str]] = []
+    for name in ("simstack.toml", "config.toml"):
+        path = root / name
+        if path.is_file():
+            mounts.append((path, f"/app/{name}"))
+        else:
+            logger.warning("Not mounting %s into container; file missing: %s", name, path)
+    return mounts
+
+
 def ensure_host_task_workdir(workdir: Path | str, node_name: str, node_id: str) -> Path:
     """Create the task directory as the host user before Docker/Apptainer runs.
 
@@ -385,7 +402,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
     cidfile: Path | None = None
     if docker_cmd == "docker":
         cidfile = prepare_docker_cidfile(task_dir)
-    host_simstack_toml = context.config.project_root / "simstack.toml"
+    project_file_mounts = host_project_file_mounts(context.config.project_root)
     connection_string = context.config.connection_string
     docker_net_args: list[str] = []
 
@@ -425,6 +442,9 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
         await pull_docker_image(image, docker_registry)
         if cidfile is None:
             raise RuntimeError("docker cidfile was not prepared")
+        project_mount_args: list[str] = []
+        for host_path, dest in project_file_mounts:
+            project_mount_args.extend(["-v", f"{host_path}:{dest}"])
         cmd = [
             "docker", "run",
             "--cidfile", str(cidfile),
@@ -434,7 +454,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
             "-e", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}",
             "-e", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}",
             "-v", f"{workdir}:{_DOCKER_WORKDIR}",
-            "-v", f"{host_simstack_toml}:/app/simstack.toml",
+            *project_mount_args,
             *simstack_mount_args,
             image,
             "--node-id", str(registry_entry.id),
@@ -445,8 +465,9 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
     elif docker_cmd == "apptainer":
         bind_args = [
             "--bind", f"{workdir}:{_DOCKER_WORKDIR}",
-            "--bind", f"{host_simstack_toml}:/app/simstack.toml",
         ]
+        for host_path, dest in project_file_mounts:
+            bind_args.extend(["--bind", f"{host_path}:{dest}"])
         if host_simstack_pkg.is_dir():
             bind_args.extend([
                 "--bind",
