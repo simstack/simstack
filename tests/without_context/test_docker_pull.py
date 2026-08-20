@@ -1,4 +1,4 @@
-from simstack.core.run_docker import resolve_docker_pull_ref
+from simstack.core.run_docker import host_project_file_mounts, resolve_docker_pull_ref
 from simstack.util.resource_config import ResourceConfig
 
 
@@ -39,3 +39,18 @@ def test_resource_config_docker_registry(tmp_path):
     local = ResourceConfig(tmp_path, "local")
     assert local.get_docker_registry() is None
     assert local.get_docker_registry("big") == "167.233.117.31:5000"
+
+
+def test_host_project_file_mounts_includes_config_toml(tmp_path):
+    (tmp_path / "simstack.toml").write_text("[parameters]\n")
+    (tmp_path / "config.toml").write_text("[local]\n")
+    mounts = {dest: host for host, dest in host_project_file_mounts(tmp_path)}
+    assert mounts["/app/simstack.toml"] == tmp_path / "simstack.toml"
+    assert mounts["/app/config.toml"] == tmp_path / "config.toml"
+
+
+def test_host_project_file_mounts_skips_missing_config(tmp_path):
+    (tmp_path / "simstack.toml").write_text("[parameters]\n")
+    mounts = host_project_file_mounts(tmp_path)
+    dests = [dest for _, dest in mounts]
+    assert dests == ["/app/simstack.toml"]
