@@ -71,7 +71,7 @@ def test_should_dispatch_false_when_not_in_docker(monkeypatch):
     assert should_dispatch_nested_docker(params, "dftb_calculator") is False
 
 
-def test_should_dispatch_false_when_assignment_not_in_docker(monkeypatch):
+def test_should_dispatch_true_when_assignment_not_in_docker(monkeypatch):
     monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: True)
     monkeypatch.setattr(
         "simstack.core.node.docker_image_for_node",
@@ -85,7 +85,24 @@ def test_should_dispatch_false_when_assignment_not_in_docker(monkeypatch):
         ),
     )
     params = Parameters(resource="local", queue="default", in_docker=False)
-    assert should_dispatch_nested_docker(params, "dftb_calculator") is False
+    assert should_dispatch_nested_docker(params, "dftb_calculator") is True
+
+
+def test_should_dispatch_true_when_child_image_missing(monkeypatch):
+    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: True)
+    monkeypatch.setattr(
+        "simstack.core.node.docker_image_for_node",
+        lambda name, resource=None: PSI4_IMAGE if name == "multistep_optimizer" else None,
+    )
+    monkeypatch.setattr(
+        "simstack.core.node.context",
+        SimpleNamespace(
+            current_node_name="multistep_optimizer",
+            config=SimpleNamespace(resource="local"),
+        ),
+    )
+    params = Parameters(resource="local", queue="default", in_docker=False)
+    assert should_dispatch_nested_docker(params, "dftb_calculator") is True
 
 
 def test_should_dispatch_false_when_same_image(monkeypatch):
@@ -172,11 +189,16 @@ def _execution_node(name: str, parameters: Parameters) -> Node:
     execution_node = Node.__new__(Node)
     execution_node.name = name
     execution_node.parameters = parameters
-    execution_node.registry_entry = SimpleNamespace(id="task-id")
+    execution_node.registry_entry = SimpleNamespace(id="task-id", parameters=parameters)
     return execution_node
 
 
 def _patch_run_somewhere_context(monkeypatch, *, in_docker: bool, current_node_name: str | None):
+    saved_entries: list = []
+
+    async def fake_save(entry):
+        saved_entries.append(entry)
+
     monkeypatch.setattr(
         "simstack.core.node.context",
         SimpleNamespace(
@@ -184,12 +206,14 @@ def _patch_run_somewhere_context(monkeypatch, *, in_docker: bool, current_node_n
             current_node_name=current_node_name,
             config=SimpleNamespace(resource="local"),
             resource_config=None,
+            db=SimpleNamespace(save=fake_save),
         ),
     )
     monkeypatch.setattr("simstack.core.node.docker_image_for_node", _images)
     monkeypatch.setattr(
         "simstack.core.node._DOCKERENV_PATH", MagicMock(exists=lambda: False)
     )
+    return saved_entries
 
 
 @pytest.mark.asyncio
@@ -271,6 +295,67 @@ async def test_in_docker_different_image_waits_for_host(monkeypatch):
 
     assert result is sentinel
     assert local_called is False
+    assert execution_node.parameters.in_docker is True
+    assert execution_node.registry_entry.parameters.in_docker is True
+
+
+@pytest.mark.asyncio
+async def test_in_docker_waits_and_persists_in_docker_when_assignment_false(monkeypatch):
+    saved_entries = _patch_run_somewhere_context(
+        monkeypatch, in_docker=True, current_node_name="multistep_optimizer"
+    )
+    execution_node = _execution_node(
+        "dftb_calculator",
+        Parameters(resource="local", queue="default", in_docker=False),
+    )
+    sentinel = SimpleNamespace(value="other-container")
+
+    async def fake_local(self):
+        raise AssertionError("different docker image must not execute in-process")
+
+    async def fake_wait(self):
+        return sentinel
+
+    monkeypatch.setattr(Node, "execute_node_locally", fake_local)
+    monkeypatch.setattr(Node, "_wait_for_remote_completion", fake_wait)
+
+    result = await execution_node.run_somewhere()
+
+    assert result is sentinel
+    assert execution_node.parameters.in_docker is True
+    assert len(saved_entries) == 1
+    assert saved_entries[0].parameters.in_docker is True
+
+
+@pytest.mark.asyncio
+async def test_in_docker_missing_child_image_waits_for_host(monkeypatch):
+    saved_entries = _patch_run_somewhere_context(
+        monkeypatch, in_docker=True, current_node_name="multistep_optimizer"
+    )
+    monkeypatch.setattr(
+        "simstack.core.node.docker_image_for_node",
+        lambda name, resource=None: PSI4_IMAGE if name == "multistep_optimizer" else None,
+    )
+    execution_node = _execution_node(
+        "dftb_calculator",
+        Parameters(resource="local", queue="default", in_docker=False),
+    )
+    sentinel = SimpleNamespace(value="missing-image-wait")
+
+    async def fake_local(self):
+        raise AssertionError("missing child image must not execute in-process")
+
+    async def fake_wait(self):
+        return sentinel
+
+    monkeypatch.setattr(Node, "execute_node_locally", fake_local)
+    monkeypatch.setattr(Node, "_wait_for_remote_completion", fake_wait)
+
+    result = await execution_node.run_somewhere()
+
+    assert result is sentinel
+    assert execution_node.parameters.in_docker is True
+    assert len(saved_entries) == 1
 
 
 @pytest.mark.asyncio

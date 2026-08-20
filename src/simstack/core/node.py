@@ -108,14 +108,12 @@ def should_dispatch_nested_docker(
     """True when a nested child must wait for the host to start another image.
 
     Same resource + default queue stays in-process unless this process is
-    already in Docker, the child is assigned ``in_docker=True``, and the
-    child's ``docker_image`` differs from the currently executing node's image.
+    already in Docker. While in a container, stay in-process only when both
+    images are known and equal. A missing child image or a different image
+    waits for the host runner (assignment ``in_docker`` is not required).
     """
-    if not process_is_in_docker():
-        return False
-    if not getattr(parameters, "in_docker", False):
-        return False
-
+    in_container = process_is_in_docker()
+    assignment_in_docker = bool(getattr(parameters, "in_docker", False))
     child_image = normalize_docker_image(
         docker_image_for_node(node_name, getattr(parameters, "resource", None))
     )
@@ -128,18 +126,35 @@ def should_dispatch_nested_docker(
     current_image = normalize_docker_image(
         docker_image_for_node(current_name, current_resource)
     )
-    if child_image is None:
-        return False
-    if current_image is None or child_image != current_image:
-        logger.info(
-            "Nested docker dispatch: current node %s image %s != child %s image %s",
-            current_name,
-            current_image,
-            node_name,
-            child_image,
-        )
-        return True
-    return False
+
+    if not in_container:
+        decision = False
+        reason = "not in docker"
+    elif child_image is not None and current_image is not None and child_image == current_image:
+        decision = False
+        reason = "same image"
+    else:
+        decision = True
+        if child_image is None:
+            reason = "child image missing"
+        elif current_image is None or child_image != current_image:
+            reason = "images differ"
+        else:
+            reason = "wait for host"
+
+    logger.info(
+        "Nested docker dispatch: in_docker=%s assignment_in_docker=%s "
+        "current node %s image %s child %s image %s decision=%s (%s)",
+        in_container,
+        assignment_in_docker,
+        current_name,
+        current_image,
+        node_name,
+        child_image,
+        decision,
+        reason,
+    )
+    return decision
 
 
 def default_name_generator() -> str:
@@ -622,6 +637,7 @@ class Node:
         )
         if same_resource_default_queue:
             if should_dispatch_nested_docker(self.parameters, self.name):
+                await self._persist_nested_docker_wait()
                 logger.info(
                     "Task task_id: %s nested docker image differs; waiting for host runner",
                     self.id,
@@ -636,6 +652,19 @@ class Node:
                 context.config.resource,
             )
         return await self._wait_for_remote_completion()
+
+    async def _persist_nested_docker_wait(self) -> None:
+        """Mark the nested child for host ``run_docker`` without claiming it.
+
+        Status stays SUBMITTED so the host runner can pick the task up.
+        ``in_docker=True`` is required because NodeExecutionService only
+        calls ``run_docker`` when that flag is set.
+        """
+        self.parameters.in_docker = True
+        if self.registry_entry is None:
+            return
+        self.registry_entry.parameters = self.parameters
+        await context.db.save(self.registry_entry)
 
     async def _wait_for_remote_completion(self) -> Union[Model, SimstackResult, None]:
         while True:
