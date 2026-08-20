@@ -45,7 +45,7 @@ class SlurmParametersPatch(EmbeddedModel):
 def _normalize_slurm_parameters_value(value: Any) -> Dict[str, Any]:
     if value is None:
         return {}
-    if isinstance(value, (SlurmParametersPatch,)):
+    if isinstance(value, SlurmParametersPatch):
         return value.model_dump(exclude_none=True)
     if isinstance(value, dict):
         return SlurmParametersPatch.model_validate(value).model_dump(exclude_none=True)
@@ -65,9 +65,16 @@ class ResourceAssignmentRule(Model):
         default=False, description="Recompute artifacts for this node"
     )
     slurm_parameters: Dict[str, Any] = Field(default_factory=dict)
+    # Kept so ODMantic can read pre-migration Mongo documents.
+    slurm_parameters_patch: Optional[Dict[str, Any]] = Field(default=None)
     description: Optional[str] = ""
 
-    model_config = {"collection": "resource_assignment_rule"}
+    model_config = {
+        "collection": "resource_assignment_rule",
+        # Required so missing new fields (in_docker, slurm_parameters, ...) do not
+        # raise key_not_found_in_document when loading older Mongo documents.
+        "parse_doc_with_default_factories": True,
+    }
 
     @model_validator(mode="before")
     @classmethod
@@ -76,13 +83,15 @@ class ResourceAssignmentRule(Model):
             return data
 
         payload = dict(data)
-        legacy = payload.pop("slurm_parameters_patch", None)
+        legacy = payload.get("slurm_parameters_patch")
         current = payload.get("slurm_parameters")
         if (current in (None, {}) or "slurm_parameters" not in payload) and legacy not in (
             None,
             {},
         ):
             payload["slurm_parameters"] = legacy
+        if "slurm_parameters" not in payload or payload.get("slurm_parameters") is None:
+            payload["slurm_parameters"] = {}
         return payload
 
     @field_validator("name", "regex_pattern", mode="before")
@@ -118,8 +127,25 @@ class ResourceAssignmentRule(Model):
     def _normalize_slurm_parameters(cls, value):
         return _normalize_slurm_parameters_value(value)
 
+    @field_validator("slurm_parameters_patch", mode="before")
+    @classmethod
+    def _normalize_legacy_slurm_parameters_patch(cls, value):
+        if value in (None, "", {}):
+            return None
+        return _normalize_slurm_parameters_value(value) or None
+
     @model_validator(mode="after")
-    def _validate_has_effect(self):
+    def _promote_legacy_patch_and_validate(self):
+        if not self.slurm_parameters and self.slurm_parameters_patch:
+            object.__setattr__(
+                self,
+                "slurm_parameters",
+                _normalize_slurm_parameters_value(self.slurm_parameters_patch),
+            )
+        # Stop rewriting the legacy key on subsequent saves.
+        if self.slurm_parameters_patch is not None:
+            object.__setattr__(self, "slurm_parameters_patch", None)
+
         has_slurm = bool(self.slurm_parameters)
         if not any(
             [
@@ -136,11 +162,6 @@ class ResourceAssignmentRule(Model):
                 "slurm_parameters, in_docker, force_rerun, or recompute_artifacts"
             )
         return self
-
-    @property
-    def slurm_parameters_patch(self) -> Dict[str, Any]:
-        """Backward-compatible alias for older callers/tests."""
-        return self.slurm_parameters
 
     @staticmethod
     def normalize_pattern(pattern: str) -> str:
