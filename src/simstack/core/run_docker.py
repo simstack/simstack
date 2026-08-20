@@ -15,6 +15,8 @@ from simstack.models import NodeRegistry
 logger = logging.getLogger("DockerRunner")
 
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+_DOCKER_HUB_LIBRARY_PREFIX = "docker.io/library/"
+_pull_locks: dict[str, asyncio.Lock] = {}
 _DOCKER_WORKDIR = "/root/simstack"
 _DOCKER_CIDFILE_NAME = ".docker_cid"
 _SIGKILL_RC = 137
@@ -185,6 +187,100 @@ def _container_oom_killed(
     return inspect_docker_oomkilled(container_id)
 
 
+def _image_has_registry_host(image: str) -> bool:
+    """True if the first path component looks like a registry (host:port or host.tld)."""
+    if "/" not in image:
+        return False
+    first = image.split("/", 1)[0]
+    return ":" in first or "." in first
+
+
+def resolve_docker_pull_ref(image: str, docker_registry: str | None) -> str | None:
+    """Registry ref to ``docker pull``, or None to skip (local / Hub library alias)."""
+    if not image or image.endswith(".sif") or image.startswith("docker://"):
+        return None
+
+    name = image
+    if name.startswith(_DOCKER_HUB_LIBRARY_PREFIX):
+        name = name[len(_DOCKER_HUB_LIBRARY_PREFIX) :]
+    elif name.startswith("docker.io/"):
+        name = name[len("docker.io/") :]
+
+    if _image_has_registry_host(name):
+        return name
+
+    if docker_registry:
+        return f"{docker_registry.rstrip('/')}/{name}"
+    return None
+
+
+def _pull_lock(pull_ref: str) -> asyncio.Lock:
+    lock = _pull_locks.get(pull_ref)
+    if lock is None:
+        lock = asyncio.Lock()
+        _pull_locks[pull_ref] = lock
+    return lock
+
+
+async def pull_docker_image(image: str, docker_registry: str | None) -> None:
+    """Pull ``image`` when a registry is known. Failure is logged; run still proceeds."""
+    pull_ref = resolve_docker_pull_ref(image, docker_registry)
+    if pull_ref is None:
+        logger.debug("Skipping docker pull for %s (no docker_registry / local tag)", image)
+        return
+
+    async with _pull_lock(pull_ref):
+        logger.info("docker pull %s", pull_ref)
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "docker",
+                "pull",
+                pull_ref,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout_b, stderr_b = await process.communicate()
+        except OSError as exc:
+            logger.warning("docker pull %s failed to start: %s", pull_ref, exc)
+            return
+
+        enc = locale.getpreferredencoding(False) or "utf-8"
+        stdout = (stdout_b or b"").decode(enc, errors="replace").strip()
+        stderr = (stderr_b or b"").decode(enc, errors="replace").strip()
+        if process.returncode != 0:
+            logger.warning(
+                "docker pull %s failed rc=%s stderr=%s stdout=%s; using local image if present",
+                pull_ref,
+                process.returncode,
+                stderr,
+                stdout,
+            )
+            return
+        if stdout:
+            logger.info("docker pull %s: %s", pull_ref, stdout.splitlines()[-1])
+
+        if pull_ref != image:
+            tag_process = await asyncio.create_subprocess_exec(
+                "docker",
+                "tag",
+                pull_ref,
+                image,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, tag_err = await tag_process.communicate()
+            if tag_process.returncode != 0:
+                logger.warning(
+                    "docker tag %s -> %s failed rc=%s stderr=%s",
+                    pull_ref,
+                    image,
+                    tag_process.returncode,
+                    (tag_err or b"").decode(enc, errors="replace").strip(),
+                )
+            else:
+                logger.info("docker tag %s -> %s", pull_ref, image)
+
+
 def ensure_host_task_workdir(workdir: Path | str, node_name: str, node_id: str) -> Path:
     """Create the task directory as the host user before Docker/Apptainer runs.
 
@@ -321,6 +417,12 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
         )
 
     if docker_cmd == "docker":
+        docker_registry = None
+        if context.resource_config is not None:
+            docker_registry = context.resource_config.get_docker_registry(lookup_resource)
+            if docker_registry is None:
+                docker_registry = context.resource_config.get_docker_registry()
+        await pull_docker_image(image, docker_registry)
         if cidfile is None:
             raise RuntimeError("docker cidfile was not prepared")
         cmd = [
