@@ -128,8 +128,12 @@ def should_dispatch_nested_docker(
     )
 
     if not in_container:
-        decision = False
-        reason = "not in docker"
+        if assignment_in_docker:
+            decision = True
+            reason = "child requires docker"
+        else:
+            decision = False
+            reason = "not in docker"
     elif child_image is not None and current_image is not None and child_image == current_image:
         decision = False
         reason = "same image"
