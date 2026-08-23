@@ -496,7 +496,7 @@ class Node:
         registry_entry.parameters = self.parameters
         await context.db.save(registry_entry)
         logger.info(
-            f"Task task_id: {self.id} with name {self.name} created for resource: {registry_entry.parameters.resource} queue: {registry_entry.parameters.queue} with id: {self.id}"
+            f"Task task_id: {self.id} with name {self.name} created for resource: {registry_entry.parameters.resource} queue: {registry_entry.parameters.queue} with id: {self.id} and status: {registry_entry.status}"
         )
         return registry_entry
 
@@ -671,7 +671,7 @@ class Node:
         await context.db.save(self.registry_entry)
 
     async def _wait_for_remote_completion(self) -> Union[Model, SimstackResult, None]:
-
+        logger.info(f"entering wait for completion for task_id: {self.id}")
         await self.set_status(TaskStatus.SUBMITTED)
         while True:
             new_registry_entry = await context.db.load_task_by_id(self.id)
