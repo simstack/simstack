@@ -1266,7 +1266,7 @@ def node(
                     current_registry_entry.status == TaskStatus.FAILED
                     and current_registry_entry.error
                 ):
-                    raise RuntimeError(current_registry_entry.error)
+                    raise RuntimeError(f"task_id: {current_registry_entry.id} node: {current_registry_entry.name} failed with {current_registry_entry.error}")
 
                 raise RuntimeError(
                     f"Task task_id: {current_registry_entry.id} node: {current_registry_entry.name} terminated with status {current_registry_entry.status}"
@@ -1310,7 +1310,10 @@ def node(
                     and execution_node.registry_entry.status == TaskStatus.FAILED
                     and execution_node.registry_entry.error
                 ):
-                    raise RuntimeError(execution_node.registry_entry.error)
+                    raise RuntimeError(
+                        f"task_id: {execution_node.registry_entry.id} node: {execution_node.registry_entry.name} failed with {execution_node.registry_entry.error}")
+
+
 
                 raise RuntimeError(
                     f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"
