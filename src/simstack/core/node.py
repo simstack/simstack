@@ -470,7 +470,7 @@ class Node:
             name=self.name,
             input_references=input_references,
             is_async=self.is_async,
-            status=TaskStatus.SUBMITTED,
+            status=TaskStatus.RETRIEVED,
             custom_name=self.custom_name,
             function_hash=function_hash,
             arg_hash=arg_hash,
@@ -671,6 +671,8 @@ class Node:
         await context.db.save(self.registry_entry)
 
     async def _wait_for_remote_completion(self) -> Union[Model, SimstackResult, None]:
+
+        await self.set_status(TaskStatus.SUBMITTED)
         while True:
             new_registry_entry = await context.db.load_task_by_id(self.id)
             # TODO add timeout mechanism here
