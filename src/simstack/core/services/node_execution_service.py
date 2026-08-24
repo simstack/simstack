@@ -103,7 +103,8 @@ class NodeExecutionService(BaseService):
 
             if queue == "slurm-queue" or queue == "slurm-docker":
                 return await submit_node(registry_entry)
-            elif queue == "docker":
+
+            if registry_entry.parameters.in_docker:
                 return await run_docker(registry_entry)
 
             if registry_entry.parameters.in_docker:
