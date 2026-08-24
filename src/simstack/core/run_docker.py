@@ -456,7 +456,6 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
             "-e", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}",
             "-v", f"{workdir}:{_DOCKER_WORKDIR}",
             *project_mount_args,
-            *simstack_mount_args,
             image,
             "--node-id", str(registry_entry.id),
             "--resource", container_resource,
