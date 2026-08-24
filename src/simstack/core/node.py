@@ -640,10 +640,10 @@ class Node:
         )
         stdout, stderr = await proc.communicate()
 
-        if stdout:
-            logger.info("Task task_id: %s run_node stdout: %s", self.id, stdout.decode(errors="replace"))
-        if stderr:
-            logger.warning("Task task_id: %s run_node stderr: %s", self.id, stderr.decode(errors="replace"))
+        # if stdout:
+        #     logger.info("Task task_id: %s run_node stdout: %s", self.id, stdout.decode(errors="replace"))
+        # if stderr:
+        #     logger.warning("Task task_id: %s run_node stderr: %s", self.id, stderr.decode(errors="replace"))
 
         if proc.returncode != 0:
             logger.error(
