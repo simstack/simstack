@@ -611,6 +611,58 @@ class Node:
             logger.exception(f"Task task_id: {self.id} failed to load outputs: {e}")
             raise ValueError(f"Task task_id: {self.id} failed to load outputs: {e}")
 
+    async def run_node_as_process(self) -> Union[Model, SimstackResult, None]:
+        """Spawn a subprocess that runs ``run_node`` for the current id and resource, then load results."""
+        import sys
+
+        assert self.registry_entry is not None
+
+        node_id = str(self.id)
+        resource = str(self.parameters.resource)
+        project_root = str(context.config.project_root)
+
+        cmd = [
+            sys.executable, "-m", "simstack.core.run_node",
+            "--node-id", node_id,
+            "--resource", resource,
+            "--project-root", project_root,
+        ]
+
+        logger.info(
+            "Task task_id: %s NEW spawning run_node subprocess: %s",
+            self.id, " ".join(cmd),
+        )
+
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+
+        if stdout:
+            logger.info("Task task_id: %s run_node stdout: %s", self.id, stdout.decode(errors="replace"))
+        if stderr:
+            logger.warning("Task task_id: %s run_node stderr: %s", self.id, stderr.decode(errors="replace"))
+
+        if proc.returncode != 0:
+            logger.error(
+                "Task task_id: %s run_node process exited with code %s",
+                self.id, proc.returncode,
+            )
+
+        # Reload the registry entry from the database to pick up status changes made by the subprocess
+        updated_entry = await context.db.load_task_by_id(self.id)
+        if updated_entry is None:
+            raise RuntimeError(
+                f"Task task_id: {self.id} could not be found in the database after run_node subprocess"
+            )
+        self.registry_entry = updated_entry
+
+        if self.registry_entry.status == TaskStatus.COMPLETED:
+            return await self.load_results()
+        return None
+
     async def run_somewhere(self) -> Union[Model, SimstackResult, None]:
         """
         Executes the task either locally or on a remote resource. This function ensures that
@@ -633,7 +685,7 @@ class Node:
             f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource} queue: {self.parameters.queue}"
         )
         if self.parameters.resource == resource_self:
-            return await self.execute_node_locally()
+            return await self.run_node_as_process()
 
         same_resource_default_queue = (
             context.config.resource == self.parameters.resource
@@ -647,7 +699,7 @@ class Node:
                     self.id,
                 )
                 return await self._wait_for_remote_completion()
-            return await self.execute_node_locally()
+            return await self.run_node_as_process()
 
         if await self._submit_same_resource_slurm_node():
             logger.info(
