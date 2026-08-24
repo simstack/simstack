@@ -80,9 +80,7 @@ def safe_code_executor(
         AGChartLegendConfig,
     )
     from simstack.models.table_artifact import TableArtifactModel
-    from examples.science.electronic_structure.spectra.plot_spectra import (
-        make_multi_line_chart,
-    )
+
     from simstack.models import ArtifactModel
 
     safe_globals.update(
@@ -93,7 +91,6 @@ def safe_code_executor(
             "AGChartAxisConfig": AGChartAxisConfig,
             "AGChartTitleConfig": AGChartTitleConfig,
             "AGChartLegendConfig": AGChartLegendConfig,
-            "make_multi_line_chart": make_multi_line_chart,
             "ArtifactModel": ArtifactModel,
             "ArtifactArguments": ArtifactArguments,
         }

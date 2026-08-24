@@ -628,6 +628,9 @@ class Node:
             "--project-root", project_root,
         ]
 
+        if context.in_docker:
+            cmd.append("--in_docker")
+
         logger.info(
             "Task task_id: %s NEW spawning run_node subprocess: %s",
             self.id, " ".join(cmd),
