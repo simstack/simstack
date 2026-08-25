@@ -449,8 +449,7 @@ class Node:
             context.config.resource == self.parameters.resource
             and self.parameters.queue == Queue.DEFAULT
         ):
-            result = await self.execute_node_locally()
-            return result
+            return await self.run_node_as_process()
         else:
             if await self._submit_same_resource_slurm_node():
                 logger.info(
@@ -485,6 +484,53 @@ class Node:
                 return await self.load_results()
             else:
                 return None
+
+    async def run_node_as_process(self) -> Union[Model, SimstackResult, None]:
+        """Spawn a subprocess that runs ``run_node`` for the current id and resource, then load results."""
+        import sys
+
+        assert self.registry_entry is not None
+
+        node_id = str(self.id)
+        resource = str(self.parameters.resource)
+        project_root = str(context.config.project_root)
+
+        cmd = [
+            sys.executable, "-m", "simstack.core.run_node",
+            "--node-id", node_id,
+            "--resource", resource,
+            "--project-root", project_root,
+        ]
+
+        logger.info(
+            "Task task_id: %s spawning run_node subprocess: %s",
+            self.id, " ".join(cmd),
+        )
+
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+
+        if proc.returncode != 0:
+            logger.error(
+                "Task task_id: %s run_node process exited with code %s",
+                self.id, proc.returncode,
+            )
+
+        # Reload the registry entry from the database to pick up status changes made by the subprocess
+        updated_entry = await context.db.load_task_by_id(self.id)
+        if updated_entry is None:
+            raise RuntimeError(
+                f"Task task_id: {self.id} could not be found in the database after run_node subprocess"
+            )
+        self.registry_entry = updated_entry
+
+        if self.registry_entry.status == TaskStatus.COMPLETED:
+            return await self.load_results()
+        return None
 
     async def _submit_same_resource_slurm_node(self) -> bool:
         """Submit a same-resource Slurm node before polling it.
