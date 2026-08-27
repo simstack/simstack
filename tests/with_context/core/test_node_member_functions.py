@@ -3,12 +3,14 @@ import os
 import asyncio
 import pytest_asyncio
 from pathlib import Path
+from unittest.mock import AsyncMock
 from odmantic import Model, ObjectId
 from simstack.core.context import context
-from simstack.core.node import Node, node
+from simstack.core.node import Node, node, node_from_database
 from simstack.models import FloatData, Parameters, NodeRegistry, ModelMapping, NodeModel
 from simstack.core.definitions import TaskStatus
 from simstack.core.simstack_result import SimstackResult
+from simstack.models.files import FileStack
 from simstack.models.parameters import Resource, Queue, SlurmParameters
 from simstack.core.resources import allowed_resources
 
@@ -264,9 +266,9 @@ async def test_load_results(initialized_context):
     
     # 2. Completed but no result identifiers
     entry.status = TaskStatus.COMPLETED
-    # Should log warning but not raise if no references
+    # A completed result with no references represents a successful bool node.
     res = await n.load_results()
-    assert isinstance(res, SimstackResult)
+    assert res is True
     
     # 3. Successful load
     res_data = FloatData(value=5.0)
@@ -393,7 +395,7 @@ async def test_set_status(initialized_context):
         await context.db.delete(entry)
 
 @pytest.mark.asyncio
-async def test_run_somewhere_local(initialized_context, setup_mappings):
+async def test_run_somewhere_local(initialized_context, setup_mappings, monkeypatch):
     """Test run_somewhere routing to local execution."""
     # Add 'local' to allowed resources
     original_resources = allowed_resources.get_resources()
@@ -410,9 +412,14 @@ async def test_run_somewhere_local(initialized_context, setup_mappings):
         entry = n.registry_entry
 
         try:
-            # context.config.resource is "local" now, so it should run locally
+            # mongomock is process-local; process parity is covered by the
+            # subprocess protocol tests, while this test verifies local routing.
+            expected = FloatData(value=11.0)
+            run_process = AsyncMock(return_value=expected)
+            monkeypatch.setattr(n, "run_node_as_process", run_process)
             result = await n.run_somewhere()
-            assert result.value == 11.0
+            assert result is expected
+            run_process.assert_awaited_once_with()
         finally:
             if entry:
                 if entry.results_references:
@@ -455,3 +462,126 @@ async def test_process_results_variants(initialized_context):
     status, res = await n.process_results(sim_res)
     assert status == TaskStatus.COMPLETED
     assert res == sim_res
+
+
+@pytest.mark.asyncio
+async def test_process_results_persists_simstack_result_metadata_and_files(
+    initialized_context, caplog
+):
+    parameters = Parameters()
+    execution_node = Node(func=sync_node._inner, is_async=False, parameters=parameters)
+    execution_node.registry_entry = NodeRegistry(
+        name="sync_node",
+        status=TaskStatus.RUNNING,
+        function_hash="metadata-function-hash",
+        arg_hash="metadata-arg-hash",
+        func_mapping="tests.sync_node",
+        parameters=parameters,
+    )
+    result_file = FileStack.from_string("result", "result.txt")
+    info_file = FileStack.from_string("info", "info.txt")
+    secret = "mongodb://metadata-user:metadata-password@db.internal/simstack"
+    result = SimstackResult(
+        status=TaskStatus.COMPLETED,
+        custom_name="custom display name",
+        message="finished with details",
+        error_message=f"non-fatal diagnostic at {secret}",
+        files=[result_file],
+        info_files=[info_file],
+        value=FloatData(value=12.0),
+    )
+
+    status, processed = await execution_node.process_results(result)
+
+    assert status == TaskStatus.COMPLETED
+    assert processed is result
+    registry = execution_node.registry_entry
+    assert registry.custom_name == "custom display name"
+    assert registry.message == "finished with details"
+    assert "non-fatal diagnostic" in registry.error
+    assert secret not in registry.error
+    assert "metadata-user" not in registry.error
+    assert "metadata-password" not in caplog.text
+    assert len(registry.info_files) == 1
+    assert registry.info_files[0].name == "info.txt"
+    assert {ref.variable_name for ref in registry.results_references} == {
+        "files",
+        "value",
+    }
+
+    loaded = await execution_node.load_results()
+    assert isinstance(loaded, SimstackResult)
+    assert loaded.custom_name == "custom display name"
+    assert loaded.message == "finished with details"
+    assert "non-fatal diagnostic" in (loaded.error_message or "")
+    assert secret not in (loaded.error_message or "")
+    assert loaded.info_files[0].name == "info.txt"
+    assert loaded.files.elements == [result_file.id]
+
+
+@pytest.mark.asyncio
+async def test_node_from_database_persists_sanitized_import_failure(
+    initialized_context, monkeypatch
+):
+    secret = "mongodb://import-user:import-password@db.internal/simstack"
+    parameters = Parameters()
+    registry = NodeRegistry(
+        name="broken_import_node",
+        status=TaskStatus.RETRIEVED,
+        function_hash="broken-import-function-hash",
+        arg_hash="broken-import-arg-hash",
+        func_mapping="user_nodes.broken_import_node",
+        parameters=parameters,
+    )
+
+    async def fail_import(*args, **kwargs):
+        raise ImportError(f"cannot import node from {secret}")
+
+    monkeypatch.setattr("simstack.core.node.import_function", fail_import)
+
+    assert await node_from_database(registry) is None
+    assert registry.status == TaskStatus.FAILED
+    assert "cannot import node" in (registry.error or "")
+    assert secret not in (registry.error or "")
+    assert "import-user" not in (registry.error or "")
+    assert "import-password" not in (registry.error or "")
+
+
+@pytest.mark.asyncio
+async def test_node_wrappers_sanitize_persisted_failure(monkeypatch):
+    secret = "mongodb://wrapper-user:wrapper-password@db.internal/simstack"
+    entries = []
+
+    async def fake_get_node_registry(self):
+        self.registry_entry = NodeRegistry(
+            name=self.name,
+            status=TaskStatus.RETRIEVED,
+            parameters=self.parameters,
+            func_mapping="test_mapping",
+            function_hash="wrapper-function-hash",
+            arg_hash="wrapper-arg-hash",
+        )
+        entries.append(self.registry_entry)
+        return TaskStatus.RETRIEVED
+
+    async def fake_run_somewhere(self):
+        self.registry_entry.status = TaskStatus.FAILED
+        self.registry_entry.error = f"child failed at {secret}"
+        return None
+
+    async def fake_find_one(*args, **kwargs):
+        return entries[-1]
+
+    monkeypatch.setattr(Node, "get_node_registry", fake_get_node_registry)
+    monkeypatch.setattr(Node, "run_somewhere", fake_run_somewhere)
+    monkeypatch.setattr(context.db, "find_one", fake_find_one)
+
+    with pytest.raises(RuntimeError) as sync_error:
+        sync_node(FloatData(value=1.0))
+    with pytest.raises(RuntimeError) as async_error:
+        await async_node(FloatData(value=1.0))
+
+    for error in (sync_error.value, async_error.value):
+        assert secret not in str(error)
+        assert "wrapper-user" not in str(error)
+        assert "wrapper-password" not in str(error)

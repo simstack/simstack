@@ -7,10 +7,39 @@ from pathlib import Path
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.models import NodeRegistry
+from simstack.util.sanitized_output import sanitized_tail
 from simstack.util.submit_to_watchdog import submit_to_watchdog
 import logging
 
 logger = logging.getLogger("submit_node")
+
+
+async def _persist_submission_failure(
+    registry_entry: NodeRegistry, error: str
+) -> None:
+    """Fail an owned submission without rolling a started task backward."""
+    if registry_entry.status != TaskStatus.SLURM_QUEUED:
+        registry_entry.status = TaskStatus.FAILED
+        registry_entry.error = error
+        await context.db.save(registry_entry)
+        return
+
+    collection = context.db.get_collection(NodeRegistry)
+    updated = await collection.find_one_and_update(
+        {
+            "_id": registry_entry.id,
+            "status": TaskStatus.SLURM_QUEUED.value,
+        },
+        {
+            "$set": {
+                "status": TaskStatus.FAILED.value,
+                "error": error,
+            }
+        },
+    )
+    if updated is not None:
+        registry_entry.status = TaskStatus.FAILED
+        registry_entry.error = error
 
 
 def make_executable(file_path: str | os.PathLike[str]) -> None:
@@ -32,7 +61,12 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
         # Implement SLURM submission logic here
         base_path = context.config.project_root
 
-        python_path = ":".join(str(path) for path in context.config.python_paths)
+        python_path = os.pathsep.join(
+            dict.fromkeys(
+                [str(base_path)]
+                + [str(path) for path in context.config.python_paths]
+            )
+        )
         work_dir = context.config.workdir / registry_entry.name / str(registry_entry.id)
         job_name = registry_entry.name + "." + str(registry_entry.id)
 
@@ -69,12 +103,38 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
         }        
         """
 
+        resource_value = registry_entry.parameters.resource
+        task_resource = (
+            getattr(resource_value, "__dict__", {}).get("value")
+            or str(resource_value)
+        )
+        selected_resource = (
+            str(context.config.resource) if task_resource == "self" else task_resource
+        )
         if context.resource_config is not None:
-            program_config = context.resource_config.get_program(registry_entry.name)
+            program_config = context.resource_config.get_program(
+                registry_entry.name, resource=selected_resource
+            ) or {}
         else:
             program_config = {}
 
-        logger.info(f"task_id: {task_id} program_config {program_config}")
+        logger.info(
+            "task_id: %s selected resource %s program %s",
+            task_id,
+            selected_resource,
+            registry_entry.name,
+        )
+        if registry_entry.parameters.in_docker and not program_config.get(
+            "docker_image"
+        ):
+            registry_entry.status = TaskStatus.FAILED
+            registry_entry.error = (
+                f"Docker image for {registry_entry.name} not found "
+                f"(resource={selected_resource})"
+            )
+            logger.error("Task task_id: %s %s", task_id, registry_entry.error)
+            await context.db.save(registry_entry)
+            return False
         if program_config.get("use_tmp", False):
             tmp_dir = context.resource_config.tmp_dir(registry_entry.id)
 
@@ -91,65 +151,13 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
             slurm_parameters.startup_commands.append(full_sync_data)
             slurm_parameters.startup_commands.append("trap 'sync_data' SIGUSR1")
 
-        if context.config.docker:
-            external_work_dir = (
-                context.config.external_workdir
-                / registry_entry.name
-                / str(registry_entry.id)
-            )
-
-            watcher_file = (
-                context.config.project_root
-                / "src"
-                / "simstack"
-                / "util"
-                / "queue_watcher.py"
-            )
-            with open(watcher_file, "r") as f:
-                watcher_content = f.read()
-            slurm_parameters.startup_commands.append(
-                f"cat > watcher.py <<'EOF'\n{watcher_content}\nEOF"
-            )
-            slurm_parameters.startup_commands.append("python watcher.py &")
-            slurm_parameters.startup_commands.append("WATCHER_PID=$!")
-
-            slurm_parameters.startup_commands.append("set -euo pipefail")
-            slurm_parameters.startup_commands.append(
-                "cleanup() { "
-                'if [ -n "${WATCHER_PID:-}" ] && kill -0 "$WATCHER_PID" 2>/dev/null; then '
-                '  kill "$WATCHER_PID" 2>/dev/null || true; '
-                "  sleep 2; "
-                '  kill -9 "$WATCHER_PID" 2>/dev/null || true; '
-                "fi; "
-                "}"
-            )
-
-            slurm_parameters.startup_commands.append("trap cleanup EXIT INT TERM")
-            toml_path = context.config.project_root / "simstack_docker.toml"
-            if not toml_path.exists():
-                logger.error(
-                    f"Task task_id: {task_id} has no simstack.toml file -- failing"
-                )
-                registry_entry.status = TaskStatus.FAILED
-                await context.db.save(registry_entry)
-                return False
-
-            docker_start = "udocker run "
-            docker_start += "-e GIT_TOKEN=XXX"
-            docker_start += f"-e NODE_ID={registry_entry.id} "
-            docker_start += f"-e RESOURCE={str(context.config.resource)} "
-            docker_start += f"-v {external_work_dir}:/home/appuser/simstack "
-            docker_start += (
-                f"-v {context.config.external_source_dir}:/app/simstack-model "
-            )
-            docker_start += f"-v {toml_path}:/app/simstack-model/simstack.toml "
-            docker_start += " simstack-runner"
-            slurm_parameters.startup_commands.append(docker_start)
-        else:
-            slurm_parameters.startup_commands.append(
-                f"uv run --directory {base_path} run_node --node-id {registry_entry.id} --resource {str(context.config.resource)} &"
-            )
-            slurm_parameters.startup_commands.append("wait")
+        # ``run_node`` applies the task's independent ``in_docker`` flag inside
+        # the Slurm allocation, using the selected resource's program config.
+        slurm_parameters.startup_commands.append(
+            f"uv run --directory {base_path} run_node --node-id {registry_entry.id} "
+            f"--resource {selected_resource} --project-root {base_path} &"
+        )
+        slurm_parameters.startup_commands.append("wait")
         slurm_parameters.signal = "B:SIGUSR1@60"
 
         slurm_script = slurm_parameters.to_sbatch_header()
@@ -162,13 +170,37 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
 
         make_executable(script_path)
         # submit the script to the slurm queue
+        connection_string = getattr(context.config, "connection_string", None)
+        db_name = getattr(context.config, "db_name", None)
+        database_env = {
+            **(
+                {"SIMSTACK_DB_CONNECTION_STRING": str(connection_string)}
+                if connection_string is not None
+                else {}
+            ),
+            **(
+                {"SIMSTACK_DB_DATABASE": str(db_name)}
+                if db_name is not None
+                else {}
+            ),
+        }
+        # Publish the queued state before sbatch. A very short job may update
+        # the same record before the submission command returns.
+        registry_entry.status = TaskStatus.SLURM_QUEUED
+        await context.db.save(registry_entry)
         if context.config.docker:
+            external_work_dir = (
+                context.config.external_workdir
+                / registry_entry.name
+                / str(registry_entry.id)
+            )
             job_id = "slurm_" + str(registry_entry.id)
             queue_dir = context.config.workdir / "queue"
             result = submit_to_watchdog(
                 f"/usr/bin/sbatch {os.path.join(external_work_dir, 'slurm_script.sh')}",
                 job_id,
                 queue_dir,
+                env=database_env or None,
             )
         else:
             result = subprocess.run(
@@ -177,39 +209,58 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
                 capture_output=True,
                 text=True,
                 timeout=30,  # Add timeout to prevent hanging
+                env={**os.environ, **database_env},
             )
 
+        stdout = sanitized_tail(result.stdout, connection_string)
+        stderr = sanitized_tail(result.stderr, connection_string)
         logger.info(
-            f"submitting job task_id: {task_id} returns: {result.returncode} {result.stdout} {result.stderr}"
+            "submitting job task_id: %s returns: %s stdout=%s stderr=%s",
+            task_id,
+            result.returncode,
+            stdout,
+            stderr,
         )
         if result.returncode == 0:
             # Extract job ID using a regex pattern
-            match = re.search(r"Submitted batch job (\d+)", result.stdout)
+            match = re.search(r"Submitted batch job (\d+)", stdout)
             if match:
                 job_id = match.group(1)
                 logger.info(
                     f"task_id: {task_id} job successfully submitted with job_id: {job_id}"
                 )
                 registry_entry.job_id = job_id
+                collection = context.db.get_collection(NodeRegistry)
+                await collection.update_one(
+                    {"_id": registry_entry.id},
+                    {"$set": {"job_id": job_id}},
+                )
             else:
                 logger.warning(
-                    f"task_id: {task_id} job submitted but could not extract job_id from output: {result.stdout}"
+                    "task_id: %s job submitted but could not extract job_id from output: %s",
+                    task_id,
+                    stdout,
                 )
         else:
             logger.error(
-                f"error submitting job for task_id: {task_id} return code: {result.returncode} stdout: {result.stdout}"
+                "error submitting job for task_id: %s return code: %s stdout: %s stderr: %s",
+                task_id,
+                result.returncode,
+                stdout,
+                stderr,
             )
-            logger.error(
-                f"submitting job for task_id: {task_id} stderr: {result.stderr}"
+            error = sanitized_tail(
+                f"sbatch failed with return code {result.returncode}\n"
+                f"stdout:\n{stdout}\nstderr:\n{stderr}",
+                connection_string,
             )
-            registry_entry.status = TaskStatus.FAILED
-            await context.db.save(registry_entry)
+            await _persist_submission_failure(registry_entry, error)
             return False
-        registry_entry.status = TaskStatus.SLURM_QUEUED
-        await context.db.save(registry_entry)
         return True
     except Exception as e:
-        logger.exception(f"fatal error in submitting task_id: {task_id} {str(e)}")
-        registry_entry.status = TaskStatus.FAILED
-        await context.db.save(registry_entry)
+        error = sanitized_tail(
+            str(e), getattr(context.config, "connection_string", None)
+        ) or type(e).__name__
+        logger.error("fatal error in submitting task_id: %s %s", task_id, error)
+        await _persist_submission_failure(registry_entry, error)
         return False

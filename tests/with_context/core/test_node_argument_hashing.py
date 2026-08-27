@@ -7,7 +7,7 @@ from odmantic import EmbeddedModel, Model
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.node import compute_arg_hash, node
+from simstack.core.node import Node, compute_arg_hash, node
 from simstack.models import FloatData, IntData
 from simstack.models.node_registry import NodeRegistry
 from simstack.models.parameters import SlurmParameters
@@ -88,6 +88,11 @@ from simstack.models.parameters import Parameters
 async def test_async_parent_fanout_creates_slurm_children_with_nested_hash_traps(
     monkeypatch,initialized_context
 ):
+    async def execute_in_process(node):
+        return await node.execute_node_locally()
+
+    monkeypatch.setattr(Node, "run_node_as_process", execute_in_process)
+
     # Ensure model mappings for argument hashing
     for model_cls in [IntData, FanoutHashInput, FloatData]:
         mm = ModelMapping(
@@ -104,7 +109,7 @@ async def test_async_parent_fanout_creates_slurm_children_with_nested_hash_traps
     for node_func in [hashing_fanout_parent_in_tests, hashing_fanout_child_in_tests]:
         nm = NodeModel(
             name=node_func.__name__,
-            function_mapping=f"simstack.tests.with_context.core.test_node_argument_hashing:{node_func.__name__}",
+            function_mapping=f"{node_func.__module__}.{node_func.__name__}",
             input_mappings=[],
             result_mappings=[],
             default_parameters=Parameters()

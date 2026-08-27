@@ -1,27 +1,75 @@
 import asyncio
-import locale
 import logging
 import platform
 import re
 import shlex
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
+from simstack.core.run_node_protocol import RESULT_PREFIX, parse_run_node_result
 from simstack.models import NodeRegistry
+from simstack.util.sanitized_output import (
+    redact_connection_string,
+    sanitized_command,
+    sanitized_tail,
+)
 
 logger = logging.getLogger("DockerRunner")
 
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 _DOCKER_HUB_LIBRARY_PREFIX = "docker.io/library/"
 _pull_locks: dict[str, asyncio.Lock] = {}
-_DOCKER_WORKDIR = "/root/simstack"
+CONTAINER_WORKDIR = "/tmp/simstack"
 _DOCKER_CIDFILE_NAME = ".docker_cid"
 _SIGKILL_RC = 137
 _SIGSEGV_RC = 139
 _SLURM_MEMORY_PATTERN = re.compile(r"^(\d+(?:\.\d+)?)\s*([MGmg])B?$")
+
+
+@dataclass(frozen=True)
+class DockerRunResult:
+    success: bool
+    return_kind: str
+    error: str | None = None
+
+
+async def _reload_registry_after_container(
+    registry_entry: NodeRegistry,
+) -> NodeRegistry:
+    loader = getattr(context.db, "load_task_by_id", None)
+    if not callable(loader):
+        return registry_entry
+    try:
+        updated = await loader(registry_entry.id)
+    except Exception:
+        return registry_entry
+    return updated or registry_entry
+
+
+async def _persist_post_launch_failure(
+    registry_entry: NodeRegistry, error: str
+) -> None:
+    """Update only failure fields so child-persisted metadata remains intact."""
+    registry_entry.status = TaskStatus.FAILED
+    registry_entry.error = error
+    get_collection = getattr(context.db, "get_collection", None)
+    if callable(get_collection):
+        collection = get_collection(NodeRegistry)
+        await collection.update_one(
+            {"_id": registry_entry.id},
+            {
+                "$set": {
+                    "status": TaskStatus.FAILED.value,
+                    "error": error,
+                }
+            },
+        )
+        return
+    await context.db.save(registry_entry)
 
 
 def _positive_int(value: object) -> int | None:
@@ -224,13 +272,19 @@ def _pull_lock(pull_ref: str) -> asyncio.Lock:
 
 async def pull_docker_image(image: str, docker_registry: str | None) -> None:
     """Pull ``image`` when a registry is known. Failure is logged; run still proceeds."""
+    connection_string = getattr(context.config, "connection_string", None)
+    safe_image = sanitized_tail(image, connection_string, limit=512)
     pull_ref = resolve_docker_pull_ref(image, docker_registry)
     if pull_ref is None:
-        logger.debug("Skipping docker pull for %s (no docker_registry / local tag)", image)
+        logger.debug(
+            "Skipping docker pull for %s (no docker_registry / local tag)", safe_image
+        )
         return
 
+    safe_pull_ref = sanitized_tail(pull_ref, connection_string, limit=512)
+
     async with _pull_lock(pull_ref):
-        logger.info("docker pull %s", pull_ref)
+        logger.info("docker pull %s", safe_pull_ref)
         try:
             process = await asyncio.create_subprocess_exec(
                 "docker",
@@ -241,44 +295,56 @@ async def pull_docker_image(image: str, docker_registry: str | None) -> None:
             )
             stdout_b, stderr_b = await process.communicate()
         except OSError as exc:
-            logger.warning("docker pull %s failed to start: %s", pull_ref, exc)
+            logger.warning(
+                "docker pull %s failed to start: %s",
+                safe_pull_ref,
+                sanitized_tail(str(exc), connection_string),
+            )
             return
 
-        enc = locale.getpreferredencoding(False) or "utf-8"
-        stdout = (stdout_b or b"").decode(enc, errors="replace").strip()
-        stderr = (stderr_b or b"").decode(enc, errors="replace").strip()
+        stdout = sanitized_tail(stdout_b, connection_string)
+        stderr = sanitized_tail(stderr_b, connection_string)
         if process.returncode != 0:
             logger.warning(
                 "docker pull %s failed rc=%s stderr=%s stdout=%s; using local image if present",
-                pull_ref,
+                safe_pull_ref,
                 process.returncode,
                 stderr,
                 stdout,
             )
             return
         if stdout:
-            logger.info("docker pull %s: %s", pull_ref, stdout.splitlines()[-1])
+            logger.info("docker pull %s: %s", safe_pull_ref, stdout.splitlines()[-1])
 
         if pull_ref != image:
-            tag_process = await asyncio.create_subprocess_exec(
-                "docker",
-                "tag",
-                pull_ref,
-                image,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
+            try:
+                tag_process = await asyncio.create_subprocess_exec(
+                    "docker",
+                    "tag",
+                    pull_ref,
+                    image,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+            except OSError as exc:
+                logger.warning(
+                    "docker tag %s -> %s failed to start: %s",
+                    safe_pull_ref,
+                    safe_image,
+                    sanitized_tail(str(exc), connection_string),
+                )
+                return
             _, tag_err = await tag_process.communicate()
             if tag_process.returncode != 0:
                 logger.warning(
                     "docker tag %s -> %s failed rc=%s stderr=%s",
-                    pull_ref,
-                    image,
+                    safe_pull_ref,
+                    safe_image,
                     tag_process.returncode,
-                    (tag_err or b"").decode(enc, errors="replace").strip(),
+                    sanitized_tail(tag_err, connection_string),
                 )
             else:
-                logger.info("docker tag %s -> %s", pull_ref, image)
+                logger.info("docker tag %s -> %s", safe_pull_ref, safe_image)
 
 
 def host_project_file_mounts(project_root: Path | str) -> list[tuple[Path, str]]:
@@ -364,21 +430,19 @@ def _reload_resource_config() -> None:
 def _docker_program_config(registry_entry: NodeRegistry) -> tuple[dict, str]:
     """Look up ``[resource.program.<node>]`` after config.toml has been reloaded.
 
-    Context may be ``self`` while the task targets ``local`` (common in tests);
-    images live under ``[local.program]``.
+    ``self`` means the resource on which this runner is currently executing.
     """
     task_resource = str(registry_entry.parameters.resource)
-    lookup_resource = "local" if task_resource == "self" else task_resource
+    lookup_resource = (
+        str(context.config.resource) if task_resource == "self" else task_resource
+    )
     program_config = context.resource_config.get_program(
         registry_entry.name, resource=lookup_resource
     )
-    if not program_config and lookup_resource != str(context.config.resource):
-        # Fall back to context resource (e.g. runner already bound to "local").
-        program_config = context.resource_config.get_program(registry_entry.name)
     return program_config, lookup_resource
 
 
-async def run_docker(registry_entry: NodeRegistry) -> bool:
+async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResult:
     _reload_resource_config()
     program_config, lookup_resource = _docker_program_config(registry_entry)
 
@@ -388,7 +452,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
         registry_entry.status = TaskStatus.FAILED
         registry_entry.error = f"Docker image for {registry_entry.name} not found (resource={lookup_resource})"
         await context.db.save(registry_entry)
-        return False
+        return DockerRunResult(False, "none", registry_entry.error)
     docker_cmd = program_config.get("docker_cmd", None)
     if docker_cmd is None:
         docker_cmd = "docker"
@@ -403,7 +467,8 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
     if docker_cmd == "docker":
         cidfile = prepare_docker_cidfile(task_dir)
     project_file_mounts = host_project_file_mounts(context.config.project_root)
-    connection_string = context.config.connection_string
+    configured_connection_string = context.config.connection_string
+    connection_string = configured_connection_string
     docker_net_args: list[str] = []
 
     if docker_cmd == "docker" and _mongo_host_is_loopback(connection_string):
@@ -420,26 +485,10 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
 
     # Prefer the task resource inside the container (self -> local for image/workdir lookups).
     container_resource = lookup_resource
-    # Dev convenience: overlay local simstack package so in-progress host fixes apply in-container
-    # without rebuilding the image (psi4 image installs simstack from git).
-    # TODO this is a bit dangerous because you dont know which simstack was baked in
-    # host_simstack_pkg = context.config.project_root / "simstack" / "src" / "simstack"
-    # simstack_mount_args: list[str] = []
-    # if host_simstack_pkg.is_dir():
-    #     simstack_mount_args = [
-    #         "-v",
-    #         f"{host_simstack_pkg}:/opt/conda/lib/python3.12/site-packages/simstack",
-    #     ]
-    #     logger.info(
-    #         "Mounting local simstack package into container: %s", host_simstack_pkg
-    #     )
-
     if docker_cmd == "docker":
         docker_registry = None
         if context.resource_config is not None:
             docker_registry = context.resource_config.get_docker_registry(lookup_resource)
-            if docker_registry is None:
-                docker_registry = context.resource_config.get_docker_registry()
         await pull_docker_image(image, docker_registry)
         if cidfile is None:
             raise RuntimeError("docker cidfile was not prepared")
@@ -454,7 +503,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
             "-e", f"SIMSTACK_DB_DATABASE={context.config.db_name}",
             "-e", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}",
             "-e", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}",
-            "-v", f"{workdir}:{_DOCKER_WORKDIR}",
+            "-v", f"{workdir}:{CONTAINER_WORKDIR}",
             *project_mount_args,
             image,
             "--node-id", str(registry_entry.id),
@@ -464,15 +513,10 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
         ]
     elif docker_cmd == "apptainer":
         bind_args = [
-            "--bind", f"{workdir}:{_DOCKER_WORKDIR}",
+            "--bind", f"{workdir}:{CONTAINER_WORKDIR}",
         ]
         for host_path, dest in project_file_mounts:
             bind_args.extend(["--bind", f"{host_path}:{dest}"])
-        if host_simstack_pkg.is_dir():
-            bind_args.extend([
-                "--bind",
-                f"{host_simstack_pkg}:/opt/conda/lib/python3.12/site-packages/simstack",
-            ])
         cmd = [
             "apptainer", "run",
             *resource_args,
@@ -487,10 +531,11 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
             "--in-docker",
         ]
     else:
-        logger.error(f"Unsupported command {docker_cmd} for task_id={registry_entry.id}")
+        registry_entry.error = f"Unsupported command {docker_cmd}"
+        logger.error("%s for task_id=%s", registry_entry.error, registry_entry.id)
         registry_entry.status = TaskStatus.FAILED
         await context.db.save(registry_entry)
-        return False
+        return DockerRunResult(False, "none", registry_entry.error)
 
     # Mark queued just before launch so the UI / pollers see the handoff.
     registry_entry.status = TaskStatus.SLURM_QUEUED
@@ -501,20 +546,8 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
         TaskStatus.SLURM_QUEUED,
     )
 
-    # Sanitize cmd for logging by replacing connection string with placeholder
-    sanitized_cmd = []
-    skip_next = False
-    for i, arg in enumerate(cmd):
-        if skip_next:
-            sanitized_cmd.append("***REDACTED***")
-            skip_next = False
-        elif arg in ("-e", "--env") and i + 1 < len(cmd) and cmd[i + 1].startswith("SIMSTACK_DB_CONNECTION_STRING="):
-            sanitized_cmd.append(arg)
-            skip_next = True
-        elif arg.startswith("SIMSTACK_DB_CONNECTION_STRING="):
-            sanitized_cmd.append("SIMSTACK_DB_CONNECTION_STRING=***REDACTED***")
-        else:
-            sanitized_cmd.append(arg)
+    sanitized_cmd = sanitized_command(cmd, configured_connection_string)
+    sanitized_cmd = sanitized_command(sanitized_cmd, connection_string)
 
     logger.info(
         "starting docker for task_id: %s full docker command: %s",
@@ -527,6 +560,7 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
     if platform.system() == "Windows":
         creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
 
+    process_started = False
     try:
         process = await asyncio.create_subprocess_exec(
             *cmd,
@@ -535,23 +569,50 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
             creationflags=creationflags,
             start_new_session=True if platform.system() != "Windows" else False
         )
+        process_started = True
 
         stdout_b, stderr_b = await process.communicate()
+        registry_entry = await _reload_registry_after_container(registry_entry)
 
-        enc = locale.getpreferredencoding(False) or "utf-8"
-        stdout = (stdout_b or b"").decode(enc, errors="replace").strip()
-        stderr = (stderr_b or b"").decode(enc, errors="replace").strip()
+        stdout = redact_connection_string(
+            sanitized_tail(stdout_b, configured_connection_string), connection_string
+        )
+        stderr = redact_connection_string(
+            sanitized_tail(stderr_b, configured_connection_string), connection_string
+        )
+        child_outcome = parse_run_node_result(stdout)
 
         if process.returncode != 0:
             oom_killed = _container_oom_killed(docker_cmd, cidfile)
             memory_limit = docker_memory_limit(
                 slurm_parameters, uppercase=docker_cmd == "apptainer"
             )
-            registry_entry.error = format_container_failure_error(
+            base_error = format_container_failure_error(
                 process.returncode,
                 oom_killed=oom_killed,
                 memory_limit=memory_limit,
                 docker_cmd=docker_cmd,
+            )
+            visible_stdout = "\n".join(
+                line
+                for line in stdout.splitlines()
+                if not line.startswith(RESULT_PREFIX)
+            ).strip()
+            details = []
+            if child_outcome is not None and child_outcome.error:
+                details.append(child_outcome.error)
+            if visible_stdout:
+                details.append(f"stdout:\n{visible_stdout}")
+            if stderr:
+                details.append(f"stderr:\n{stderr}")
+            detail_limit = max(4096 - len(base_error) - 1, 0)
+            detail_tail = sanitized_tail(
+                "\n".join(details),
+                configured_connection_string,
+                limit=detail_limit,
+            )
+            registry_entry.error = (
+                f"{base_error}\n{detail_tail}" if detail_tail else base_error
             )
             logger.error(
                 "docker run failed for task_id=%s rc=%s oom_killed=%s error=%s stderr=%s stdout=%s cmd=%s",
@@ -561,11 +622,39 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
                 registry_entry.error,
                 stderr,
                 stdout,
-                cmd,
+                shlex.join(sanitized_cmd),
             )
-            registry_entry.status = TaskStatus.FAILED
-            await context.db.save(registry_entry)
-            return False
+            await _persist_post_launch_failure(
+                registry_entry, registry_entry.error
+            )
+            return DockerRunResult(
+                False,
+                child_outcome.return_kind if child_outcome is not None else "exception",
+                registry_entry.error,
+            )
+
+        if child_outcome is None or not child_outcome.success:
+            base_error = (
+                child_outcome.error
+                if child_outcome is not None and child_outcome.error
+                else "Docker child did not emit a valid successful run_node result"
+            )
+            registry_entry.error = sanitized_tail(
+                "\n".join(
+                    part
+                    for part in [base_error, f"stdout:\n{stdout}" if stdout else "", f"stderr:\n{stderr}" if stderr else ""]
+                    if part
+                ),
+                configured_connection_string,
+            )
+            await _persist_post_launch_failure(
+                registry_entry, registry_entry.error
+            )
+            return DockerRunResult(
+                False,
+                child_outcome.return_kind if child_outcome is not None else "none",
+                registry_entry.error,
+            )
 
         if stdout:
             # For `docker run` without -d, stdout is the actual output of the command
@@ -576,11 +665,31 @@ async def run_docker(registry_entry: NodeRegistry) -> bool:
             # Some Docker setups warn on stderr even on success
             logger.warning("docker run stderr for task_id=%s: %s", registry_entry.id, stderr)
 
-        return True
+        return DockerRunResult(True, child_outcome.return_kind)
     except Exception as e:
-        logger.exception(f"fatal error in running docker task_id: {registry_entry.id} {str(e)}")
-        registry_entry.status = TaskStatus.FAILED
+        if process_started:
+            registry_entry = await _reload_registry_after_container(registry_entry)
+        clean_error = redact_connection_string(
+            sanitized_tail(str(e), configured_connection_string),
+            connection_string,
+        )
+        logger.error(
+            "fatal error in running docker task_id: %s %s",
+            registry_entry.id,
+            clean_error,
+        )
         if not getattr(registry_entry, "error", None):
-            registry_entry.error = f"Failed to run {docker_cmd}: {e}"
-        await context.db.save(registry_entry)
-        return False
+            registry_entry.error = f"Failed to run {docker_cmd}: {clean_error}"
+        if process_started:
+            await _persist_post_launch_failure(
+                registry_entry, registry_entry.error
+            )
+        else:
+            registry_entry.status = TaskStatus.FAILED
+            await context.db.save(registry_entry)
+        return DockerRunResult(False, "exception", registry_entry.error)
+
+
+async def run_docker(registry_entry: NodeRegistry) -> bool:
+    """Run a container while preserving the existing boolean API."""
+    return (await run_docker_with_outcome(registry_entry)).success

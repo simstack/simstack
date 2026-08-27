@@ -59,10 +59,10 @@ class ResourceAssignmentRule(Model):
     enabled: bool = Field(default=True)
     resource_str: Optional[str] = None
     queue: Optional[str] = None
-    in_docker: bool = Field(default=False, description="Run in docker")
-    force_rerun: bool = Field(default=False)
+    in_docker: Optional[bool] = Field(default=None, description="Run in docker")
+    force_rerun: Optional[bool] = Field(default=None)
     recompute_artifacts: Optional[bool] = Field(
-        default=False, description="Recompute artifacts for this node"
+        default=None, description="Recompute artifacts for this node"
     )
     slurm_parameters: Dict[str, Any] = Field(default_factory=dict)
     # Kept so ODMantic can read pre-migration Mongo documents.
@@ -152,9 +152,9 @@ class ResourceAssignmentRule(Model):
                 self.resource_str,
                 self.queue,
                 has_slurm,
-                self.in_docker,
-                self.force_rerun,
-                self.recompute_artifacts,
+                self.in_docker is not None,
+                self.force_rerun is not None,
+                self.recompute_artifacts is not None,
             ]
         ):
             raise ValueError(

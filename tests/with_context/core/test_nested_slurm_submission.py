@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 
 import pytest
@@ -5,9 +6,11 @@ import pytest
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import Node, node
-from simstack.core.node_claim import claim_submitted_node
+from simstack.core.node_claim import (
+    claim_submitted_node,
+)
 from simstack.core.services.node_execution_service import NodeExecutionService
-from simstack.models import FloatData, NodeRegistry
+from simstack.models import FloatData, NamedDataReference, NodeRegistry
 from simstack.models.parameters import Parameters, Resource, SlurmParameters
 
 
@@ -39,6 +42,14 @@ def _execution_node(registry_entry: NodeRegistry) -> Node:
     return execution_node
 
 
+def _result_reference() -> NamedDataReference:
+    return NamedDataReference(
+        variable_name="result",
+        variable_mapping="simstack.models.FloatData",
+        reference=FloatData(value=1.0).id,
+    )
+
+
 @pytest.mark.asyncio
 async def test_claim_submitted_node_only_claims_once():
     registry_entry = await context.db.save(_slurm_registry("claim_once_child"))
@@ -61,6 +72,7 @@ async def test_nested_slurm_child_is_submitted_inline_on_current_resource(monkey
     async def fake_submit_node(entry):
         submitted_ids.append(entry.id)
         entry.status = TaskStatus.COMPLETED
+        entry.results_references = [_result_reference()]
         await context.db.save(entry)
 
     async def fake_load_results(self):
@@ -87,9 +99,9 @@ async def test_nested_slurm_submit_failure_stops_polling(monkeypatch):
 
     monkeypatch.setattr("simstack.core.submit_node.submit_node", fail_submit)
 
-    result = await execution_node.run_somewhere()
+    with pytest.raises(RuntimeError, match="terminated with status"):
+        await execution_node.run_somewhere()
 
-    assert result is None
     saved_entry = await context.db.load_task_by_id(registry_entry.id)
     assert saved_entry.status == TaskStatus.FAILED
 
@@ -124,30 +136,43 @@ async def test_sync_node_wrapper_raises_when_nested_slurm_submit_fails(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_nested_slurm_child_waits_when_already_claimed(monkeypatch):
+async def test_already_claimed_slurm_child_is_not_submitted_twice(monkeypatch):
     registry_entry = await context.db.save(
         _slurm_registry("already_claimed_slurm_child", status=TaskStatus.RETRIEVED)
     )
     execution_node = _execution_node(registry_entry)
-    sentinel = SimpleNamespace(value="claimed-result")
+    submitted_ids = []
 
-    async def fail_if_submitted(entry):
-        raise AssertionError("already claimed nodes must not be submitted twice")
+    async def fake_submit(entry):
+        submitted_ids.append(entry.id)
+        return True
 
-    async def fake_load_task_by_id(task_id):
-        registry_entry.status = TaskStatus.COMPLETED
-        return registry_entry
+    monkeypatch.setattr("simstack.core.submit_node.submit_node", fake_submit)
 
-    async def fake_load_results(self):
-        return sentinel
+    assert await execution_node._submit_same_resource_slurm_node() is False
+    assert submitted_ids == []
 
-    monkeypatch.setattr("simstack.core.submit_node.submit_node", fail_if_submitted)
-    monkeypatch.setattr(context.db, "load_task_by_id", fake_load_task_by_id)
-    monkeypatch.setattr(Node, "load_results", fake_load_results)
 
-    result = await execution_node.run_somewhere()
+@pytest.mark.asyncio
+async def test_submitted_slurm_node_is_claimed_once_before_sbatch(monkeypatch):
+    registry_entry = await context.db.save(_slurm_registry("single_sbatch_child"))
+    first = _execution_node(registry_entry.model_copy(deep=True))
+    second = _execution_node(registry_entry.model_copy(deep=True))
+    submitted_ids = []
 
-    assert result is sentinel
+    async def fake_submit(entry):
+        submitted_ids.append(entry.id)
+        return True
+
+    monkeypatch.setattr("simstack.core.submit_node.submit_node", fake_submit)
+
+    first_submitted, second_submitted = await asyncio.gather(
+        first._submit_same_resource_slurm_node(),
+        second._submit_same_resource_slurm_node(),
+    )
+
+    assert sorted([first_submitted, second_submitted]) == [False, True]
+    assert submitted_ids == [registry_entry.id]
 
 
 @pytest.mark.asyncio

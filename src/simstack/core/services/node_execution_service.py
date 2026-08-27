@@ -1,7 +1,12 @@
 import asyncio
 import logging
+import os
 import platform
 import subprocess
+from dataclasses import dataclass
+from typing import Any
+
+from odmantic import Model
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
@@ -9,15 +14,41 @@ from simstack.core.node import node_from_database
 from simstack.core.node_claim import claim_submitted_node
 from simstack.core.run_docker import run_docker
 from simstack.core.services.base_service import BaseService
+from simstack.core.simstack_result import SimstackResult
 from simstack.core.submit_node import submit_node
 from simstack.models import NodeRegistry
 from simstack.models.parameters import Resource
 from simstack.models.runner_model import RunnerEventEnum
+from simstack.util.sanitized_output import sanitized_command, sanitized_tail
 
 logger = logging.getLogger("NodeRunner")
 
 
-async def run_node_from_registry(registry_entry: NodeRegistry) -> bool:
+@dataclass(frozen=True)
+class NodeExecutionOutcome:
+    success: bool
+    return_kind: str
+
+
+def _return_kind(result: Any, registry_entry: NodeRegistry) -> str:
+    if isinstance(result, bool):
+        return "bool"
+    if isinstance(result, SimstackResult):
+        return "multiple"
+    if isinstance(result, Model):
+        return "model"
+    if result is None and registry_entry.status == TaskStatus.COMPLETED:
+        if len(registry_entry.results_references) > 1:
+            return "multiple"
+        if registry_entry.results_references:
+            return "model"
+        return "bool"
+    return "none"
+
+
+async def run_node_from_registry_with_outcome(
+    registry_entry: NodeRegistry,
+) -> NodeExecutionOutcome:
     """
     Executes a node task from the provided registry entry and updates its status
     based on the success or failure of execution.
@@ -37,12 +68,22 @@ async def run_node_from_registry(registry_entry: NodeRegistry) -> bool:
     # Create the node from the registry entry
     node = await node_from_database(registry_entry)
     if not node:
+        error = registry_entry.error or sanitized_tail(
+            f"Failed to create node {registry_entry.func_mapping}",
+            getattr(context.config, "connection_string", None),
+        )
         logger.error(
-            f"Failed to create node from registry entry task_id: {registry_entry.id} on resource {context.config.resource}"
+            "Failed to create node from registry entry task_id: %s on "
+            "resource %s: %s",
+            registry_entry.id,
+            context.config.resource,
+            error,
         )
         registry_entry.status = TaskStatus.FAILED
+        registry_entry.error = error
+        registry_entry.return_kind = "exception"
         await context.db.save(registry_entry)
-        return False
+        return NodeExecutionOutcome(False, "exception")
     registry_entry = node.registry_entry  # it may have changed
     assert registry_entry is not None
     if (
@@ -52,12 +93,21 @@ async def run_node_from_registry(registry_entry: NodeRegistry) -> bool:
     ) or (
         node.status == TaskStatus.COMPLETED and registry_entry.parameters.force_rerun
     ):
-        await node.execute_node_locally()
+        result = await node.execute_node_locally()
     else:
+        result = None
         logger.info(
             f"task_id: {registry_entry.id} skipping task: {registry_entry.name} with status {registry_entry.status}"
         )
-    return bool(node.status == TaskStatus.COMPLETED)
+    return_kind = getattr(node, "_execution_return_kind", None)
+    if return_kind is None:
+        return_kind = _return_kind(result, registry_entry)
+    return NodeExecutionOutcome(node.status == TaskStatus.COMPLETED, return_kind)
+
+
+async def run_node_from_registry(registry_entry: NodeRegistry) -> bool:
+    """Execute a registry entry while preserving the existing boolean API."""
+    return (await run_node_from_registry_with_outcome(registry_entry)).success
 
 
 class NodeExecutionService(BaseService):
@@ -101,23 +151,29 @@ class NodeExecutionService(BaseService):
                 f"Running node task_id: {registry_entry.id} on resource {context.config.resource} with {queue} queue and docker: {registry_entry.parameters.in_docker} "
             )
 
-            if queue == "slurm-queue" or queue == "slurm-docker":
+            if queue == "slurm-docker":
+                registry_entry.parameters.in_docker = True
+                queue = "slurm-queue"
+
+            if queue == "slurm-queue":
                 return await submit_node(registry_entry)
 
-            if registry_entry.parameters.in_docker:
+            if queue == "docker":
+                registry_entry.parameters.in_docker = True
+                queue = "default"
+
+            if queue == "default" and registry_entry.parameters.in_docker:
                 return await run_docker(registry_entry)
 
-            if registry_entry.parameters.in_docker:
-                return await run_docker(registry_entry)
-
-            elif queue == "default":
+            if queue == "default":
                 if self._detach:
                     # Spawn independent process that survives when the runner dies
+                    project_root = str(context.config.project_root)
                     cmd = [
                         "uv",
                         "run",
                         "--directory",
-                        str(context.config.project_root),
+                        project_root,
                         "run_node",
                         "--node-id",
                         str(registry_entry.id),
@@ -134,6 +190,21 @@ class NodeExecutionService(BaseService):
                         detached_process = getattr(subprocess, "DETACHED_PROCESS", 0)
                         creationflags = create_new_process_group | detached_process
 
+                    python_path_entries = [project_root]
+                    python_path_entries.extend(
+                        str(path)
+                        for path in (
+                            getattr(context.config, "python_paths", None) or []
+                        )
+                    )
+                    if os.environ.get("PYTHONPATH"):
+                        python_path_entries.append(os.environ["PYTHONPATH"])
+                    child_python_path = os.pathsep.join(
+                        dict.fromkeys(
+                            path for path in python_path_entries if path
+                        )
+                    )
+
                     try:
                         process = await asyncio.create_subprocess_exec(
                             *cmd,
@@ -143,11 +214,53 @@ class NodeExecutionService(BaseService):
                             start_new_session=True
                             if platform.system() != "Windows"
                             else False,
+                            env={
+                                **os.environ,
+                                "PYTHONPATH": child_python_path,
+                                **(
+                                    {
+                                        "SIMSTACK_DB_CONNECTION_STRING": str(
+                                            context.config.connection_string
+                                        )
+                                    }
+                                    if getattr(
+                                        context.config,
+                                        "connection_string",
+                                        None,
+                                    )
+                                    is not None
+                                    else {}
+                                ),
+                                **(
+                                    {
+                                        "SIMSTACK_DB_DATABASE": str(
+                                            context.config.db_name
+                                        )
+                                    }
+                                    if getattr(context.config, "db_name", None)
+                                    is not None
+                                    else {}
+                                ),
+                            },
                         )
-                    except Exception as e:
+                    except Exception as exc:
+                        error = sanitized_tail(
+                            str(exc),
+                            getattr(context.config, "connection_string", None),
+                        )
                         logger.error(
-                            f"Failed to spawn detached process for task id: {registry_entry.id}. task_id: {registry_entry.id}. "
-                            f"Command: {' '.join(cmd)}. Error: {str(e)}"
+                            "Failed to spawn detached process for task_id: %s. "
+                            "Command: %s. Error: %s",
+                            registry_entry.id,
+                            " ".join(
+                                sanitized_command(
+                                    cmd,
+                                    getattr(
+                                        context.config, "connection_string", None
+                                    ),
+                                )
+                            ),
+                            error,
                         )
                         raise
 
@@ -163,13 +276,20 @@ class NodeExecutionService(BaseService):
                 )
                 raise RuntimeError(f"Queue {queue} not supported for task_id: {registry_entry.id}")
 
-        except Exception as e:
+        except (Exception, SystemExit) as exc:
+            error = sanitized_tail(
+                str(exc), getattr(context.config, "connection_string", None)
+            ) or type(exc).__name__
             logger.error(
-                f"Error running node task_id: {registry_entry.id} on resource {context.config.resource}",
-                exc_info=True
+                "Error running node task_id: %s on resource %s: %s",
+                registry_entry.id,
+                context.config.resource,
+                error,
             )
             if registry_entry:
                 registry_entry.status = TaskStatus.FAILED
+                registry_entry.error = error
+                registry_entry.return_kind = "exception"
                 await context.db.save(registry_entry)
             return False
 

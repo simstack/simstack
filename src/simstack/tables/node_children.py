@@ -116,10 +116,16 @@ async def update_node_children(database, drops: str) -> None:
     mapping_set: set[str] = set(nm.function_mapping for nm in node_models)
 
     for nm in node_models:
-        func = await import_function(nm.function_mapping, database, None, True)
-        if func is None:
-            logger.warning(f"Could not import function for {nm.name} ({nm.function_mapping}) -- deleting deprecated node")
-            await database.delete(nm)
+        try:
+            func = await import_function(nm.function_mapping, database)
+        except (Exception, SystemExit) as exc:
+            logger.warning(
+                "Preserving NodeModel id=%s name=%s mapping=%s after import failure: %s",
+                nm.id,
+                nm.name,
+                nm.function_mapping,
+                exc,
+            )
             continue
 
         parser = DocstringParser(inspect.getdoc(func))

@@ -78,6 +78,7 @@ def safe_code_executor(
         AGChartAxisConfig,
         AGChartTitleConfig,
         AGChartLegendConfig,
+        make_multi_line_chart,
     )
     from simstack.models.table_artifact import TableArtifactModel
 
@@ -91,6 +92,7 @@ def safe_code_executor(
             "AGChartAxisConfig": AGChartAxisConfig,
             "AGChartTitleConfig": AGChartTitleConfig,
             "AGChartLegendConfig": AGChartLegendConfig,
+            "make_multi_line_chart": make_multi_line_chart,
             "ArtifactModel": ArtifactModel,
             "ArtifactArguments": ArtifactArguments,
         }

@@ -72,6 +72,7 @@ class NodeRegistry(Model):
     assignment_pattern: Optional[str] = None
     error: Optional[str] = None
     message: Optional[str] = None
+    return_kind: Optional[str] = None
 
     input_references: List[NamedDataReference] = Field(default_factory=list)
     results_references: List[NamedDataReference] = Field(default_factory=list)
@@ -99,6 +100,7 @@ class NodeRegistry(Model):
         self.artifact_ids = duplicate.artifact_ids
         self.error = duplicate.error
         self.message = duplicate.message
+        self.return_kind = duplicate.return_kind
 
 async def find_child_nodes(task_id: str) -> List[NodeRegistry]:
     from simstack.core.context import context

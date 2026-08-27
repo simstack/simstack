@@ -85,17 +85,16 @@ class TableBuilderBase(ABC):
                 continue
             self.logger.debug("Processing module: %s", module_name)
             module = self._import_package_module(module_name)
-            if module is None:
-                continue
             await self._process_module(module, drops=drops)
             self._processed_modules.add(module_name)
 
     def _import_package_module(self, module_name: str):
         try:
             return importlib.import_module(module_name)
-        except Exception as exc:
-            self.logger.warning("Failed to import module %s: %s", module_name, exc)
-            return None
+        except SystemExit as exc:
+            if exc.code in (None, 0):
+                raise SystemExit(1) from None
+            raise
 
     async def _process_configured_paths(self) -> None:
         for path_name in path_manager.paths.keys():

@@ -517,3 +517,59 @@ async def test_node_registry_creation_allows_nested_slurm_assignment(
     assert registry_entry.parameters.queue == "slurm-queue"
     assert registry_entry.parameters.slurm_parameters.nodes == 2
     assert registry_entry.assignment_rule_name == "probe-slurm"
+
+
+@pytest.mark.asyncio
+async def test_omitted_rule_flags_preserve_base_parameter_values(odmantic_engine):
+    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+    rule = ResourceAssignmentRule(
+        name="resource-only",
+        regex_pattern="workflow.probe",
+        resource_str="cluster-a",
+    )
+    assert rule.in_docker is None
+    assert rule.force_rerun is None
+    assert rule.recompute_artifacts is None
+    await odmantic_engine.save(rule)
+
+    resolution = await resolve_resource_assignment(
+        odmantic_engine,
+        call_path="workflow.probe",
+        base_parameters=Parameters(
+            in_docker=True,
+            force_rerun=True,
+            recompute_artifacts=True,
+        ),
+    )
+
+    assert resolution.parameters.in_docker is True
+    assert resolution.parameters.force_rerun is True
+    assert resolution.parameters.recompute_artifacts is True
+
+
+@pytest.mark.asyncio
+async def test_explicit_false_rule_flags_are_effective_overrides(odmantic_engine):
+    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+    await odmantic_engine.save(
+        ResourceAssignmentRule(
+            name="disable-runtime-flags",
+            regex_pattern="workflow.probe",
+            in_docker=False,
+            force_rerun=False,
+            recompute_artifacts=False,
+        )
+    )
+
+    resolution = await resolve_resource_assignment(
+        odmantic_engine,
+        call_path="workflow.probe",
+        base_parameters=Parameters(
+            in_docker=True,
+            force_rerun=True,
+            recompute_artifacts=True,
+        ),
+    )
+
+    assert resolution.parameters.in_docker is False
+    assert resolution.parameters.force_rerun is False
+    assert resolution.parameters.recompute_artifacts is False

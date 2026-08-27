@@ -79,11 +79,12 @@ def test_calling_failing_node():
 def test_node_returns_bool():
     result = node_returns_bool(IntData(value=1))
     assert result is True
+    assert node_returns_bool(IntData(value=1)) is True
 
 
 def test_node_returns_bool_false():
-    result = node_returns_bool(IntData(value=2))
-    assert result is None
+    with pytest.raises(RuntimeError, match="returned False|run_node child exited"):
+        node_returns_bool(IntData(value=2))
 
 
 def test_node_returns_nothing():

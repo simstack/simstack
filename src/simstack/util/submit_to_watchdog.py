@@ -50,11 +50,12 @@ def submit_to_watchdog(
     data = "\n".join(spec_lines) + "\n"
 
     queue_dir.mkdir(parents=True, exist_ok=True)
-    print(f"[watcher] Submitting {data} to {cmd_file}")
+    print(f"[watcher] Submitting job {job_id} to {cmd_file}")
     with open(cmd_file_tmp, "w", encoding="utf-8") as f:
         f.write(data)
         f.flush()
         os.fsync(f.fileno())
+    os.chmod(cmd_file_tmp, 0o600)
 
     os.replace(cmd_file_tmp, cmd_file)  # atomic
     ready_file.touch()  # signal

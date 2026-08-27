@@ -3,6 +3,7 @@ import functools
 import inspect
 import logging
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import (
@@ -26,10 +27,13 @@ from simstack.core.artifacts import create_artifacts, ArtifactArguments
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.hash import complex_hash_function
-from simstack.core.node_claim import claim_submitted_node
+from simstack.core.node_claim import (
+    claim_submitted_node,
+)
 from simstack.core.node_runner import NodeRunner
 from simstack.core.process_results import process_result_helper
 from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
+from simstack.core.run_node_protocol import RESULT_PREFIX, parse_run_node_result
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.task_id import set_task_id, clear_task_id
 from simstack.models import ModelMapping, Parameters, Project
@@ -40,6 +44,7 @@ from simstack.models.files import FileStack
 from simstack.models.parameters import Resource, Queue, SlurmParameters
 from simstack.models.simstack_model import is_simstack_model
 from simstack.util.importer import import_function, import_class
+from simstack.util.sanitized_output import sanitized_command, sanitized_tail
 
 logger = logging.getLogger("Node")
 
@@ -92,10 +97,8 @@ def docker_image_for_node(
         task_resource = str(resource)
     else:
         task_resource = str(config.resource)
-    lookup_resource = "local" if task_resource == "self" else task_resource
+    lookup_resource = str(config.resource) if task_resource == "self" else task_resource
     program_config = resource_config.get_program(node_name, resource=lookup_resource)
-    if not program_config and lookup_resource != str(config.resource):
-        program_config = resource_config.get_program(node_name)
     image = program_config.get("docker_image") if program_config else None
     if not isinstance(image, str) or not image.strip():
         return None
@@ -107,10 +110,9 @@ def should_dispatch_nested_docker(
 ) -> bool:
     """True when a nested child must wait for the host to start another image.
 
-    Same resource + default queue stays in-process unless this process is
-    already in Docker. While in a container, stay in-process only when both
-    images are known and equal. A missing child image or a different image
-    waits for the host runner (assignment ``in_docker`` is not required).
+    On the host, ``in_docker=True`` hands the task to the runner. In a
+    container, stay in that container only when both images are known and
+    equal. A missing or different child image is handed back to the host.
     """
     in_container = process_is_in_docker()
     assignment_in_docker = bool(getattr(parameters, "in_docker", False))
@@ -365,6 +367,9 @@ class Node:
             kwargs  # what is left over here must be kwargs of the function
         )
         self.registry_entry: NodeRegistry | None = None
+        self._execution_return_kind: str | None = None
+        self._owns_inline_nested_execution = False
+        self._nested_docker_handoff_prepared = False
 
     def _parent_parameters_from_kwargs(self) -> Optional[Parameters]:
         parent_parameters = self._function_kwargs.get("parent_parameters", None)
@@ -387,6 +392,31 @@ class Node:
         if self.registry_entry is not None:
             self.registry_entry.parameters = self.parameters
         return True
+
+    def _prepare_nested_docker_publication(self) -> None:
+        """Finalize a nested Docker route before its first database save."""
+        registry_entry = self.registry_entry
+        if registry_entry is None or not process_is_in_docker():
+            return
+
+        resource_self = Resource(value="self")
+        runs_from_current_process = self.parameters.resource == resource_self or (
+            context.config.resource == self.parameters.resource
+            and self.parameters.queue == Queue.DEFAULT
+        )
+        if not runs_from_current_process:
+            return
+
+        if should_dispatch_nested_docker(self.parameters, self.name):
+            self.parameters.in_docker = True
+            if self.parameters.resource == resource_self:
+                self.parameters.resource = Resource(value=str(context.config.resource))
+            registry_entry.parameters = self.parameters
+            self._nested_docker_handoff_prepared = True
+            return
+
+        registry_entry.status = TaskStatus.RETRIEVED
+        self._owns_inline_nested_execution = True
 
     @property
     def id(self) -> ObjectId | None:
@@ -470,7 +500,7 @@ class Node:
             name=self.name,
             input_references=input_references,
             is_async=self.is_async,
-            status=TaskStatus.RETRIEVED,
+            status=TaskStatus.SUBMITTED,
             custom_name=self.custom_name,
             function_hash=function_hash,
             arg_hash=arg_hash,
@@ -494,6 +524,7 @@ class Node:
         self.parameters = registry_entry.parameters
         self._apply_parent_slurm_for_self_resource()
         registry_entry.parameters = self.parameters
+        self._prepare_nested_docker_publication()
         await context.db.save(registry_entry)
         logger.info(
             f"Task task_id: {self.id} with name {self.name} created for resource: {registry_entry.parameters.resource} queue: {registry_entry.parameters.queue} with id: {self.id} and status: {registry_entry.status}"
@@ -559,7 +590,9 @@ class Node:
         assert self.registry_entry is not None
         return self.registry_entry.status
 
-    async def load_results(self) -> Union[Model, SimstackResult, None]:
+    async def load_results(
+        self, return_kind: str | None = None
+    ) -> Union[Model, SimstackResult, bool, None]:
         """
         Loads the results associated with a specific task from the database. This
         method verifies whether the task has valid result identifiers. If valid
@@ -583,8 +616,31 @@ class Node:
         try:
             if self.registry_entry.status != TaskStatus.COMPLETED:
                 return None
+            persisted_return_kind = return_kind or getattr(
+                self.registry_entry, "return_kind", None
+            )
+            if persisted_return_kind == "none":
+                return None
+            if persisted_return_kind == "bool":
+                return True
+            if not self.registry_entry.results_references:
+                if persisted_return_kind == "multiple":
+                    return SimstackResult(
+                        status=self.registry_entry.status,
+                        custom_name=self.registry_entry.custom_name,
+                        message=self.registry_entry.message,
+                        error_message=self.registry_entry.error,
+                        info_files=list(self.registry_entry.info_files),
+                    )
+                return True
             
-            simstack_result = SimstackResult(status=self.registry_entry.status)
+            simstack_result = SimstackResult(
+                status=self.registry_entry.status,
+                custom_name=self.registry_entry.custom_name,
+                message=self.registry_entry.message,
+                error_message=self.registry_entry.error,
+                info_files=list(self.registry_entry.info_files),
+            )
             result = None
             for ref in self.registry_entry.results_references:
                 model = await import_class(ref.variable_mapping, db)
@@ -601,7 +657,10 @@ class Node:
 
             logger.info(f"Task task_id: {self.id} loaded outputs")
 
-            if len(self.registry_entry.results_references) == 1:
+            if (
+                len(self.registry_entry.results_references) == 1
+                and persisted_return_kind != "multiple"
+            ):
                 return result  # there is only one result, return it directly
             else:
                 return simstack_result  # return the SimstackResult with all results
@@ -611,14 +670,18 @@ class Node:
             logger.exception(f"Task task_id: {self.id} failed to load outputs: {e}")
             raise ValueError(f"Task task_id: {self.id} failed to load outputs: {e}")
 
-    async def run_node_as_process(self) -> Union[Model, SimstackResult, None]:
-        """Spawn a subprocess that runs ``run_node`` for the current id and resource, then load results."""
-        import sys
-
+    async def run_node_as_process(
+        self,
+    ) -> Union[Model, SimstackResult, bool, None]:
+        """Run this task in an isolated child and restore its persisted result."""
         assert self.registry_entry is not None
 
         node_id = str(self.id)
-        resource = str(self.parameters.resource)
+        resource = (
+            str(context.config.resource)
+            if self.parameters.resource == "self"
+            else str(self.parameters.resource)
+        )
         project_root = str(context.config.project_root)
 
         cmd = [
@@ -629,30 +692,66 @@ class Node:
         ]
 
         if context.in_docker:
-            cmd.append("--in_docker")
+            cmd.append("--in-docker")
+
+        connection_string = getattr(context.config, "connection_string", None)
+        clean_cmd = sanitized_command(cmd, connection_string)
+        python_path_entries = [project_root]
+        if not context.in_docker:
+            python_path_entries.extend(
+                str(path)
+                for path in (getattr(context.config, "python_paths", None) or [])
+            )
+        inherited_python_path = os.environ.get("PYTHONPATH")
+        if inherited_python_path:
+            python_path_entries.append(inherited_python_path)
+        child_python_path = os.pathsep.join(
+            dict.fromkeys(path for path in python_path_entries if path)
+        )
 
         logger.info(
-            "Task task_id: %s NEW spawning run_node subprocess: %s",
-            self.id, " ".join(cmd),
+            "Task task_id: %s spawning run_node subprocess: %s",
+            self.id,
+            " ".join(clean_cmd),
         )
 
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await proc.communicate()
-
-        # if stdout:
-        #     logger.info("Task task_id: %s run_node stdout: %s", self.id, stdout.decode(errors="replace"))
-        # if stderr:
-        #     logger.warning("Task task_id: %s run_node stderr: %s", self.id, stderr.decode(errors="replace"))
-
-        if proc.returncode != 0:
-            logger.error(
-                "Task task_id: %s run_node process exited with code %s",
-                self.id, proc.returncode,
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=project_root,
+                env={
+                    **os.environ,
+                    "PYTHONPATH": child_python_path,
+                    **(
+                        {"SIMSTACK_DB_CONNECTION_STRING": str(connection_string)}
+                        if connection_string is not None
+                        else {}
+                    ),
+                    **(
+                        {
+                            "SIMSTACK_DB_DATABASE": str(
+                                getattr(context.config, "db_name")
+                            )
+                        }
+                        if getattr(context.config, "db_name", None) is not None
+                        else {}
+                    ),
+                },
             )
+            stdout_b, stderr_b = await proc.communicate()
+        except Exception as exc:
+            error = sanitized_tail(str(exc), connection_string)
+            self.registry_entry.status = TaskStatus.FAILED
+            self.registry_entry.error = error
+            await context.db.save(self.registry_entry)
+            raise RuntimeError(
+                f"Task task_id: {self.id} could not start run_node child: {error}"
+            ) from None
+        stdout = sanitized_tail(stdout_b, connection_string)
+        stderr = sanitized_tail(stderr_b, connection_string)
+        outcome = parse_run_node_result(stdout)
 
         # Reload the registry entry from the database to pick up status changes made by the subprocess
         updated_entry = await context.db.load_task_by_id(self.id)
@@ -662,11 +761,63 @@ class Node:
             )
         self.registry_entry = updated_entry
 
-        if self.registry_entry.status == TaskStatus.COMPLETED:
-            return await self.load_results()
-        return None
+        if proc.returncode != 0 or outcome is None or not outcome.success:
+            child_error = (
+                outcome.error
+                if outcome is not None and outcome.error
+                else self.registry_entry.error
+            )
+            details = []
+            if child_error:
+                details.append(sanitized_tail(child_error, connection_string))
+            visible_stdout = "\n".join(
+                line for line in stdout.splitlines() if not line.startswith(RESULT_PREFIX)
+            ).strip()
+            if visible_stdout:
+                details.append(f"stdout:\n{visible_stdout}")
+            if stderr:
+                details.append(f"stderr:\n{stderr}")
+            detail_tail = sanitized_tail(
+                "\n".join(detail for detail in details if detail),
+                connection_string,
+                limit=3500,
+            )
+            error = f"run_node child exited with code {proc.returncode}"
+            if detail_tail:
+                error = f"{error}\n{detail_tail}"
+            self.registry_entry.status = TaskStatus.FAILED
+            self.registry_entry.error = error
+            await context.db.save(self.registry_entry)
+            raise RuntimeError(f"Task task_id: {self.id} {error}")
 
-    async def run_somewhere(self) -> Union[Model, SimstackResult, None]:
+        if self.registry_entry.status != TaskStatus.COMPLETED:
+            error = (
+                f"run_node child reported success but task status is "
+                f"{self.registry_entry.status}"
+            )
+            self.registry_entry.status = TaskStatus.FAILED
+            self.registry_entry.error = error
+            await context.db.save(self.registry_entry)
+            raise RuntimeError(f"Task task_id: {self.id} {error}")
+
+        if stderr:
+            logger.warning("Task task_id: %s run_node stderr: %s", self.id, stderr)
+        if outcome.return_kind == "bool":
+            return True
+        if outcome.return_kind in {"model", "multiple"}:
+            return await self.load_results(return_kind=outcome.return_kind)
+        if outcome.return_kind == "none":
+            return None
+        error = (
+            f"Task task_id: {self.id} returned unsupported child result kind "
+            f"{outcome.return_kind!r}"
+        )
+        self.registry_entry.status = TaskStatus.FAILED
+        self.registry_entry.error = error
+        await context.db.save(self.registry_entry)
+        raise RuntimeError(error)
+
+    async def run_somewhere(self) -> Union[Model, SimstackResult, bool, None]:
         """
         Executes the task either locally or on a remote resource. This function ensures that
         if the task is meant to execute on a remote resource, it waits for the task to complete
@@ -687,8 +838,26 @@ class Node:
         logger.info(
             f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource} queue: {self.parameters.queue}"
         )
-        if self.parameters.resource == resource_self:
+        if getattr(self, "_nested_docker_handoff_prepared", False):
+            logger.info(
+                "Task task_id: %s nested docker handoff was finalized before publication; waiting for host runner",
+                self.id,
+            )
+            return await self._wait_for_remote_completion()
+        if getattr(self, "_owns_inline_nested_execution", False):
+            logger.info(
+                "Task task_id: %s reserved for execution in the current container",
+                self.id,
+            )
             return await self.run_node_as_process()
+
+        if self.parameters.resource == resource_self:
+            if should_dispatch_nested_docker(self.parameters, self.name):
+                await self._persist_nested_docker_wait()
+                return await self._wait_for_remote_completion()
+            if await claim_submitted_node(self.registry_entry):
+                return await self.run_node_as_process()
+            return await self._wait_for_remote_completion()
 
         same_resource_default_queue = (
             context.config.resource == self.parameters.resource
@@ -702,7 +871,9 @@ class Node:
                     self.id,
                 )
                 return await self._wait_for_remote_completion()
-            return await self.run_node_as_process()
+            if await claim_submitted_node(self.registry_entry):
+                return await self.run_node_as_process()
+            return await self._wait_for_remote_completion()
 
         if await self._submit_same_resource_slurm_node():
             logger.info(
@@ -712,22 +883,43 @@ class Node:
             )
         return await self._wait_for_remote_completion()
 
-    async def _persist_nested_docker_wait(self) -> None:
+    async def _persist_nested_docker_wait(self) -> bool:
         """Mark the nested child for host ``run_docker`` without claiming it.
 
         Status stays SUBMITTED so the host runner can pick the task up.
         ``in_docker=True`` is required because NodeExecutionService only
         calls ``run_docker`` when that flag is set.
         """
+        if (
+            self.registry_entry is None
+            or self.registry_entry.status != TaskStatus.SUBMITTED
+        ):
+            return False
+        updates: dict[str, Any] = {"parameters.in_docker": True}
+        selected_resource = None
+        if self.parameters.resource == "self":
+            selected_resource = str(context.config.resource)
+            updates["parameters.resource.value"] = selected_resource
+        collection = context.db.get_collection(NodeRegistry)
+        updated = await collection.find_one_and_update(
+            {
+                "_id": self.registry_entry.id,
+                "status": TaskStatus.SUBMITTED.value,
+            },
+            {"$set": updates},
+        )
+        if updated is None:
+            return False
         self.parameters.in_docker = True
-        if self.registry_entry is None:
-            return
+        if selected_resource is not None:
+            self.parameters.resource = Resource(value=selected_resource)
         self.registry_entry.parameters = self.parameters
-        await context.db.save(self.registry_entry)
+        return True
 
-    async def _wait_for_remote_completion(self) -> Union[Model, SimstackResult, None]:
+    async def _wait_for_remote_completion(
+        self,
+    ) -> Union[Model, SimstackResult, bool, None]:
         logger.info(f"entering wait for completion for task_id: {self.id}")
-        await self.set_status(TaskStatus.SUBMITTED)
         while True:
             new_registry_entry = await context.db.load_task_by_id(self.id)
             # TODO add timeout mechanism here
@@ -738,6 +930,7 @@ class Node:
             new_status = new_registry_entry.status
             if (
                 new_status != TaskStatus.RUNNING
+                and new_status != TaskStatus.SLURM_RUNNING
                 and new_status != TaskStatus.SUBMITTED
                 and new_status != TaskStatus.SLURM_QUEUED
                 and new_status != TaskStatus.RETRIEVED
@@ -747,11 +940,17 @@ class Node:
             print(f"Task task_id: {self.id} is waiting for results")
             await asyncio.sleep(5)
 
+        self.registry_entry = new_registry_entry
         if new_status == TaskStatus.COMPLETED:
             logger.info(f"Task task_id: {self.id} completed remotely")
-            self.registry_entry = new_registry_entry
             return await self.load_results()
-        return None
+        error = sanitized_tail(
+            new_registry_entry.error or f"terminated with status {new_status}",
+            getattr(context.config, "connection_string", None),
+        )
+        raise RuntimeError(
+            f"Task task_id: {self.id} node: {self.name} failed with {error}"
+        )
 
     async def _submit_same_resource_slurm_node(self) -> bool:
         """Submit a same-resource Slurm node before polling it.
@@ -767,11 +966,10 @@ class Node:
             return False
         if self.parameters.resource != context.config.resource:
             return False
-        if not await claim_submitted_node(self.registry_entry):
-            return False
-
         from simstack.core.submit_node import submit_node
 
+        if not await claim_submitted_node(self.registry_entry):
+            return False
         return await submit_node(self.registry_entry)
 
     async def execute_node_locally(self) -> Union[Model, SimstackResult, None]:
@@ -851,14 +1049,28 @@ class Node:
                     result = await real_func(*self._args, **node_kwargs)
                 else:
                     result = real_func(*self._args, **node_kwargs)
+                if isinstance(result, bool):
+                    self._execution_return_kind = "bool"
+                elif isinstance(result, SimstackResult):
+                    self._execution_return_kind = "multiple"
+                elif isinstance(result, Model):
+                    self._execution_return_kind = "model"
+                else:
+                    self._execution_return_kind = "none"
+                self.registry_entry.return_kind = self._execution_return_kind
             except Exception as e:
                 # Save the error message if possible
+                clean_error = sanitized_tail(
+                    str(e), getattr(context.config, "connection_string", None)
+                )
                 if self.registry_entry:
-                    self.registry_entry.error = str(e)
+                    self.registry_entry.error = clean_error
                     await context.db.save(self.registry_entry)
                 logger.error(
-                    f"Task task_id: {self.id} node function error for node: {self.name} msg: {str(e)}",
-                    exc_info=True
+                    "Task task_id: %s node function error for node: %s msg: %s",
+                    self.id,
+                    self.name,
+                    clean_error,
                 )
                 # save what we can, in particular the info_files
                 await self.process_results(node_runner)
@@ -870,6 +1082,7 @@ class Node:
             self.registry_entry.completed_at = datetime.now()
 
             new_task_status, result = await self.process_results(result)
+            self._execution_return_kind = self.registry_entry.return_kind
 
             if new_task_status == TaskStatus.COMPLETED:
                 artifact_arguments = ArtifactArguments(result, self.id)
@@ -904,14 +1117,17 @@ class Node:
         # each of the following if sets the result either to a valid value or None
         new_task_status = TaskStatus.COMPLETED
         if result is None:
+            self.registry_entry.return_kind = "none"
             logger.warning(f"Task task_id: {self.id} returned None")
             new_task_status = TaskStatus.FAILED  # result is None
         elif isinstance(result, bool):
+            self.registry_entry.return_kind = "bool"
             if not result:
                 new_task_status = TaskStatus.FAILED
                 result = None
         elif is_simstack_model(result) or isinstance(result, SimstackResult):
             if isinstance(result, SimstackResult):
+                self.registry_entry.return_kind = "multiple"
                 new_task_status = result.status
                 if hasattr(result, "custom_name"):
                     self.registry_entry.custom_name = result.custom_name
@@ -935,12 +1151,21 @@ class Node:
                         raise ValueError("saving info file is NONE")
 
                 if result.error_message is not None and result.error_message != "":
+                    clean_error = sanitized_tail(
+                        result.error_message,
+                        getattr(context.config, "connection_string", None),
+                    )
+                    self.registry_entry.error = clean_error
                     logger.error(
-                        f"Task task_id: {self.id} returned with error: {result.error_message}"
+                        "Task task_id: %s returned with error: %s",
+                        self.id,
+                        clean_error,
                     )
                 if result.message is not None and result.message != "":
+                    self.registry_entry.message = result.message
                     logger.info(f"Task task_id: {self.id} message: {result.message}")
             else:
+                self.registry_entry.return_kind = "model"
                 if hasattr(result, "status"):
                     new_task_status = result.status
                 elif hasattr(result, "task_status"):
@@ -951,8 +1176,11 @@ class Node:
             self.registry_entry.status = new_task_status
 
             if len(results_references) == 1:
-                result = result_models[0]  # for a SimstackResult with just one returned model we return the model directly
+                result = result_models[0]
+                self.registry_entry.return_kind = "model"
+
         else:
+            self.registry_entry.return_kind = "none"
             logger.warning(
                 f"Task task_id: {self.id} returned a result of type {type(result)} which is not a SimstackModel or a SimstackResult"
             )
@@ -1088,9 +1316,15 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             arg = await _hydrate_embedded_file_stacks(arg, db, resolved_file_stacks)
             args.append(arg)
         except Exception as e:
-            logger.exception(
-                f"Task task_id: {registry_entry.id} failed to load input {ref.variable_mapping} with id {ref.reference}: {str(e)}"
+            error = sanitized_tail(
+                f"Failed to load input {ref.variable_mapping} with id "
+                f"{ref.reference}: {e}",
+                getattr(context.config, "connection_string", None),
             )
+            registry_entry.status = TaskStatus.FAILED
+            registry_entry.error = error
+            await db.save(registry_entry)
+            logger.error("Task task_id: %s %s", registry_entry.id, error)
             return None
 
     if registry_entry.arg_hash == "NOT INITIALIZED":
@@ -1122,8 +1356,15 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 f"Task task_id: {registry_entry.id} could not import function {registry_entry.func_mapping}"
             )
     except Exception as e:
+        error = sanitized_tail(
+            f"Failed to import function {registry_entry.func_mapping}: {e}",
+            getattr(context.config, "connection_string", None),
+        )
+        registry_entry.status = TaskStatus.FAILED
+        registry_entry.error = error
+        await db.save(registry_entry)
         logger.error(
-            f"Task task_id: {registry_entry.id} failed to import function {registry_entry.func_mapping} {str(e)}"
+            "Task task_id: %s %s", registry_entry.id, error
         )
 
     if func is None and registry_entry.function_hash == "NOT INITIALIZED":
@@ -1297,6 +1538,8 @@ def node(
                 TaskStatus.SUBMITTED,
                 TaskStatus.RETRIEVED,
                 TaskStatus.SLURM_QUEUED,
+                TaskStatus.RUNNING,
+                TaskStatus.SLURM_RUNNING,
             ]:
                 result = await execution_node.run_somewhere()
             else:
@@ -1321,7 +1564,14 @@ def node(
                     current_registry_entry.status == TaskStatus.FAILED
                     and current_registry_entry.error
                 ):
-                    raise RuntimeError(f"task_id: {current_registry_entry.id} node: {current_registry_entry.name} failed with {current_registry_entry.error}")
+                    error = sanitized_tail(
+                        current_registry_entry.error,
+                        getattr(context.config, "connection_string", None),
+                    )
+                    raise RuntimeError(
+                        f"task_id: {current_registry_entry.id} node: "
+                        f"{current_registry_entry.name} failed with {error}"
+                    )
 
                 raise RuntimeError(
                     f"Task task_id: {current_registry_entry.id} node: {current_registry_entry.name} terminated with status {current_registry_entry.status}"
@@ -1347,6 +1597,8 @@ def node(
                 TaskStatus.SUBMITTED,
                 TaskStatus.RETRIEVED,
                 TaskStatus.SLURM_QUEUED,
+                TaskStatus.RUNNING,
+                TaskStatus.SLURM_RUNNING,
             ]:
                 result = loop.run_until_complete(execution_node.run_somewhere())
                 ran_somewhere = True
@@ -1358,6 +1610,19 @@ def node(
                 and result is None
                 and execution_node.parameters.queue != Queue.SLURM_QUEUE
             ):
+                if (
+                    execution_node.registry_entry is not None
+                    and execution_node.registry_entry.status == TaskStatus.FAILED
+                    and execution_node.registry_entry.error
+                ):
+                    error = sanitized_tail(
+                        execution_node.registry_entry.error,
+                        getattr(context.config, "connection_string", None),
+                    )
+                    raise RuntimeError(
+                        f"task_id: {execution_node.registry_entry.id} node: "
+                        f"{execution_node.registry_entry.name} failed with {error}"
+                    )
                 return cast(T, result)
             if result is None or execution_node.status != TaskStatus.COMPLETED:
                 if (
@@ -1365,8 +1630,14 @@ def node(
                     and execution_node.registry_entry.status == TaskStatus.FAILED
                     and execution_node.registry_entry.error
                 ):
+                    error = sanitized_tail(
+                        execution_node.registry_entry.error,
+                        getattr(context.config, "connection_string", None),
+                    )
                     raise RuntimeError(
-                        f"task_id: {execution_node.registry_entry.id} node: {execution_node.registry_entry.name} failed with {execution_node.registry_entry.error}")
+                        f"task_id: {execution_node.registry_entry.id} node: "
+                        f"{execution_node.registry_entry.name} failed with {error}"
+                    )
 
 
 

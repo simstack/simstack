@@ -88,8 +88,12 @@ def _apply_assignment_patch(
     if rule.queue is not None:
         effective.queue = _normalize_queue(rule.queue)
 
-    effective.in_docker = bool(getattr(rule, "in_docker", False))
-    effective.force_rerun = bool(getattr(rule, "force_rerun", False))
+    in_docker = getattr(rule, "in_docker", None)
+    if in_docker is not None:
+        effective.in_docker = bool(in_docker)
+    force_rerun = getattr(rule, "force_rerun", None)
+    if force_rerun is not None:
+        effective.force_rerun = bool(force_rerun)
     recompute_artifacts = getattr(rule, "recompute_artifacts", None)
     if recompute_artifacts is not None:
         effective.recompute_artifacts = bool(recompute_artifacts)

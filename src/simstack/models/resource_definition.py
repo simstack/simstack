@@ -50,6 +50,8 @@ class ResourceDefinition(Model):
     ssh_key: Optional[str] = None  # Change Optional[Path] to Optional[str]
     routes: Optional[List[str]] = []
     queue: str = "default"
+    # TODO(Wolfgang): Should Docker be a resource-wide default here, or remain
+    # exclusively the per-task/rule flag ``Parameters.in_docker``?
     is_default: bool = False
     git_branch: str = "main"
 
