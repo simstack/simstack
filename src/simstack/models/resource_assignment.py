@@ -156,6 +156,26 @@ class ResourceAssignmentRule(Model):
         if self.slurm_parameters_patch is not None:
             object.__setattr__(self, "slurm_parameters_patch", None)
 
+        if (self.resource_str or "").lower() == "self":
+            # ``self`` is a child-only placement instruction: stay in the
+            # current execution context and do not carry routing overrides.
+            object.__setattr__(self, "resource_str", "self")
+            object.__setattr__(self, "queue", None)
+            object.__setattr__(self, "in_docker", None)
+            object.__setattr__(self, "force_rerun", None)
+            object.__setattr__(self, "recompute_artifacts", None)
+            object.__setattr__(self, "slurm_parameters", {})
+        elif self.resource_str:
+            # Concrete-resource rules own their execution flags. Legacy nulls
+            # therefore mean explicit ``False``, not "keep the node default".
+            for field_name in (
+                "in_docker",
+                "force_rerun",
+                "recompute_artifacts",
+            ):
+                if getattr(self, field_name) is None:
+                    object.__setattr__(self, field_name, False)
+
         has_slurm = bool(self.slurm_parameters)
         if not any(
             [

@@ -15,7 +15,7 @@ from typing import (
     List,
     ParamSpec,
     Union,
-    overload, Tuple,
+    overload,
 )
 
 import coolname  # type: ignore[import-untyped]
@@ -32,12 +32,15 @@ from simstack.core.node_claim import (
 )
 from simstack.core.node_runner import NodeRunner
 from simstack.core.process_results import process_result_helper
-from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
+from simstack.core.resource_assignment import (
+    ResourceAssignmentResolution,
+    apply_resource_assignment_to_node_registry,
+    resolve_resource_assignment,
+)
 from simstack.core.run_node_protocol import RESULT_PREFIX, parse_run_node_result
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.task_id import set_task_id, clear_task_id
-from simstack.models import ModelMapping, Parameters, Project
-from simstack.models import NodeModel
+from simstack.models import Parameters, Project
 from simstack.models import NodeRegistry, NamedDataReference
 from simstack.models.file_list import FileList
 from simstack.models.files import FileStack
@@ -379,10 +382,41 @@ class Node:
         self._execution_return_kind: str | None = None
         self._owns_inline_nested_execution = False
         self._nested_execution_handoff_prepared = False
+        self._pending_resource_assignment_resolution: (
+            ResourceAssignmentResolution | None
+        ) = None
 
     def _parent_parameters_from_kwargs(self) -> Optional[Parameters]:
-        parent_parameters = self._function_kwargs.get("parent_parameters", None)
+        function_kwargs = getattr(self, "_function_kwargs", {})
+        parent_parameters = function_kwargs.get("parent_parameters", None)
         return parent_parameters if isinstance(parent_parameters, Parameters) else None
+
+    def _is_nested_self_resource(self) -> bool:
+        return _is_self_resource(self.parameters) and (
+            getattr(self, "parent_id", None) is not None
+            or self._parent_parameters_from_kwargs() is not None
+        )
+
+    async def _resolve_resource_assignment_before_cache_lookup(
+        self,
+    ) -> ResourceAssignmentResolution:
+        """Resolve invocation flags before deciding whether a cached task can be reused."""
+        resolution = await resolve_resource_assignment(
+            context.db,
+            call_path=self.call_path,
+            base_parameters=self.parameters,
+            parent_parameters=self._parent_parameters_from_kwargs(),
+        )
+        self.parameters = resolution.parameters
+        self._apply_parent_slurm_for_self_resource()
+
+        matched_rule = resolution.matched_rule
+        if (
+            matched_rule is not None
+            and getattr(matched_rule, "recompute_artifacts", None) is not None
+        ):
+            self.recompute_artifacts = bool(self.parameters.recompute_artifacts)
+        return resolution
 
     def _apply_parent_slurm_for_self_resource(self) -> bool:
         """Fill empty slurm_parameters on resource self from the calling parent.
@@ -403,9 +437,17 @@ class Node:
         return True
 
     def _prepare_nested_execution_publication(self) -> None:
-        """Finalize an in-container child route before its first database save."""
+        """Finalize a nested child route before its first database save."""
         registry_entry = self.registry_entry
-        if registry_entry is None or not process_is_in_docker():
+        if registry_entry is None:
+            return
+
+        if self._is_nested_self_resource():
+            registry_entry.status = TaskStatus.RETRIEVED
+            self._owns_inline_nested_execution = True
+            return
+
+        if not process_is_in_docker():
             return
 
         resource_self = Resource(value="self")
@@ -524,11 +566,20 @@ class Node:
         parent_parameters = self._parent_parameters_from_kwargs()
         registry_entry = self.registry_entry
         assert registry_entry is not None
-        await apply_resource_assignment_to_node_registry(
-            context.db,
-            registry_entry,
-            parent_parameters=parent_parameters,
-        )
+        pending_resolution = self._pending_resource_assignment_resolution
+        if pending_resolution is None:
+            await apply_resource_assignment_to_node_registry(
+                context.db,
+                registry_entry,
+                parent_parameters=parent_parameters,
+            )
+        else:
+            await apply_resource_assignment_to_node_registry(
+                context.db,
+                registry_entry,
+                parent_parameters=parent_parameters,
+                resolution=pending_resolution,
+            )
         self.parameters = registry_entry.parameters
         self._apply_parent_slurm_for_self_resource()
         registry_entry.parameters = self.parameters
@@ -561,6 +612,8 @@ class Node:
         self._arg_hash = arg_hash
         self._function_hash = function_hash
 
+        resolution = await self._resolve_resource_assignment_before_cache_lookup()
+
         self.registry_entry = (
             await context.db.load_task(self.name, arg_hash, function_hash)
             if not self.parameters.force_rerun
@@ -568,8 +621,15 @@ class Node:
         )
 
         if self.registry_entry is None:
-            await self.make_registry_entry(function_hash, arg_hash)
+            self._pending_resource_assignment_resolution = resolution
+            try:
+                await self.make_registry_entry(function_hash, arg_hash)
+            finally:
+                self._pending_resource_assignment_resolution = None
         else:
+            persisted_parameters = getattr(self.registry_entry, "parameters", None)
+            if isinstance(persisted_parameters, Parameters):
+                self.parameters = persisted_parameters
             if self.parent_id:
                 logger.debug(
                     f"Task task_id: {self.id} adding parent_id {self.parent_id} to task: {self.name}"
@@ -860,6 +920,10 @@ class Node:
             return await self.run_node_as_process()
 
         if self.parameters.resource == resource_self:
+            if self._is_nested_self_resource():
+                if await claim_submitted_node(self.registry_entry):
+                    return await self.run_node_as_process()
+                return await self._wait_for_remote_completion()
             if should_handoff_nested_execution(self.parameters, self.name):
                 await self._persist_nested_execution_handoff()
                 return await self._wait_for_remote_completion()

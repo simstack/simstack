@@ -2,8 +2,6 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from odmantic import AIOEngine
-
 from simstack.models import NodeRegistry
 from simstack.models.parameters import Parameters, Resource, SlurmParameters
 from simstack.models.resource_assignment import (
@@ -228,13 +226,15 @@ async def apply_resource_assignment_to_node_registry(
     node_registry: NodeRegistry,
     *,
     parent_parameters: Optional[Parameters] = None,
+    resolution: Optional[ResourceAssignmentResolution] = None,
 ) -> ResourceAssignmentResolution:
-    resolution = await resolve_resource_assignment(
-        db,
-        call_path=getattr(node_registry, "call_path", None),
-        base_parameters=getattr(node_registry, "parameters", None),
-        parent_parameters=parent_parameters,
-    )
+    if resolution is None:
+        resolution = await resolve_resource_assignment(
+            db,
+            call_path=getattr(node_registry, "call_path", None),
+            base_parameters=getattr(node_registry, "parameters", None),
+            parent_parameters=parent_parameters,
+        )
 
     node_registry.parameters = resolution.parameters
     if resolution.matched_rule is None:

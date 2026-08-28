@@ -240,6 +240,8 @@ async def _publish_nested_node(
     *,
     child_image: str | None,
     parameters: Parameters,
+    nested_self: bool = False,
+    process_in_docker: bool = True,
 ):
     visible_registry_entries: list[dict] = []
     project = Project(field_name="nested-publication-test")
@@ -271,7 +273,7 @@ async def _publish_nested_node(
     monkeypatch.setattr(
         "simstack.core.node.context",
         SimpleNamespace(
-            in_docker=True,
+            in_docker=process_in_docker,
             current_node_name="parent_node",
             config=SimpleNamespace(resource="local"),
             node_mappings=SimpleNamespace(
@@ -282,7 +284,9 @@ async def _publish_nested_node(
             db=ObservedDB(),
         ),
     )
-    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: True)
+    monkeypatch.setattr(
+        "simstack.core.node.process_is_in_docker", lambda: process_in_docker
+    )
     monkeypatch.setattr(
         "simstack.core.node.docker_image_for_node",
         lambda name, resource=None: PSI4_IMAGE
@@ -294,11 +298,14 @@ async def _publish_nested_node(
         keep_parameters,
     )
 
-    execution_node = Node(
+    node_kwargs = dict(
         func=child_node,
         is_async=False,
         parameters=parameters,
     )
+    if nested_self:
+        node_kwargs["parent_parameters"] = Parameters(resource="self")
+    execution_node = Node(**node_kwargs)
     await execution_node.make_registry_entry("function-hash", "arg-hash")
     return execution_node, visible_registry_entries
 
@@ -349,7 +356,7 @@ async def test_different_image_handoff_is_final_before_first_save(monkeypatch):
         monkeypatch,
         child_image=DFTB_IMAGE,
         parameters=Parameters(
-            resource="self", queue="default", in_docker=True
+            resource="local", queue="default", in_docker=True
         ),
     )
 
@@ -386,6 +393,55 @@ async def test_different_image_handoff_is_final_before_first_save(monkeypatch):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("in_docker", [False, True])
+async def test_self_child_is_owned_before_first_save_regardless_of_docker_flag(
+    monkeypatch, in_docker
+):
+    execution_node, visible_entries = await _publish_nested_node(
+        monkeypatch,
+        child_image=DFTB_IMAGE,
+        parameters=Parameters(
+            resource="self", queue="slurm-queue", in_docker=in_docker
+        ),
+        nested_self=True,
+    )
+
+    assert visible_entries == [
+        {
+            "status": TaskStatus.RETRIEVED,
+            "in_docker": in_docker,
+            "resource": "self",
+            "host_claimed": False,
+        }
+    ]
+    assert execution_node._owns_inline_nested_execution is True
+    assert execution_node._nested_execution_handoff_prepared is False
+
+
+@pytest.mark.asyncio
+async def test_host_side_self_child_is_owned_before_first_save(monkeypatch):
+    execution_node, visible_entries = await _publish_nested_node(
+        monkeypatch,
+        child_image=DFTB_IMAGE,
+        parameters=Parameters(
+            resource="self", queue="default", in_docker=False
+        ),
+        nested_self=True,
+        process_in_docker=False,
+    )
+
+    assert visible_entries == [
+        {
+            "status": TaskStatus.RETRIEVED,
+            "in_docker": False,
+            "resource": "self",
+            "host_claimed": False,
+        }
+    ]
+    assert execution_node._owns_inline_nested_execution is True
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("child_image", [PSI4_IMAGE, DFTB_IMAGE, None])
 async def test_explicit_non_docker_child_is_handed_off_without_flipping_flag(
     monkeypatch, child_image
@@ -394,7 +450,7 @@ async def test_explicit_non_docker_child_is_handed_off_without_flipping_flag(
         monkeypatch,
         child_image=child_image,
         parameters=Parameters(
-            resource="self", queue="default", in_docker=False
+            resource="local", queue="default", in_docker=False
         ),
     )
 
@@ -579,3 +635,37 @@ async def test_self_resource_with_different_image_waits_for_host(monkeypatch):
     assert result is sentinel
     assert len(saved_entries) == 1
     assert execution_node.registry_entry.status == TaskStatus.SUBMITTED
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("in_docker", [False, True])
+async def test_nested_self_resource_stays_in_current_execution_context(
+    monkeypatch, in_docker
+):
+    saved_entries = _patch_run_somewhere_context(
+        monkeypatch,
+        in_docker=True,
+        current_node_name="multistep_optimizer",
+    )
+    execution_node = _execution_node(
+        "dftb_calculator",
+        Parameters(resource="self", queue="slurm-queue", in_docker=in_docker),
+    )
+    execution_node.parent_id = "parent-task"
+    execution_node._function_kwargs = {}
+    sentinel = SimpleNamespace(value="same-context")
+
+    async def fake_process(self):
+        return sentinel
+
+    async def forbidden_wait(self):
+        raise AssertionError("nested self resource must stay in the current context")
+
+    monkeypatch.setattr(Node, "run_node_as_process", fake_process)
+    monkeypatch.setattr(Node, "_wait_for_remote_completion", forbidden_wait)
+
+    result = await execution_node.run_somewhere()
+
+    assert result is sentinel
+    assert saved_entries == []
+    assert execution_node.registry_entry.status == TaskStatus.RETRIEVED
