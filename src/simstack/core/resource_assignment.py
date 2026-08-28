@@ -202,6 +202,8 @@ async def resolve_resource_assignment(
             matched_rule=None,
         )
 
+    # TODO(Wolfgang): Clarify whether "Docker depends on the project" means
+    # assignment rules must be project-scoped. They are currently user-global.
     rules = await db.find(ResourceAssignmentRule)
     matched_rule = _select_matching_rule(normalized_call_path, list(rules))
     effective_parameters = _apply_assignment_patch(effective_base, matched_rule)

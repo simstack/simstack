@@ -73,7 +73,7 @@ def test_normalize_non_slurm_queue_keeps_submitted_slurm_parameters():
     assert parameters.slurm_parameters.chdir == "/old/workdir"
 
 
-def test_normalize_docker_queue_keeps_submitted_slurm_parameters():
+def test_normalize_legacy_docker_queue_keeps_submitted_slurm_parameters():
     parameters = Parameters(
         queue="docker",
         slurm_parameters=SlurmParameters(cpus_per_task=8, mem="32G"),
@@ -83,6 +83,8 @@ def test_normalize_docker_queue_keeps_submitted_slurm_parameters():
 
     assert parameters.slurm_parameters.cpus_per_task == 8
     assert parameters.slurm_parameters.mem == "32G"
+    assert parameters.queue == "default"
+    assert parameters.in_docker is True
 
 
 def test_normalize_cloud_resource_keeps_slurm_allocation():

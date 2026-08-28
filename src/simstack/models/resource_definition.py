@@ -6,6 +6,7 @@ from pathlib import Path
 from odmantic import EmbeddedModel, Field, Model
 from pydantic import field_validator, model_serializer
 
+from simstack.models.parameters import normalize_execution_queue
 from simstack.util.transform_file_name import transform_file_name
 class GitRepo(Model):
     """
@@ -50,8 +51,6 @@ class ResourceDefinition(Model):
     ssh_key: Optional[str] = None  # Change Optional[Path] to Optional[str]
     routes: Optional[List[str]] = []
     queue: str = "default"
-    # TODO(Wolfgang): Should Docker be a resource-wide default here, or remain
-    # exclusively the per-task/rule flag ``Parameters.in_docker``?
     is_default: bool = False
     git_branch: str = "main"
 
@@ -83,10 +82,8 @@ class ResourceDefinition(Model):
     @field_validator("queue", mode="before")
     @classmethod
     def normalize_queue(cls, v):
-        if v is None:
-            return "default"
-        normalized = str(v).strip()
-        return normalized or "default"
+        queue, _ = normalize_execution_queue(v)
+        return queue
 
 
     def validate_hostname(self):

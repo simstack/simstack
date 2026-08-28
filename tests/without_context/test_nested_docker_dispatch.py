@@ -9,7 +9,7 @@ from simstack.core.node import (
     docker_image_for_node,
     normalize_docker_image,
     process_is_in_docker,
-    should_dispatch_nested_docker,
+    should_handoff_nested_execution,
 )
 from simstack.models import NodeRegistry, Project
 from simstack.models.parameters import Parameters
@@ -71,10 +71,10 @@ def test_docker_image_for_node_maps_self_to_current_resource(monkeypatch, tmp_pa
 def test_should_dispatch_true_on_host_when_task_requires_docker(monkeypatch):
     monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: False)
     params = Parameters(resource="local", queue="default", in_docker=True)
-    assert should_dispatch_nested_docker(params, "dftb_calculator") is True
+    assert should_handoff_nested_execution(params, "dftb_calculator") is True
 
 
-def test_should_dispatch_true_when_assignment_not_in_docker(monkeypatch):
+def test_should_handoff_when_container_child_explicitly_disables_docker(monkeypatch):
     monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: True)
     monkeypatch.setattr(
         "simstack.core.node.docker_image_for_node",
@@ -88,7 +88,7 @@ def test_should_dispatch_true_when_assignment_not_in_docker(monkeypatch):
         ),
     )
     params = Parameters(resource="local", queue="default", in_docker=False)
-    assert should_dispatch_nested_docker(params, "dftb_calculator") is True
+    assert should_handoff_nested_execution(params, "dftb_calculator") is True
 
 
 def test_should_dispatch_true_when_child_image_missing(monkeypatch):
@@ -104,8 +104,8 @@ def test_should_dispatch_true_when_child_image_missing(monkeypatch):
             config=SimpleNamespace(resource="local"),
         ),
     )
-    params = Parameters(resource="local", queue="default", in_docker=False)
-    assert should_dispatch_nested_docker(params, "dftb_calculator") is True
+    params = Parameters(resource="local", queue="default", in_docker=True)
+    assert should_handoff_nested_execution(params, "dftb_calculator") is True
 
 
 def test_should_dispatch_false_when_same_image(monkeypatch):
@@ -122,7 +122,7 @@ def test_should_dispatch_false_when_same_image(monkeypatch):
         ),
     )
     params = Parameters(resource="local", queue="default", in_docker=True)
-    assert should_dispatch_nested_docker(params, "psi4_calculator") is False
+    assert should_handoff_nested_execution(params, "psi4_calculator") is False
 
 
 def test_should_dispatch_true_when_images_differ(monkeypatch):
@@ -141,7 +141,7 @@ def test_should_dispatch_true_when_images_differ(monkeypatch):
         ),
     )
     params = Parameters(resource="local", queue="default", in_docker=True)
-    assert should_dispatch_nested_docker(params, "dftb_calculator") is True
+    assert should_handoff_nested_execution(params, "dftb_calculator") is True
 
 
 def test_should_dispatch_true_when_hub_prefix_differs_but_image_same(monkeypatch):
@@ -161,7 +161,7 @@ def test_should_dispatch_true_when_hub_prefix_differs_but_image_same(monkeypatch
         ),
     )
     params = Parameters(resource="local", queue="default", in_docker=True)
-    assert should_dispatch_nested_docker(params, "psi4_calculator") is False
+    assert should_handoff_nested_execution(params, "psi4_calculator") is False
 
 
 def test_process_is_in_docker_reads_context_flag(monkeypatch):
@@ -238,7 +238,7 @@ def _patch_run_somewhere_context(monkeypatch, *, in_docker: bool, current_node_n
 async def _publish_nested_node(
     monkeypatch,
     *,
-    child_image: str,
+    child_image: str | None,
     parameters: Parameters,
 ):
     visible_registry_entries: list[dict] = []
@@ -349,7 +349,7 @@ async def test_different_image_handoff_is_final_before_first_save(monkeypatch):
         monkeypatch,
         child_image=DFTB_IMAGE,
         parameters=Parameters(
-            resource="self", queue="default", in_docker=False
+            resource="self", queue="default", in_docker=True
         ),
     )
 
@@ -361,7 +361,7 @@ async def test_different_image_handoff_is_final_before_first_save(monkeypatch):
             "host_claimed": True,
         }
     ]
-    assert execution_node._nested_docker_handoff_prepared is True
+    assert execution_node._nested_execution_handoff_prepared is True
 
     sentinel = SimpleNamespace(value="host-result")
 
@@ -379,10 +379,36 @@ async def test_different_image_handoff_is_final_before_first_save(monkeypatch):
     )
     monkeypatch.setattr(execution_node, "run_node_as_process", forbidden_process)
     monkeypatch.setattr(
-        execution_node, "_persist_nested_docker_wait", forbidden_late_handoff
+        execution_node, "_persist_nested_execution_handoff", forbidden_late_handoff
     )
 
     assert await execution_node.run_somewhere() is sentinel
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("child_image", [PSI4_IMAGE, DFTB_IMAGE, None])
+async def test_explicit_non_docker_child_is_handed_off_without_flipping_flag(
+    monkeypatch, child_image
+):
+    execution_node, visible_entries = await _publish_nested_node(
+        monkeypatch,
+        child_image=child_image,
+        parameters=Parameters(
+            resource="self", queue="default", in_docker=False
+        ),
+    )
+
+    assert visible_entries == [
+        {
+            "status": TaskStatus.SUBMITTED,
+            "in_docker": False,
+            "resource": "local",
+            "host_claimed": True,
+        }
+    ]
+    assert execution_node.parameters.in_docker is False
+    assert execution_node._nested_execution_handoff_prepared is True
+    assert execution_node._owns_inline_nested_execution is False
 
 
 @pytest.mark.asyncio
@@ -469,7 +495,7 @@ async def test_in_docker_different_image_waits_for_host(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_in_docker_waits_and_persists_in_docker_when_assignment_false(monkeypatch):
+async def test_in_docker_non_docker_handoff_preserves_explicit_false(monkeypatch):
     saved_entries = _patch_run_somewhere_context(
         monkeypatch, in_docker=True, current_node_name="multistep_optimizer"
     )
@@ -491,9 +517,10 @@ async def test_in_docker_waits_and_persists_in_docker_when_assignment_false(monk
     result = await execution_node.run_somewhere()
 
     assert result is sentinel
-    assert execution_node.parameters.in_docker is True
+    assert execution_node.parameters.in_docker is False
     assert len(saved_entries) == 1
-    assert execution_node.registry_entry.parameters.in_docker is True
+    assert execution_node.registry_entry.parameters.in_docker is False
+    assert saved_entries[0][1]["$set"]["parameters.in_docker"] is False
 
 
 @pytest.mark.asyncio
@@ -507,7 +534,7 @@ async def test_in_docker_missing_child_image_waits_for_host(monkeypatch):
     )
     execution_node = _execution_node(
         "dftb_calculator",
-        Parameters(resource="local", queue="default", in_docker=False),
+        Parameters(resource="local", queue="default", in_docker=True),
     )
     sentinel = SimpleNamespace(value="missing-image-wait")
 

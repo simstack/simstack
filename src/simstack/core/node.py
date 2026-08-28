@@ -105,29 +105,26 @@ def docker_image_for_node(
     return image
 
 
-def should_dispatch_nested_docker(
+def should_handoff_nested_execution(
     parameters: Parameters, node_name: str
 ) -> bool:
-    """True when a nested child must wait for the host to start another image.
+    """True when a child must be handed from the current process to the host.
 
-    On the host, ``in_docker=True`` hands the task to the runner. In a
-    container, stay in that container only when both images are known and
-    equal. A missing or different child image is handed back to the host.
+    On the host, only Docker tasks need a handoff to the runner. In a
+    container, an explicit non-Docker task always returns to the host. A
+    Docker task stays inline only when both images are known and equal.
     """
     in_container = process_is_in_docker()
     assignment_in_docker = bool(getattr(parameters, "in_docker", False))
-    child_image = normalize_docker_image(
-        docker_image_for_node(node_name, getattr(parameters, "resource", None))
-    )
+    child_image = None
+    current_image = None
+    current_name = None
+
     try:
         current_name = context.current_node_name
         current_resource = context.config.resource
     except RuntimeError:
-        current_name = None
         current_resource = None
-    current_image = normalize_docker_image(
-        docker_image_for_node(current_name, current_resource)
-    )
 
     if not in_container:
         if assignment_in_docker:
@@ -136,20 +133,32 @@ def should_dispatch_nested_docker(
         else:
             decision = False
             reason = "not in docker"
-    elif child_image is not None and current_image is not None and child_image == current_image:
-        decision = False
-        reason = "same image"
-    else:
+    elif not assignment_in_docker:
         decision = True
-        if child_image is None:
-            reason = "child image missing"
-        elif current_image is None or child_image != current_image:
-            reason = "images differ"
+        reason = "child explicitly requires host execution"
+    else:
+        child_image = normalize_docker_image(
+            docker_image_for_node(node_name, getattr(parameters, "resource", None))
+        )
+        current_image = normalize_docker_image(
+            docker_image_for_node(current_name, current_resource)
+        )
+        if (
+            child_image is not None
+            and current_image is not None
+            and child_image == current_image
+        ):
+            decision = False
+            reason = "same image"
         else:
-            reason = "wait for host"
+            decision = True
+            if child_image is None:
+                reason = "child image missing"
+            else:
+                reason = "images differ"
 
     logger.info(
-        "Nested docker dispatch: in_docker=%s assignment_in_docker=%s "
+        "Nested execution handoff: in_docker=%s assignment_in_docker=%s "
         "current node %s image %s child %s image %s decision=%s (%s)",
         in_container,
         assignment_in_docker,
@@ -369,7 +378,7 @@ class Node:
         self.registry_entry: NodeRegistry | None = None
         self._execution_return_kind: str | None = None
         self._owns_inline_nested_execution = False
-        self._nested_docker_handoff_prepared = False
+        self._nested_execution_handoff_prepared = False
 
     def _parent_parameters_from_kwargs(self) -> Optional[Parameters]:
         parent_parameters = self._function_kwargs.get("parent_parameters", None)
@@ -393,8 +402,8 @@ class Node:
             self.registry_entry.parameters = self.parameters
         return True
 
-    def _prepare_nested_docker_publication(self) -> None:
-        """Finalize a nested Docker route before its first database save."""
+    def _prepare_nested_execution_publication(self) -> None:
+        """Finalize an in-container child route before its first database save."""
         registry_entry = self.registry_entry
         if registry_entry is None or not process_is_in_docker():
             return
@@ -407,12 +416,11 @@ class Node:
         if not runs_from_current_process:
             return
 
-        if should_dispatch_nested_docker(self.parameters, self.name):
-            self.parameters.in_docker = True
+        if should_handoff_nested_execution(self.parameters, self.name):
             if self.parameters.resource == resource_self:
                 self.parameters.resource = Resource(value=str(context.config.resource))
             registry_entry.parameters = self.parameters
-            self._nested_docker_handoff_prepared = True
+            self._nested_execution_handoff_prepared = True
             return
 
         registry_entry.status = TaskStatus.RETRIEVED
@@ -524,7 +532,7 @@ class Node:
         self.parameters = registry_entry.parameters
         self._apply_parent_slurm_for_self_resource()
         registry_entry.parameters = self.parameters
-        self._prepare_nested_docker_publication()
+        self._prepare_nested_execution_publication()
         await context.db.save(registry_entry)
         logger.info(
             f"Task task_id: {self.id} with name {self.name} created for resource: {registry_entry.parameters.resource} queue: {registry_entry.parameters.queue} with id: {self.id} and status: {registry_entry.status}"
@@ -838,9 +846,9 @@ class Node:
         logger.info(
             f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource} queue: {self.parameters.queue}"
         )
-        if getattr(self, "_nested_docker_handoff_prepared", False):
+        if getattr(self, "_nested_execution_handoff_prepared", False):
             logger.info(
-                "Task task_id: %s nested docker handoff was finalized before publication; waiting for host runner",
+                "Task task_id: %s nested execution handoff was finalized before publication; waiting for host runner",
                 self.id,
             )
             return await self._wait_for_remote_completion()
@@ -852,8 +860,8 @@ class Node:
             return await self.run_node_as_process()
 
         if self.parameters.resource == resource_self:
-            if should_dispatch_nested_docker(self.parameters, self.name):
-                await self._persist_nested_docker_wait()
+            if should_handoff_nested_execution(self.parameters, self.name):
+                await self._persist_nested_execution_handoff()
                 return await self._wait_for_remote_completion()
             if await claim_submitted_node(self.registry_entry):
                 return await self.run_node_as_process()
@@ -864,10 +872,10 @@ class Node:
             and self.parameters.queue == Queue.DEFAULT
         )
         if same_resource_default_queue:
-            if should_dispatch_nested_docker(self.parameters, self.name):
-                await self._persist_nested_docker_wait()
+            if should_handoff_nested_execution(self.parameters, self.name):
+                await self._persist_nested_execution_handoff()
                 logger.info(
-                    "Task task_id: %s nested docker image differs; waiting for host runner",
+                    "Task task_id: %s nested execution handed to host runner",
                     self.id,
                 )
                 return await self._wait_for_remote_completion()
@@ -883,19 +891,21 @@ class Node:
             )
         return await self._wait_for_remote_completion()
 
-    async def _persist_nested_docker_wait(self) -> bool:
-        """Mark the nested child for host ``run_docker`` without claiming it.
+    async def _persist_nested_execution_handoff(self) -> bool:
+        """Publish the nested child for host execution without claiming it.
 
         Status stays SUBMITTED so the host runner can pick the task up.
-        ``in_docker=True`` is required because NodeExecutionService only
-        calls ``run_docker`` when that flag is set.
+        The task's explicit ``in_docker`` value is preserved so the host
+        chooses either normal execution or ``run_docker``.
         """
         if (
             self.registry_entry is None
             or self.registry_entry.status != TaskStatus.SUBMITTED
         ):
             return False
-        updates: dict[str, Any] = {"parameters.in_docker": True}
+        updates: dict[str, Any] = {
+            "parameters.in_docker": bool(self.parameters.in_docker)
+        }
         selected_resource = None
         if self.parameters.resource == "self":
             selected_resource = str(context.config.resource)
@@ -910,7 +920,6 @@ class Node:
         )
         if updated is None:
             return False
-        self.parameters.in_docker = True
         if selected_resource is not None:
             self.parameters.resource = Resource(value=selected_resource)
         self.registry_entry.parameters = self.parameters
@@ -922,7 +931,10 @@ class Node:
         logger.info(f"entering wait for completion for task_id: {self.id}")
         while True:
             new_registry_entry = await context.db.load_task_by_id(self.id)
-            # TODO add timeout mechanism here
+            # TODO(recovery): A creator-owned RETRIEVED child can be reused by a
+            # later identical run after its container dies. Persist an execution
+            # owner/process or container ID and track liveness before failing or
+            # reclaiming it; wall-clock timeouts are unsafe for months-long jobs.
             if new_registry_entry is None:
                 raise RuntimeError(
                     f"Task task_id: {self.id} could not be found in the database"

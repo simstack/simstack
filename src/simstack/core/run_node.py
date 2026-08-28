@@ -59,8 +59,7 @@ async def run_node_from_id(
             logger.error(f"Node with ID {node_id} not found in the database")
             return RunNodeResult(False, "none", f"Node {node_id} not found")
         parameters = registry_entry.parameters
-        legacy_docker_queue = str(parameters.queue) in {"docker", "slurm-docker"}
-        if (parameters.in_docker or legacy_docker_queue) and not in_docker:
+        if parameters.in_docker and not in_docker:
             docker_result = await run_docker_with_outcome(registry_entry)
             if not docker_result.success:
                 return RunNodeResult(

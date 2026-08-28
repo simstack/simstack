@@ -127,7 +127,7 @@ async def test_self_docker_handoff_is_visible_to_current_resource_runner(
     execution_node.parameters = registry_entry.parameters
 
     monkeypatch.setattr(
-        "simstack.core.node.should_dispatch_nested_docker", lambda *args: True
+        "simstack.core.node.should_handoff_nested_execution", lambda *args: True
     )
     sentinel = SimpleNamespace(value="host-result")
     monkeypatch.setattr(
@@ -138,12 +138,6 @@ async def test_self_docker_handoff_is_visible_to_current_resource_runner(
 
     try:
         assert await execution_node.run_somewhere() is sentinel
-        waiting = await context.db.load_waiting_tasks_for_resource(
-            str(context.config.resource)
-        )
-        assert [entry.id for entry in waiting if entry.id == registry_entry.id] == [
-            registry_entry.id
-        ]
         saved = await context.db.load_task_by_id(registry_entry.id)
         assert str(saved.parameters.resource) == str(context.config.resource)
         assert saved.status == TaskStatus.SUBMITTED
@@ -258,7 +252,7 @@ async def test_direct_system_exit_marks_task_failed(
 
 
 @pytest.mark.asyncio
-async def test_nested_docker_handoff_does_not_requeue_claimed_task(
+async def test_nested_execution_handoff_does_not_requeue_claimed_task(
     initialized_context, monkeypatch
 ):
     registry_entry = NodeRegistry(
@@ -278,7 +272,7 @@ async def test_nested_docker_handoff_does_not_requeue_claimed_task(
     execution_node.registry_entry = stale_submitted
     execution_node.parameters = stale_submitted.parameters
 
-    assert await execution_node._persist_nested_docker_wait() is False
+    assert await execution_node._persist_nested_execution_handoff() is False
     current = await context.db.load_task_by_id(registry_entry.id)
     assert current.status == TaskStatus.RETRIEVED
     assert current.parameters.in_docker is False

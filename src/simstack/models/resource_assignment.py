@@ -4,6 +4,8 @@ from typing import Optional, ClassVar, Dict, Any
 from odmantic import Field, Model, EmbeddedModel
 from pydantic import field_validator, model_validator
 
+from simstack.models.parameters import normalize_execution_queue
+
 
 class SlurmParametersPatch(EmbeddedModel):
     nodes: Optional[int] = Field(default=None, ge=1)
@@ -83,6 +85,14 @@ class ResourceAssignmentRule(Model):
             return data
 
         payload = dict(data)
+        queue, legacy_queue_implied_docker = normalize_execution_queue(
+            payload.get("queue"), default=None
+        )
+        payload["queue"] = queue
+        if legacy_queue_implied_docker:
+            if payload.get("in_docker") is None:
+                payload["in_docker"] = True
+
         legacy = payload.get("slurm_parameters_patch")
         current = payload.get("slurm_parameters")
         if (current in (None, {}) or "slurm_parameters" not in payload) and legacy not in (

@@ -63,8 +63,35 @@ class Resource(EmbeddedModel):
 class Queue(str, Enum):
     DEFAULT = "default"
     SLURM_QUEUE = "slurm-queue"
-    DOCKER = "docker"
-    SLURM_DOCKER = "slurm-docker"
+
+
+_QUEUE_ALIASES = {
+    "default": Queue.DEFAULT.value,
+    "cloud": Queue.DEFAULT.value,
+    "docker": Queue.DEFAULT.value,
+    "slurm": Queue.SLURM_QUEUE.value,
+    "slurm-queue": Queue.SLURM_QUEUE.value,
+    "slurm_queue": Queue.SLURM_QUEUE.value,
+    "slurm-docker": Queue.SLURM_QUEUE.value,
+    "slurm_docker": Queue.SLURM_QUEUE.value,
+}
+_LEGACY_DOCKER_QUEUES = {"docker", "slurm-docker", "slurm_docker"}
+
+
+def normalize_execution_queue(
+    value: Any, *, default: Optional[str] = Queue.DEFAULT.value
+) -> tuple[Optional[str], bool]:
+    """Return the canonical queue and whether a legacy queue implied Docker."""
+    if value is None:
+        return default, False
+
+    raw_value = value.value if isinstance(value, Queue) else str(value)
+    stripped_value = raw_value.strip()
+    if not stripped_value:
+        return default, False
+
+    alias = stripped_value.lower()
+    return _QUEUE_ALIASES.get(alias, stripped_value), alias in _LEGACY_DOCKER_QUEUES
 
 
 # TODO Fix Slurm Parameters
@@ -330,21 +357,30 @@ class Parameters(EmbeddedModel):
     @model_validator(mode="before")
     @classmethod
     def migrate_parameters(cls, data):
-        if isinstance(data, dict):
-            # Remove legacy fields if they exist in the incoming data
-            data.pop("test_dict", None)
-            data.pop("other_value", None)
-            data.pop("docker_image", None)
+        if not isinstance(data, dict):
+            return data
+
+        data = dict(data)
+        # Remove legacy fields if they exist in the incoming data
+        data.pop("test_dict", None)
+        data.pop("other_value", None)
+        data.pop("docker_image", None)
+
+        queue, legacy_queue_implied_docker = normalize_execution_queue(
+            data.get("queue")
+        )
+        data["queue"] = queue
+        if legacy_queue_implied_docker:
+            # Docker is an execution flag, not a queue. Preserve an explicit
+            # false while recovering the intent of legacy queue-only records.
+            if data.get("in_docker") is None:
+                data["in_docker"] = True
+
         if "slurm_parameters_data" in data and "slurm_parameters" not in data:
             data["slurm_parameters"] = SlurmParameters(**data["slurm_parameters_data"])
             del data["slurm_parameters_data"]
         if "slurm_parameters" not in data or data["slurm_parameters"] is None:
             data["slurm_parameters"] = SlurmParameters()
-        if (
-            data.get("queue") in ["docker", "slurm-docker"]
-            and data.get("in_docker") is None
-        ):
-            data["in_docker"] = True
         return data
 
     @field_validator("resource", mode="before")

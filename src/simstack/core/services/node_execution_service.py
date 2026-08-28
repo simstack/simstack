@@ -151,16 +151,8 @@ class NodeExecutionService(BaseService):
                 f"Running node task_id: {registry_entry.id} on resource {context.config.resource} with {queue} queue and docker: {registry_entry.parameters.in_docker} "
             )
 
-            if queue == "slurm-docker":
-                registry_entry.parameters.in_docker = True
-                queue = "slurm-queue"
-
             if queue == "slurm-queue":
                 return await submit_node(registry_entry)
-
-            if queue == "docker":
-                registry_entry.parameters.in_docker = True
-                queue = "default"
 
             if queue == "default" and registry_entry.parameters.in_docker:
                 return await run_docker(registry_entry)
