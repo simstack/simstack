@@ -4,7 +4,7 @@ import logging
 from odmantic import ObjectId
 from simstack.core.context import context
 from simstack.core.node import node, node_from_database
-from simstack.models import FloatData, BinaryOperationInput, NodeRegistry, Parameters, ModelMapping, NodeModel
+from simstack.models import FloatData, NodeModel, NodeRegistry, Parameters
 from simstack.models.files import FileStack
 from simstack.models.named_data_reference import NamedDataReference
 from simstack.models.pandas_model import PandasModel
@@ -236,10 +236,11 @@ async def test_node_from_database_invalid_mapping_with_duplicate(initialized_con
         await context.db.delete(input_data)
 
 @pytest.mark.asyncio
-async def test_node_from_database_recovers_itself(initialized_context, setup_helper_node_model, caplog):
+async def test_node_from_database_ignores_active_duplicate(
+    initialized_context, setup_helper_node_model, caplog
+):
     """
-    Test that node_from_database might 'recover itself' if hashes are pre-initialized 
-    and it is already in the database.
+    Active tasks are execution snapshots, not completed results that can be copied.
     """
     input_data = FloatData(value=10.0)
     await context.db.save(input_data)
@@ -284,12 +285,17 @@ async def test_node_from_database_recovers_itself(initialized_context, setup_hel
         
         assert reconstructed_node is not None
         assert reconstructed_node.registry_entry.id == new_entry.id
-        assert "found duplicate entry" in caplog.text
-        # Check that the error log is GONE (historical check)
+        assert reconstructed_node.registry_entry.status == TaskStatus.SUBMITTED
+        assert "found duplicate entry" not in caplog.text
         assert "recovered itself. This should not happen" not in caplog.text
+
+        persisted_existing = await context.db.load_task_by_id(existing_entry.id)
+        assert persisted_existing.status == TaskStatus.SUBMITTED
+        assert new_entry.id not in persisted_existing.parent_ids
         
     finally:
         await context.db.delete(existing_entry)
+        await context.db.delete(new_entry)
         await context.db.delete(input_data)
 
 

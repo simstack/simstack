@@ -647,8 +647,10 @@ async def test_force_rerun_rule_is_resolved_before_cache_lookup(
         parameters=Parameters(),
         call_path=".workflow.resource_assignment_probe_in_tests",
     )
-    load_task = AsyncMock()
-    monkeypatch.setattr(initialized_context.db, "load_task", load_task)
+    find_reusable_task = AsyncMock()
+    monkeypatch.setattr(
+        "simstack.core.node._find_reusable_task", find_reusable_task
+    )
 
     async def fake_make_registry_entry(function_hash, arg_hash):
         probe_node.registry_entry = SimpleNamespace(status=TaskStatus.SUBMITTED)
@@ -659,7 +661,7 @@ async def test_force_rerun_rule_is_resolved_before_cache_lookup(
     status = await probe_node.get_node_registry()
 
     assert probe_node.parameters.force_rerun is True
-    load_task.assert_not_awaited()
+    find_reusable_task.assert_not_awaited()
     assert status == TaskStatus.SUBMITTED
 
 
@@ -686,12 +688,12 @@ async def test_recompute_rule_is_resolved_before_cached_result_handling(
     cached = SimpleNamespace(
         id="cached-task",
         parent_ids=[],
+        parameters=Parameters(resource="cluster-a"),
         status=TaskStatus.COMPLETED,
     )
+    find_reusable_task = AsyncMock(return_value=cached)
     monkeypatch.setattr(
-        initialized_context.db,
-        "load_task",
-        AsyncMock(return_value=cached),
+        "simstack.core.node._find_reusable_task", find_reusable_task
     )
     recompute = AsyncMock()
     monkeypatch.setattr(
@@ -701,22 +703,24 @@ async def test_recompute_rule_is_resolved_before_cached_result_handling(
     status = await probe_node.get_node_registry()
 
     assert probe_node.recompute_artifacts is True
+    find_reusable_task.assert_awaited_once()
     recompute.assert_awaited_once_with(cached)
     assert status == TaskStatus.COMPLETED
 
 
 @pytest.mark.asyncio
-async def test_cached_task_keeps_its_persisted_routing_after_rule_change(
+async def test_same_route_cached_task_keeps_its_persisted_routing(
     odmantic_engine, initialized_context, monkeypatch
 ):
     await _delete_all(odmantic_engine, ResourceAssignmentRule)
     await odmantic_engine.save(
         ResourceAssignmentRule(
-            name="new-route",
+            name="persisted-route",
             regex_pattern="workflow.resource_assignment_probe_in_tests",
-            resource_str="cluster-b",
-            queue="slurm-queue",
-            slurm_parameters={"nodes": 4, "mem": "16G"},
+            resource_str="cluster-a",
+            queue="default",
+            in_docker=True,
+            slurm_parameters={"nodes": 2, "mem": "8G"},
         )
     )
 
@@ -732,10 +736,9 @@ async def test_cached_task_keeps_its_persisted_routing_after_rule_change(
         parameters=persisted_parameters,
         status=TaskStatus.SUBMITTED,
     )
+    find_reusable_task = AsyncMock(return_value=cached)
     monkeypatch.setattr(
-        initialized_context.db,
-        "load_task",
-        AsyncMock(return_value=cached),
+        "simstack.core.node._find_reusable_task", find_reusable_task
     )
     probe_node = Node(
         func=resource_assignment_probe_in_tests,
@@ -747,6 +750,7 @@ async def test_cached_task_keeps_its_persisted_routing_after_rule_change(
     status = await probe_node.get_node_registry()
 
     assert status == TaskStatus.SUBMITTED
+    find_reusable_task.assert_awaited_once()
     assert probe_node.parameters is persisted_parameters
     assert probe_node.parameters.resource == "cluster-a"
     assert probe_node.parameters.queue == "default"

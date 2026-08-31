@@ -327,11 +327,14 @@ of operations controlled by the class Node.
   deal with nested objects, such as list, dicts, classes, etc.
   For odmantic models which have a ``complex_hash_function`` this function will
   override the default behavior. Odmantic ObjectId are not hashed.
-- if a NodeRegistry :class:`simstack.models.node_registry.NodeRegistry` entry
-  matching the name of the function, the hash of the
-  arguments and the hash of the function is found, this registry entry is
-  returned, even if the node has failed unless force_rerun is True.
-- if no such NodeRegistry entry exists a new one is created with TaskStatus.SUBMITTED
+- if a completed NodeRegistry :class:`simstack.models.node_registry.NodeRegistry`
+  entry matching the function name, argument hash and function hash is found,
+  its result is reused. A non-completed matching entry is reused only when its
+  resource, queue, Docker flag and Slurm parameters match the current execution
+  route. Otherwise, a new registry entry is created. ``force_rerun=True`` always
+  bypasses reuse.
+- if no reusable NodeRegistry entry exists a new one is created with
+  TaskStatus.SUBMITTED
 - the node class then calls the function :func:`simstack.core.node.Node.run_somewhere`
   which executes the node locally using
   :func:`simstack.core.node.Node.execute_node_locally` or waits until

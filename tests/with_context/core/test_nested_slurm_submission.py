@@ -1,22 +1,67 @@
 import asyncio
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.node import Node, node
+from simstack.core.node import Node, _find_reusable_task, node
 from simstack.core.node_claim import (
     claim_submitted_node,
 )
 from simstack.core.services.node_execution_service import NodeExecutionService
-from simstack.models import FloatData, NamedDataReference, NodeRegistry
+from simstack.models import (
+    FloatData,
+    NamedDataReference,
+    NodeModel,
+    NodeRegistry,
+    ResourceAssignmentRule,
+    SlurmParametersPatch,
+)
 from simstack.models.parameters import Parameters, Resource, SlurmParameters
 
 
 @node
 def sync_nested_slurm_failure_node(**kwargs) -> FloatData:
     return FloatData(value=1.0)
+
+
+def nested_slurm_route_probe(**kwargs):
+    return None
+
+
+async def _register_nested_slurm_route_probe():
+    name = nested_slurm_route_probe.__name__
+    mapping = await context.db.find_one(NodeModel, NodeModel.name == name)
+    if mapping is None:
+        mapping = await context.db.save(
+            NodeModel(
+                name=name,
+                function_mapping=f"{__name__}.{name}",
+                input_mappings=[],
+                result_mappings=[],
+                default_parameters=Parameters(),
+            )
+        )
+    context.node_mappings._by_name[name] = mapping
+    context.node_mappings._by_mapping[mapping.function_mapping] = mapping
+
+
+async def _delete_nested_slurm_route_probe_data():
+    entries = await context.db.find(
+        NodeRegistry,
+        NodeRegistry.name == nested_slurm_route_probe.__name__,
+    )
+    for entry in entries:
+        await context.db.delete(entry)
+
+    rules = await context.db.find(
+        ResourceAssignmentRule,
+        ResourceAssignmentRule.name == "nested-slurm-route-probe",
+    )
+    for rule in rules:
+        await context.db.delete(rule)
 
 
 def _slurm_registry(name: str, status: TaskStatus = TaskStatus.SUBMITTED):
@@ -48,6 +93,135 @@ def _result_reference() -> NamedDataReference:
         variable_mapping="simstack.models.FloatData",
         reference=FloatData(value=1.0).id,
     )
+
+
+@pytest.mark.asyncio
+async def test_completed_result_is_reusable_after_execution_route_change():
+    completed = _slurm_registry("completed_route_cache", TaskStatus.COMPLETED)
+    completed.parameters = Parameters(resource="self", queue="default")
+    db = SimpleNamespace(find=AsyncMock(return_value=[completed]))
+
+    reusable = await _find_reusable_task(
+        db,
+        name=completed.name,
+        arg_hash=completed.arg_hash,
+        function_hash=completed.function_hash,
+        execution_parameters=Parameters(
+            resource="test",
+            queue="slurm-queue",
+            slurm_parameters=SlurmParameters(nodes=2, mem="4G"),
+        ),
+    )
+
+    assert reusable is completed
+
+
+@pytest.mark.asyncio
+async def test_active_task_is_reusable_only_on_the_same_execution_route():
+    active = _slurm_registry("active_route_cache", TaskStatus.RETRIEVED)
+    db = SimpleNamespace(find=AsyncMock(return_value=[active]))
+
+    same_route = await _find_reusable_task(
+        db,
+        name=active.name,
+        arg_hash=active.arg_hash,
+        function_hash=active.function_hash,
+        execution_parameters=active.parameters.model_copy(deep=True),
+    )
+    changed_route = await _find_reusable_task(
+        db,
+        name=active.name,
+        arg_hash=active.arg_hash,
+        function_hash=active.function_hash,
+        execution_parameters=Parameters(resource="self", queue="default"),
+    )
+
+    assert same_route is active
+    assert changed_route is None
+
+
+@pytest.mark.asyncio
+async def test_changed_nested_route_ignores_stale_self_cache_and_submits_slurm(
+    monkeypatch,
+):
+    await _delete_nested_slurm_route_probe_data()
+    await _register_nested_slurm_route_probe()
+    parent_parameters = Parameters(resource="test", queue="default")
+    call_path = ".workflow.nested_slurm_route_probe"
+
+    try:
+        stale_node = Node(
+            func=nested_slurm_route_probe,
+            is_async=False,
+            parameters=Parameters(),
+            parent_parameters=parent_parameters,
+            call_path=call_path,
+        )
+        assert await stale_node.get_node_registry() == TaskStatus.RETRIEVED
+        assert stale_node.registry_entry is not None
+        stale_id = stale_node.registry_entry.id
+        assert stale_node.parameters.resource == "self"
+        assert stale_node.parameters.queue == "default"
+
+        await context.db.save(
+            ResourceAssignmentRule(
+                name="nested-slurm-route-probe",
+                regex_pattern="workflow.nested_slurm_route_probe",
+                resource_str="test",
+                queue="slurm-queue",
+                slurm_parameters_patch=SlurmParametersPatch(nodes=2, mem="4G"),
+            )
+        )
+
+        slurm_node = Node(
+            func=nested_slurm_route_probe,
+            is_async=False,
+            parameters=Parameters(),
+            parent_parameters=parent_parameters,
+            call_path=call_path,
+        )
+        assert await slurm_node.get_node_registry() == TaskStatus.SUBMITTED
+        assert slurm_node.registry_entry is not None
+        assert slurm_node.registry_entry.id != stale_id
+        assert slurm_node.parameters.resource == "test"
+        assert slurm_node.parameters.queue == "slurm-queue"
+        assert slurm_node.parameters.slurm_parameters.nodes == 2
+        assert slurm_node.parameters.slurm_parameters.mem == "4G"
+        assert slurm_node.registry_entry.assignment_rule_name == (
+            "nested-slurm-route-probe"
+        )
+
+        persisted_stale = await context.db.load_task_by_id(stale_id)
+        assert persisted_stale.status == TaskStatus.RETRIEVED
+        assert persisted_stale.parameters.resource == "self"
+        assert persisted_stale.parameters.queue == "default"
+
+        submitted_ids = []
+        sentinel = SimpleNamespace(value="nested-slurm-result")
+
+        async def fake_submit_node(entry):
+            submitted_ids.append(entry.id)
+            assert entry.status == TaskStatus.RETRIEVED
+            entry.status = TaskStatus.SLURM_QUEUED
+            await context.db.save(entry)
+            return True
+
+        async def fake_wait_for_remote_completion(self):
+            return sentinel
+
+        async def fail_if_executed_locally(self):
+            raise AssertionError("the changed child route must be submitted to Slurm")
+
+        monkeypatch.setattr("simstack.core.submit_node.submit_node", fake_submit_node)
+        monkeypatch.setattr(
+            Node, "_wait_for_remote_completion", fake_wait_for_remote_completion
+        )
+        monkeypatch.setattr(Node, "run_node_as_process", fail_if_executed_locally)
+
+        assert await slurm_node.run_somewhere() is sentinel
+        assert submitted_ids == [slurm_node.registry_entry.id]
+    finally:
+        await _delete_nested_slurm_route_probe_data()
 
 
 @pytest.mark.asyncio

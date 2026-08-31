@@ -254,6 +254,55 @@ def _is_self_resource(parameters: Optional[Parameters]) -> bool:
     return resource == "self"
 
 
+def _execution_route(parameters: Optional[Parameters]) -> Optional[dict[str, Any]]:
+    """Return the persisted fields that determine where a task executes."""
+    if not isinstance(parameters, Parameters):
+        return None
+    payload = parameters.model_dump(mode="python")
+    return {
+        "resource": payload.get("resource"),
+        "queue": payload.get("queue"),
+        "in_docker": bool(payload.get("in_docker")),
+        "slurm_parameters": payload.get("slurm_parameters"),
+    }
+
+
+def _same_execution_route(
+    left: Optional[Parameters], right: Optional[Parameters]
+) -> bool:
+    return _execution_route(left) == _execution_route(right) and left is not None
+
+
+async def _find_reusable_task(
+    db: Any,
+    *,
+    name: str,
+    arg_hash: str,
+    function_hash: str,
+    execution_parameters: Parameters,
+) -> Optional[NodeRegistry]:
+    """Select a completed result or an existing task on the same route."""
+    candidates = await db.find(
+        NodeRegistry,
+        (NodeRegistry.name == name)
+        & (NodeRegistry.arg_hash == arg_hash)
+        & (NodeRegistry.function_hash == function_hash),
+    )
+    for candidate in candidates:
+        if candidate.status == TaskStatus.COMPLETED:
+            return candidate
+    for candidate in candidates:
+        if _same_execution_route(candidate.parameters, execution_parameters):
+            return candidate
+    if candidates:
+        logger.info(
+            "Ignoring %d cached task(s) for %s because the execution route changed",
+            len(candidates),
+            name,
+        )
+    return None
+
+
 def _slurm_parameters_are_unset(slurm: Optional[SlurmParameters]) -> bool:
     """True when slurm_parameters were omitted (or are an empty default)."""
     if slurm is None:
@@ -614,11 +663,15 @@ class Node:
 
         resolution = await self._resolve_resource_assignment_before_cache_lookup()
 
-        self.registry_entry = (
-            await context.db.load_task(self.name, arg_hash, function_hash)
-            if not self.parameters.force_rerun
-            else None
-        )
+        self.registry_entry = None
+        if not self.parameters.force_rerun:
+            self.registry_entry = await _find_reusable_task(
+                context.db,
+                name=self.name,
+                arg_hash=arg_hash,
+                function_hash=function_hash,
+                execution_parameters=self.parameters,
+            )
 
         if self.registry_entry is None:
             self._pending_resource_assignment_resolution = resolution
@@ -1447,15 +1500,19 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
         return None
 
     try:
-        duplicate_entry = await db.find_one(
-            NodeRegistry,
-            (NodeRegistry.name == registry_entry.name)
-            & (NodeRegistry.arg_hash == registry_entry.arg_hash)
-            & (NodeRegistry.function_hash == registry_entry.function_hash)
-            & (NodeRegistry.id != registry_entry.id),
-        )
-        if duplicate_entry is None or registry_entry.parameters.force_rerun:
-            await db.save(registry_entry) # save the fixed entry AFTER checking for duplicates
+        duplicate_entry = None
+        if not registry_entry.parameters.force_rerun:
+            duplicate_entry = await db.find_one(
+                NodeRegistry,
+                (NodeRegistry.name == registry_entry.name)
+                & (NodeRegistry.arg_hash == registry_entry.arg_hash)
+                & (NodeRegistry.function_hash == registry_entry.function_hash)
+                & (NodeRegistry.status == TaskStatus.COMPLETED)
+                & (NodeRegistry.id != registry_entry.id),
+            )
+        if duplicate_entry is None:
+            # Save the fixed entry only after checking for a completed result.
+            await db.save(registry_entry)
             # the calling function may have the original entry unsaved!
         else:
             logger.info(f"Task task_id: {registry_entry.id} NEW DUPLICATE TREATMENT")
