@@ -1,6 +1,7 @@
 from typing import List, Union, Literal, Optional, Dict, Any
 
 from odmantic import EmbeddedModel, Field, Model, ObjectId
+from pydantic import model_validator
 
 from simstack.models import simstack_model
 
@@ -43,6 +44,9 @@ class AGBarSeriesConfig(AGChartSeriesBase):
     """AG-Charts bar series configuration."""
 
     type: Literal["bar"] = "bar"
+    direction: Optional[Literal["horizontal", "vertical"]] = Field(
+        default=None, description="Bar rendering direction"
+    )
     fill: Optional[str] = Field(default=None, description="Bar fill color")
     fillOpacity: Optional[float] = Field(default=1, description="Bar fill opacity")
     stroke: Optional[str] = Field(default=None, description="Bar stroke color")
@@ -84,7 +88,7 @@ class AGRangeBarSeriesConfig(EmbeddedModel):
 
 
 class AGColumnSeriesConfig(AGChartSeriesBase):
-    """AG-Charts column series configuration."""
+    """Legacy pre-AG-Charts-9 column series configuration."""
 
     type: Literal["column"] = "column"
     fill: Optional[str] = Field(default=None, description="Column fill color")
@@ -222,7 +226,6 @@ AGChartSeries = Union[
     AGLineSeriesConfig,
     AGBarSeriesConfig,
     AGRangeBarSeriesConfig,
-    AGColumnSeriesConfig,
     AGAreaSeriesConfig,
     AGScatterSeriesConfig,
     AGHeatmapSeriesConfig,
@@ -357,6 +360,40 @@ class ChartArtifactModel(Model):
         default_factory=dict, description="Additional chart options"
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_column_series(cls, values: Any) -> Any:
+        """Translate persisted legacy column series to the AG Charts bar contract."""
+        if not isinstance(values, dict):
+            return values
+
+        series_entries = values.get("series")
+        if not isinstance(series_entries, list):
+            return values
+
+        normalized_series = []
+        changed = False
+        for series in series_entries:
+            if isinstance(series, AGColumnSeriesConfig):
+                normalized = series.model_dump()
+            elif isinstance(series, dict) and series.get("type") == "column":
+                normalized = dict(series)
+            else:
+                normalized_series.append(series)
+                continue
+
+            normalized["type"] = "bar"
+            normalized["direction"] = "vertical"
+            normalized_series.append(normalized)
+            changed = True
+
+        if not changed:
+            return values
+
+        normalized_values = dict(values)
+        normalized_values["series"] = normalized_series
+        return normalized_values
+
     def make_table_entries(
         self,
         max_recursion_level=1,
@@ -427,8 +464,13 @@ def create_simple_bar_chart(
     )
 
     series = [
-        AGColumnSeriesConfig(
-            type="column", xKey=x_key, yKey=y_key, title=y_key.title(), data=data
+        AGBarSeriesConfig(
+            type="bar",
+            direction="vertical",
+            xKey=x_key,
+            yKey=y_key,
+            title=y_key.title(),
+            data=data,
         )
     ]
 
