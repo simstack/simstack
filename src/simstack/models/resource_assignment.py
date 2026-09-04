@@ -4,6 +4,8 @@ from typing import Optional, ClassVar, Dict, Any
 from odmantic import Field, Model, EmbeddedModel
 from pydantic import field_validator, model_validator
 
+from simstack.models.parameters import normalize_execution_queue
+
 
 class SlurmParametersPatch(EmbeddedModel):
     nodes: Optional[int] = Field(default=None, ge=1)
@@ -42,6 +44,16 @@ class SlurmParametersPatch(EmbeddedModel):
     }
 
 
+def _normalize_slurm_parameters_value(value: Any) -> Dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, SlurmParametersPatch):
+        return value.model_dump(exclude_none=True)
+    if isinstance(value, dict):
+        return SlurmParametersPatch.model_validate(value).model_dump(exclude_none=True)
+    raise ValueError("slurm_parameters must be a dictionary or SlurmParametersPatch")
+
+
 class ResourceAssignmentRule(Model):
     name: str = Field(unique=True)
     regex_pattern: str
@@ -49,10 +61,48 @@ class ResourceAssignmentRule(Model):
     enabled: bool = Field(default=True)
     resource_str: Optional[str] = None
     queue: Optional[str] = None
-    slurm_parameters_patch: Dict[str, Any] = Field(default_factory=dict)
+    in_docker: Optional[bool] = Field(default=None, description="Run in docker")
+    force_rerun: Optional[bool] = Field(default=None)
+    recompute_artifacts: Optional[bool] = Field(
+        default=None, description="Recompute artifacts for this node"
+    )
+    slurm_parameters: Dict[str, Any] = Field(default_factory=dict)
+    # Kept so ODMantic can read pre-migration Mongo documents.
+    slurm_parameters_patch: Optional[Dict[str, Any]] = Field(default=None)
     description: Optional[str] = ""
 
-    model_config = {"collection": "resource_assignment_rule"}
+    model_config = {
+        "collection": "resource_assignment_rule",
+        # Required so missing new fields (in_docker, slurm_parameters, ...) do not
+        # raise key_not_found_in_document when loading older Mongo documents.
+        "parse_doc_with_default_factories": True,
+    }
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_slurm_parameters_patch(cls, data: Any):
+        if not isinstance(data, dict):
+            return data
+
+        payload = dict(data)
+        queue, legacy_queue_implied_docker = normalize_execution_queue(
+            payload.get("queue"), default=None
+        )
+        payload["queue"] = queue
+        if legacy_queue_implied_docker:
+            if payload.get("in_docker") is None:
+                payload["in_docker"] = True
+
+        legacy = payload.get("slurm_parameters_patch")
+        current = payload.get("slurm_parameters")
+        if (current in (None, {}) or "slurm_parameters" not in payload) and legacy not in (
+            None,
+            {},
+        ):
+            payload["slurm_parameters"] = legacy
+        if "slurm_parameters" not in payload or payload.get("slurm_parameters") is None:
+            payload["slurm_parameters"] = {}
+        return payload
 
     @field_validator("name", "regex_pattern", mode="before")
     @classmethod
@@ -82,12 +132,64 @@ class ResourceAssignmentRule(Model):
             raise ValueError(f"Invalid path pattern: {exc}") from exc
         return value
 
+    @field_validator("slurm_parameters", mode="before")
+    @classmethod
+    def _normalize_slurm_parameters(cls, value):
+        return _normalize_slurm_parameters_value(value)
+
+    @field_validator("slurm_parameters_patch", mode="before")
+    @classmethod
+    def _normalize_legacy_slurm_parameters_patch(cls, value):
+        if value in (None, "", {}):
+            return None
+        return _normalize_slurm_parameters_value(value) or None
+
     @model_validator(mode="after")
-    def _validate_has_effect(self):
-        has_slurm_patch = bool(self.slurm_parameters_patch)
-        if not any([self.resource_str, self.queue, has_slurm_patch]):
+    def _promote_legacy_patch_and_validate(self):
+        if not self.slurm_parameters and self.slurm_parameters_patch:
+            object.__setattr__(
+                self,
+                "slurm_parameters",
+                _normalize_slurm_parameters_value(self.slurm_parameters_patch),
+            )
+        # Stop rewriting the legacy key on subsequent saves.
+        if self.slurm_parameters_patch is not None:
+            object.__setattr__(self, "slurm_parameters_patch", None)
+
+        if (self.resource_str or "").lower() == "self":
+            # ``self`` is a child-only placement instruction: stay in the
+            # current execution context and do not carry routing overrides.
+            object.__setattr__(self, "resource_str", "self")
+            object.__setattr__(self, "queue", None)
+            object.__setattr__(self, "in_docker", None)
+            object.__setattr__(self, "force_rerun", None)
+            object.__setattr__(self, "recompute_artifacts", None)
+            object.__setattr__(self, "slurm_parameters", {})
+        elif self.resource_str:
+            # Concrete-resource rules own their execution flags. Legacy nulls
+            # therefore mean explicit ``False``, not "keep the node default".
+            for field_name in (
+                "in_docker",
+                "force_rerun",
+                "recompute_artifacts",
+            ):
+                if getattr(self, field_name) is None:
+                    object.__setattr__(self, field_name, False)
+
+        has_slurm = bool(self.slurm_parameters)
+        if not any(
+            [
+                self.resource_str,
+                self.queue,
+                has_slurm,
+                self.in_docker is not None,
+                self.force_rerun is not None,
+                self.recompute_artifacts is not None,
+            ]
+        ):
             raise ValueError(
-                "ResourceAssignmentRule must set at least one of resource_str, queue, or slurm_parameters_patch"
+                "ResourceAssignmentRule must set at least one of resource_str, queue, "
+                "slurm_parameters, in_docker, force_rerun, or recompute_artifacts"
             )
         return self
 
@@ -152,19 +254,4 @@ class ResourceAssignmentRule(Model):
         return (
             re.fullmatch(cls.pattern_to_regex(pattern), normalized_call_path)
             is not None
-        )
-
-    @field_validator("slurm_parameters_patch", mode="before")
-    @classmethod
-    def _normalize_slurm_patch(cls, value):
-        if value is None:
-            return {}
-        if isinstance(value, SlurmParametersPatch):
-            return value.model_dump(exclude_none=True)
-        if isinstance(value, dict):
-            return SlurmParametersPatch.model_validate(value).model_dump(
-                exclude_none=True
-            )
-        raise ValueError(
-            "slurm_parameters_patch must be a dictionary or SlurmParametersPatch"
         )

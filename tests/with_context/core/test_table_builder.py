@@ -28,6 +28,15 @@ class RecordingTableBuilder(TableBuilderBase):
         self.processed_files.append(Path(file_path))
 
 
+class ImportingTableBuilder(TableBuilderBase):
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger("ImportingTableBuilder")
+
+    async def _process_module(self, module, drops: str) -> None:
+        return
+
+
 @pytest.fixture
 def fake_context_project_root(tmp_path, monkeypatch):
     """
@@ -96,3 +105,66 @@ async def test_iter_python_files_under_dir_accepts_single_python_file(
 
     found = list(builder._iter_python_files_under_dir(single, exclude=[]))
     assert found == [single]
+
+
+@pytest.mark.asyncio
+async def test_process_file_propagates_broken_user_module_import(tmp_path):
+    package = tmp_path / "user_nodes"
+    package.mkdir()
+    broken_module = package / "broken.py"
+    broken_module.write_text(
+        'raise RuntimeError("broken user module")\n', encoding="utf-8"
+    )
+    builder = ImportingTableBuilder(db=None, project_root=tmp_path)
+
+    with pytest.raises(RuntimeError, match="broken user module"):
+        await builder._process_file(broken_module, drops="")
+
+
+@pytest.mark.asyncio
+async def test_process_file_converts_successful_system_exit_to_failure(tmp_path):
+    package = tmp_path / "user_nodes"
+    package.mkdir()
+    broken_module = package / "system_exit.py"
+    broken_module.write_text("raise SystemExit(0)\n", encoding="utf-8")
+    builder = ImportingTableBuilder(db=None, project_root=tmp_path)
+
+    with pytest.raises(SystemExit) as caught:
+        await builder._process_file(broken_module, drops="")
+
+    assert caught.value.code == 1
+
+
+@pytest.mark.asyncio
+async def test_installed_module_import_failure_is_not_skipped(monkeypatch):
+    builder = ImportingTableBuilder(db=None)
+    monkeypatch.setattr(
+        "simstack.tables.table_builder.find_simstack_modules",
+        lambda: ["broken_installed_nodes"],
+    )
+
+    def fail_import(module_name):
+        raise ImportError(f"cannot import {module_name}")
+
+    monkeypatch.setattr(
+        "simstack.tables.table_builder.importlib.import_module", fail_import
+    )
+
+    with pytest.raises(ImportError, match="cannot import broken_installed_nodes"):
+        await builder._process_simstack_modules(drops="")
+
+
+def test_installed_module_successful_system_exit_is_failure(monkeypatch):
+    builder = ImportingTableBuilder(db=None)
+
+    def exit_successfully(module_name):
+        raise SystemExit(0)
+
+    monkeypatch.setattr(
+        "simstack.tables.table_builder.importlib.import_module", exit_successfully
+    )
+
+    with pytest.raises(SystemExit) as caught:
+        builder._import_package_module("broken_installed_nodes")
+
+    assert caught.value.code == 1

@@ -6,6 +6,7 @@ from pathlib import Path
 from odmantic import EmbeddedModel, Field, Model
 from pydantic import field_validator, model_serializer
 
+from simstack.models.parameters import normalize_execution_queue
 from simstack.util.transform_file_name import transform_file_name
 class GitRepo(Model):
     """
@@ -81,10 +82,8 @@ class ResourceDefinition(Model):
     @field_validator("queue", mode="before")
     @classmethod
     def normalize_queue(cls, v):
-        if v is None:
-            return "default"
-        normalized = str(v).strip()
-        return normalized or "default"
+        queue, _ = normalize_execution_queue(v)
+        return queue
 
 
     def validate_hostname(self):

@@ -2,6 +2,7 @@ from typing import List, Union, Literal, Optional, Dict, Any
 
 from odmantic import EmbeddedModel, Field, Model, ObjectId
 
+from simstack.models.artifact_models import ArtifactModel
 from simstack.models import simstack_model
 
 
@@ -687,4 +688,109 @@ def create_multi_series_line_chart(
         title=chart_title,
         series=series,
         axes=axes,
+    )
+
+
+def make_multi_line_chart(
+    artifact_list: List[ArtifactModel], **kwargs: Any
+) -> ChartArtifactModel:
+    """Create the project-independent legacy multi-series line chart artifact."""
+    task_id = kwargs.get("task_id", None)
+    chart_title_text = kwargs.get("chart_title", "Chart")
+    x_axis_title = kwargs.get("x_axis_title", "X")
+    y_axis_title = kwargs.get("y_axis_title", "Y")
+    x_key = kwargs.get("x_key", None)
+    y_key = kwargs.get("y_key", None)
+
+    if x_key is None or y_key is None:
+        raise ValueError("x_key and y_key must be provided.")
+
+    if not artifact_list:
+        return ChartArtifactModel(
+            parent_id=task_id,
+            data=[],
+            title=AGChartTitleConfig(text=chart_title_text),
+            series=[],
+            axes=[
+                AGChartAxisConfig(type="number", position="bottom", title=x_axis_title),
+                AGChartAxisConfig(type="number", position="left", title=y_axis_title),
+            ],
+            legend=AGChartLegendConfig(enabled=True, position="right", spacing=15),
+        )
+
+    def _series_key(name: str, idx: int) -> str:
+        safe = "".join(
+            ch if (ch.isalnum() or ch in ("_", "-")) else "_"
+            for ch in (name or "series")
+        )
+        return f"{safe}__{idx}"
+
+    colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FECA57"]
+    combined_rows: Dict[float, Dict[str, Any]] = {}
+    series_configs: List[AGLineSeriesConfig] = []
+    x_min = float("inf")
+    x_max = float("-inf")
+    y_min = float("inf")
+    y_max = float("-inf")
+
+    for idx, artifact in enumerate(artifact_list):
+        plot_data = artifact.data.get("plot_data", [])
+        if plot_data is None:
+            continue
+
+        this_y_key = _series_key(getattr(artifact, "name", "series"), idx)
+        color = colors[idx % len(colors)]
+        for point in plot_data:
+            if x_key not in point or y_key not in point:
+                continue
+            x_val = float(point[x_key])
+            y_val = float(point[y_key])
+            x_min = min(x_min, x_val)
+            x_max = max(x_max, x_val)
+            y_min = min(y_min, y_val)
+            y_max = max(y_max, y_val)
+            combined_rows.setdefault(x_val, {x_key: x_val})[this_y_key] = y_val
+
+        series_configs.append(
+            AGLineSeriesConfig(
+                type="line",
+                xKey=x_key,
+                yKey=this_y_key,
+                title=getattr(artifact, "name", this_y_key),
+                data=[],
+                strokeWidth=2,
+                strokeOpacity=1.0,
+                marker={"enabled": True, "size": 3, "fill": color},
+                tooltip={},
+            )
+        )
+
+    return ChartArtifactModel(
+        parent_id=task_id,
+        data=[combined_rows[key] for key in sorted(combined_rows)],
+        title=AGChartTitleConfig(text=chart_title_text),
+        series=series_configs,
+        axes=[
+            AGChartAxisConfig(
+                type="number",
+                position="bottom",
+                title=x_axis_title,
+                min=(x_min if x_min != float("inf") else None),
+                max=(x_max if x_max != float("-inf") else None),
+            ),
+            AGChartAxisConfig(
+                type="number",
+                position="left",
+                title=y_axis_title,
+                min=(y_min if y_min != float("inf") else None),
+                max=(y_max if y_max != float("-inf") else None),
+            ),
+        ],
+        legend=AGChartLegendConfig(enabled=True, position="right", spacing=15),
+        width=900,
+        height=600,
+        padding={"top": 30, "right": 80, "bottom": 60, "left": 60},
+        theme="ag-default",
+        animation={"enabled": True, "duration": 1200},
+        options={"zoom": {"enabled": True, "enableSelecting": True, "enableScrolling": True}},
     )

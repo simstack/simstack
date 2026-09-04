@@ -4,7 +4,7 @@ import logging
 from odmantic import ObjectId
 from simstack.core.context import context
 from simstack.core.node import node, node_from_database
-from simstack.models import FloatData, BinaryOperationInput, NodeRegistry, Parameters, ModelMapping, NodeModel
+from simstack.models import FloatData, NodeModel, NodeRegistry, Parameters
 from simstack.models.files import FileStack
 from simstack.models.named_data_reference import NamedDataReference
 from simstack.models.pandas_model import PandasModel
@@ -161,16 +161,19 @@ async def test_node_from_database_duplicate(initialized_context, setup_helper_no
             try:
                 # Call node_from_database
                 reconstructed_node = await node_from_database(new_registry_entry)
-                
-                # Assertions
+
                 assert reconstructed_node is not None
-                # It should have recovered the existing entry
-                assert reconstructed_node.registry_entry.id == existing_entry.id
+                assert reconstructed_node.registry_entry.id == new_entry_id
                 assert reconstructed_node.registry_entry.status == TaskStatus.COMPLETED
-                
-                # The new entry should have been deleted
-                deleted_entry = await context.db.find_one(NodeRegistry, NodeRegistry.id == new_entry_id)
-                assert deleted_entry is None
+
+                kept = await context.db.find_one(
+                    NodeRegistry, NodeRegistry.id == new_entry_id
+                )
+                assert kept is not None
+                duplicate = await context.db.find_one(
+                    NodeRegistry, NodeRegistry.id == existing_entry.id
+                )
+                assert new_entry_id in duplicate.parent_ids
             finally:
                 # new_registry_entry might have been deleted by node_from_database
                 # but existing_entry definitely needs deletion
@@ -224,9 +227,8 @@ async def test_node_from_database_invalid_mapping_with_duplicate(initialized_con
             # Call node_from_database
             # This is expected to fail currently because import_function will raise ModuleNotFoundError
             reconstructed_node = await node_from_database(new_registry_entry)
-            
-            assert reconstructed_node is not None
-            assert reconstructed_node.registry_entry.id == existing_entry.id
+
+            assert reconstructed_node is None
             
         finally:
             await context.db.delete(existing_entry)
@@ -234,10 +236,11 @@ async def test_node_from_database_invalid_mapping_with_duplicate(initialized_con
         await context.db.delete(input_data)
 
 @pytest.mark.asyncio
-async def test_node_from_database_recovers_itself(initialized_context, setup_helper_node_model, caplog):
+async def test_node_from_database_ignores_active_duplicate(
+    initialized_context, setup_helper_node_model, caplog
+):
     """
-    Test that node_from_database might 'recover itself' if hashes are pre-initialized 
-    and it is already in the database.
+    Active tasks are execution snapshots, not completed results that can be copied.
     """
     input_data = FloatData(value=10.0)
     await context.db.save(input_data)
@@ -281,15 +284,18 @@ async def test_node_from_database_recovers_itself(initialized_context, setup_hel
             reconstructed_node = await node_from_database(new_entry)
         
         assert reconstructed_node is not None
-        assert reconstructed_node.registry_entry.id == existing_entry.id
-        
-        # Check if the INFO log about duplicate is present (since it's already in DB)
-        assert "found duplicate entry" in caplog.text
-        # Check that the error log is GONE (historical check)
+        assert reconstructed_node.registry_entry.id == new_entry.id
+        assert reconstructed_node.registry_entry.status == TaskStatus.SUBMITTED
+        assert "found duplicate entry" not in caplog.text
         assert "recovered itself. This should not happen" not in caplog.text
+
+        persisted_existing = await context.db.load_task_by_id(existing_entry.id)
+        assert persisted_existing.status == TaskStatus.SUBMITTED
+        assert new_entry.id not in persisted_existing.parent_ids
         
     finally:
         await context.db.delete(existing_entry)
+        await context.db.delete(new_entry)
         await context.db.delete(input_data)
 
 
