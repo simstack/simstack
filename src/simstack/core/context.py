@@ -55,6 +55,8 @@ class GlobalState:
             cls._instance._model_mappings = None
             cls._instance._node_mappings = None
             cls._instance._resource_config = None
+            cls._instance._in_docker = False
+            cls._instance._current_node_name = None
         return cls._instance
 
     def __init__(self, **kwargs):
@@ -73,6 +75,8 @@ class GlobalState:
         self._model_mappings = None
         self._node_mappings = None
         self._resource_config = None
+        self._in_docker = False
+        self._current_node_name = None
 
     def __getattribute__(self, name):
         # These special attributes should always be accessible
@@ -80,6 +84,8 @@ class GlobalState:
             "_initialized",
             "initialize",
             "initialized",
+            "_in_docker",
+            "_current_node_name",
         ):
             return object.__getattribute__(self, name)
 
@@ -111,6 +117,8 @@ class GlobalState:
                 - resource (str, optional): Specifies the resource identifier for the configuration reader.
                     Defaults to `"self"`.
                 - config_file (str, optional): Specifies the path to the configuration file, defaults to simstack.toml
+                - in_docker (bool, optional): True when this process is already inside a
+                    container (`run_node --in-docker`). Defaults to `False`.
 
         Logic:
             if all values for the DB are provided in the kwargs, use the provided values
@@ -134,6 +142,8 @@ class GlobalState:
             if not is_test:
                 return
         self._initialized = True  # required because some later functions use context
+        self._in_docker = bool(kwargs.get("in_docker", False))
+        self._current_node_name = None
 
         project_root = kwargs.get("project_root", find_project_root())
         if project_root is None:  # maybe None was passed
@@ -275,6 +285,22 @@ class GlobalState:
     @property
     def resource_config(self) -> "ResourceConfig":
         return self._resource_config
+
+    @property
+    def in_docker(self) -> bool:
+        return bool(self._in_docker)
+
+    @in_docker.setter
+    def in_docker(self, value: bool) -> None:
+        self._in_docker = bool(value)
+
+    @property
+    def current_node_name(self) -> str | None:
+        return self._current_node_name
+
+    @current_node_name.setter
+    def current_node_name(self, value: str | None) -> None:
+        self._current_node_name = value
 
     @property
     def initialized(self):

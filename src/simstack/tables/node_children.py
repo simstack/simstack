@@ -86,8 +86,21 @@ def _extract_called_functions(func: Callable) -> List[str]:
 
     return called_functions
 
+_UNICODE_DASHES = str.maketrans({
+    "\u2010": "-",  # hyphen
+    "\u2011": "-",  # non-breaking hyphen
+    "\u2012": "-",  # figure dash
+    "\u2013": "-",  # en dash
+    "\u2014": "-",  # em dash
+    "\u2015": "-",  # horizontal bar
+    "\u2212": "-",  # minus sign
+})
+
+
 def normalize_text(s: str) -> str:
-    return s.encode("utf-8", errors="replace").decode("utf-8")
+    # Fold punctuation that Windows charmap/cp1252 cannot encode, then
+    # round-trip as UTF-8 so the dump file never raises UnicodeEncodeError.
+    return s.translate(_UNICODE_DASHES).encode("utf-8", errors="replace").decode("utf-8")
 
 async def update_node_children(database, drops: str) -> None:
     """
@@ -103,8 +116,16 @@ async def update_node_children(database, drops: str) -> None:
     mapping_set: set[str] = set(nm.function_mapping for nm in node_models)
 
     for nm in node_models:
-        func = await import_function(nm.function_mapping, database, None, True)
-        if func is None:
+        try:
+            func = await import_function(nm.function_mapping, database)
+        except (Exception, SystemExit) as exc:
+            logger.warning(
+                "Preserving NodeModel id=%s name=%s mapping=%s after import failure: %s",
+                nm.id,
+                nm.name,
+                nm.function_mapping,
+                exc,
+            )
             continue
 
         parser = DocstringParser(inspect.getdoc(func))
@@ -160,7 +181,7 @@ async def update_node_children(database, drops: str) -> None:
             {"$set": {"called_nodes": nm.called_nodes}},
         )
 
-    with open("node_models.txt", "w") as outfile:
+    with open("node_models.txt", "w", encoding="utf-8") as outfile:
         for nm in node_models:
             mapping_set.add(nm.function_mapping)
             mapping_by_node_name[nm.name] = nm.function_mapping

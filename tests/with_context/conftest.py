@@ -205,6 +205,35 @@ async def initialized_context(tmp_path_factory):
         print(f"Warning: Error during context cleanup: {e}")
 
 
+@pytest.fixture(autouse=True)
+def execute_nodes_in_process_with_mongomock(initialized_context, monkeypatch):
+    """Keep unit tests on the process-local in-memory database.
+
+    Production and real-MongoDB integration tests exercise ``run_node`` in a
+    subprocess. Mongomock cannot expose its state to a child process, so these
+    tests retain their existing execution assertions in the current process.
+    """
+    import os
+
+    connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
+    if connection_string and connection_string.lower() != "none":
+        return
+
+    from simstack.core.node import Node
+    from simstack.core.definitions import TaskStatus
+
+    async def execute_in_process(node):
+        result = await node.execute_node_locally()
+        if (
+            node.registry_entry.status == TaskStatus.FAILED
+            and node.registry_entry.return_kind == "bool"
+        ):
+            raise RuntimeError("node returned False")
+        return result
+
+    monkeypatch.setattr(Node, "run_node_as_process", execute_in_process)
+
+
 async def create_db_patches(db):
     from simstack.util.db import Database
     # Patch ODMantic engine to work without sessions in test mode

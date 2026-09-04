@@ -2,8 +2,6 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from odmantic import AIOEngine
-
 from simstack.models import NodeRegistry
 from simstack.models.parameters import Parameters, Resource, SlurmParameters
 from simstack.models.resource_assignment import (
@@ -44,10 +42,16 @@ def _clone_parameters(parameters: Optional[Parameters]) -> Parameters:
 
 
 def _merge_slurm_patch(
-    patch: Optional[SlurmParametersPatch],
+    patch: Optional[SlurmParametersPatch | dict],
 ) -> SlurmParameters:
     if patch is None:
         return SlurmParameters()
+    if isinstance(patch, dict):
+        if not patch:
+            return SlurmParameters()
+        return SlurmParameters(
+            **SlurmParametersPatch.model_validate(patch).model_dump(exclude_none=True)
+        )
     return SlurmParameters(**patch.model_dump(exclude_none=True))
 
 
@@ -59,6 +63,14 @@ def empty_slurm_parameters() -> SlurmParameters:
         else:
             cleared_values[field_name] = None
     return SlurmParameters.model_validate(cleared_values)
+
+
+def _rule_slurm_parameters(rule: ResourceAssignmentRule) -> dict:
+    return (
+        getattr(rule, "slurm_parameters", None)
+        or getattr(rule, "slurm_parameters_patch", None)
+        or {}
+    )
 
 
 def _apply_assignment_patch(
@@ -73,10 +85,20 @@ def _apply_assignment_patch(
         effective.resource = Resource(value=rule.resource_str)
     if rule.queue is not None:
         effective.queue = _normalize_queue(rule.queue)
-    if rule.slurm_parameters_patch:
-        effective.slurm_parameters = _merge_slurm_patch(
-            SlurmParametersPatch.model_validate(rule.slurm_parameters_patch),
-        )
+
+    in_docker = getattr(rule, "in_docker", None)
+    if in_docker is not None:
+        effective.in_docker = bool(in_docker)
+    force_rerun = getattr(rule, "force_rerun", None)
+    if force_rerun is not None:
+        effective.force_rerun = bool(force_rerun)
+    recompute_artifacts = getattr(rule, "recompute_artifacts", None)
+    if recompute_artifacts is not None:
+        effective.recompute_artifacts = bool(recompute_artifacts)
+
+    slurm_parameters = _rule_slurm_parameters(rule)
+    if slurm_parameters:
+        effective.slurm_parameters = _merge_slurm_patch(slurm_parameters)
 
     return effective
 
@@ -88,7 +110,8 @@ def normalize_and_validate_effective_parameters(
         return
 
     if not _is_slurm_queue(getattr(parameters, "queue", None)):
-        parameters.slurm_parameters = empty_slurm_parameters()
+        # Keep submitted slurm_parameters for every queue. Allocation
+        # constraints below apply only to slurm-queue itself.
         return
 
     slurm_parameters = getattr(parameters, "slurm_parameters", None)
@@ -177,6 +200,8 @@ async def resolve_resource_assignment(
             matched_rule=None,
         )
 
+    # Assignment rules apply to the current workspace independently of the
+    # selected SimStack project; run_docker resolves the node/resource image.
     rules = await db.find(ResourceAssignmentRule)
     matched_rule = _select_matching_rule(normalized_call_path, list(rules))
     effective_parameters = _apply_assignment_patch(effective_base, matched_rule)
@@ -201,13 +226,15 @@ async def apply_resource_assignment_to_node_registry(
     node_registry: NodeRegistry,
     *,
     parent_parameters: Optional[Parameters] = None,
+    resolution: Optional[ResourceAssignmentResolution] = None,
 ) -> ResourceAssignmentResolution:
-    resolution = await resolve_resource_assignment(
-        db,
-        call_path=getattr(node_registry, "call_path", None),
-        base_parameters=getattr(node_registry, "parameters", None),
-        parent_parameters=parent_parameters,
-    )
+    if resolution is None:
+        resolution = await resolve_resource_assignment(
+            db,
+            call_path=getattr(node_registry, "call_path", None),
+            base_parameters=getattr(node_registry, "parameters", None),
+            parent_parameters=parent_parameters,
+        )
 
     node_registry.parameters = resolution.parameters
     if resolution.matched_rule is None:

@@ -237,7 +237,7 @@ class CreateNodeTable(TableBuilderBase):
                                     )
                                 except (ValueError, LookupError) as e:
                                     logger.error(
-                                        f"Could not parse '{data['type']}' to mapping: {e}"
+                                        f"When processing SimstackResults for {func_name}: Could not parse '{data['type']}' to mapping: {e}"
                                     )
                                     output_mapping = None
                             if output_mapping is not None:

@@ -93,6 +93,8 @@ workdir = "test_workdir"
         )
         
         assert gs.initialized is True
+        assert gs.in_docker is False
+        assert gs.current_node_name is None
         assert gs.db is mock_db_instance
         assert gs.config is mock_config_instance
         assert gs.resource_config is not None
@@ -103,12 +105,62 @@ workdir = "test_workdir"
         with pytest.raises(AttributeError):
             gs.resource_config = None
 
+        gs.in_docker = True
+        gs.current_node_name = "multistep_optimizer"
+        assert gs.in_docker is True
+        assert gs.current_node_name == "multistep_optimizer"
+
+
+@pytest.mark.asyncio
+async def test_initialize_persists_in_docker_flag(tmp_path):
+    gs = GlobalState()
+    toml_file = tmp_path / "simstack.toml"
+    toml_file.write_text("""
+[parameters.db]
+database = "test_db"
+connection_string = "mongodb://localhost:27017"
+[parameters.general]
+use_db = true
+[resources.test]
+hostname = "localhost"
+workdir = "test_workdir"
+""")
+
+    with patch("simstack.core.context.DatabaseInformation") as mock_db_info_class, \
+         patch("simstack.util.db.Database") as mock_db_class, \
+         patch("simstack.util.config_reader.ConfigReader.create", new_callable=AsyncMock), \
+         patch("simstack.core.context.setup_logging"), \
+         patch("simstack.util.mappings.ModelMappingTable.load", new_callable=AsyncMock), \
+         patch("simstack.util.mappings.NodeMappingTable.load", new_callable=AsyncMock):
+
+        mock_db_info = MagicMock()
+        mock_db_info.connection_string = "mongodb://localhost:27017"
+        mock_db_info.db_name = "test_db"
+        mock_db_info.db_type = DBType.MONGODB
+        mock_db_info_class.return_value = mock_db_info
+        mock_db_class.from_db_info.return_value = MagicMock()
+
+        await gs.initialize(
+            is_test=True,
+            project_root=tmp_path,
+            db_name="test_db",
+            connection_string="mongodb://localhost:27017",
+            db_type=DBType.MONGODB,
+            resource="test",
+            in_docker=True,
+        )
+
+        assert gs.in_docker is True
+
+
 @pytest.mark.asyncio
 async def test_getattribute_whitelist():
     gs = GlobalState()
     # These should NOT raise RuntimeError even if not initialized
     assert gs._initialized is False
     assert gs.initialized is False
+    assert gs._in_docker is False
+    assert gs._current_node_name is None
     
     # Let's check an attribute NOT in the whitelist.
     with pytest.raises(RuntimeError):

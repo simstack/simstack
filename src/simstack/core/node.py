@@ -3,6 +3,7 @@ import functools
 import inspect
 import logging
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import (
@@ -14,7 +15,7 @@ from typing import (
     List,
     ParamSpec,
     Union,
-    overload, Tuple,
+    overload,
 )
 
 import coolname  # type: ignore[import-untyped]
@@ -26,26 +27,152 @@ from simstack.core.artifacts import create_artifacts, ArtifactArguments
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.hash import complex_hash_function
-from simstack.core.node_claim import claim_submitted_node
+from simstack.core.node_claim import (
+    claim_submitted_node,
+)
 from simstack.core.node_runner import NodeRunner
 from simstack.core.process_results import process_result_helper
-from simstack.core.resource_assignment import apply_resource_assignment_to_node_registry
+from simstack.core.resource_assignment import (
+    ResourceAssignmentResolution,
+    apply_resource_assignment_to_node_registry,
+    resolve_resource_assignment,
+)
+from simstack.core.run_node_protocol import RESULT_PREFIX, parse_run_node_result
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.task_id import set_task_id, clear_task_id
-from simstack.models import ModelMapping, Parameters, Project
-from simstack.models import NodeModel
+from simstack.models import Parameters, Project
 from simstack.models import NodeRegistry, NamedDataReference
 from simstack.models.file_list import FileList
 from simstack.models.files import FileStack
-from simstack.models.parameters import Resource, Queue
+from simstack.models.parameters import Resource, Queue, SlurmParameters
 from simstack.models.simstack_model import is_simstack_model
 from simstack.util.importer import import_function, import_class
+from simstack.util.sanitized_output import sanitized_command, sanitized_tail
 
 logger = logging.getLogger("Node")
 
 nest_asyncio.apply()
 
 T = TypeVar("T")
+
+_DOCKER_HUB_LIBRARY_PREFIX = "docker.io/library/"
+_DOCKERENV_PATH = Path("/.dockerenv")
+
+
+def process_is_in_docker() -> bool:
+    """True when this Python process is already running inside a container."""
+    try:
+        if context.in_docker:
+            return True
+    except RuntimeError:
+        pass
+    return _DOCKERENV_PATH.exists()
+
+
+def normalize_docker_image(image: Optional[str]) -> Optional[str]:
+    """Strip Hub library prefixes so equivalent image refs compare equal."""
+    if not isinstance(image, str):
+        return None
+    name = image.strip()
+    if not name:
+        return None
+    if name.startswith(_DOCKER_HUB_LIBRARY_PREFIX):
+        return name[len(_DOCKER_HUB_LIBRARY_PREFIX) :]
+    if name.startswith("docker.io/"):
+        return name[len("docker.io/") :]
+    return name
+
+
+def docker_image_for_node(
+    node_name: Optional[str], resource: Optional[object] = None
+) -> Optional[str]:
+    """Look up ``[resource.program.<node>].docker_image`` for a node."""
+    if not node_name:
+        return None
+    try:
+        resource_config = context.resource_config
+        config = context.config
+    except RuntimeError:
+        return None
+    if resource_config is None:
+        return None
+    if resource is not None:
+        task_resource = str(resource)
+    else:
+        task_resource = str(config.resource)
+    lookup_resource = str(config.resource) if task_resource == "self" else task_resource
+    program_config = resource_config.get_program(node_name, resource=lookup_resource)
+    image = program_config.get("docker_image") if program_config else None
+    if not isinstance(image, str) or not image.strip():
+        return None
+    return image
+
+
+def should_handoff_nested_execution(
+    parameters: Parameters, node_name: str
+) -> bool:
+    """True when a child must be handed from the current process to the host.
+
+    On the host, only Docker tasks need a handoff to the runner. In a
+    container, an explicit non-Docker task always returns to the host. A
+    Docker task stays inline only when both images are known and equal.
+    """
+    in_container = process_is_in_docker()
+    assignment_in_docker = bool(getattr(parameters, "in_docker", False))
+    child_image = None
+    current_image = None
+    current_name = None
+
+    try:
+        current_name = context.current_node_name
+        current_resource = context.config.resource
+    except RuntimeError:
+        current_resource = None
+
+    if not in_container:
+        if assignment_in_docker:
+            decision = True
+            reason = "child requires docker"
+        else:
+            decision = False
+            reason = "not in docker"
+    elif not assignment_in_docker:
+        decision = True
+        reason = "child explicitly requires host execution"
+    else:
+        child_image = normalize_docker_image(
+            docker_image_for_node(node_name, getattr(parameters, "resource", None))
+        )
+        current_image = normalize_docker_image(
+            docker_image_for_node(current_name, current_resource)
+        )
+        if (
+            child_image is not None
+            and current_image is not None
+            and child_image == current_image
+        ):
+            decision = False
+            reason = "same image"
+        else:
+            decision = True
+            if child_image is None:
+                reason = "child image missing"
+            else:
+                reason = "images differ"
+
+    logger.info(
+        "Nested execution handoff: in_docker=%s assignment_in_docker=%s "
+        "current node %s image %s child %s image %s decision=%s (%s)",
+        in_container,
+        assignment_in_docker,
+        current_name,
+        current_image,
+        node_name,
+        child_image,
+        decision,
+        reason,
+    )
+    return decision
 
 
 def default_name_generator() -> str:
@@ -118,6 +245,108 @@ def _parameters_field_values(parameters: Parameters) -> dict[str, Any]:
         for field_name in Parameters.model_fields
         if field_name in raw_values
     }
+
+
+def _is_self_resource(parameters: Optional[Parameters]) -> bool:
+    if parameters is None:
+        return False
+    resource = getattr(parameters, "resource", None)
+    return resource == "self"
+
+
+def _execution_route(parameters: Optional[Parameters]) -> Optional[dict[str, Any]]:
+    """Return the persisted fields that determine where a task executes."""
+    if not isinstance(parameters, Parameters):
+        return None
+    payload = parameters.model_dump(mode="python")
+    return {
+        "resource": payload.get("resource"),
+        "queue": payload.get("queue"),
+        "in_docker": bool(payload.get("in_docker")),
+        "slurm_parameters": payload.get("slurm_parameters"),
+    }
+
+
+def _same_execution_route(
+    left: Optional[Parameters], right: Optional[Parameters]
+) -> bool:
+    return _execution_route(left) == _execution_route(right) and left is not None
+
+
+async def _find_reusable_task(
+    db: Any,
+    *,
+    name: str,
+    arg_hash: str,
+    function_hash: str,
+    execution_parameters: Parameters,
+) -> Optional[NodeRegistry]:
+    """Select a completed result or an existing task on the same route."""
+    candidates = await db.find(
+        NodeRegistry,
+        (NodeRegistry.name == name)
+        & (NodeRegistry.arg_hash == arg_hash)
+        & (NodeRegistry.function_hash == function_hash),
+    )
+    for candidate in candidates:
+        if candidate.status == TaskStatus.COMPLETED:
+            return candidate
+    for candidate in candidates:
+        if _same_execution_route(candidate.parameters, execution_parameters):
+            return candidate
+    if candidates:
+        logger.info(
+            "Ignoring %d cached task(s) for %s because the execution route changed",
+            len(candidates),
+            name,
+        )
+    return None
+
+
+def _slurm_parameters_are_unset(slurm: Optional[SlurmParameters]) -> bool:
+    """True when slurm_parameters were omitted (or are an empty default)."""
+    if slurm is None:
+        return True
+    fields_set = getattr(slurm, "model_fields_set", None)
+    if not fields_set:
+        return True
+    for name in fields_set:
+        value = getattr(slurm, name, None)
+        if value is None or value == [] or value == {}:
+            continue
+        return False
+    return True
+
+
+def inherit_parent_slurm_parameters_for_self(
+    parameters: Optional[Parameters],
+    parent_parameters: Optional[Parameters],
+) -> Optional[Parameters]:
+    """Give a self-resource child the parent's slurm_parameters when it has none."""
+    if parameters is None or not isinstance(parent_parameters, Parameters):
+        return parameters
+    if not _is_self_resource(parameters):
+        return parameters
+    if not _slurm_parameters_are_unset(getattr(parameters, "slurm_parameters", None)):
+        return parameters
+
+    parent_slurm = getattr(parent_parameters, "slurm_parameters", None)
+    if not isinstance(parent_slurm, SlurmParameters):
+        return parameters
+    if _slurm_parameters_are_unset(parent_slurm):
+        return parameters
+
+    parameters.slurm_parameters = parent_slurm.model_copy(deep=True)
+    logger.info(
+        "Inherited parent slurm_parameters onto self-resource node: "
+        "cpus_per_task=%s tasks=%s tasks_per_node=%s mem=%s mem_per_cpu=%s",
+        getattr(parameters.slurm_parameters, "cpus_per_task", None),
+        getattr(parameters.slurm_parameters, "tasks", None),
+        getattr(parameters.slurm_parameters, "tasks_per_node", None),
+        getattr(parameters.slurm_parameters, "mem", None),
+        getattr(parameters.slurm_parameters, "mem_per_cpu", None),
+    )
+    return parameters
 
 
 def _parameters_from_node_kwargs(kwargs_node: dict[str, Any]) -> Parameters:
@@ -199,6 +428,94 @@ class Node:
             kwargs  # what is left over here must be kwargs of the function
         )
         self.registry_entry: NodeRegistry | None = None
+        self._execution_return_kind: str | None = None
+        self._owns_inline_nested_execution = False
+        self._nested_execution_handoff_prepared = False
+        self._pending_resource_assignment_resolution: (
+            ResourceAssignmentResolution | None
+        ) = None
+
+    def _parent_parameters_from_kwargs(self) -> Optional[Parameters]:
+        function_kwargs = getattr(self, "_function_kwargs", {})
+        parent_parameters = function_kwargs.get("parent_parameters", None)
+        return parent_parameters if isinstance(parent_parameters, Parameters) else None
+
+    def _is_nested_self_resource(self) -> bool:
+        return _is_self_resource(self.parameters) and (
+            getattr(self, "parent_id", None) is not None
+            or self._parent_parameters_from_kwargs() is not None
+        )
+
+    async def _resolve_resource_assignment_before_cache_lookup(
+        self,
+    ) -> ResourceAssignmentResolution:
+        """Resolve invocation flags before deciding whether a cached task can be reused."""
+        resolution = await resolve_resource_assignment(
+            context.db,
+            call_path=self.call_path,
+            base_parameters=self.parameters,
+            parent_parameters=self._parent_parameters_from_kwargs(),
+        )
+        self.parameters = resolution.parameters
+        self._apply_parent_slurm_for_self_resource()
+
+        matched_rule = resolution.matched_rule
+        if (
+            matched_rule is not None
+            and getattr(matched_rule, "recompute_artifacts", None) is not None
+        ):
+            self.recompute_artifacts = bool(self.parameters.recompute_artifacts)
+        return resolution
+
+    def _apply_parent_slurm_for_self_resource(self) -> bool:
+        """Fill empty slurm_parameters on resource self from the calling parent.
+
+        Resource-assignment rules do not carry Slurm values for self, so this
+        must happen on the node before ``execute_node_locally`` forwards
+        ``self.parameters`` as ``parent_parameters``.
+        """
+        before = getattr(self.parameters, "slurm_parameters", None)
+        inherit_parent_slurm_parameters_for_self(
+            self.parameters, self._parent_parameters_from_kwargs()
+        )
+        after = getattr(self.parameters, "slurm_parameters", None)
+        if after is before:
+            return False
+        if self.registry_entry is not None:
+            self.registry_entry.parameters = self.parameters
+        return True
+
+    def _prepare_nested_execution_publication(self) -> None:
+        """Finalize a nested child route before its first database save."""
+        registry_entry = self.registry_entry
+        if registry_entry is None:
+            return
+
+        if self._is_nested_self_resource():
+            registry_entry.status = TaskStatus.RETRIEVED
+            self._owns_inline_nested_execution = True
+            return
+
+        if not process_is_in_docker():
+            return
+
+        resource_self = Resource(value="self")
+        runs_from_current_process = self.parameters.resource == resource_self or (
+            context.config.resource == self.parameters.resource
+            and self.parameters.queue == Queue.DEFAULT
+        )
+        if not runs_from_current_process:
+            return
+
+        if should_handoff_nested_execution(self.parameters, self.name):
+            if self.parameters.resource == resource_self:
+                self.parameters.resource = Resource(value=str(context.config.resource))
+            registry_entry.parameters = self.parameters
+            self._nested_execution_handoff_prepared = True
+            return
+
+        registry_entry.status = TaskStatus.RETRIEVED
+        self._owns_inline_nested_execution = True
 
     @property
     def id(self) -> ObjectId | None:
@@ -295,20 +612,30 @@ class Node:
 
         if delayed_message:
             logger.info(f"Task task_id: {self.id} with name {self.name} {delayed_message}")
-        parent_parameters = self._function_kwargs.get("parent_parameters", None)
+        parent_parameters = self._parent_parameters_from_kwargs()
         registry_entry = self.registry_entry
         assert registry_entry is not None
-        await apply_resource_assignment_to_node_registry(
-            context.db,
-            registry_entry,
-            parent_parameters=parent_parameters
-            if isinstance(parent_parameters, Parameters)
-            else None,
-        )
+        pending_resolution = self._pending_resource_assignment_resolution
+        if pending_resolution is None:
+            await apply_resource_assignment_to_node_registry(
+                context.db,
+                registry_entry,
+                parent_parameters=parent_parameters,
+            )
+        else:
+            await apply_resource_assignment_to_node_registry(
+                context.db,
+                registry_entry,
+                parent_parameters=parent_parameters,
+                resolution=pending_resolution,
+            )
         self.parameters = registry_entry.parameters
+        self._apply_parent_slurm_for_self_resource()
+        registry_entry.parameters = self.parameters
+        self._prepare_nested_execution_publication()
         await context.db.save(registry_entry)
         logger.info(
-            f"Task task_id: {self.id} with name {self.name} created for resource: {registry_entry.parameters.resource} queue: {registry_entry.parameters.queue} with id: {self.id}"
+            f"Task task_id: {self.id} with name {self.name} created for resource: {registry_entry.parameters.resource} queue: {registry_entry.parameters.queue} with id: {self.id} and status: {registry_entry.status}"
         )
         return registry_entry
 
@@ -334,16 +661,28 @@ class Node:
         self._arg_hash = arg_hash
         self._function_hash = function_hash
 
-        self.registry_entry = (
-            await context.db.load_task(self.name, arg_hash, function_hash)
-            if not self.parameters.force_rerun
-            else None
-        )
+        resolution = await self._resolve_resource_assignment_before_cache_lookup()
+
+        self.registry_entry = None
+        if not self.parameters.force_rerun:
+            self.registry_entry = await _find_reusable_task(
+                context.db,
+                name=self.name,
+                arg_hash=arg_hash,
+                function_hash=function_hash,
+                execution_parameters=self.parameters,
+            )
 
         if self.registry_entry is None:
-            await self.make_registry_entry(function_hash, arg_hash)
+            self._pending_resource_assignment_resolution = resolution
+            try:
+                await self.make_registry_entry(function_hash, arg_hash)
+            finally:
+                self._pending_resource_assignment_resolution = None
         else:
-
+            persisted_parameters = getattr(self.registry_entry, "parameters", None)
+            if isinstance(persisted_parameters, Parameters):
+                self.parameters = persisted_parameters
             if self.parent_id:
                 logger.debug(
                     f"Task task_id: {self.id} adding parent_id {self.parent_id} to task: {self.name}"
@@ -372,7 +711,9 @@ class Node:
         assert self.registry_entry is not None
         return self.registry_entry.status
 
-    async def load_results(self) -> Union[Model, SimstackResult, None]:
+    async def load_results(
+        self, return_kind: str | None = None
+    ) -> Union[Model, SimstackResult, bool, None]:
         """
         Loads the results associated with a specific task from the database. This
         method verifies whether the task has valid result identifiers. If valid
@@ -396,8 +737,31 @@ class Node:
         try:
             if self.registry_entry.status != TaskStatus.COMPLETED:
                 return None
+            persisted_return_kind = return_kind or getattr(
+                self.registry_entry, "return_kind", None
+            )
+            if persisted_return_kind == "none":
+                return None
+            if persisted_return_kind == "bool":
+                return True
+            if not self.registry_entry.results_references:
+                if persisted_return_kind == "multiple":
+                    return SimstackResult(
+                        status=self.registry_entry.status,
+                        custom_name=self.registry_entry.custom_name,
+                        message=self.registry_entry.message,
+                        error_message=self.registry_entry.error,
+                        info_files=list(self.registry_entry.info_files),
+                    )
+                return True
             
-            simstack_result = SimstackResult(status=self.registry_entry.status)
+            simstack_result = SimstackResult(
+                status=self.registry_entry.status,
+                custom_name=self.registry_entry.custom_name,
+                message=self.registry_entry.message,
+                error_message=self.registry_entry.error,
+                info_files=list(self.registry_entry.info_files),
+            )
             result = None
             for ref in self.registry_entry.results_references:
                 model = await import_class(ref.variable_mapping, db)
@@ -414,7 +778,10 @@ class Node:
 
             logger.info(f"Task task_id: {self.id} loaded outputs")
 
-            if len(self.registry_entry.results_references) == 1:
+            if (
+                len(self.registry_entry.results_references) == 1
+                and persisted_return_kind != "multiple"
+            ):
                 return result  # there is only one result, return it directly
             else:
                 return simstack_result  # return the SimstackResult with all results
@@ -424,7 +791,154 @@ class Node:
             logger.exception(f"Task task_id: {self.id} failed to load outputs: {e}")
             raise ValueError(f"Task task_id: {self.id} failed to load outputs: {e}")
 
-    async def run_somewhere(self) -> Union[Model, SimstackResult, None]:
+    async def run_node_as_process(
+        self,
+    ) -> Union[Model, SimstackResult, bool, None]:
+        """Run this task in an isolated child and restore its persisted result."""
+        assert self.registry_entry is not None
+
+        node_id = str(self.id)
+        resource = (
+            str(context.config.resource)
+            if self.parameters.resource == "self"
+            else str(self.parameters.resource)
+        )
+        project_root = str(context.config.project_root)
+
+        cmd = [
+            sys.executable, "-m", "simstack.core.run_node",
+            "--node-id", node_id,
+            "--resource", resource,
+            "--project-root", project_root,
+        ]
+
+        if context.in_docker:
+            cmd.append("--in-docker")
+
+        connection_string = getattr(context.config, "connection_string", None)
+        clean_cmd = sanitized_command(cmd, connection_string)
+        python_path_entries = [project_root]
+        if not context.in_docker:
+            python_path_entries.extend(
+                str(path)
+                for path in (getattr(context.config, "python_paths", None) or [])
+            )
+        inherited_python_path = os.environ.get("PYTHONPATH")
+        if inherited_python_path:
+            python_path_entries.append(inherited_python_path)
+        child_python_path = os.pathsep.join(
+            dict.fromkeys(path for path in python_path_entries if path)
+        )
+
+        logger.info(
+            "Task task_id: %s spawning run_node subprocess: %s",
+            self.id,
+            " ".join(clean_cmd),
+        )
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=project_root,
+                env={
+                    **os.environ,
+                    "PYTHONPATH": child_python_path,
+                    **(
+                        {"SIMSTACK_DB_CONNECTION_STRING": str(connection_string)}
+                        if connection_string is not None
+                        else {}
+                    ),
+                    **(
+                        {
+                            "SIMSTACK_DB_DATABASE": str(
+                                getattr(context.config, "db_name")
+                            )
+                        }
+                        if getattr(context.config, "db_name", None) is not None
+                        else {}
+                    ),
+                },
+            )
+            stdout_b, stderr_b = await proc.communicate()
+        except Exception as exc:
+            error = sanitized_tail(str(exc), connection_string)
+            self.registry_entry.status = TaskStatus.FAILED
+            self.registry_entry.error = error
+            await context.db.save(self.registry_entry)
+            raise RuntimeError(
+                f"Task task_id: {self.id} could not start run_node child: {error}"
+            ) from None
+        stdout = sanitized_tail(stdout_b, connection_string)
+        stderr = sanitized_tail(stderr_b, connection_string)
+        outcome = parse_run_node_result(stdout)
+
+        # Reload the registry entry from the database to pick up status changes made by the subprocess
+        updated_entry = await context.db.load_task_by_id(self.id)
+        if updated_entry is None:
+            raise RuntimeError(
+                f"Task task_id: {self.id} could not be found in the database after run_node subprocess"
+            )
+        self.registry_entry = updated_entry
+
+        if proc.returncode != 0 or outcome is None or not outcome.success:
+            child_error = (
+                outcome.error
+                if outcome is not None and outcome.error
+                else self.registry_entry.error
+            )
+            details = []
+            if child_error:
+                details.append(sanitized_tail(child_error, connection_string))
+            visible_stdout = "\n".join(
+                line for line in stdout.splitlines() if not line.startswith(RESULT_PREFIX)
+            ).strip()
+            if visible_stdout:
+                details.append(f"stdout:\n{visible_stdout}")
+            if stderr:
+                details.append(f"stderr:\n{stderr}")
+            detail_tail = sanitized_tail(
+                "\n".join(detail for detail in details if detail),
+                connection_string,
+                limit=3500,
+            )
+            error = f"run_node child exited with code {proc.returncode}"
+            if detail_tail:
+                error = f"{error}\n{detail_tail}"
+            self.registry_entry.status = TaskStatus.FAILED
+            self.registry_entry.error = error
+            await context.db.save(self.registry_entry)
+            raise RuntimeError(f"Task task_id: {self.id} {error}")
+
+        if self.registry_entry.status != TaskStatus.COMPLETED:
+            error = (
+                f"run_node child reported success but task status is "
+                f"{self.registry_entry.status}"
+            )
+            self.registry_entry.status = TaskStatus.FAILED
+            self.registry_entry.error = error
+            await context.db.save(self.registry_entry)
+            raise RuntimeError(f"Task task_id: {self.id} {error}")
+
+        if stderr:
+            logger.warning("Task task_id: %s run_node stderr: %s", self.id, stderr)
+        if outcome.return_kind == "bool":
+            return True
+        if outcome.return_kind in {"model", "multiple"}:
+            return await self.load_results(return_kind=outcome.return_kind)
+        if outcome.return_kind == "none":
+            return None
+        error = (
+            f"Task task_id: {self.id} returned unsupported child result kind "
+            f"{outcome.return_kind!r}"
+        )
+        self.registry_entry.status = TaskStatus.FAILED
+        self.registry_entry.error = error
+        await context.db.save(self.registry_entry)
+        raise RuntimeError(error)
+
+    async def run_somewhere(self) -> Union[Model, SimstackResult, bool, None]:
         """
         Executes the task either locally or on a remote resource. This function ensures that
         if the task is meant to execute on a remote resource, it waits for the task to complete
@@ -445,46 +959,127 @@ class Node:
         logger.info(
             f"Task task_id: {self.id} run_somewhere context resource: {context.config.resource} target resource: {self.parameters.resource} queue: {self.parameters.queue}"
         )
-        if self.parameters.resource == resource_self or (
+        if getattr(self, "_nested_execution_handoff_prepared", False):
+            logger.info(
+                "Task task_id: %s nested execution handoff was finalized before publication; waiting for host runner",
+                self.id,
+            )
+            return await self._wait_for_remote_completion()
+        if getattr(self, "_owns_inline_nested_execution", False):
+            logger.info(
+                "Task task_id: %s reserved for execution in the current container",
+                self.id,
+            )
+            return await self.run_node_as_process()
+
+        if self.parameters.resource == resource_self:
+            if self._is_nested_self_resource():
+                if await claim_submitted_node(self.registry_entry):
+                    return await self.run_node_as_process()
+                return await self._wait_for_remote_completion()
+            if should_handoff_nested_execution(self.parameters, self.name):
+                await self._persist_nested_execution_handoff()
+                return await self._wait_for_remote_completion()
+            if await claim_submitted_node(self.registry_entry):
+                return await self.run_node_as_process()
+            return await self._wait_for_remote_completion()
+
+        same_resource_default_queue = (
             context.config.resource == self.parameters.resource
             and self.parameters.queue == Queue.DEFAULT
-        ):
-            result = await self.execute_node_locally()
-            return result
-        else:
-            if await self._submit_same_resource_slurm_node():
+        )
+        if same_resource_default_queue:
+            if should_handoff_nested_execution(self.parameters, self.name):
+                await self._persist_nested_execution_handoff()
                 logger.info(
-                    "Task task_id: %s submitted Slurm node directly from resource %s",
+                    "Task task_id: %s nested execution handed to host runner",
                     self.id,
-                    context.config.resource,
                 )
-            # the task will be executed somewhere else
-            # wait for the database status to change
-            while True:
-                new_registry_entry = await context.db.load_task_by_id(self.id)
-                # TODO add timeout mechanism here
-                if new_registry_entry is None:
-                    raise RuntimeError(
-                        f"Task task_id: {self.id} could not be found in the database"
-                    )
-                new_status = new_registry_entry.status
-                if (
-                    new_status != TaskStatus.RUNNING
-                    and new_status != TaskStatus.SUBMITTED
-                    and new_status != TaskStatus.SLURM_QUEUED
-                    and new_status != TaskStatus.RETRIEVED
-                ):
-                    break
+                return await self._wait_for_remote_completion()
+            if await claim_submitted_node(self.registry_entry):
+                return await self.run_node_as_process()
+            return await self._wait_for_remote_completion()
 
-                print(f"Task task_id: {self.id} is waiting for results")
-                await asyncio.sleep(5)
+        if await self._submit_same_resource_slurm_node():
+            logger.info(
+                "Task task_id: %s submitted Slurm node directly from resource %s",
+                self.id,
+                context.config.resource,
+            )
+        return await self._wait_for_remote_completion()
 
-            if new_status == TaskStatus.COMPLETED:
-                logger.info(f"Task task_id: {self.id} completed remotely")
-                self.registry_entry = new_registry_entry
-                return await self.load_results()
-            else:
-                return None
+    async def _persist_nested_execution_handoff(self) -> bool:
+        """Publish the nested child for host execution without claiming it.
+
+        Status stays SUBMITTED so the host runner can pick the task up.
+        The task's explicit ``in_docker`` value is preserved so the host
+        chooses either normal execution or ``run_docker``.
+        """
+        if (
+            self.registry_entry is None
+            or self.registry_entry.status != TaskStatus.SUBMITTED
+        ):
+            return False
+        updates: dict[str, Any] = {
+            "parameters.in_docker": bool(self.parameters.in_docker)
+        }
+        selected_resource = None
+        if self.parameters.resource == "self":
+            selected_resource = str(context.config.resource)
+            updates["parameters.resource.value"] = selected_resource
+        collection = context.db.get_collection(NodeRegistry)
+        updated = await collection.find_one_and_update(
+            {
+                "_id": self.registry_entry.id,
+                "status": TaskStatus.SUBMITTED.value,
+            },
+            {"$set": updates},
+        )
+        if updated is None:
+            return False
+        if selected_resource is not None:
+            self.parameters.resource = Resource(value=selected_resource)
+        self.registry_entry.parameters = self.parameters
+        return True
+
+    async def _wait_for_remote_completion(
+        self,
+    ) -> Union[Model, SimstackResult, bool, None]:
+        logger.info(f"entering wait for completion for task_id: {self.id}")
+        while True:
+            new_registry_entry = await context.db.load_task_by_id(self.id)
+            # TODO(recovery): A creator-owned RETRIEVED child can be reused by a
+            # later identical run after its container dies. Persist an execution
+            # owner/process or container ID and track liveness before failing or
+            # reclaiming it; wall-clock timeouts are unsafe for months-long jobs.
+            if new_registry_entry is None:
+                raise RuntimeError(
+                    f"Task task_id: {self.id} could not be found in the database"
+                )
+            new_status = new_registry_entry.status
+            if (
+                new_status != TaskStatus.RUNNING
+                and new_status != TaskStatus.SLURM_RUNNING
+                and new_status != TaskStatus.SUBMITTED
+                and new_status != TaskStatus.SLURM_QUEUED
+                and new_status != TaskStatus.RETRIEVED
+            ):
+                break
+
+            print(f"Task task_id: {self.id} is waiting for results")
+            await asyncio.sleep(5)
+
+        self.registry_entry = new_registry_entry
+        if new_status == TaskStatus.COMPLETED:
+            logger.info(f"Task task_id: {self.id} completed remotely")
+            return await self.load_results()
+        error = sanitized_tail(
+            new_registry_entry.error or f"terminated with status {new_status}",
+            getattr(context.config, "connection_string", None),
+        )
+        raise RuntimeError(
+            f"Task task_id: {self.id} node: {self.name} failed with {error}"
+        )
 
     async def _submit_same_resource_slurm_node(self) -> bool:
         """Submit a same-resource Slurm node before polling it.
@@ -500,11 +1095,10 @@ class Node:
             return False
         if self.parameters.resource != context.config.resource:
             return False
-        if not await claim_submitted_node(self.registry_entry):
-            return False
-
         from simstack.core.submit_node import submit_node
 
+        if not await claim_submitted_node(self.registry_entry):
+            return False
         return await submit_node(self.registry_entry)
 
     async def execute_node_locally(self) -> Union[Model, SimstackResult, None]:
@@ -538,11 +1132,14 @@ class Node:
 
         """
         assert self.registry_entry is not None
+        self._apply_parent_slurm_for_self_resource()
         self.registry_entry.started_at = datetime.now()
         await self.set_status(TaskStatus.RUNNING)
         logger.info(
             f"Task task_id: {self.id} is started on {self.parameters.resource} in Node:execute_node_locally"
         )
+        previous_node_name = context.current_node_name
+        context.current_node_name = self.name
         original_dir = Path.cwd()
         try:
             node_runner = NodeRunner(self._func.__name__, self.id)
@@ -553,7 +1150,7 @@ class Node:
                 "call_path": self.call_path,
                 "parent_parameters": self.parameters,  # this must have a name different from parameters, because
                 # otherwise this setting will override all the parameters of
-                # the child nodes
+                # the child nodes. Resource self copies parent slurm first.
                 "recompute_artifacts": self.recompute_artifacts,
                 "custom_name": self.custom_name,
                 "arg_hash": self._arg_hash,
@@ -581,13 +1178,28 @@ class Node:
                     result = await real_func(*self._args, **node_kwargs)
                 else:
                     result = real_func(*self._args, **node_kwargs)
+                if isinstance(result, bool):
+                    self._execution_return_kind = "bool"
+                elif isinstance(result, SimstackResult):
+                    self._execution_return_kind = "multiple"
+                elif isinstance(result, Model):
+                    self._execution_return_kind = "model"
+                else:
+                    self._execution_return_kind = "none"
+                self.registry_entry.return_kind = self._execution_return_kind
             except Exception as e:
                 # Save the error message if possible
+                clean_error = sanitized_tail(
+                    str(e), getattr(context.config, "connection_string", None)
+                )
                 if self.registry_entry:
-                    self.registry_entry.error = str(e)
+                    self.registry_entry.error = clean_error
                     await context.db.save(self.registry_entry)
-                logger.exception(
-                    f"Task task_id: {self.id} node function error for node: {self.name} msg: {str(e)}"
+                logger.error(
+                    "Task task_id: %s node function error for node: %s msg: %s",
+                    self.id,
+                    self.name,
+                    clean_error,
                 )
                 # save what we can, in particular the info_files
                 await self.process_results(node_runner)
@@ -599,6 +1211,7 @@ class Node:
             self.registry_entry.completed_at = datetime.now()
 
             new_task_status, result = await self.process_results(result)
+            self._execution_return_kind = self.registry_entry.return_kind
 
             if new_task_status == TaskStatus.COMPLETED:
                 artifact_arguments = ArtifactArguments(result, self.id)
@@ -622,6 +1235,7 @@ class Node:
             await self.set_status(TaskStatus.FAILED)
             raise
         finally:
+            context.current_node_name = previous_node_name
             os.chdir(original_dir)
             logger.debug(
                 f"Task task_id: {self.id} successfully back to directory: {original_dir.absolute()}"
@@ -632,14 +1246,17 @@ class Node:
         # each of the following if sets the result either to a valid value or None
         new_task_status = TaskStatus.COMPLETED
         if result is None:
+            self.registry_entry.return_kind = "none"
             logger.warning(f"Task task_id: {self.id} returned None")
             new_task_status = TaskStatus.FAILED  # result is None
         elif isinstance(result, bool):
+            self.registry_entry.return_kind = "bool"
             if not result:
                 new_task_status = TaskStatus.FAILED
                 result = None
         elif is_simstack_model(result) or isinstance(result, SimstackResult):
             if isinstance(result, SimstackResult):
+                self.registry_entry.return_kind = "multiple"
                 new_task_status = result.status
                 if hasattr(result, "custom_name"):
                     self.registry_entry.custom_name = result.custom_name
@@ -663,25 +1280,36 @@ class Node:
                         raise ValueError("saving info file is NONE")
 
                 if result.error_message is not None and result.error_message != "":
+                    clean_error = sanitized_tail(
+                        result.error_message,
+                        getattr(context.config, "connection_string", None),
+                    )
+                    self.registry_entry.error = clean_error
                     logger.error(
-                        f"Task task_id: {self.id} returned with error: {result.error_message}"
+                        "Task task_id: %s returned with error: %s",
+                        self.id,
+                        clean_error,
                     )
                 if result.message is not None and result.message != "":
+                    self.registry_entry.message = result.message
                     logger.info(f"Task task_id: {self.id} message: {result.message}")
             else:
+                self.registry_entry.return_kind = "model"
                 if hasattr(result, "status"):
                     new_task_status = result.status
                 elif hasattr(result, "task_status"):
                     new_task_status = result.task_status
 
             results_references, result_models = await process_result_helper(result, str(self.id))
-
             self.registry_entry.results_references = results_references
             self.registry_entry.status = new_task_status
 
             if len(results_references) == 1:
-                result = result_models[0]  # for a SimstackResult with just one returned model we return the model directly
+                result = result_models[0]
+                self.registry_entry.return_kind = "model"
+
         else:
+            self.registry_entry.return_kind = "none"
             logger.warning(
                 f"Task task_id: {self.id} returned a result of type {type(result)} which is not a SimstackModel or a SimstackResult"
             )
@@ -817,9 +1445,15 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             arg = await _hydrate_embedded_file_stacks(arg, db, resolved_file_stacks)
             args.append(arg)
         except Exception as e:
-            logger.exception(
-                f"Task task_id: {registry_entry.id} failed to load input {ref.variable_mapping} with id {ref.reference}: {str(e)}"
+            error = sanitized_tail(
+                f"Failed to load input {ref.variable_mapping} with id "
+                f"{ref.reference}: {e}",
+                getattr(context.config, "connection_string", None),
             )
+            registry_entry.status = TaskStatus.FAILED
+            registry_entry.error = error
+            await db.save(registry_entry)
+            logger.error("Task task_id: %s %s", registry_entry.id, error)
             return None
 
     if registry_entry.arg_hash == "NOT INITIALIZED":
@@ -851,60 +1485,53 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 f"Task task_id: {registry_entry.id} could not import function {registry_entry.func_mapping}"
             )
     except Exception as e:
+        error = sanitized_tail(
+            f"Failed to import function {registry_entry.func_mapping}: {e}",
+            getattr(context.config, "connection_string", None),
+        )
+        registry_entry.status = TaskStatus.FAILED
+        registry_entry.error = error
+        await db.save(registry_entry)
         logger.error(
-            f"Task task_id: {registry_entry.id} failed to import function {registry_entry.func_mapping} {str(e)}"
+            "Task task_id: %s %s", registry_entry.id, error
         )
 
     if func is None and registry_entry.function_hash == "NOT INITIALIZED":
         return None
 
     try:
-        duplicate_entry = await db.find_one(
-            NodeRegistry,
-            (NodeRegistry.name == registry_entry.name)
-            & (NodeRegistry.arg_hash == registry_entry.arg_hash)
-            & (NodeRegistry.function_hash == registry_entry.function_hash)
-            & (NodeRegistry.id != registry_entry.id),
-        )
-        if duplicate_entry is None:
-            await db.save(
-                registry_entry
-            )  # save the fixed entry AFTER checking for duplicates
-            # the calling function may have the originial entry unsaved !
-        else:
-            logger.info(
-                f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}"
+        duplicate_entry = None
+        if not registry_entry.parameters.force_rerun:
+            duplicate_entry = await db.find_one(
+                NodeRegistry,
+                (NodeRegistry.name == registry_entry.name)
+                & (NodeRegistry.arg_hash == registry_entry.arg_hash)
+                & (NodeRegistry.function_hash == registry_entry.function_hash)
+                & (NodeRegistry.status == TaskStatus.COMPLETED)
+                & (NodeRegistry.id != registry_entry.id),
             )
-
+        if duplicate_entry is None:
+            # Save the fixed entry only after checking for a completed result.
+            await db.save(registry_entry)
+            # the calling function may have the original entry unsaved!
+        else:
+            logger.info(f"Task task_id: {registry_entry.id} NEW DUPLICATE TREATMENT")
+            logger.info(f"Task task_id: {registry_entry.id} found duplicate entry {duplicate_entry.id} {duplicate_entry.name}")
             # the parameters of the new job may be different
-            duplicate_entry.parameters = registry_entry.parameters
-            await db.delete(registry_entry)
-            registry_entry = duplicate_entry
 
-            if func is None:
-                # we recovered a duplicate, let's try to import the function from the duplicate's mapping
-                try:
-                    wrapped_func = await import_function(
-                        registry_entry.func_mapping, db, task_id=registry_entry.id
-                    )
-                    if wrapped_func is not None:
-                        func = (
-                            wrapped_func
-                            if not hasattr(wrapped_func, "_inner")
-                            else wrapped_func._inner
-                        )
-                except Exception as e:
-                    logger.error(
-                        f"Task task_id: {registry_entry.id} failed to import function from duplicate {registry_entry.func_mapping} {str(e)}"
-                    )
-
-        if func is None:
-            return None
+            registry_entry.populate_results_from_duplicate(duplicate_entry)
+            if registry_entry.id not in duplicate_entry.parent_ids:
+                duplicate_entry.parent_ids.append(registry_entry.id)
+            await db.save(duplicate_entry)  # duplicate becomes a child of the new entry
+            await db.save(registry_entry)
 
     except Exception as e:
         logger.exception(
             f"Task task_id: {registry_entry.id} failed during duplicate detection or secondary import {str(e)}"
         )
+        return None
+
+    if func is None:
         return None
 
     kwargs = {
@@ -1044,6 +1671,8 @@ def node(
                 TaskStatus.SUBMITTED,
                 TaskStatus.RETRIEVED,
                 TaskStatus.SLURM_QUEUED,
+                TaskStatus.RUNNING,
+                TaskStatus.SLURM_RUNNING,
             ]:
                 result = await execution_node.run_somewhere()
             else:
@@ -1068,7 +1697,14 @@ def node(
                     current_registry_entry.status == TaskStatus.FAILED
                     and current_registry_entry.error
                 ):
-                    raise RuntimeError(current_registry_entry.error)
+                    error = sanitized_tail(
+                        current_registry_entry.error,
+                        getattr(context.config, "connection_string", None),
+                    )
+                    raise RuntimeError(
+                        f"task_id: {current_registry_entry.id} node: "
+                        f"{current_registry_entry.name} failed with {error}"
+                    )
 
                 raise RuntimeError(
                     f"Task task_id: {current_registry_entry.id} node: {current_registry_entry.name} terminated with status {current_registry_entry.status}"
@@ -1094,6 +1730,8 @@ def node(
                 TaskStatus.SUBMITTED,
                 TaskStatus.RETRIEVED,
                 TaskStatus.SLURM_QUEUED,
+                TaskStatus.RUNNING,
+                TaskStatus.SLURM_RUNNING,
             ]:
                 result = loop.run_until_complete(execution_node.run_somewhere())
                 ran_somewhere = True
@@ -1105,6 +1743,19 @@ def node(
                 and result is None
                 and execution_node.parameters.queue != Queue.SLURM_QUEUE
             ):
+                if (
+                    execution_node.registry_entry is not None
+                    and execution_node.registry_entry.status == TaskStatus.FAILED
+                    and execution_node.registry_entry.error
+                ):
+                    error = sanitized_tail(
+                        execution_node.registry_entry.error,
+                        getattr(context.config, "connection_string", None),
+                    )
+                    raise RuntimeError(
+                        f"task_id: {execution_node.registry_entry.id} node: "
+                        f"{execution_node.registry_entry.name} failed with {error}"
+                    )
                 return cast(T, result)
             if result is None or execution_node.status != TaskStatus.COMPLETED:
                 if (
@@ -1112,7 +1763,16 @@ def node(
                     and execution_node.registry_entry.status == TaskStatus.FAILED
                     and execution_node.registry_entry.error
                 ):
-                    raise RuntimeError(execution_node.registry_entry.error)
+                    error = sanitized_tail(
+                        execution_node.registry_entry.error,
+                        getattr(context.config, "connection_string", None),
+                    )
+                    raise RuntimeError(
+                        f"task_id: {execution_node.registry_entry.id} node: "
+                        f"{execution_node.registry_entry.name} failed with {error}"
+                    )
+
+
 
                 raise RuntimeError(
                     f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"

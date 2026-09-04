@@ -3,7 +3,7 @@ import pkgutil
 from importlib.metadata import entry_points
 from logging import getLogger
 
-logger = getLogger("find_simstack_modules")
+logger = getLogger("find_modules")
 
 
 def walk_packages(package_name, all_modules):

@@ -1,4 +1,5 @@
 import pytest
+from mongomock_motor import AsyncMongoMockClient
 from odmantic import Model, ObjectId
 from pydantic import PrivateAttr
 
@@ -599,17 +600,24 @@ async def test_save_calls_parts_saves_recursively(initialized_context, monkeypat
 
 
 @pytest.mark.asyncio
-async def test_reset_database_drops_existing_collections(initialized_context, monkeypatch):
-    db = await _restore_database_facade_methods(monkeypatch)
+async def test_reset_database_drops_existing_collections():
+    db = Database(
+        client=AsyncMongoMockClient(),
+        database_name="isolated_reset_database_test",
+    )
 
-    model = await db.save(StringData(value="database-reset-marker"))
-    loaded_before_reset = await db.find_one(StringData, StringData.id == model.id)
+    collection = db.collection(StringData)
+    marker_id = ObjectId()
+    await collection.insert_one(
+        {"_id": marker_id, "value": "database-reset-marker"}
+    )
+    loaded_before_reset = await collection.find_one({"_id": marker_id})
     assert loaded_before_reset is not None
 
     await db.reset_database()
 
     collection_names = await db.raw_database.list_collection_names()
-    loaded_after_reset = await db.find_one(StringData, StringData.id == model.id)
+    loaded_after_reset = await collection.find_one({"_id": marker_id})
 
     assert collection_names == []
     assert loaded_after_reset is None

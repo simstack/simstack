@@ -1,6 +1,5 @@
 import importlib
 import logging
-import re
 from typing import Any, Callable, Optional, Type, cast
 from odmantic import Model, AIOEngine, ObjectId
 
@@ -192,9 +191,12 @@ async def _function_from_model(
                     return cast(Callable[..., Any], getattr(module, function_name))
             except (ImportError, AttributeError, ValueError):
                 pass
-        logger.error(
-            f"task_id: {task_id} Error importing function {function_path}: {e}"
-        )
+        if task_id:
+            logger.error(
+                f"task_id: {task_id} Error importing function {function_path}: {e}"
+            )
+        else:
+            logger.error(f"Error importing function {function_path}: {e}")
         raise e
 
 

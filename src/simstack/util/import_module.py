@@ -20,8 +20,7 @@ def import_module_from_file(file_path: Path, root_dir: Path):
     try:
         # logger.debug(f"Attempting to import module from: {file_path}")
         if not file_path.exists():
-            print(f"File not found: {file_path}")
-            return []
+            raise FileNotFoundError(file_path)
 
         relative_path = file_path.relative_to(root_dir)
 
@@ -43,8 +42,7 @@ def import_module_from_file(file_path: Path, root_dir: Path):
             # Fall back to spec-based import
             spec = importlib.util.spec_from_file_location(module_name, str(file_path))
             if spec is None or spec.loader is None:
-                logger.error(f"Failed to create spec for {file_path}")
-                return None
+                raise ImportError(f"Failed to create spec for {file_path}")
 
             module = importlib.util.module_from_spec(spec)
             sys.modules[module_name] = module
@@ -53,11 +51,13 @@ def import_module_from_file(file_path: Path, root_dir: Path):
                 return module
             except Exception as e:
                 logger.error(f"Import error when processing module: {file_path}  {e}")
-                return None
+                raise
 
+    except SystemExit as e:
+        logger.error(f"Error importing module from {file_path}: {e}")
+        if e.code in (None, 0):
+            raise SystemExit(1) from None
+        raise
     except Exception as e:
         logger.error(f"Error importing module from {file_path}: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return None
+        raise

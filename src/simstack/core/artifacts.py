@@ -8,6 +8,7 @@ from odmantic import ObjectId
 from simstack.core.context import context
 from simstack.models.artifact_models import ArtifactMapping, ArtifactModel
 from simstack.models.charts_artifact import ChartArtifactModel
+from simstack.models.images2d import Image2DArtifactModel
 from simstack.models.node_registry import find_child_nodes, NodeRegistry
 from simstack.models.table_artifact import TableArtifactModel
 from simstack.util.db import Database
@@ -197,23 +198,16 @@ async def create_artifacts(
                             f"{log_string_mapping} Artifact is None, skipping."
                         )
                         continue
-                    if isinstance(artifact, TableArtifactModel):
+                    if isinstance(artifact, (TableArtifactModel, ChartArtifactModel, ArtifactModel, Image2DArtifactModel)):
                         artifact.parent_id = node_registry.id
+                        if isinstance(artifact, ArtifactModel):
+                            artifact.path = call_path
                         saved_artifact = await context.db.save(artifact)
+                        if isinstance(artifact, ArtifactModel):
+                            artifact_list.append(saved_artifact)
                         logger.debug(
-                            f"{log_string_mapping} new table: {saved_artifact}"
+                            f"{log_string_mapping} new artifact: {saved_artifact}"
                         )
-                    elif isinstance(artifact, ChartArtifactModel):
-                        artifact.parent_id = node_registry.id
-                        saved_artifact = await context.db.save(artifact)
-                        logger.debug(
-                            f"{log_string_mapping} new table: {saved_artifact}"
-                        )
-                    elif isinstance(artifact, ArtifactModel):
-                        artifact.path = call_path
-                        saved_artifact = await context.db.save(artifact)
-                        logger.debug(f"{log_string_mapping} new: {saved_artifact}")
-                        artifact_list.append(saved_artifact)
                     else:
                         raise ValueError(
                             f"{log_string_mapping} not an ArtifactModel object. Got {artifact} instead."

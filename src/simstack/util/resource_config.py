@@ -33,13 +33,21 @@ class ResourceConfig:
         actual_path = Path(config_path)
         if actual_path.is_dir():
             actual_path = actual_path / "config.toml"
+        self._config_path = actual_path
+        self.reload()
 
-        if actual_path.exists():
-            with open(actual_path, "rb") as f:
+    def reload(self) -> None:
+        """Re-read ``config.toml`` from disk.
+
+        The runner keeps a long-lived ``ResourceConfig``. Git pull (or a local
+        edit) can add or change ``docker_image`` assignments after startup;
+        callers that launch containers must reload before looking them up.
+        """
+        if self._config_path.exists():
+            with open(self._config_path, "rb") as f:
                 self._config = tomllib.load(f)
         else:
-            # If it doesn't exist, we just have an empty config
-            pass
+            self._config = {}
 
     @property
     def os(self) -> str:
@@ -159,13 +167,32 @@ class ResourceConfig:
             if scratch_cleanup and tmp_dir and tmp_dir.exists():
                 shutil.rmtree(tmp_dir)
 
-    def get_program(self, program_name: str) -> Dict[str, Any]:
+    def get_docker_registry(self, resource: str | None = None) -> Optional[str]:
+        """Optional registry host for ``docker pull`` (e.g. ``167.233.117.31:5000``).
+
+        Used to rewrite ``docker.io/library/<image>`` to that registry. Unset
+        means skip pull (local builds tagged as Docker Hub library names).
         """
-        Returns the dict from resource.program.name for program with name and the current resource.
-        Expected structure in TOML: [resource_name.program.program_name]
-        """
+        lookup = resource if resource is not None else self._resource
         try:
-            return self._config[self._resource]["program"][program_name]
+            value = self._config[lookup].get("docker_registry")
+        except (KeyError, TypeError, AttributeError):
+            return None
+        if not isinstance(value, str):
+            return None
+        value = value.strip()
+        return value or None
+
+    def get_program(self, program_name: str, resource: str | None = None) -> Dict[str, Any]:
+        """
+        Returns the dict from resource.program.name for program with name.
+        Expected structure in TOML: [resource_name.program.program_name]
+
+        If ``resource`` is omitted, uses the ResourceConfig's current resource.
+        """
+        lookup = resource if resource is not None else self._resource
+        try:
+            return self._config[lookup]["program"][program_name]
         except (KeyError, TypeError):
             return {}
 
