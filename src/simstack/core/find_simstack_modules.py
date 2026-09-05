@@ -35,7 +35,12 @@ def find_simstack_modules():
     all_modules = []
 
     entry_point_list = entry_points(group="simstack.modules")
-    logger.info(f"Entry points for simstack modules: {entry_point_list}.")
+    if not entry_point_list:
+        logger.warning("No simstack.modules entry points found.")
+        return all_modules
+
+    logger.warning("simstack.modules entry points:")
     for entry_point in entry_point_list:
+        logger.warning("  %s = %s", entry_point.name, entry_point.value)
         walk_packages(entry_point.value, all_modules)
     return all_modules
