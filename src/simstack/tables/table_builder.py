@@ -19,7 +19,7 @@ from simstack.util.path_manager import path_manager
 class TableBuilderBase(ABC):
     """
     Shared pipeline for building "tables" by scanning:
-      1) installed simstack.modules entry points (listed at warning level)
+      1) installed simstack.modules entry points (listed at INFO as each is scanned)
       2) explicit --dir / dirs arguments
       3) deprecated config.toml active_dirs when no dirs were given
 
@@ -59,7 +59,8 @@ class TableBuilderBase(ABC):
         Build the table.
 
         - Installed `simstack.modules` entry points are processed unless
-          `ignore_entrypoints` is true. They are listed at warning level.
+          `ignore_entrypoints` is true. With -v (INFO), each entry point is
+          listed as it is scanned.
         - If `dirs` is a non-empty list, those directories are scanned.
         - If `dirs` is omitted or empty, `active_dirs` from project-root
           `config.toml` is scanned and a deprecation warning is emitted.
@@ -268,10 +269,17 @@ class TableBuilderBase(ABC):
                          If omitted, entry points are used, plus deprecated
                          config.toml active_dirs when present. CWD is not scanned.
           --drops STRING  Drops prefix (string) applied while processing these CLI dirs.
-          -v/--verbose    Increase logging verbosity.
+          -v/--verbose    -v sets INFO (lists each entry point as it is scanned);
+                          -vv sets DEBUG.
         """
         parser = argparse.ArgumentParser()
-        parser.add_argument("-v", "--verbose", action="count", default=0)
+        parser.add_argument(
+            "-v",
+            "--verbose",
+            action="count",
+            default=0,
+            help="Increase logging verbosity: -v INFO, -vv DEBUG.",
+        )
         parser.add_argument(
             "--dir",
             dest="dirs",

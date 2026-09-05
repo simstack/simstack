@@ -20,13 +20,15 @@ def test_find_simstack_modules_lists_entry_points(monkeypatch, caplog):
         lambda package_name, all_modules: walked.append(package_name),
     )
 
-    with caplog.at_level(logging.WARNING, logger="find_modules"):
+    with caplog.at_level(logging.INFO, logger="find_modules"):
         find_simstack_modules()
 
     assert walked == ["simstack.models", "simstack.methods"]
-    assert "simstack.modules entry points:" in caplog.text
-    assert "simstack_models = simstack.models" in caplog.text
-    assert "simstack_nodes = simstack.methods" in caplog.text
+    assert caplog.messages == [
+        "Scanning entry point simstack_models = simstack.models",
+        "Scanning entry point simstack_nodes = simstack.methods",
+    ]
+    assert not any(record.levelno >= logging.WARNING for record in caplog.records)
 
 
 def test_find_simstack_modules_lists_when_none_are_registered(monkeypatch, caplog):
