@@ -168,3 +168,70 @@ def test_installed_module_successful_system_exit_is_failure(monkeypatch):
         builder._import_package_module("broken_installed_nodes")
 
     assert caught.value.code == 1
+
+
+@pytest.mark.asyncio
+async def test_build_without_dirs_does_not_scan_project_root(
+    tmp_path, fake_context_project_root
+):
+    (tmp_path / "stray.py").write_text("x = 1")
+    builder = RecordingTableBuilder()
+
+    await builder.build(dirs=None, ignore_entrypoints=True)
+
+    assert builder.processed_files == []
+
+
+@pytest.mark.asyncio
+async def test_build_uses_deprecated_active_dirs_when_dirs_omitted(
+    tmp_path, fake_context_project_root, caplog
+):
+    legacy = tmp_path / "legacy"
+    legacy.mkdir()
+    (legacy / "m.py").write_text("x = 1")
+    (tmp_path / "config.toml").write_text('active_dirs = ["legacy"]\n')
+    builder = RecordingTableBuilder()
+
+    with caplog.at_level(logging.WARNING, logger="RecordingTableBuilder"):
+        await builder.build(dirs=None, ignore_entrypoints=True)
+
+    processed = sorted(p.relative_to(tmp_path).as_posix() for p in builder.processed_files)
+    assert processed == ["legacy/m.py"]
+    assert "active_dirs in config.toml is deprecated" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_build_with_explicit_dirs_does_not_use_active_dirs(
+    tmp_path, fake_context_project_root
+):
+    explicit = tmp_path / "explicit"
+    explicit.mkdir()
+    (explicit / "e.py").write_text("x = 1")
+    legacy = tmp_path / "legacy"
+    legacy.mkdir()
+    (legacy / "l.py").write_text("x = 1")
+    (tmp_path / "config.toml").write_text('active_dirs = ["legacy"]\n')
+    builder = RecordingTableBuilder()
+
+    await builder.build(dirs=[Path("explicit")], ignore_entrypoints=True)
+
+    processed = sorted(p.relative_to(tmp_path).as_posix() for p in builder.processed_files)
+    assert processed == ["explicit/e.py"]
+
+
+@pytest.mark.asyncio
+async def test_active_dirs_must_be_a_list(tmp_path, fake_context_project_root):
+    (tmp_path / "config.toml").write_text('active_dirs = "legacy"\n')
+    builder = RecordingTableBuilder()
+
+    with pytest.raises(ValueError, match="must be a list"):
+        await builder.build(dirs=None, ignore_entrypoints=True)
+
+
+@pytest.mark.asyncio
+async def test_active_dirs_entries_must_be_strings(tmp_path, fake_context_project_root):
+    (tmp_path / "config.toml").write_text("active_dirs = [1]\n")
+    builder = RecordingTableBuilder()
+
+    with pytest.raises(ValueError, match="must contain only strings"):
+        await builder.build(dirs=None, ignore_entrypoints=True)

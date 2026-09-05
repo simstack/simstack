@@ -2,14 +2,8 @@ import argparse
 import asyncio
 import logging
 import os
-import sys
 
 from simstack.core.definitions import DBType
-
-if sys.version_info >= (3, 11):
-    import tomllib  # Python 3.11+
-else:
-    import tomli as tomllib  # type: ignore[import-not-found]
 
 from simstack.core.context import context
 from simstack.models.resource_definition import ResourceDefinition
@@ -23,7 +17,7 @@ logger = logging.getLogger("NodeRunner")
 async def initialize_default_resource() -> ResourceDefinition | None:
     """
     Checks if the current resource is the default one.
-    If so, syncs the node and model tables based on config.toml.
+    If so, syncs the node and model tables from entry points and optional dirs.
     """
     resource_def = await context.db.find_one(
         ResourceDefinition,
@@ -38,24 +32,10 @@ async def initialize_default_resource() -> ResourceDefinition | None:
         return None
 
     if resource_def.is_default:
-        config_path = context.config.project_root / "config.toml"
-        if not config_path.exists():
-            logger.warning(f"Default resource detected, but {config_path} not found.")
-            return resource_def
-
+        logger.info("Default resource: initializing model and node tables")
         try:
-            with open(config_path, "rb") as f:
-                config_data = tomllib.load(f)
-
-            active_dirs = config_data.get("active_dirs", [])
-            if not active_dirs:
-                logger.info("No active_dirs found in config.toml.")
-                return resource_def
-
-            logger.info(f"Default resource: initializing tables for {active_dirs}")
-            await make_model_table(context.db, dirs=active_dirs)
-            await make_node_table(context.db, dirs=active_dirs)
-
+            await make_model_table(context.db)
+            await make_node_table(context.db)
         except Exception as e:
             logger.error(f"Failed to initialize default resource tables: {e}")
 
