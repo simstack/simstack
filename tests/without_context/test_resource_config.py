@@ -36,7 +36,8 @@ def test_resource_config_reload_missing_file_clears_config(tmp_path):
 
     config_file.unlink()
     rc.reload()
-    assert rc.get_program("orca") == {}
+    with pytest.raises(ValueError, match=r"config.toml has no \[local\] resource block"):
+        rc.get_program("orca")
 
 def test_resource_config_from_file(tmp_path):
     config_file = tmp_path / "config.toml"
@@ -58,8 +59,8 @@ run_command = "orca orca.inp"
 
 def test_resource_config_missing():
     rc = ResourceConfig(Path("non_existent_path"), "local")
-    params = rc.get_program("any")
-    assert params == {}
+    with pytest.raises(ValueError, match=r"config.toml has no \[local\] resource block"):
+        rc.get_program("any")
 
 def test_resource_config_key_error(tmp_path):
     config_file = tmp_path / "config.toml"
@@ -69,9 +70,10 @@ foo = "bar"
 """
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")
-    assert rc.get_program("orca") == {}
-    
-    assert rc.get_program("other") == {} # Though it's under local.other, get_program expects local.program.other
+    with pytest.raises(ValueError, match=r"has no \[program\] table"):
+        rc.get_program("orca")
+    with pytest.raises(ValueError, match=r"has no \[program\] table"):
+        rc.get_program("other")
 
 def test_resource_config_resource_storage(tmp_path):
     rc = ResourceConfig(tmp_path, "remote-resource")
@@ -173,6 +175,20 @@ same-as = "a"
     rc = ResourceConfig(tmp_path, "a")
     with pytest.raises(ValueError, match="Circular same-as"):
         rc.get_program("orca")
+
+
+def test_missing_program_block_raises(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[int-nano.program.orca]
+run_command = "orca"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "int-nano")
+    with pytest.raises(
+        ValueError, match=r"config.toml has no \[int-nano.program.vasp\] block"
+    ):
+        rc.get_program("vasp")
 
 @pytest.mark.asyncio
 async def test_global_state_initialization(tmp_path):
@@ -278,9 +294,12 @@ scratch_cleanup = false
     post_remote = rc_remote.get_postprocessing_params()
     assert post_remote["scratch_cleanup"] is False
     
-    # Test non-existent
+    # Test non-existent resource
     rc_none = ResourceConfig(tmp_path, "non-existent")
-    assert rc_none.get_postprocessing_params() == {}
+    with pytest.raises(
+        ValueError, match=r"config.toml has no \[non-existent\] resource block"
+    ):
+        rc_none.get_postprocessing_params()
 
 from unittest.mock import AsyncMock
 from types import SimpleNamespace

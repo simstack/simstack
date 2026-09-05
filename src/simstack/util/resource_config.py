@@ -65,9 +65,9 @@ class ResourceConfig:
 
         ``same-as`` copies another resource's table. Extra keys on the aliasing
         resource overlay the target (nested tables are merged). A missing
-        resource with no alias is an empty dict, matching prior lookup
-        behavior. A ``same-as`` that points at a missing resource, is not a
-        non-empty string, or forms a cycle raises ``ValueError``.
+        resource raises ``ValueError``. A ``same-as`` that points at a missing
+        resource, is not a non-empty string, or forms a cycle also raises
+        ``ValueError``.
         """
         seen: list[str] = []
         overlays: list[Dict[str, Any]] = []
@@ -80,7 +80,9 @@ class ResourceConfig:
             section = self._config.get(current)
             if section is None:
                 if len(seen) == 1:
-                    return {}
+                    raise ValueError(
+                        f"config.toml has no [{current}] resource block"
+                    )
                 raise ValueError(
                     f"config.toml resource {current!r} referenced by same-as "
                     f"from {seen[-2]!r} does not exist"
@@ -244,12 +246,34 @@ class ResourceConfig:
         If ``resource`` is omitted, uses the ResourceConfig's current resource.
         Resources may set ``same-as = "other-resource"`` to reuse that
         resource's program tables.
+
+        Raises:
+            ValueError: If the resource or ``[resource.program.name]`` block
+                is missing from ``config.toml``.
         """
         lookup = resource if resource is not None else self._resource
-        try:
-            return self._resource_section(lookup)["program"][program_name]
-        except (KeyError, TypeError):
-            return {}
+        section = self._resource_section(lookup)
+        programs = section.get("program")
+        if programs is None:
+            raise ValueError(
+                f"config.toml resource {lookup!r} has no [program] table"
+            )
+        if not isinstance(programs, dict):
+            raise ValueError(
+                f"config.toml resource {lookup!r} [program] must be a table, "
+                f"got {type(programs).__name__}"
+            )
+        if program_name not in programs:
+            raise ValueError(
+                f"config.toml has no [{lookup}.program.{program_name}] block"
+            )
+        program = programs[program_name]
+        if not isinstance(program, dict):
+            raise ValueError(
+                f"config.toml [{lookup}.program.{program_name}] must be a "
+                f"table, got {type(program).__name__}"
+            )
+        return program
 
     def get_setup_params(self) -> Dict[str, Any]:
         """
