@@ -87,6 +87,7 @@ General Resource Settings
 
    [resource_name]
    os = "linux"  # optional, defaults to "linux"
+   same-as = "other-resource"  # optional: copy that resource, overlay extra keys
 
 Setup Section
 ~~~~~~~~~~~~~

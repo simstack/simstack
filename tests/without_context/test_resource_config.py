@@ -77,6 +77,103 @@ def test_resource_config_resource_storage(tmp_path):
     rc = ResourceConfig(tmp_path, "remote-resource")
     assert rc._resource == "remote-resource"
 
+
+def test_same_as_copies_program_setup_and_os(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[int-nano]
+os = "linux"
+docker_registry = "127.0.0.1:5000"
+[int-nano.setup]
+tmp_base_dir = "/scratch/int-nano"
+[int-nano.post-processing]
+scratch_cleanup = true
+[int-nano.program.orca]
+run_command = "$ORCA_HOME/orca orca.inp > orca.out"
+
+[int-nano-new]
+same-as = "int-nano"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "int-nano-new")
+    assert rc.get_program("orca")["run_command"] == "$ORCA_HOME/orca orca.inp > orca.out"
+    assert rc.get_setup_params()["tmp_base_dir"] == "/scratch/int-nano"
+    assert rc.get_postprocessing_params()["scratch_cleanup"] is True
+    assert rc.os == "linux"
+    assert rc.get_docker_registry() == "127.0.0.1:5000"
+
+
+def test_same_as_overlay_merges_program_tables(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[int-nano.program.orca]
+run_command = "orca-base"
+[int-nano.program.vasp]
+run_command = "srun vasp_std"
+
+[int-nano-new]
+same-as = "int-nano"
+[int-nano-new.program.orca]
+run_command = "orca-override"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "int-nano-new")
+    assert rc.get_program("orca")["run_command"] == "orca-override"
+    assert rc.get_program("vasp")["run_command"] == "srun vasp_std"
+
+
+def test_same_as_chain(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[base.program.orca]
+run_command = "from-base"
+[mid]
+same-as = "base"
+[leaf]
+same-as = "mid"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "leaf")
+    assert rc.get_program("orca")["run_command"] == "from-base"
+
+
+def test_same_as_missing_target_raises(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[int-nano-new]
+same-as = "int-nano"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "int-nano-new")
+    with pytest.raises(ValueError, match="does not exist"):
+        rc.get_program("orca")
+
+
+def test_same_as_empty_string_raises(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[int-nano-new]
+same-as = ""
+"""
+    )
+    rc = ResourceConfig(tmp_path, "int-nano-new")
+    with pytest.raises(ValueError, match="non-empty string"):
+        rc.get_program("orca")
+
+
+def test_same_as_cycle_raises(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[a]
+same-as = "b"
+[b]
+same-as = "a"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "a")
+    with pytest.raises(ValueError, match="Circular same-as"):
+        rc.get_program("orca")
+
 @pytest.mark.asyncio
 async def test_global_state_initialization(tmp_path):
     from simstack.core.context import GlobalState

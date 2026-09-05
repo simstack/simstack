@@ -1,3 +1,4 @@
+import copy
 import tomllib
 import os
 import shutil
@@ -11,6 +12,16 @@ from odmantic import ObjectId
 
 import logging
 logger = logging.getLogger("ResourceConfig")
+
+
+def _deep_merge_dicts(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
+    merged = copy.deepcopy(base)
+    for key, value in overlay.items():
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+            merged[key] = _deep_merge_dicts(merged[key], value)
+        else:
+            merged[key] = copy.deepcopy(value)
+    return merged
 
 class ResourceConfig:
     """
@@ -49,15 +60,60 @@ class ResourceConfig:
         else:
             self._config = {}
 
+    def _resource_section(self, resource: str) -> Dict[str, Any]:
+        """Return the resource table after following ``same-as`` aliases.
+
+        ``same-as`` copies another resource's table. Extra keys on the aliasing
+        resource overlay the target (nested tables are merged). A missing
+        resource with no alias is an empty dict, matching prior lookup
+        behavior. A ``same-as`` that points at a missing resource, is not a
+        non-empty string, or forms a cycle raises ``ValueError``.
+        """
+        seen: list[str] = []
+        overlays: list[Dict[str, Any]] = []
+        current = resource
+        while True:
+            if current in seen:
+                chain = " -> ".join(seen + [current])
+                raise ValueError(f"Circular same-as in config.toml: {chain}")
+            seen.append(current)
+            section = self._config.get(current)
+            if section is None:
+                if len(seen) == 1:
+                    return {}
+                raise ValueError(
+                    f"config.toml resource {current!r} referenced by same-as "
+                    f"from {seen[-2]!r} does not exist"
+                )
+            if not isinstance(section, dict):
+                raise ValueError(
+                    f"config.toml resource {current!r} must be a table, "
+                    f"got {type(section).__name__}"
+                )
+            alias = section.get("same-as")
+            if alias is None:
+                resolved = copy.deepcopy(section)
+                for overlay in reversed(overlays):
+                    resolved = _deep_merge_dicts(resolved, overlay)
+                resolved.pop("same-as", None)
+                return resolved
+            if not isinstance(alias, str) or alias == "":
+                raise ValueError(
+                    f"same-as for resource {current!r} must be a non-empty "
+                    f"string, got {alias!r}"
+                )
+            overlays.append({k: v for k, v in section.items() if k != "same-as"})
+            current = alias
+
     @property
     def os(self) -> str:
         """
         Returns the OS of the current resource, defaults to 'linux'.
         """
-        try:
-            return self._config[self._resource].get("os", "linux")
-        except KeyError:
+        section = self._resource_section(self._resource)
+        if "os" not in section:
             return "linux"
+        return section["os"]
 
     def setup(self, node_runner: Optional[Any] = None):
         """
@@ -174,10 +230,7 @@ class ResourceConfig:
         means skip pull (local builds tagged as Docker Hub library names).
         """
         lookup = resource if resource is not None else self._resource
-        try:
-            value = self._config[lookup].get("docker_registry")
-        except (KeyError, TypeError, AttributeError):
-            return None
+        value = self._resource_section(lookup).get("docker_registry")
         if not isinstance(value, str):
             return None
         value = value.strip()
@@ -189,10 +242,12 @@ class ResourceConfig:
         Expected structure in TOML: [resource_name.program.program_name]
 
         If ``resource`` is omitted, uses the ResourceConfig's current resource.
+        Resources may set ``same-as = "other-resource"`` to reuse that
+        resource's program tables.
         """
         lookup = resource if resource is not None else self._resource
         try:
-            return self._config[lookup]["program"][program_name]
+            return self._resource_section(lookup)["program"][program_name]
         except (KeyError, TypeError):
             return {}
 
@@ -201,24 +256,21 @@ class ResourceConfig:
         Returns the setup dict for the specified resource.
         Expected structure in TOML: [resource_name.setup]
         """
-        try:
-            return self._config[self._resource]["setup"]
-        except KeyError:
+        setup = self._resource_section(self._resource).get("setup")
+        if setup is None:
             return {}
+        return setup
 
     def get_postprocessing_params(self) -> Dict[str, Any]:
         """
         Returns the post-processing dict for the specified resource.
         Expected structure in TOML: [resource_name.post-processing] or [resource_name.postprocessing]
         """
-        try:
-            resource_cfg = self._config[self._resource]
-            if "post-processing" in resource_cfg:
-                return resource_cfg["post-processing"]
-            if "postprocessing" in resource_cfg:
-                return resource_cfg["postprocessing"]
-        except KeyError:
-            pass
+        resource_cfg = self._resource_section(self._resource)
+        if "post-processing" in resource_cfg:
+            return resource_cfg["post-processing"]
+        if "postprocessing" in resource_cfg:
+            return resource_cfg["postprocessing"]
         return {}
 
     def __str__(self):
