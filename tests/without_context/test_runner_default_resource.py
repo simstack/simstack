@@ -110,12 +110,12 @@ async def test_async_main_uses_false_is_default_when_default_resource_init_retur
         resource="docker",
         db_name=None,
         detach=True,
-        no_pull=False,
+        pull=True,
         polling_interval=5,
         timeout=None,
         connection_string="none",
         config="simstack.toml",
-        with_file_transfer=False,
+        file_transfer=False,
     )
 
     await runner.async_main(args)
