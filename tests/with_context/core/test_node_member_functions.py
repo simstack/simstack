@@ -1,5 +1,6 @@
 import pytest
 import os
+import uuid
 import asyncio
 import pytest_asyncio
 from pathlib import Path
@@ -27,6 +28,32 @@ async def async_node(data: FloatData, **kwargs) -> FloatData:
 @node
 def failing_node(data: FloatData, **kwargs) -> FloatData:
     raise RuntimeError("Intentional failure")
+
+@node(force_rerun=True)
+async def custom_name_child_in_tests(data: FloatData, **kwargs) -> SimstackResult:
+    return SimstackResult(
+        status=TaskStatus.COMPLETED,
+        custom_name=f"{kwargs['custom_name']}-child",
+        value=FloatData(value=data.value),
+    )
+
+@node(force_rerun=True)
+async def custom_name_parent_in_tests(data: FloatData, **kwargs) -> FloatData:
+    await custom_name_child_in_tests(data, **kwargs)
+    return FloatData(value=data.value)
+
+@node
+async def custom_name_cached_child_in_tests(data: FloatData, **kwargs) -> SimstackResult:
+    return SimstackResult(
+        status=TaskStatus.COMPLETED,
+        custom_name=f"{kwargs['custom_name']}-child",
+        value=FloatData(value=data.value),
+    )
+
+@node(force_rerun=True)
+async def custom_name_reuse_parent_in_tests(data: FloatData, **kwargs) -> FloatData:
+    await custom_name_cached_child_in_tests(data, **kwargs)
+    return FloatData(value=data.value)
 
 @pytest_asyncio.fixture
 async def setup_mappings(initialized_context):
@@ -517,6 +544,82 @@ async def test_process_results_persists_simstack_result_metadata_and_files(
     assert secret not in (loaded.error_message or "")
     assert loaded.info_files[0].name == "info.txt"
     assert loaded.files.elements == [result_file.id]
+
+
+@pytest.mark.asyncio
+async def test_child_custom_name_is_persisted_on_node_registry(initialized_context):
+    parent_name = f"custom-name-parent-{uuid.uuid4()}"
+    result = await custom_name_parent_in_tests(
+        FloatData(value=1.0),
+        custom_name=parent_name,
+    )
+    assert result.value == 1.0
+
+    entries = await context.db.find(NodeRegistry)
+    parent_entries = [
+        entry
+        for entry in entries
+        if entry.name == "custom_name_parent_in_tests"
+        and entry.custom_name == parent_name
+    ]
+    assert len(parent_entries) == 1
+    parent_id = parent_entries[0].id
+    child_entries = [
+        entry
+        for entry in entries
+        if entry.name == "custom_name_child_in_tests"
+        and parent_id in entry.parent_ids
+    ]
+    assert len(child_entries) == 1
+    assert child_entries[0].custom_name == f"{parent_name}-child"
+
+
+@pytest.mark.asyncio
+async def test_reused_child_registry_keeps_custom_name_when_parent_is_linked(
+    initialized_context,
+):
+    parent_name = f"custom-name-reuse-{uuid.uuid4()}"
+    data = FloatData(value=float(uuid.uuid4().int % 10_000) + 0.5)
+    await custom_name_reuse_parent_in_tests(data, custom_name=parent_name)
+    await custom_name_reuse_parent_in_tests(data, custom_name=parent_name)
+
+    entries = await context.db.find(NodeRegistry)
+    child_entries = [
+        entry
+        for entry in entries
+        if entry.name == "custom_name_cached_child_in_tests"
+        and entry.custom_name == f"{parent_name}-child"
+    ]
+    assert len(child_entries) == 1
+    assert len(child_entries[0].parent_ids) == 2
+
+
+@pytest.mark.asyncio
+async def test_linking_parent_does_not_replace_persisted_custom_name(
+    initialized_context,
+):
+    from simstack.core.node import _link_parent_id
+
+    parameters = Parameters()
+    registry = NodeRegistry(
+        name="sync_node",
+        status=TaskStatus.COMPLETED,
+        custom_name="child-set-name",
+        function_hash="link-function-hash",
+        arg_hash="link-arg-hash",
+        func_mapping="tests.sync_node",
+        parameters=parameters,
+    )
+    await context.db.save(registry)
+    stale = registry.model_copy(deep=True)
+    stale.custom_name = "seeded-from-parent"
+    parent_id = ObjectId()
+
+    await _link_parent_id(stale, parent_id)
+
+    loaded = await context.db.load_task_by_id(registry.id)
+    assert loaded.custom_name == "child-set-name"
+    assert parent_id in loaded.parent_ids
 
 
 @pytest.mark.asyncio
