@@ -22,7 +22,10 @@ os = "windows"
     assert rc_linux.os == "linux"
     
     rc_none = ResourceConfig(tmp_path, "non_existent")
-    assert rc_none.os == "linux"
+    with pytest.raises(
+        ValueError, match=r"config.toml has no \[non_existent\] resource block"
+    ):
+        _ = rc_none.os
 
 def test_resource_config_setup(tmp_path, monkeypatch):
     config_file = tmp_path / "config.toml"
