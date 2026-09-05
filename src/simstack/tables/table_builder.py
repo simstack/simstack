@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import importlib
 import logging
+import tomllib
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Iterable, Optional, Type
@@ -18,8 +19,9 @@ from simstack.util.path_manager import path_manager
 class TableBuilderBase(ABC):
     """
     Shared pipeline for building "tables" by scanning:
-      1) installed simstack modules (packages)
-      2) configured project paths (python files)
+      1) installed simstack.modules entry points (listed at INFO as each is scanned)
+      2) explicit --dir / dirs arguments
+      3) deprecated config.toml active_dirs when no dirs were given
 
     Subclasses only implement `_process_module(module, drops)`.
     """
@@ -56,8 +58,13 @@ class TableBuilderBase(ABC):
         """
         Build the table.
 
-        - If `dirs` is None: use configured `path_manager` paths (existing behavior).
-        - If `dirs` is a list: scan those directories for Python files and process them.
+        - Installed `simstack.modules` entry points are processed unless
+          `ignore_entrypoints` is true. With -v (INFO), each entry point is
+          listed as it is scanned.
+        - If `dirs` is a non-empty list, those directories are scanned.
+        - If `dirs` is omitted or empty, `active_dirs` from project-root
+          `config.toml` is scanned and a deprecation warning is emitted.
+          The current working directory is not scanned.
 
         `exclude` entries can match:
           - path parts (e.g. ".venv", "__pycache__")
@@ -72,7 +79,8 @@ class TableBuilderBase(ABC):
         if not ignore_entrypoints:
             await self._process_simstack_modules(drops=drops)
 
-        await self._process_dirs(dirs, drops=drops, exclude=exclude or [])
+        scan_dirs = list(dirs) if dirs else self._active_dirs_from_config()
+        await self._process_dirs(scan_dirs, drops=drops, exclude=exclude or [])
 
     async def _ensure_context_initialized(self) -> None:
         if not context.initialized:
@@ -110,7 +118,35 @@ class TableBuilderBase(ABC):
         for file_path in path_manager.find_python_files(path_name):
             await self._process_file(file_path, drops)
 
-    async def _process_dirs(self, dirs: list[Path], *, drops: str, exclude: list[str]) -> None:
+    def _active_dirs_from_config(self) -> list[Path]:
+        config_path = self.project_root / "config.toml"
+        if not config_path.exists():
+            return []
+        with open(config_path, "rb") as config_file:
+            config_data = tomllib.load(config_file)
+        if "active_dirs" not in config_data:
+            return []
+        active_dirs = config_data["active_dirs"]
+        if not isinstance(active_dirs, list):
+            raise ValueError("active_dirs in config.toml must be a list of directory paths")
+        resolved: list[Path] = []
+        for directory in active_dirs:
+            if not isinstance(directory, str):
+                raise ValueError(
+                    "active_dirs in config.toml must contain only strings, "
+                    f"got {type(directory).__name__}"
+                )
+            resolved.append(Path(directory))
+        self.logger.warning(
+            "active_dirs in config.toml is deprecated; use --dir to specify "
+            "directories to scan. Using %s",
+            active_dirs,
+        )
+        return resolved
+
+    async def _process_dirs(self, dirs: Optional[list[Path]], *, drops: str, exclude: list[str]) -> None:
+        if not dirs:
+            return
         for base_dir in dirs:
             self.logger.info("Processing CLI dir: %s", base_dir)
 
@@ -230,18 +266,29 @@ class TableBuilderBase(ABC):
 
         Options:
           --dir RELPATH   (repeatable) Directories (relative to CWD) to scan for *.py files.
-                         If omitted, defaults to scanning the current working directory.
+                         If omitted, entry points are used, plus deprecated
+                         config.toml active_dirs when present. CWD is not scanned.
           --drops STRING  Drops prefix (string) applied while processing these CLI dirs.
-          -v/--verbose    Increase logging verbosity.
+          -v/--verbose    -v sets INFO (lists each entry point as it is scanned);
+                          -vv sets DEBUG.
         """
         parser = argparse.ArgumentParser()
-        parser.add_argument("-v", "--verbose", action="count", default=0)
+        parser.add_argument(
+            "-v",
+            "--verbose",
+            action="count",
+            default=0,
+            help="Increase logging verbosity: -v INFO, -vv DEBUG.",
+        )
         parser.add_argument(
             "--dir",
             dest="dirs",
             action="append",
             default=[],
-            help="Path to scan (repeatable). If omitted, CWD is used.",
+            help=(
+                "Path to scan (repeatable). If omitted, only entry points and "
+                "deprecated config.toml active_dirs are scanned; CWD is not."
+            ),
         )
         parser.add_argument(
             "--exclude",
@@ -287,11 +334,9 @@ class TableBuilderBase(ABC):
         elif args.verbose >= 2:
             level = logging.DEBUG
 
-        # Resolve dirs relative to the current working directory
-        if args.dirs:
-            dirs = [Path.cwd() / d for d in args.dirs]
-        else:
-            dirs = [Path.cwd()]
+        # Resolve --dir arguments relative to the current working directory.
+        # An omitted --dir must not fall back to scanning CWD.
+        dirs = [Path.cwd() / d for d in args.dirs] if args.dirs else []
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
