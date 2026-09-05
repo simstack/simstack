@@ -134,6 +134,7 @@ async def test_node_from_database_duplicate(initialized_context, setup_helper_no
         existing_entry = NodeRegistry(
             name="helper_node_func",
             status=TaskStatus.COMPLETED,
+            custom_name="duplicate-child-name",
             input_references=[NamedDataReference.from_variable(input_data)],
             function_hash=func_hash,
             arg_hash=arg_hash,
@@ -165,14 +166,17 @@ async def test_node_from_database_duplicate(initialized_context, setup_helper_no
                 assert reconstructed_node is not None
                 assert reconstructed_node.registry_entry.id == new_entry_id
                 assert reconstructed_node.registry_entry.status == TaskStatus.COMPLETED
+                assert reconstructed_node.registry_entry.custom_name == "duplicate-child-name"
 
                 kept = await context.db.find_one(
                     NodeRegistry, NodeRegistry.id == new_entry_id
                 )
                 assert kept is not None
+                assert kept.custom_name == "duplicate-child-name"
                 duplicate = await context.db.find_one(
                     NodeRegistry, NodeRegistry.id == existing_entry.id
                 )
+                assert duplicate.custom_name == "duplicate-child-name"
                 assert new_entry_id in duplicate.parent_ids
             finally:
                 # new_registry_entry might have been deleted by node_from_database

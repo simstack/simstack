@@ -303,6 +303,21 @@ async def _find_reusable_task(
     return None
 
 
+async def _link_parent_id(registry_entry: NodeRegistry, parent_id: ObjectId) -> None:
+    """Record a parent without replacing the persisted registry document.
+
+    A full ``db.save`` of a previously loaded entry can clobber fields the
+    child already wrote, including ``custom_name``.
+    """
+    collection = context.db.get_collection(NodeRegistry)
+    await collection.update_one(
+        {"_id": registry_entry.id},
+        {"$addToSet": {"parent_ids": parent_id}},
+    )
+    if parent_id not in registry_entry.parent_ids:
+        registry_entry.parent_ids.append(parent_id)
+
+
 def _slurm_parameters_are_unset(slurm: Optional[SlurmParameters]) -> bool:
     """True when slurm_parameters were omitted (or are an empty default)."""
     if slurm is None:
@@ -692,8 +707,7 @@ class Node:
                         f"Task task_id: {self.id} parent_id is a string: {self.parent_id}"
                     )
                     self.parent_id = ObjectId(self.parent_id)
-                self.registry_entry.parent_ids.append(self.parent_id)
-                await context.db.save(self.registry_entry)
+                await _link_parent_id(self.registry_entry, self.parent_id)
             # whenever a task is found in the database, we may have to redo all child artifacts because the children
             # will not be loaded
             if self.recompute_artifacts:
@@ -1258,7 +1272,8 @@ class Node:
             if isinstance(result, SimstackResult):
                 self.registry_entry.return_kind = "multiple"
                 new_task_status = result.status
-                if hasattr(result, "custom_name"):
+                if result.custom_name is not None:
+                    self.custom_name = result.custom_name
                     self.registry_entry.custom_name = result.custom_name
 
                 for file_stack in result.info_files:
@@ -1520,9 +1535,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             # the parameters of the new job may be different
 
             registry_entry.populate_results_from_duplicate(duplicate_entry)
-            if registry_entry.id not in duplicate_entry.parent_ids:
-                duplicate_entry.parent_ids.append(registry_entry.id)
-            await db.save(duplicate_entry)  # duplicate becomes a child of the new entry
+            await _link_parent_id(duplicate_entry, registry_entry.id)
             await db.save(registry_entry)
 
     except Exception as e:
