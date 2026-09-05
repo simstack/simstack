@@ -95,8 +95,9 @@ def test_runner(
         "1",
         "--detach",
         "false",
-        "--no-pull",
-        "--with-file-transfer",
+        "--pull",
+        "false",
+        "--file-transfer",
         "false",
     ]
     process_environment = os.environ.copy()
