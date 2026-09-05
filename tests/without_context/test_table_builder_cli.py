@@ -59,3 +59,37 @@ def test_cli_dir_is_resolved_against_cwd(monkeypatch, tmp_path):
     TableBuilderBase.cli_main(RecordingCliBuilder)
 
     assert RecordingCliBuilder.captured["dirs"] == [tmp_path / "pkg"]
+
+
+def test_cli_v_sets_info_log_level(monkeypatch):
+    captured = {}
+
+    async def fake_initialize(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(
+        "simstack.tables.table_builder.context",
+        SimpleNamespace(initialize=fake_initialize, db=object()),
+    )
+    monkeypatch.setattr(sys, "argv", ["create_model_table", "-v"])
+
+    TableBuilderBase.cli_main(RecordingCliBuilder)
+
+    assert captured["log_level"] == logging.INFO
+
+
+def test_cli_vv_sets_debug_log_level(monkeypatch):
+    captured = {}
+
+    async def fake_initialize(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(
+        "simstack.tables.table_builder.context",
+        SimpleNamespace(initialize=fake_initialize, db=object()),
+    )
+    monkeypatch.setattr(sys, "argv", ["create_model_table", "-vv"])
+
+    TableBuilderBase.cli_main(RecordingCliBuilder)
+
+    assert captured["log_level"] == logging.DEBUG
