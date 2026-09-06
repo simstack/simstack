@@ -436,9 +436,12 @@ def _docker_program_config(registry_entry: NodeRegistry) -> tuple[dict, str]:
     lookup_resource = (
         str(context.config.resource) if task_resource == "self" else task_resource
     )
-    program_config = context.resource_config.get_program(
-        registry_entry.name, resource=lookup_resource
-    )
+    try:
+        program_config = context.resource_config.get_program(
+            registry_entry.name, resource=lookup_resource
+        )
+    except ValueError:
+        program_config = {}
     return program_config, lookup_resource
 
 

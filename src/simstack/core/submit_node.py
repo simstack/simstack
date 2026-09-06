@@ -112,9 +112,12 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
             str(context.config.resource) if task_resource == "self" else task_resource
         )
         if context.resource_config is not None:
-            program_config = context.resource_config.get_program(
-                registry_entry.name, resource=selected_resource
-            ) or {}
+            try:
+                program_config = context.resource_config.get_program(
+                    registry_entry.name, resource=selected_resource
+                ) or {}
+            except ValueError:
+                program_config = {}
         else:
             program_config = {}
 
