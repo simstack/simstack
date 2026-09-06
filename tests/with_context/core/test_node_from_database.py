@@ -72,7 +72,7 @@ async def test_node_from_database_basic(initialized_context, setup_helper_node_m
             assert reconstructed_node.registry_entry.id == registry_entry.id
             
             # Verify that hashes were initialized
-            assert registry_entry.function_hash != "NOT INITIALIZED"
+            assert registry_entry.function_hash == ""
             assert registry_entry.arg_hash != "NOT INITIALIZED"
         finally:
             await context.db.delete(registry_entry)
@@ -124,18 +124,15 @@ async def test_node_from_database_duplicate(initialized_context, setup_helper_no
         parameters = Parameters()
         
         # Create an EXISTING entry in the database that is already initialized
-        # We need to know the hashes to create a duplicate
         from simstack.core.node import compute_arg_hash
-        from simstack.core.hash import complex_hash_function
         
         arg_hash = compute_arg_hash([input_data])
-        func_hash = complex_hash_function(helper_node_func._inner)
         
         existing_entry = NodeRegistry(
             name="helper_node_func",
             status=TaskStatus.COMPLETED,
             input_references=[NamedDataReference.from_variable(input_data)],
-            function_hash=func_hash,
+            function_hash="",
             arg_hash=arg_hash,
             func_mapping=f"{CURRENT_MODULE}.helper_node_func",
             parameters=parameters,
@@ -192,17 +189,15 @@ async def test_node_from_database_invalid_mapping_with_duplicate(initialized_con
     
     try:
         from simstack.core.node import compute_arg_hash
-        from simstack.core.hash import complex_hash_function
         
         arg_hash = compute_arg_hash([input_data])
-        func_hash = complex_hash_function(helper_node_func._inner)
         
         # Create an EXISTING entry that is COMPLETED
         existing_entry = NodeRegistry(
             name="helper_node_func",
             status=TaskStatus.COMPLETED,
             input_references=[NamedDataReference.from_variable(input_data)],
-            function_hash=func_hash,
+            function_hash="",
             arg_hash=arg_hash,
             func_mapping=f"{CURRENT_MODULE}.helper_node_func",
             parameters=Parameters(),
@@ -216,7 +211,7 @@ async def test_node_from_database_invalid_mapping_with_duplicate(initialized_con
                 name="helper_node_func",
                 status=TaskStatus.SUBMITTED,
                 input_references=[NamedDataReference.from_variable(input_data)],
-                function_hash=func_hash, # Pre-initialized hashes
+                function_hash="", # Pre-initialized hashes
                 arg_hash=arg_hash,
                 func_mapping="non_existent_module.func", # INVALID MAPPING
                 parameters=Parameters(),
@@ -246,17 +241,15 @@ async def test_node_from_database_ignores_active_duplicate(
     await context.db.save(input_data)
     
     from simstack.core.node import compute_arg_hash
-    from simstack.core.hash import complex_hash_function
     
     arg_hash = compute_arg_hash([input_data])
-    func_hash = complex_hash_function(helper_node_func._inner)
     
     # Create a registry entry that IS ALREADY in the DB and HAS HASHES
     existing_entry = NodeRegistry(
         name="helper_node_func",
         status=TaskStatus.SUBMITTED,
         input_references=[NamedDataReference.from_variable(input_data)],
-        function_hash=func_hash,
+        function_hash="",
         arg_hash=arg_hash,
         func_mapping=f"{CURRENT_MODULE}.helper_node_func",
         parameters=Parameters(),
@@ -269,7 +262,7 @@ async def test_node_from_database_ignores_active_duplicate(
         name="helper_node_func",
         status=TaskStatus.SUBMITTED,
         input_references=[NamedDataReference.from_variable(input_data)],
-        function_hash=func_hash,
+        function_hash="",
         arg_hash=arg_hash,
         func_mapping=f"{CURRENT_MODULE}.helper_node_func",
         parameters=Parameters(),
