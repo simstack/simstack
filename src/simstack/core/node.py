@@ -644,10 +644,11 @@ class Node:
         Reads or initializes the task registry entry in the database.
 
         This method ensures that a task entry exists in the database for the
-        current task. It computes hashes of its arguments and function,
-        checks if a database entry already matches these hashes, and creates
-        a new entry if no match is found. If the database is not connected,
-        an exception is raised.
+        current task. It computes hashes of its arguments, checks if a
+        database entry already matches the node name and argument hash, and
+        creates a new entry if no match is found. Function identity is
+        versioned by git rather than by hashing the function body. If the
+        database is not connected, an exception is raised.
 
         :raises ValueError: if the database is not connected.
         :return: Status of the task retrieved or created.
@@ -657,7 +658,8 @@ class Node:
             raise ValueError("Database is not connected")
 
         arg_hash = compute_arg_hash(self._args)
-        function_hash = cast(str, complex_hash_function(self._func))
+        # Function identity is versioned by git, not by hashing the function body.
+        function_hash = ""
         self._arg_hash = arg_hash
         self._function_hash = function_hash
 
@@ -1422,7 +1424,9 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
 
     This function can delete the registry_entry !!!
     The only way that registry_entry.function_hash is "NOT INITIALIZED" is when the node
-    is created from the frontend. No other node is listening specifically for this registry_entry to complete.
+    is created from the frontend. Function identity is versioned by git, so an
+    uninitialized function_hash is stored as empty rather than hashed from source.
+    No other node is listening specifically for this registry_entry to complete.
     If a duplicate is found the node from the duplication is returned
 
     :param registry_entry: The registry entry containing information necessary to
@@ -1478,7 +1482,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
             )
             if registry_entry.function_hash == "NOT INITIALIZED":
-                registry_entry.function_hash = cast(str, complex_hash_function(func))
+                registry_entry.function_hash = ""
                 registry_entry.is_async = asyncio.iscoroutinefunction(func)
         else:
             logger.error(
