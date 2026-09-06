@@ -233,14 +233,16 @@ class NodeRunner(SimstackResult):
         with open(f"{name}.log", "w", encoding="utf-8") as process_log:
             process_log.write(f"Command: {name}\n{command}\n")
             # TODO adapt for docker
-            process = subprocess.run(
-                command,
-                shell=True,  # Important: use shell=True for shell operators like &&
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                cwd=cwd if cwd else None,
-            )
+            run_kwargs = {
+                "shell": True,  # Important: use shell=True for shell operators like &&
+                "capture_output": True,
+                "text": True,
+                "encoding": "utf-8",
+                "cwd": cwd if cwd else None,
+            }
+            if os.name == "nt":
+                run_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+            process = subprocess.run(command, **run_kwargs)
             self.info(f"run script {name} finished: {process.returncode}")
             self.last_stdout = process.stdout
             self.last_stderr = process.stderr
