@@ -434,6 +434,62 @@ async def test_load_task_by_id_accepts_object_id_and_string_id(
 
 
 @pytest.mark.asyncio
+async def test_save_reloads_ui_editable_registry_fields_before_persisting(
+        initialized_context,
+        monkeypatch,
+):
+    db = await _restore_database_facade_methods(monkeypatch)
+
+    registry = _registry("stale_registry_save")
+    registry.custom_name = "original-name"
+    registry.category = "original-category"
+    await db.save(registry)
+
+    stale = await db.find_one(NodeRegistry, NodeRegistry.id == registry.id)
+    stale.status = TaskStatus.RUNNING
+    stale.custom_name = "stale-in-memory-name"
+    stale.category = "stale-in-memory-category"
+
+    ui_copy = await db.find_one(NodeRegistry, NodeRegistry.id == registry.id)
+    ui_copy.custom_name = "ui-name"
+    ui_copy.category = "ui-category"
+    await db.save(ui_copy)
+
+    await db.save(stale)
+
+    loaded = await db.find_one(NodeRegistry, NodeRegistry.id == registry.id)
+    assert loaded is not None
+    assert loaded.custom_name == "ui-name"
+    assert loaded.category == "ui-category"
+    assert loaded.status == TaskStatus.RUNNING
+
+
+@pytest.mark.asyncio
+async def test_save_keeps_local_registry_user_fields_when_database_is_unchanged(
+        initialized_context,
+        monkeypatch,
+):
+    db = await _restore_database_facade_methods(monkeypatch)
+
+    registry = _registry("local_registry_user_fields")
+    registry.custom_name = "original-name"
+    registry.category = "original-category"
+    await db.save(registry)
+
+    loaded = await db.find_one(NodeRegistry, NodeRegistry.id == registry.id)
+    loaded.custom_name = "from-node"
+    loaded.category = "from-node-category"
+    loaded.status = TaskStatus.COMPLETED
+    await db.save(loaded)
+
+    persisted = await db.find_one(NodeRegistry, NodeRegistry.id == registry.id)
+    assert persisted is not None
+    assert persisted.custom_name == "from-node"
+    assert persisted.category == "from-node-category"
+    assert persisted.status == TaskStatus.COMPLETED
+
+
+@pytest.mark.asyncio
 async def test_load_waiting_tasks_for_resource_filters_submitted_matching_resource(
         initialized_context,
         monkeypatch,
