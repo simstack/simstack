@@ -177,6 +177,38 @@ same-as = "a"
         rc.get_program("orca")
 
 
+def test_same_as_underscore_key(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[local.program.orca]
+run_command = "orca orca.inp > orca.out"
+
+[local2]
+same_as = "local"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "local2")
+    assert rc.get_program("orca")["run_command"] == "orca orca.inp > orca.out"
+
+
+def test_same_as_conflicting_keys_raise(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[local.program.orca]
+run_command = "from-local"
+[other.program.orca]
+run_command = "from-other"
+
+[local2]
+same-as = "local"
+same_as = "other"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "local2")
+    with pytest.raises(ValueError, match="conflicting"):
+        rc.get_program("orca")
+
+
 def test_missing_program_block_raises(tmp_path):
     (tmp_path / "config.toml").write_text(
         """
