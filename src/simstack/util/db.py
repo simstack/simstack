@@ -244,6 +244,13 @@ class Database:
 
     async def _apply_postprocess(self, model_class: type, result: Model) -> None:
         """Apply db_find_postprocess to results if defined on the model class."""
+        if isinstance(result, NodeRegistry):
+            from simstack.core.services.node_registry_service import (
+                remember_user_editable_fields,
+            )
+
+            remember_user_editable_fields(result)
+
         post_process = getattr(model_class, "db_find_postprocess", None)
 
         if post_process and callable(post_process):
@@ -392,6 +399,17 @@ class Database:
 
         if custom_save_called:
             return model
+
+        if isinstance(model, NodeRegistry):
+            from simstack.core.services.node_registry_service import (
+                apply_persisted_user_editable_fields,
+                remember_user_editable_fields,
+            )
+
+            await apply_persisted_user_editable_fields(self, model)
+            result = await self._engine.save(model, *args, **kwargs)
+            remember_user_editable_fields(model)
+            return result if result is not None else model
 
         result = await self._engine.save(model, *args, **kwargs)
         return result if result is not None else model
