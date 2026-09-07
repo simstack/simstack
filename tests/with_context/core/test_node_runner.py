@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import MagicMock, patch, mock_open, call
 import os
+import sys
+from pathlib import Path
 
 from simstack.core.node_runner import NodeRunner
 from simstack.core.simstack_result import SimstackResult
@@ -314,5 +316,238 @@ class TestNodeRunnerIntegration:
             assert runner.error_message == "Integration test failed"
             assert len(runner.info_files) == 1  # Should have the log file
 
+        finally:
+            os.chdir(original_cwd)
+
+
+def _write_runner_config(tmp_path, extra_program_lines="", scratch_cleanup=None, tmp_base_dir=True):
+    from simstack.util.resource_config import ResourceConfig
+
+    scratch_base = tmp_path / "scratch_base"
+    config_file = tmp_path / "config.toml"
+    lines = []
+    if tmp_base_dir:
+        lines.append("[self.setup]")
+        lines.append(f'tmp_base_dir = "{scratch_base.as_posix()}"')
+    lines.append("[self.program.orca]")
+    script = tmp_path / "write_out.py"
+    script.write_text("open('out.txt', 'w', encoding='utf-8').write('from-scratch')\n")
+    exe = sys.executable.replace("\\", "/")
+    script_posix = script.as_posix()
+    lines.append(f'run_command = "\\"{exe}\\" \\"{script_posix}\\""')
+    if scratch_cleanup is True:
+        lines.append("scratch_cleanup = true")
+    elif scratch_cleanup is False:
+        lines.append("scratch_cleanup = false")
+    if extra_program_lines:
+        lines.append(extra_program_lines)
+    config_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return ResourceConfig(config_file, "self"), scratch_base
+
+
+class TestNodeRunnerStageExecuteRetrieve:
+    def test_stage_creates_scratch_and_copies_inputs(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+
+        rc, scratch_base = _write_runner_config(tmp_path)
+        monkeypatch.setattr(context, "_resource_config", rc)
+        workdir = tmp_path / "work"
+        workdir.mkdir()
+        (workdir / "in.txt").write_text("input-data", encoding="utf-8")
+        original_cwd = os.getcwd()
+        os.chdir(workdir)
+        try:
+            runner = NodeRunner("orca", "task_abc")
+            fs = MagicMock()
+            scratch = runner.stage(input_files=["in.txt", fs])
+            assert scratch.resolve() == (scratch_base / "task_abc").resolve()
+            assert (scratch / "in.txt").read_text(encoding="utf-8") == "input-data"
+            fs.get.assert_called_once_with(local_dir=scratch)
+            assert Path.cwd().resolve() == workdir.resolve()
+        finally:
+            os.chdir(original_cwd)
+
+    def test_stage_missing_input_raises(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+
+        rc, _scratch_base = _write_runner_config(tmp_path)
+        monkeypatch.setattr(context, "_resource_config", rc)
+        workdir = tmp_path / "work"
+        workdir.mkdir()
+        original_cwd = os.getcwd()
+        os.chdir(workdir)
+        try:
+            runner = NodeRunner("orca", "task_abc")
+            with pytest.raises(ValueError, match="does not exist"):
+                runner.stage(input_files=["missing.txt"])
+        finally:
+            os.chdir(original_cwd)
+
+    def test_stage_without_tmp_base_dir_raises(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+
+        monkeypatch.delenv("TMP_BASE_DIR", raising=False)
+        rc, _scratch_base = _write_runner_config(tmp_path, tmp_base_dir=False)
+        monkeypatch.setattr(context, "_resource_config", rc)
+        runner = NodeRunner("orca", "task_abc")
+        with pytest.raises(ValueError, match="tmp_base_dir"):
+            runner.stage()
+
+    def test_stage_without_resource_config_raises(self, monkeypatch):
+        from simstack.core.context import context
+
+        monkeypatch.setattr(context, "_resource_config", None)
+        runner = NodeRunner("orca", "task_abc")
+        with pytest.raises(ValueError, match="resource_config"):
+            runner.stage()
+
+    def test_stage_context_not_initialized_raises(self, monkeypatch):
+        from simstack.core.context import context
+
+        monkeypatch.setattr(context, "_initialized", False)
+        runner = NodeRunner("orca", "task_abc")
+        with pytest.raises(ValueError, match="not initialized"):
+            runner.stage()
+
+    def test_stage_twice_raises(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+
+        rc, _scratch_base = _write_runner_config(tmp_path)
+        monkeypatch.setattr(context, "_resource_config", rc)
+        runner = NodeRunner("orca", "task_abc")
+        runner.stage()
+        with pytest.raises(ValueError, match="already staged"):
+            runner.stage()
+
+    def test_execute_runs_in_scratch(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+
+        rc, scratch_base = _write_runner_config(tmp_path)
+        monkeypatch.setattr(context, "_resource_config", rc)
+        workdir = tmp_path / "work"
+        workdir.mkdir()
+        original_cwd = os.getcwd()
+        os.chdir(workdir)
+        try:
+            runner = NodeRunner("orca", "task_abc")
+            scratch = runner.stage()
+            assert runner.execute("orca") is True
+            assert (scratch / "out.txt").read_text(encoding="utf-8") == "from-scratch"
+            assert not (workdir / "out.txt").exists()
+            assert (scratch / "orca.log").exists()
+        finally:
+            os.chdir(original_cwd)
+
+    def test_execute_missing_program_raises(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+
+        rc, _scratch_base = _write_runner_config(tmp_path)
+        monkeypatch.setattr(context, "_resource_config", rc)
+        runner = NodeRunner("orca", "task_abc")
+        with pytest.raises(ValueError, match="not found"):
+            runner.execute("missing_prog")
+
+    def test_execute_missing_run_command_raises(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+        from simstack.util.resource_config import ResourceConfig
+
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(
+            f"""
+[self.setup]
+tmp_base_dir = "{(tmp_path / "scratch_base").as_posix()}"
+[self.program.orca]
+use_temp = true
+""",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(context, "_resource_config", ResourceConfig(config_file, "self"))
+        runner = NodeRunner("orca", "task_abc")
+        with pytest.raises(ValueError, match="run_command"):
+            runner.execute("orca")
+
+    def test_retrieve_copies_listed_files(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+
+        rc, _scratch_base = _write_runner_config(tmp_path)
+        monkeypatch.setattr(context, "_resource_config", rc)
+        workdir = tmp_path / "work"
+        workdir.mkdir()
+        original_cwd = os.getcwd()
+        os.chdir(workdir)
+        try:
+            runner = NodeRunner("orca", "task_abc")
+            scratch = runner.stage()
+            (scratch / "keep.txt").write_text("keep", encoding="utf-8")
+            (scratch / "skip.txt").write_text("skip", encoding="utf-8")
+            runner.retrieve(output_files=["keep.txt"])
+            assert (workdir / "keep.txt").read_text(encoding="utf-8") == "keep"
+            assert not (workdir / "skip.txt").exists()
+            assert scratch.exists()
+            assert runner.scratch_dir is None
+        finally:
+            os.chdir(original_cwd)
+
+    def test_retrieve_copies_all_when_omitted(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+
+        rc, _scratch_base = _write_runner_config(tmp_path)
+        monkeypatch.setattr(context, "_resource_config", rc)
+        workdir = tmp_path / "work"
+        workdir.mkdir()
+        original_cwd = os.getcwd()
+        os.chdir(workdir)
+        try:
+            runner = NodeRunner("orca", "task_abc")
+            scratch = runner.stage()
+            (scratch / "a.txt").write_text("a", encoding="utf-8")
+            (scratch / "b.txt").write_text("b", encoding="utf-8")
+            runner.retrieve()
+            assert (workdir / "a.txt").read_text(encoding="utf-8") == "a"
+            assert (workdir / "b.txt").read_text(encoding="utf-8") == "b"
+        finally:
+            os.chdir(original_cwd)
+
+    def test_retrieve_honors_scratch_cleanup(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+
+        rc, _scratch_base = _write_runner_config(tmp_path, scratch_cleanup=True)
+        monkeypatch.setattr(context, "_resource_config", rc)
+        workdir = tmp_path / "work"
+        workdir.mkdir()
+        original_cwd = os.getcwd()
+        os.chdir(workdir)
+        try:
+            runner = NodeRunner("orca", "task_abc")
+            scratch = runner.stage()
+            runner.execute("orca")
+            runner.retrieve()
+            assert (workdir / "out.txt").read_text(encoding="utf-8") == "from-scratch"
+            assert not scratch.exists()
+        finally:
+            os.chdir(original_cwd)
+
+    def test_retrieve_without_stage_raises(self):
+        runner = NodeRunner("orca", "task_abc")
+        with pytest.raises(ValueError, match="stage"):
+            runner.retrieve()
+
+    def test_resource_config_run_delegates_to_node_runner(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+
+        rc, scratch_base = _write_runner_config(
+            tmp_path,
+            extra_program_lines='use_temp = true\noutput_files = ["out.txt"]',
+        )
+        monkeypatch.setattr(context, "_resource_config", rc)
+        workdir = tmp_path / "work"
+        workdir.mkdir()
+        original_cwd = os.getcwd()
+        os.chdir(workdir)
+        try:
+            runner = NodeRunner("orca", "task_run")
+            rc.run("orca", node_runner=runner)
+            assert (workdir / "out.txt").read_text(encoding="utf-8") == "from-scratch"
+            assert (scratch_base / "task_run").exists()
         finally:
             os.chdir(original_cwd)

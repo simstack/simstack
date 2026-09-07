@@ -118,6 +118,35 @@ class ResourceConfig:
         
         if output_files is None:
             output_files = params.get("output_files", [])
+
+        if node_runner is not None:
+            from simstack.core.node_runner import NodeRunner
+
+            if isinstance(node_runner, NodeRunner):
+                if "use_tmp" in params and "use_temp" in params:
+                    if bool(params["use_tmp"]) != bool(params["use_temp"]):
+                        raise ValueError(
+                            f"Program {program_name!r} has conflicting use_tmp="
+                            f"{params['use_tmp']!r} and use_temp={params['use_temp']!r}"
+                        )
+                if "use_tmp" in params:
+                    use_temp = params["use_tmp"]
+                elif "use_temp" in params:
+                    use_temp = params["use_temp"]
+                else:
+                    use_temp = False
+                if not isinstance(use_temp, bool):
+                    raise ValueError(
+                        f"use_tmp/use_temp for program {program_name!r} must be a bool, "
+                        f"got {use_temp!r}"
+                    )
+                if use_temp:
+                    node_runner.stage(input_files=input_files)
+                    node_runner.execute(program_name)
+                    node_runner.retrieve(output_files=output_files)
+                else:
+                    node_runner.execute(program_name)
+                return
             
         use_temp = params.get("use_temp", False)
         
