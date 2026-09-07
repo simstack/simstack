@@ -1,5 +1,6 @@
 import tomllib
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -82,15 +83,40 @@ class ResourceConfig:
 
     @property
     def tmp_base_dir(self) -> Path:
-        tmp_base_dir_str = self.get_setup_params().get("tmp_base_dir", "")
+        configured = self.get_setup_params().get("tmp_base_dir", None)
+        candidates = []
+        if configured:
+            text = str(configured).strip()
+            for match in re.finditer(
+                r'(?:^|\n)\s*(?:set\s+|export\s+)?TMP_BASE_DIR\s*=\s*["\']?([^\n"\']+)',
+                text,
+                re.IGNORECASE,
+            ):
+                candidates.append(match.group(1).strip())
+            if "\n" not in text and not re.search(r"\bif\b", text, re.IGNORECASE):
+                if not re.search(r"TMP_BASE_DIR\s*=", text, re.IGNORECASE):
+                    candidates.append(text)
+        env_tmp_base = os.environ.get("TMP_BASE_DIR")
+        if env_tmp_base:
+            candidates.append(env_tmp_base)
 
-        if tmp_base_dir_str:
-            expanded_path_str = os.path.expandvars(os.path.expanduser(tmp_base_dir_str))
-            path = Path(expanded_path_str)
-            path.mkdir(parents=True, exist_ok=True)
-            return path
+        last_error = None
+        for raw in candidates:
+            expanded = os.path.expandvars(os.path.expanduser(raw.strip().strip('"')))
+            if not expanded or "$" in expanded or (os.name == "nt" and "%" in expanded):
+                continue
+            path = Path(expanded)
+            try:
+                path.mkdir(parents=True, exist_ok=True)
+                return path
+            except OSError as exc:
+                last_error = exc
 
-        # Default to system temp directory if no command/path specified
+        if configured:
+            raise ValueError(
+                f"Could not resolve tmp_base_dir from {configured!r}"
+                + (f": {last_error}" if last_error else "")
+            )
         return Path(tempfile.gettempdir())
 
     def run(self,
@@ -118,11 +144,25 @@ class ResourceConfig:
         
         if output_files is None:
             output_files = params.get("output_files", [])
-            
-        use_temp = params.get("use_temp", False)
-        
-        # tmp_base_dir can come from setup or the program itself, but usually it's in setup for the resource
-    
+
+        if "use_tmp" in params and "use_temp" in params:
+            if bool(params["use_tmp"]) != bool(params["use_temp"]):
+                raise ValueError(
+                    f"Program {program_name!r} has conflicting use_tmp="
+                    f"{params['use_tmp']!r} and use_temp={params['use_temp']!r}"
+                )
+        if "use_tmp" in params:
+            use_temp = params["use_tmp"]
+        elif "use_temp" in params:
+            use_temp = params["use_temp"]
+        else:
+            use_temp = False
+        if not isinstance(use_temp, bool):
+            raise ValueError(
+                f"use_tmp/use_temp for program {program_name!r} must be a bool, "
+                f"got {use_temp!r}"
+            )
+
         # scratch_cleanup from postprocessing
         post_params = self.get_postprocessing_params()
         scratch_cleanup = params.get("scratch_cleanup", post_params.get("scratch_cleanup", False))
@@ -131,6 +171,14 @@ class ResourceConfig:
         try:
             exec_dir = Path.cwd()
             if use_temp:
+                if not self.get_setup_params().get("tmp_base_dir") and not os.environ.get(
+                    "TMP_BASE_DIR"
+                ):
+                    raise ValueError(
+                        f"Program {program_name!r} has use_tmp=true but tmp_base_dir "
+                        "is not set in config.toml [resource.setup] and TMP_BASE_DIR "
+                        "is not in the environment"
+                    )
                 tmp_id = node_runner.task_id if node_runner else uuid.uuid4()
                 tmp_dir = self.tmp_dir(tmp_id)
                 exec_dir = tmp_dir
