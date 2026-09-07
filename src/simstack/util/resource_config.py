@@ -1,6 +1,6 @@
-import copy
 import tomllib
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -12,16 +12,6 @@ from odmantic import ObjectId
 
 import logging
 logger = logging.getLogger("ResourceConfig")
-
-
-def _deep_merge_dicts(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
-    merged = copy.deepcopy(base)
-    for key, value in overlay.items():
-        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
-            merged[key] = _deep_merge_dicts(merged[key], value)
-        else:
-            merged[key] = copy.deepcopy(value)
-    return merged
 
 class ResourceConfig:
     """
@@ -60,62 +50,15 @@ class ResourceConfig:
         else:
             self._config = {}
 
-    def _resource_section(self, resource: str) -> Dict[str, Any]:
-        """Return the resource table after following ``same-as`` aliases.
-
-        ``same-as`` copies another resource's table. Extra keys on the aliasing
-        resource overlay the target (nested tables are merged). A missing
-        resource raises ``ValueError``. A ``same-as`` that points at a missing
-        resource, is not a non-empty string, or forms a cycle also raises
-        ``ValueError``.
-        """
-        seen: list[str] = []
-        overlays: list[Dict[str, Any]] = []
-        current = resource
-        while True:
-            if current in seen:
-                chain = " -> ".join(seen + [current])
-                raise ValueError(f"Circular same-as in config.toml: {chain}")
-            seen.append(current)
-            section = self._config.get(current)
-            if section is None:
-                if len(seen) == 1:
-                    raise ValueError(
-                        f"config.toml has no [{current}] resource block"
-                    )
-                raise ValueError(
-                    f"config.toml resource {current!r} referenced by same-as "
-                    f"from {seen[-2]!r} does not exist"
-                )
-            if not isinstance(section, dict):
-                raise ValueError(
-                    f"config.toml resource {current!r} must be a table, "
-                    f"got {type(section).__name__}"
-                )
-            alias = section.get("same-as")
-            if alias is None:
-                resolved = copy.deepcopy(section)
-                for overlay in reversed(overlays):
-                    resolved = _deep_merge_dicts(resolved, overlay)
-                resolved.pop("same-as", None)
-                return resolved
-            if not isinstance(alias, str) or alias == "":
-                raise ValueError(
-                    f"same-as for resource {current!r} must be a non-empty "
-                    f"string, got {alias!r}"
-                )
-            overlays.append({k: v for k, v in section.items() if k != "same-as"})
-            current = alias
-
     @property
     def os(self) -> str:
         """
         Returns the OS of the current resource, defaults to 'linux'.
         """
-        section = self._resource_section(self._resource)
-        if "os" not in section:
+        try:
+            return self._config[self._resource].get("os", "linux")
+        except KeyError:
             return "linux"
-        return section["os"]
 
     def setup(self, node_runner: Optional[Any] = None):
         """
@@ -140,15 +83,40 @@ class ResourceConfig:
 
     @property
     def tmp_base_dir(self) -> Path:
-        tmp_base_dir_str = self.get_setup_params().get("tmp_base_dir", "")
+        configured = self.get_setup_params().get("tmp_base_dir", None)
+        candidates = []
+        if configured:
+            text = str(configured).strip()
+            for match in re.finditer(
+                r'(?:^|\n)\s*(?:set\s+|export\s+)?TMP_BASE_DIR\s*=\s*["\']?([^\n"\']+)',
+                text,
+                re.IGNORECASE,
+            ):
+                candidates.append(match.group(1).strip())
+            if "\n" not in text and not re.search(r"\bif\b", text, re.IGNORECASE):
+                if not re.search(r"TMP_BASE_DIR\s*=", text, re.IGNORECASE):
+                    candidates.append(text)
+        env_tmp_base = os.environ.get("TMP_BASE_DIR")
+        if env_tmp_base:
+            candidates.append(env_tmp_base)
 
-        if tmp_base_dir_str:
-            expanded_path_str = os.path.expandvars(os.path.expanduser(tmp_base_dir_str))
-            path = Path(expanded_path_str)
-            path.mkdir(parents=True, exist_ok=True)
-            return path
+        last_error = None
+        for raw in candidates:
+            expanded = os.path.expandvars(os.path.expanduser(raw.strip().strip('"')))
+            if not expanded or "$" in expanded or (os.name == "nt" and "%" in expanded):
+                continue
+            path = Path(expanded)
+            try:
+                path.mkdir(parents=True, exist_ok=True)
+                return path
+            except OSError as exc:
+                last_error = exc
 
-        # Default to system temp directory if no command/path specified
+        if configured:
+            raise ValueError(
+                f"Could not resolve tmp_base_dir from {configured!r}"
+                + (f": {last_error}" if last_error else "")
+            )
         return Path(tempfile.gettempdir())
 
     def run(self,
@@ -177,39 +145,24 @@ class ResourceConfig:
         if output_files is None:
             output_files = params.get("output_files", [])
 
-        if node_runner is not None:
-            from simstack.core.node_runner import NodeRunner
+        if "use_tmp" in params and "use_temp" in params:
+            if bool(params["use_tmp"]) != bool(params["use_temp"]):
+                raise ValueError(
+                    f"Program {program_name!r} has conflicting use_tmp="
+                    f"{params['use_tmp']!r} and use_temp={params['use_temp']!r}"
+                )
+        if "use_tmp" in params:
+            use_temp = params["use_tmp"]
+        elif "use_temp" in params:
+            use_temp = params["use_temp"]
+        else:
+            use_temp = False
+        if not isinstance(use_temp, bool):
+            raise ValueError(
+                f"use_tmp/use_temp for program {program_name!r} must be a bool, "
+                f"got {use_temp!r}"
+            )
 
-            if isinstance(node_runner, NodeRunner):
-                if "use_tmp" in params and "use_temp" in params:
-                    if bool(params["use_tmp"]) != bool(params["use_temp"]):
-                        raise ValueError(
-                            f"Program {program_name!r} has conflicting use_tmp="
-                            f"{params['use_tmp']!r} and use_temp={params['use_temp']!r}"
-                        )
-                if "use_tmp" in params:
-                    use_temp = params["use_tmp"]
-                elif "use_temp" in params:
-                    use_temp = params["use_temp"]
-                else:
-                    use_temp = False
-                if not isinstance(use_temp, bool):
-                    raise ValueError(
-                        f"use_tmp/use_temp for program {program_name!r} must be a bool, "
-                        f"got {use_temp!r}"
-                    )
-                if use_temp:
-                    node_runner.stage(input_files=input_files)
-                    node_runner.execute(program_name)
-                    node_runner.retrieve(output_files=output_files)
-                else:
-                    node_runner.execute(program_name)
-                return
-            
-        use_temp = params.get("use_temp", False)
-        
-        # tmp_base_dir can come from setup or the program itself, but usually it's in setup for the resource
-    
         # scratch_cleanup from postprocessing
         post_params = self.get_postprocessing_params()
         scratch_cleanup = params.get("scratch_cleanup", post_params.get("scratch_cleanup", False))
@@ -218,6 +171,14 @@ class ResourceConfig:
         try:
             exec_dir = Path.cwd()
             if use_temp:
+                if not self.get_setup_params().get("tmp_base_dir") and not os.environ.get(
+                    "TMP_BASE_DIR"
+                ):
+                    raise ValueError(
+                        f"Program {program_name!r} has use_tmp=true but tmp_base_dir "
+                        "is not set in config.toml [resource.setup] and TMP_BASE_DIR "
+                        "is not in the environment"
+                    )
                 tmp_id = node_runner.task_id if node_runner else uuid.uuid4()
                 tmp_dir = self.tmp_dir(tmp_id)
                 exec_dir = tmp_dir
@@ -261,7 +222,10 @@ class ResourceConfig:
         means skip pull (local builds tagged as Docker Hub library names).
         """
         lookup = resource if resource is not None else self._resource
-        value = self._resource_section(lookup).get("docker_registry")
+        try:
+            value = self._config[lookup].get("docker_registry")
+        except (KeyError, TypeError, AttributeError):
+            return None
         if not isinstance(value, str):
             return None
         value = value.strip()
@@ -273,57 +237,36 @@ class ResourceConfig:
         Expected structure in TOML: [resource_name.program.program_name]
 
         If ``resource`` is omitted, uses the ResourceConfig's current resource.
-        Resources may set ``same-as = "other-resource"`` to reuse that
-        resource's program tables.
-
-        Raises:
-            ValueError: If the resource or ``[resource.program.name]`` block
-                is missing from ``config.toml``.
         """
         lookup = resource if resource is not None else self._resource
-        section = self._resource_section(lookup)
-        programs = section.get("program")
-        if programs is None:
-            raise ValueError(
-                f"config.toml resource {lookup!r} has no [program] table"
-            )
-        if not isinstance(programs, dict):
-            raise ValueError(
-                f"config.toml resource {lookup!r} [program] must be a table, "
-                f"got {type(programs).__name__}"
-            )
-        if program_name not in programs:
-            raise ValueError(
-                f"config.toml has no [{lookup}.program.{program_name}] block"
-            )
-        program = programs[program_name]
-        if not isinstance(program, dict):
-            raise ValueError(
-                f"config.toml [{lookup}.program.{program_name}] must be a "
-                f"table, got {type(program).__name__}"
-            )
-        return program
+        try:
+            return self._config[lookup]["program"][program_name]
+        except (KeyError, TypeError):
+            return {}
 
     def get_setup_params(self) -> Dict[str, Any]:
         """
         Returns the setup dict for the specified resource.
         Expected structure in TOML: [resource_name.setup]
         """
-        setup = self._resource_section(self._resource).get("setup")
-        if setup is None:
+        try:
+            return self._config[self._resource]["setup"]
+        except KeyError:
             return {}
-        return setup
 
     def get_postprocessing_params(self) -> Dict[str, Any]:
         """
         Returns the post-processing dict for the specified resource.
         Expected structure in TOML: [resource_name.post-processing] or [resource_name.postprocessing]
         """
-        resource_cfg = self._resource_section(self._resource)
-        if "post-processing" in resource_cfg:
-            return resource_cfg["post-processing"]
-        if "postprocessing" in resource_cfg:
-            return resource_cfg["postprocessing"]
+        try:
+            resource_cfg = self._config[self._resource]
+            if "post-processing" in resource_cfg:
+                return resource_cfg["post-processing"]
+            if "postprocessing" in resource_cfg:
+                return resource_cfg["postprocessing"]
+        except KeyError:
+            pass
         return {}
 
     def __str__(self):

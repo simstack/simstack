@@ -138,7 +138,23 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
             logger.error("Task task_id: %s %s", task_id, registry_entry.error)
             await context.db.save(registry_entry)
             return False
-        if program_config.get("use_tmp", False):
+        if "use_tmp" in program_config and "use_temp" in program_config:
+            if bool(program_config["use_tmp"]) != bool(program_config["use_temp"]):
+                registry_entry.status = TaskStatus.FAILED
+                registry_entry.error = (
+                    f"Program {registry_entry.name} has conflicting use_tmp="
+                    f"{program_config['use_tmp']!r} and use_temp="
+                    f"{program_config['use_temp']!r}"
+                )
+                logger.error("Task task_id: %s %s", task_id, registry_entry.error)
+                await context.db.save(registry_entry)
+                return False
+        use_tmp = (
+            program_config["use_tmp"]
+            if "use_tmp" in program_config
+            else program_config.get("use_temp", False)
+        )
+        if use_tmp:
             tmp_dir = context.resource_config.tmp_dir(registry_entry.id)
 
             if not tmp_dir.exists() or not tmp_dir.is_dir():

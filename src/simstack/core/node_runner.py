@@ -3,7 +3,6 @@ import logging
 import os
 import shutil
 import subprocess
-import sys
 import uuid
 from pathlib import Path
 from typing import Set, List, Tuple, Union, Optional
@@ -57,9 +56,11 @@ class NodeRunner(SimstackResult):
         self.info_file_patterns = {"*.in", "*.out", "*.err", "*.log"}
         self.custom_name = None
         self.scratch_dir = None
-        self._node_dir = None
-        self._program_name = None
-        self._file_watchdog_proc = None
+        self._scratch_workdir = None
+        self._scratch_cleanup = False
+        self._logged_scratch = False
+        self._scratch_env_backup = {}
+        self._scratch_chdir = False
         self.info(f"NodeRunner '{self.name}' initialized for task_id: {self.task_id}")
 
 
@@ -87,222 +88,162 @@ class NodeRunner(SimstackResult):
             logger=kwargs.get("logger"),
         )
 
-    def _require_resource_config(self):
-        from simstack.core.context import context
-
-        if not context.initialized:
-            raise ValueError("context is not initialized")
-        resource_config = context.resource_config
-        if resource_config is None:
-            raise ValueError("context.resource_config is not available")
-        return resource_config
-
-    def _stop_file_watchdog(self) -> None:
-        proc = self._file_watchdog_proc
-        if proc is None:
-            return
-        self._file_watchdog_proc = None
-        if proc.poll() is not None:
-            return
-        proc.terminate()
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait(timeout=5)
-
-    def stage(
+    def enter_scratch(
         self,
-        input_files: Optional[List[Union[str, FileStack]]] = None,
-    ) -> Path:
-        """Create the ResourceConfig scratch directory and copy input files into it.
+        program_name: str | None = None,
+        *,
+        chdir: bool = True,
+        scratch_dir: str | Path | None = None,
+        scratch_cleanup: bool | None = None,
+    ) -> Optional[Path]:
+        """Send temporary files to the scratch directory from config.toml.
 
-        The Python process stays in the node directory. ``execute`` runs with
-        ``cwd`` set to the returned scratch path.
+        When ``[<resource>.program.<name>]`` has ``use_tmp`` / ``use_temp``
+        true, files are written under ``[<resource>.setup] tmp_base_dir``
+        (or an explicit ``scratch_dir``). Logs once when scratch is used.
 
         Args:
-            input_files: Files to copy into scratch. Strings are paths relative
-                to the node directory. ``FileStack`` values are materialized with
-                ``.get(local_dir=scratch)``. Omitted means copy nothing.
+            program_name: Program key in config.toml. Defaults to this runner's name.
+            chdir: If True, change the process working directory to scratch and
+                set TURBOTMPDIR/TMPDIR/TMP so child processes write temps there.
+            scratch_dir: Explicit scratch path. If omitted, resolved from
+                ResourceConfig when the program flag is set.
+            scratch_cleanup: If True, delete the scratch directory on
+                ``leave_scratch``. ``None`` reads the program or post-processing
+                config; missing means do not delete.
 
         Returns:
-            The scratch directory path.
+            The scratch directory, or None when scratch is not configured.
 
         Raises:
-            ValueError: Already staged, context/resource config missing,
-                ``tmp_base_dir`` is not configured, or a listed input file is missing.
+            ValueError: Scratch was requested but ``tmp_base_dir`` is missing
+                or not a usable directory path.
         """
         if self.scratch_dir is not None:
-            raise ValueError("scratch is already staged")
-        resource_config = self._require_resource_config()
-        if not resource_config.get_setup_params().get("tmp_base_dir") and not os.environ.get(
-            "TMP_BASE_DIR"
-        ):
-            raise ValueError(
-                "tmp_base_dir is not set in config.toml [resource.setup] and "
-                "TMP_BASE_DIR is not in the environment"
-            )
-        self._node_dir = Path.cwd()
-        scratch = resource_config.tmp_dir(self.task_id)
-        self.scratch_dir = Path(scratch)
-        self.info(f"Writing temporary files to scratch directory: {self.scratch_dir}")
-        if input_files:
-            for item in input_files:
-                if hasattr(item, "get"):
-                    item.get(local_dir=self.scratch_dir)
-                    continue
-                src = self._node_dir / item
-                if not src.exists():
+            return Path(self.scratch_dir)
+
+        program_name = program_name or self.name
+        resource_config = None
+        program_params = {}
+        post_params = {}
+        if scratch_dir is None:
+            try:
+                from simstack.core.context import context
+
+                if not context.initialized:
+                    return None
+                resource_config = context.resource_config
+            except RuntimeError:
+                return None
+            if resource_config is None:
+                return None
+            program_params = resource_config.get_program(program_name) or {}
+            post_params = resource_config.get_postprocessing_params() or {}
+            if "use_tmp" in program_params and "use_temp" in program_params:
+                if bool(program_params["use_tmp"]) != bool(program_params["use_temp"]):
                     raise ValueError(
-                        f"Input file {item!r} does not exist in {self._node_dir}"
+                        f"Program {program_name!r} has conflicting use_tmp="
+                        f"{program_params['use_tmp']!r} and use_temp="
+                        f"{program_params['use_temp']!r}"
                     )
-                dest = self.scratch_dir / Path(item).name
-                if src.resolve() != dest.resolve():
-                    shutil.copy2(src, dest)
+            if "use_tmp" in program_params:
+                use_scratch = program_params["use_tmp"]
+            elif "use_temp" in program_params:
+                use_scratch = program_params["use_temp"]
+            else:
+                return None
+            if not isinstance(use_scratch, bool):
+                raise ValueError(
+                    f"use_tmp/use_temp for program {program_name!r} must be a bool, "
+                    f"got {use_scratch!r}"
+                )
+            if not use_scratch:
+                return None
+            if not resource_config.get_setup_params().get("tmp_base_dir") and not os.environ.get(
+                "TMP_BASE_DIR"
+            ):
+                raise ValueError(
+                    f"Program {program_name!r} has use_tmp=true but tmp_base_dir is "
+                    "not set in config.toml [resource.setup] and TMP_BASE_DIR is "
+                    "not in the environment"
+                )
+            scratch_path = resource_config.tmp_dir(self.task_id)
+        else:
+            scratch_path = Path(scratch_dir)
+            scratch_path.mkdir(parents=True, exist_ok=True)
+
+        if scratch_cleanup is not None:
+            if not isinstance(scratch_cleanup, bool):
+                raise ValueError(
+                    f"scratch_cleanup must be a bool, got {scratch_cleanup!r}"
+                )
+            self._scratch_cleanup = scratch_cleanup
+        elif "scratch_cleanup" in program_params:
+            flag = program_params["scratch_cleanup"]
+            if not isinstance(flag, bool):
+                raise ValueError(
+                    f"scratch_cleanup for program {program_name!r} must be a bool, "
+                    f"got {flag!r}"
+                )
+            self._scratch_cleanup = flag
+        elif "scratch_cleanup" in post_params:
+            flag = post_params["scratch_cleanup"]
+            if not isinstance(flag, bool):
+                raise ValueError(
+                    f"post-processing scratch_cleanup must be a bool, got {flag!r}"
+                )
+            self._scratch_cleanup = flag
+        else:
+            self._scratch_cleanup = False
+
+        self.scratch_dir = Path(scratch_path)
+        self._scratch_workdir = Path.cwd()
+        self._scratch_chdir = bool(chdir)
+        if chdir and self.scratch_dir.resolve() != self._scratch_workdir.resolve():
+            os.chdir(self.scratch_dir)
+            for key in ("TURBOTMPDIR", "TMPDIR", "TMP"):
+                self._scratch_env_backup[key] = os.environ.get(key)
+                os.environ[key] = str(self.scratch_dir)
+        if not self._logged_scratch:
+            self.info(
+                f"Writing temporary files to scratch directory: {self.scratch_dir}"
+            )
+            self._logged_scratch = True
         return self.scratch_dir
 
-    def execute(self, program_name: str) -> bool:
-        """Run ``run_command`` for ``program_name`` from ResourceConfig.
-
-        Executes in the staged scratch directory when ``stage`` was called,
-        otherwise in the current working directory.
-
-        Args:
-            program_name: Program key under ``[<resource>.program.<name>]``.
-
-        Returns:
-            True if the subprocess returned 0, False otherwise.
-
-        Raises:
-            ValueError: Context/resource config missing, program not found, or
-                ``run_command`` is missing/empty.
-        """
-        if not program_name:
-            raise ValueError("program_name is required")
-        resource_config = self._require_resource_config()
-        params = resource_config.get_program(program_name)
-        if not params:
-            raise ValueError(f"Program {program_name!r} not found in ResourceConfig")
-        run_command = params.get("run_command")
-        if not run_command:
-            raise ValueError(f"Program {program_name!r} has no run_command")
-        self._program_name = program_name
-        cwd = str(self.scratch_dir) if self.scratch_dir is not None else ""
-        return self.subprocess(program_name, run_command, cwd=cwd)
-
-    def retrieve(
-        self,
-        output_files: Optional[List[Union[str, FileStack]]] = None,
-    ) -> None:
-        """Copy result files from scratch back to the node directory.
-
-        Stops the file watchdog. If ``output_files`` is a list (including empty),
-        copies those names only. If omitted, copies every item in scratch.
-        Deletes scratch only when ``scratch_cleanup`` is a bool in the program
-        or post-processing config.
-
-        Raises:
-            ValueError: ``stage`` was never called, or ``scratch_cleanup`` is set
-                but is not a bool.
-        """
-        if self.scratch_dir is None or self._node_dir is None:
-            raise ValueError("retrieve requires stage() first")
-        self._stop_file_watchdog()
+    def leave_scratch(self) -> None:
+        """Copy scratch files back to the original workdir and optionally delete scratch."""
+        if self.scratch_dir is None or self._scratch_workdir is None:
+            return
         scratch = Path(self.scratch_dir)
-        workdir = Path(self._node_dir)
+        workdir = Path(self._scratch_workdir)
         try:
             if scratch.exists() and scratch.resolve() != workdir.resolve():
-                if output_files is None:
-                    items = list(scratch.iterdir())
-                else:
-                    items = []
-                    for item in output_files:
-                        name = item.name if hasattr(item, "name") else item
-                        items.append(scratch / name)
-                for item in items:
-                    if not item.exists():
-                        continue
+                for item in scratch.iterdir():
                     dest = workdir / item.name
                     if item.is_dir():
                         shutil.copytree(item, dest, dirs_exist_ok=True)
                     else:
                         shutil.copy2(item, dest)
-            cleanup = False
-            resource_config = self._require_resource_config()
-            program_params = {}
-            if self._program_name:
-                program_params = resource_config.get_program(self._program_name) or {}
-            post_params = resource_config.get_postprocessing_params() or {}
-            if "scratch_cleanup" in program_params:
-                flag = program_params["scratch_cleanup"]
-                if not isinstance(flag, bool):
-                    raise ValueError(
-                        f"scratch_cleanup for program {self._program_name!r} must be a bool, "
-                        f"got {flag!r}"
-                    )
-                cleanup = flag
-            elif "scratch_cleanup" in post_params:
-                flag = post_params["scratch_cleanup"]
-                if not isinstance(flag, bool):
-                    raise ValueError(
-                        f"post-processing scratch_cleanup must be a bool, got {flag!r}"
-                    )
-                cleanup = flag
-            if cleanup and scratch.exists() and scratch.resolve() != workdir.resolve():
-                shutil.rmtree(scratch)
         finally:
+            if self._scratch_chdir:
+                os.chdir(workdir)
+                for key, previous in self._scratch_env_backup.items():
+                    if previous is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = previous
+            if (
+                self._scratch_cleanup
+                and scratch.exists()
+                and scratch.resolve() != workdir.resolve()
+            ):
+                shutil.rmtree(scratch)
             self.scratch_dir = None
-            self._node_dir = None
-            self._program_name = None
-
-    def file_watchdog(self, files: List[str], interval: float) -> None:
-        """Copy ``files`` from scratch to the node directory every ``interval`` seconds.
-
-        Starts a child process (not a thread) so copying does not hold the GIL.
-        The child exits when this process dies (parent-pid poll; Linux also uses
-        ``PR_SET_PDEATHSIG``). Stopped by ``retrieve``, ``fail``, and ``succeed``.
-
-        Args:
-            files: Non-empty list of file names relative to scratch.
-            interval: Positive number of seconds between copy passes.
-
-        Raises:
-            ValueError: Scratch was not staged, files/interval are invalid, or a
-                watchdog is already running.
-        """
-        if self.scratch_dir is None or self._node_dir is None:
-            raise ValueError("file_watchdog requires stage() first")
-        if self._file_watchdog_proc is not None and self._file_watchdog_proc.poll() is None:
-            raise ValueError("file_watchdog is already running")
-        if not files:
-            raise ValueError("files must be a non-empty list")
-        if isinstance(interval, bool) or not isinstance(interval, (int, float)) or interval <= 0:
-            raise ValueError(f"interval must be a positive number, got {interval!r}")
-        cmd = [
-            sys.executable,
-            "-m",
-            "simstack.util.scratch_file_watchdog",
-            "--scratch",
-            str(self.scratch_dir),
-            "--dest",
-            str(self._node_dir),
-            "--interval",
-            str(interval),
-            "--parent-pid",
-            str(os.getpid()),
-            *files,
-        ]
-        env = os.environ.copy()
-        import simstack
-
-        src_dir = str(Path(simstack.__file__).resolve().parent.parent)
-        existing = env.get("PYTHONPATH", "")
-        env["PYTHONPATH"] = src_dir if not existing else src_dir + os.pathsep + existing
-        self._file_watchdog_proc = subprocess.Popen(cmd, env=env)
-        self.info(
-            f"Started file watchdog for {files} every {interval}s "
-            f"(pid {self._file_watchdog_proc.pid})"
-        )
+            self._scratch_workdir = None
+            self._scratch_chdir = False
+            self._scratch_env_backup = {}
+            self._logged_scratch = False
 
     async def make_info_files(self, *args, cwd: str | Path = ""):
         """
@@ -455,22 +396,26 @@ class NodeRunner(SimstackResult):
 
         exec_cwd = cwd if cwd else (str(self.scratch_dir) if self.scratch_dir else "")
         if exec_cwd:
-            Path(exec_cwd).mkdir(parents=True, exist_ok=True)
-        log_path = str(Path(exec_cwd) / f"{name}.log") if exec_cwd else f"{name}.log"
+            exec_path = Path(exec_cwd)
+            exec_path.mkdir(parents=True, exist_ok=True)
+            if not self._logged_scratch and exec_path.resolve() != Path.cwd().resolve():
+                self.info(f"Writing temporary files to scratch directory: {exec_path}")
+                self._logged_scratch = True
+            log_path = str(exec_path / f"{name}.log")
+        else:
+            log_path = f"{name}.log"
 
         with open(log_path, "w", encoding="utf-8") as process_log:
             process_log.write(f"Command: {name}\n{command}\n")
             # TODO adapt for docker
-            run_kwargs = {
-                "shell": True,  # Important: use shell=True for shell operators like &&
-                "capture_output": True,
-                "text": True,
-                "encoding": "utf-8",
-                "cwd": exec_cwd if exec_cwd else None,
-            }
-            if os.name == "nt":
-                run_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-            process = subprocess.run(command, **run_kwargs)
+            process = subprocess.run(
+                command,
+                shell=True,  # Important: use shell=True for shell operators like &&
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                cwd=exec_cwd if exec_cwd else None,
+            )
             self.info(f"run script {name} finished: {process.returncode}")
             self.last_stdout = process.stdout
             self.last_stderr = process.stderr
@@ -563,7 +508,6 @@ class NodeRunner(SimstackResult):
         Returns:
             NodeRunner: Self reference for chaining.
         """
-        self._stop_file_watchdog()
         self._make_log_file()
         self.logger.error(
             f"Task {self.name}: {msg} task_id: {self.task_id}",
@@ -587,7 +531,6 @@ class NodeRunner(SimstackResult):
         Returns:
             NodeRunner: Self reference for chaining.
         """
-        self._stop_file_watchdog()
         self._make_log_file()
         self.info(f"succeeded {msg}")
         self.message = msg
