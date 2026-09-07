@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch, mock_open, call
 import os
+from pathlib import Path
 
 from simstack.core.node_runner import NodeRunner
 from simstack.core.simstack_result import SimstackResult
@@ -314,5 +315,86 @@ class TestNodeRunnerIntegration:
             assert runner.error_message == "Integration test failed"
             assert len(runner.info_files) == 1  # Should have the log file
 
+        finally:
+            os.chdir(original_cwd)
+
+
+class TestNodeRunnerScratch:
+    def test_enter_scratch_logs_chdir_and_copies_back(self, tmp_path):
+        workdir = tmp_path / "work"
+        scratch = tmp_path / "scratch"
+        workdir.mkdir()
+        original_cwd = os.getcwd()
+        saved_env = {key: os.environ.get(key) for key in ("TURBOTMPDIR", "TMPDIR", "TMP")}
+        os.chdir(workdir)
+        mock_logger = MagicMock()
+        try:
+            runner = NodeRunner("turbomole2", "task_abc", logger=mock_logger)
+            result = runner.enter_scratch(
+                scratch_dir=scratch, chdir=True, scratch_cleanup=False
+            )
+            assert result.resolve() == scratch.resolve()
+            assert Path.cwd().resolve() == scratch.resolve()
+            assert os.environ.get("TURBOTMPDIR") == str(scratch)
+            (scratch / "tmp.dat").write_text("scratch-data", encoding="utf-8")
+            mock_logger.info.assert_any_call(
+                "Task turbomole2: Writing temporary files to scratch directory: "
+                f"{scratch} task_id: task_abc",
+                stacklevel=2,
+            )
+            runner.leave_scratch()
+            assert Path.cwd().resolve() == workdir.resolve()
+            assert (workdir / "tmp.dat").read_text(encoding="utf-8") == "scratch-data"
+            assert scratch.exists()
+        finally:
+            os.chdir(original_cwd)
+            for key, previous in saved_env.items():
+                if previous is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = previous
+
+    def test_enter_scratch_cleanup_removes_directory(self, tmp_path):
+        workdir = tmp_path / "work"
+        scratch = tmp_path / "scratch"
+        workdir.mkdir()
+        original_cwd = os.getcwd()
+        saved_env = {key: os.environ.get(key) for key in ("TURBOTMPDIR", "TMPDIR", "TMP")}
+        os.chdir(workdir)
+        try:
+            runner = NodeRunner("turbomole2", "task_abc")
+            runner.enter_scratch(scratch_dir=scratch, chdir=True, scratch_cleanup=True)
+            (scratch / "gone.txt").write_text("x", encoding="utf-8")
+            runner.leave_scratch()
+            assert not scratch.exists()
+            assert (workdir / "gone.txt").read_text(encoding="utf-8") == "x"
+        finally:
+            os.chdir(original_cwd)
+            for key, previous in saved_env.items():
+                if previous is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = previous
+
+    def test_enter_scratch_without_context_returns_none(self):
+        runner = NodeRunner("turbomole2", "task_abc")
+        assert runner.enter_scratch("turbomole2") is None
+
+    def test_subprocess_logs_when_cwd_is_scratch(self, tmp_path):
+        scratch = tmp_path / "scratch"
+        scratch.mkdir()
+        mock_logger = MagicMock()
+        runner = NodeRunner("orca", "task_abc", logger=mock_logger)
+        original_cwd = os.getcwd()
+        os.chdir(tmp_path)
+        try:
+            result = runner.subprocess("run", "echo scratch-run", cwd=str(scratch))
+            assert result is True
+            assert (scratch / "run.log").exists()
+            mock_logger.info.assert_any_call(
+                "Task orca: Writing temporary files to scratch directory: "
+                f"{scratch} task_id: task_abc",
+                stacklevel=2,
+            )
         finally:
             os.chdir(original_cwd)
