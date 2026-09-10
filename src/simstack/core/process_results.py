@@ -79,7 +79,11 @@ async def process_result_helper(
                 and is_simstack_model(value)
             ):
                 if isinstance(value, Model):
-                    result_model = await context.db.save(value)
+                    try:
+                        result_model = await context.db.save(value)
+                    except Exception as e:
+                        logger.error(f"task_id: {task_id} cannot save model: {key} {str(e)}")
+                        raise e
                     result_models.append(result_model)
                     results_references.append(NamedDataReference.from_variable(
                         result_model,
