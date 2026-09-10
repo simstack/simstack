@@ -69,6 +69,68 @@ class ArtifactModel(Model):
         "collection": "artifacts"  # All subclasses will use the same collection
     }
 
+    def make_table_entries(
+        self,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return {
+            "name": self.name,
+            "description": self.description or "",
+            "path": self.path or "",
+        }
+
+    def make_column_defs_instance(
+        self,
+        table_name=None,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return [
+            {"field": "name", "headerName": "Name"},
+            {"field": "description", "headerName": "Description"},
+            {"field": "path", "headerName": "Path"},
+        ]
+
+    def make_table_entries_instance(
+        self,
+        max_recursion_level=1,
+        drop_id=True,
+        current_level=0,
+        visited=None,
+        field_prefix="",
+    ):
+        return self.make_table_entries(
+            max_recursion_level=max_recursion_level,
+            drop_id=drop_id,
+            current_level=current_level,
+            visited=visited,
+            field_prefix=field_prefix,
+        )
+
+    @classmethod
+    def ui_schema(cls) -> Dict[str, Any]:
+        return {
+            "ui:table": {
+                "pagination": True,
+                "paginationPageSize": 20,
+                "domLayout": "autoHeight",
+                "defaultColDef": {"flex": 1, "minWidth": 80, "resizable": True},
+            }
+        }
+
+    @classmethod
+    def ui_make_title(cls, ui_schema: Dict[str, Any], field: str, title: str) -> dict:
+        if "ui:table" not in ui_schema:
+            ui_schema = cls.ui_schema()
+        return ui_schema
+
 
 # class IntArtifactModel(ArtifactModel):
 #     type: Literal["int"] = "int"  # Fixed value for this subclass
