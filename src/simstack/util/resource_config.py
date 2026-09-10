@@ -92,19 +92,37 @@ class ResourceConfig:
                     f"config.toml resource {current!r} must be a table, "
                     f"got {type(section).__name__}"
                 )
-            alias = section.get("same-as")
+            hyphen_alias = section.get("same-as")
+            underscore_alias = section.get("same_as")
+            if (
+                hyphen_alias is not None
+                and underscore_alias is not None
+                and hyphen_alias != underscore_alias
+            ):
+                raise ValueError(
+                    f"config.toml resource {current!r} has conflicting "
+                    f"same-as={hyphen_alias!r} and same_as={underscore_alias!r}"
+                )
+            alias = hyphen_alias if hyphen_alias is not None else underscore_alias
             if alias is None:
                 resolved = copy.deepcopy(section)
                 for overlay in reversed(overlays):
                     resolved = _deep_merge_dicts(resolved, overlay)
                 resolved.pop("same-as", None)
+                resolved.pop("same_as", None)
                 return resolved
             if not isinstance(alias, str) or alias == "":
                 raise ValueError(
                     f"same-as for resource {current!r} must be a non-empty "
                     f"string, got {alias!r}"
                 )
-            overlays.append({k: v for k, v in section.items() if k != "same-as"})
+            overlays.append(
+                {
+                    k: v
+                    for k, v in section.items()
+                    if k not in ("same-as", "same_as")
+                }
+            )
             current = alias
 
     @property
