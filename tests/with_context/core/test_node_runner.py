@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch, mock_open, call
 import os
+import subprocess
 
 from simstack.core.node_runner import NodeRunner
 from simstack.core.simstack_result import SimstackResult
@@ -104,14 +105,16 @@ class TestNodeRunner:
         result = node_runner.subprocess("test_command", "echo 'hello'")
 
         assert result is True
-        mock_subprocess.assert_called_once_with(
-            "echo 'hello'",
-            shell=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            cwd=None,
-        )
+        expected_kwargs = {
+            "shell": True,
+            "capture_output": True,
+            "text": True,
+            "encoding": "utf-8",
+            "cwd": None,
+        }
+        if os.name == "nt":
+            expected_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+        mock_subprocess.assert_called_once_with("echo 'hello'", **expected_kwargs)
 
         # Check that log file was created and FileStack was added
         mock_file.assert_called_with("test_command.log", "w", encoding="utf-8")
