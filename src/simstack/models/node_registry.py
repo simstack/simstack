@@ -101,6 +101,8 @@ class NodeRegistry(Model):
         self.error = duplicate.error
         self.message = duplicate.message
         self.return_kind = duplicate.return_kind
+        if duplicate.custom_name is not None:
+            self.custom_name = duplicate.custom_name
 
 async def find_child_nodes(task_id: str) -> List[NodeRegistry]:
     from simstack.core.context import context
