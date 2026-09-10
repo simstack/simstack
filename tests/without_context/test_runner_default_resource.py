@@ -20,7 +20,7 @@ async def test_initialize_default_resource_returns_none_when_resource_is_missing
 
 
 @pytest.mark.asyncio
-async def test_initialize_default_resource_keeps_resource_when_config_toml_missing(
+async def test_initialize_default_resource_builds_tables_when_config_toml_missing(
     tmp_path, monkeypatch
 ):
     resource_def = SimpleNamespace(is_default=True)
@@ -38,8 +38,8 @@ async def test_initialize_default_resource_keeps_resource_when_config_toml_missi
     result = await runner.initialize_default_resource()
 
     assert result is resource_def
-    make_node_table.assert_not_called()
-    make_model_table.assert_not_called()
+    make_model_table.assert_awaited_once_with(db)
+    make_node_table.assert_awaited_once_with(db)
 
 
 @pytest.mark.asyncio
@@ -52,7 +52,6 @@ async def test_initialize_default_resource_builds_model_table_before_node_table(
         find_one=AsyncMock(return_value=resource_def), core_engine=engine
     )
     config = SimpleNamespace(resource="docker", project_root=tmp_path)
-    (tmp_path / "config.toml").write_text('active_dirs = ["src/simstack/models"]\n')
     call_order = []
 
     async def make_model_table(*args, **kwargs):
@@ -71,8 +70,8 @@ async def test_initialize_default_resource_builds_model_table_before_node_table(
     assert [call[0] for call in call_order] == ["model", "node"]
     assert call_order[0][1] == (db,)
     assert call_order[1][1] == (db,)
-    assert call_order[0][2] == {"dirs": ["src/simstack/models"]}
-    assert call_order[1][2] == {"dirs": ["src/simstack/models"]}
+    assert call_order[0][2] == {}
+    assert call_order[1][2] == {}
 
 
 @pytest.mark.asyncio
