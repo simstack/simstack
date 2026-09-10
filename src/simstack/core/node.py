@@ -31,6 +31,7 @@ from simstack.core.node_claim import (
     claim_submitted_node,
 )
 from simstack.core.node_runner import NodeRunner
+from simstack.core.node_code_version import node_code_version
 from simstack.core.process_results import process_result_helper
 from simstack.core.resource_assignment import (
     ResourceAssignmentResolution,
@@ -601,6 +602,7 @@ class Node:
             is_async=self.is_async,
             status=TaskStatus.SUBMITTED,
             custom_name=self.custom_name,
+            version=getattr(self._func, "_node_version", None),
             function_hash=function_hash,
             arg_hash=arg_hash,
             project=project_id,
@@ -645,9 +647,9 @@ class Node:
 
         This method ensures that a task entry exists in the database for the
         current task. It computes hashes of its arguments, checks if a
-        database entry already matches the node name and argument hash, and
-        creates a new entry if no match is found. Function identity is
-        versioned by git rather than by hashing the function body. If the
+        database entry already matches the node name, argument hash and code
+        version, and creates a new entry if no match is found. Code identity
+        excludes source paths, comments and line numbers. If the
         database is not connected, an exception is raised.
 
         :raises ValueError: if the database is not connected.
@@ -658,8 +660,7 @@ class Node:
             raise ValueError("Database is not connected")
 
         arg_hash = compute_arg_hash(self._args)
-        # Function identity is versioned by git, not by hashing the function body.
-        function_hash = ""
+        function_hash = node_code_version(self._func)
         self._arg_hash = arg_hash
         self._function_hash = function_hash
 
@@ -1424,8 +1425,8 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
 
     This function can delete the registry_entry !!!
     The only way that registry_entry.function_hash is "NOT INITIALIZED" is when the node
-    is created from the frontend. Function identity is versioned by git, so an
-    uninitialized function_hash is stored as empty rather than hashed from source.
+    is created from the frontend. Pending entries acquire the imported implementation's
+    code version before completed-result reuse is considered.
     No other node is listening specifically for this registry_entry to complete.
     If a duplicate is found the node from the duplication is returned
 
@@ -1481,9 +1482,26 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             logger.debug(
                 f"Task task_id: {registry_entry.id} inner: {hasattr(wrapped_func, '_inner')} imported function: {func.__name__}"
             )
-            if registry_entry.function_hash == "NOT INITIALIZED":
-                registry_entry.function_hash = ""
-                registry_entry.is_async = asyncio.iscoroutinefunction(func)
+            completed = registry_entry.status == TaskStatus.COMPLETED
+            if not completed or registry_entry.parameters.force_rerun:
+                current_code_version = node_code_version(func)
+                declared_version = getattr(func, "_node_version", None)
+                if (completed or registry_entry.function_hash not in ("", "NOT INITIALIZED")) and registry_entry.function_hash != current_code_version:
+                    raise ValueError(
+                        f"Node code version mismatch for {registry_entry.name}: "
+                        f"submitted {registry_entry.function_hash} (version={registry_entry.version!r}), "
+                        f"worker {current_code_version} (version={declared_version!r}); "
+                        "use the submitted implementation or submit a new task"
+                    )
+                if registry_entry.version is not None and registry_entry.version != declared_version:
+                    raise ValueError(
+                        f"Declared node version mismatch for {registry_entry.name}: "
+                        f"submitted {registry_entry.version!r}, worker {declared_version!r}"
+                    )
+                if not completed:
+                    registry_entry.function_hash = current_code_version
+                    registry_entry.version = declared_version
+                    registry_entry.is_async = asyncio.iscoroutinefunction(func)
         else:
             logger.error(
                 f"Task task_id: {registry_entry.id} could not import function {registry_entry.func_mapping}"
@@ -1499,8 +1517,9 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
         logger.error(
             "Task task_id: %s %s", registry_entry.id, error
         )
+        return None
 
-    if func is None and registry_entry.function_hash == "NOT INITIALIZED":
+    if func is None:
         return None
 
     try:
@@ -1623,12 +1642,21 @@ def node(
     @node(name="example")
     def func(): ...
 
+    Code, defaults and initial captured values determine cached-result identity.
+    Set or bump ``version`` when external dependencies or runtime configuration
+    change without changing the node implementation. Opaque captured/default
+    objects require an explicit version.
+
     """
 
     def decorator(func: Callable[P, T]) -> Callable[..., T]:
         is_async = asyncio.iscoroutinefunction(func)
 
         setattr(func, "_is_node", True)
+        setattr(func, "_node_version", version)
+        # A new decoration defines a new implementation snapshot.
+        if hasattr(func, "_node_code_version"):
+            delattr(func, "_node_code_version")
         setattr(func, "_inner", func)
         setattr(func, "_node_parameters", _parameters_from_node_kwargs(kwargs_node))
 
