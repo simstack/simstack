@@ -7,15 +7,46 @@ import inspect
 import json
 import sys
 from enum import Enum
-from pathlib import PurePath
+from importlib.machinery import PathFinder
+from pathlib import Path, PurePath
 from types import CodeType, FunctionType
 from typing import Any, Callable
 
 from pydantic import BaseModel
 
 
+def _canonical_module_name(module_name: str) -> str:
+    if not module_name.startswith("src."):
+        return module_name
+    alias_origin = getattr(sys.modules.get(module_name), "__file__", None)
+    if alias_origin is None:
+        return module_name
+    canonical_name = module_name.removeprefix("src.")
+    search_path = None
+    spec = None
+    try:
+        # Inspect specs without importing another copy of a package. Source-
+        # layout aliases are equivalent only when both names resolve to the
+        # same file; unrelated packages named src.foo and foo stay distinct.
+        parts = canonical_name.split(".")
+        for index in range(len(parts)):
+            name = ".".join(parts[:index + 1])
+            loaded = sys.modules.get(name)
+            spec = getattr(loaded, "__spec__", None) if loaded is not None else PathFinder.find_spec(name, search_path)
+            if spec is None:
+                return module_name
+            search_path = spec.submodule_search_locations
+            if search_path is None and index < len(parts) - 1:
+                return module_name
+        if spec.origin and Path(spec.origin).resolve() == Path(alias_origin).resolve():
+            return canonical_name
+    except (ImportError, AttributeError, ValueError, OSError):
+        pass
+    return module_name
+
+
 def _qualified_name(value: Any) -> str:
-    return f"{value.__module__}.{value.__qualname__}"
+    return f"{_canonical_module_name(value.__module__)}.{value.__qualname__}"
 
 
 def _encode(value: Any, seen: dict[int, tuple[int, Any]], declared_version: str | None) -> Any:

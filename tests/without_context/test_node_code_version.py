@@ -1,4 +1,6 @@
 import functools
+import importlib
+import importlib.util
 import os
 from pathlib import Path
 import subprocess
@@ -39,6 +41,26 @@ def test_module_identity_and_declared_version_are_part_of_cache_key():
     other_version = node(version="two")(_function(source))
     assert node_code_version(first._inner) != node_code_version(other_module._inner)
     assert node_code_version(first._inner) != node_code_version(other_version._inner)
+
+
+def test_source_layout_import_alias_has_the_same_code_identity():
+    canonical = importlib.import_module("simstack.methods.upload_helpers")
+    alias = importlib.import_module("src.simstack.methods.upload_helpers")
+    assert Path(canonical.__file__).resolve() == Path(alias.__file__).resolve()
+    assert compute_node_code_version(canonical.archive_upload._inner) == compute_node_code_version(alias.archive_upload._inner)
+
+
+def test_source_prefix_is_not_removed_for_distinct_module_files(tmp_path, monkeypatch):
+    functions = []
+    for name, filename in (("separate_workflow", "canonical.py"), ("src.separate_workflow", "alias.py")):
+        source = tmp_path / filename
+        source.write_text("def task(value): return value + 1\n")
+        spec = importlib.util.spec_from_file_location(name, source)
+        module = importlib.util.module_from_spec(spec)
+        monkeypatch.setitem(sys.modules, name, module)
+        spec.loader.exec_module(module)
+        functions.append(module.task)
+    assert compute_node_code_version(functions[0]) != compute_node_code_version(functions[1])
 
 
 def test_changing_defaults_invalidates_cached_identity():
