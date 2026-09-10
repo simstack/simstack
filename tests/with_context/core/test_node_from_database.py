@@ -4,6 +4,7 @@ import logging
 from odmantic import ObjectId
 from simstack.core.context import context
 from simstack.core.node import node, node_from_database
+from simstack.core.node_code_version import node_code_version
 from simstack.models import FloatData, NodeModel, NodeRegistry, Parameters
 from simstack.models.files import FileStack
 from simstack.models.named_data_reference import NamedDataReference
@@ -72,12 +73,130 @@ async def test_node_from_database_basic(initialized_context, setup_helper_node_m
             assert reconstructed_node.registry_entry.id == registry_entry.id
             
             # Verify that hashes were initialized
-            assert registry_entry.function_hash != "NOT INITIALIZED"
+            assert registry_entry.function_hash == node_code_version(helper_node_func._inner)
             assert registry_entry.arg_hash != "NOT INITIALIZED"
         finally:
             await context.db.delete(registry_entry)
     finally:
         await context.db.delete(input_data)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("legacy_hash", ["", "NOT INITIALIZED"])
+async def test_legacy_pending_node_does_not_reuse_unversioned_results(
+    initialized_context, setup_helper_node_model, legacy_hash
+):
+    from simstack.core.node import compute_arg_hash
+    data = FloatData(value=934.5)
+    await context.db.save(data)
+    values = dict(
+        name="helper_node_func", input_references=[NamedDataReference.from_variable(data)],
+        arg_hash=compute_arg_hash([data]), func_mapping=f"{CURRENT_MODULE}.helper_node_func",
+        parameters=Parameters(),
+    )
+    completed = NodeRegistry(**values, status=TaskStatus.COMPLETED, function_hash="")
+    pending = NodeRegistry(**values, status=TaskStatus.SUBMITTED, function_hash=legacy_hash)
+    await context.db.save([completed, pending])
+    try:
+        reconstructed = await node_from_database(pending)
+        assert reconstructed is not None
+        assert pending.status == TaskStatus.SUBMITTED
+        assert pending.function_hash == node_code_version(helper_node_func._inner)
+        assert (await context.db.load_task_by_id(completed.id)).function_hash == ""
+    finally:
+        await context.db.delete(completed)
+        await context.db.delete(pending)
+        await context.db.delete(data)
+
+
+@pytest.mark.asyncio
+async def test_worker_version_mismatch_fails_before_completed_result_reuse(
+    initialized_context, setup_helper_node_model, monkeypatch
+):
+    from simstack.core.node import compute_arg_hash
+    data = FloatData(value=935.5)
+    await context.db.save(data)
+    submitted_hash = node_code_version(helper_node_func._inner)
+    values = dict(
+        name="helper_node_func", input_references=[NamedDataReference.from_variable(data)],
+        arg_hash=compute_arg_hash([data]), func_mapping=f"{CURRENT_MODULE}.helper_node_func",
+        parameters=Parameters(), function_hash=submitted_hash,
+    )
+    completed = NodeRegistry(**values, status=TaskStatus.COMPLETED)
+    pending = NodeRegistry(**values, status=TaskStatus.SUBMITTED)
+    await context.db.save([completed, pending])
+    monkeypatch.setattr(helper_node_func._inner, "_node_version", "worker-v2")
+    try:
+        assert await node_from_database(pending) is None
+        saved = await context.db.load_task_by_id(pending.id)
+        assert saved.status == TaskStatus.FAILED
+        assert "Node code version mismatch" in saved.error
+        assert "worker-v2" in saved.error
+        assert saved.function_hash == submitted_hash
+        assert saved.version is None
+        assert not saved.results_references
+    finally:
+        await context.db.delete(completed)
+        await context.db.delete(pending)
+        await context.db.delete(data)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("force_rerun", [False, True])
+async def test_completed_result_keeps_its_original_code_identity(
+    initialized_context, setup_helper_node_model, monkeypatch, force_rerun
+):
+    entry = NodeRegistry(
+        name="helper_node_func", status=TaskStatus.COMPLETED, function_hash="legacy-code",
+        version="original-version", arg_hash="completed-version-test",
+        func_mapping=f"{CURRENT_MODULE}.helper_node_func", parameters=Parameters(force_rerun=force_rerun),
+    )
+    await context.db.save(entry)
+    monkeypatch.setattr(helper_node_func._inner, "_node_version", "worker-v2")
+    try:
+        reconstructed = await node_from_database(entry)
+        saved = await context.db.load_task_by_id(entry.id)
+        if force_rerun:
+            assert reconstructed is None
+            assert saved.status == TaskStatus.FAILED
+            assert "Node code version mismatch" in saved.error
+            assert "submit a new task" in saved.error
+        else:
+            assert reconstructed is not None
+            assert saved.status == TaskStatus.COMPLETED
+        assert saved.function_hash == "legacy-code"
+        assert saved.version == "original-version"
+    finally:
+        await context.db.delete(entry)
+
+
+@pytest.mark.asyncio
+async def test_same_declared_version_is_persisted_and_reconstructs(
+    initialized_context, setup_helper_node_model, monkeypatch
+):
+    monkeypatch.setattr(helper_node_func._inner, "_node_version", "release-3")
+    data = FloatData(value=936.5)
+    await context.db.save(data)
+    entry = NodeRegistry(
+        name="helper_node_func", status=TaskStatus.SUBMITTED,
+        function_hash=node_code_version(helper_node_func._inner), version="release-3",
+        arg_hash="same-version-test", func_mapping=f"{CURRENT_MODULE}.helper_node_func",
+        input_references=[NamedDataReference.from_variable(data)], parameters=Parameters(),
+    )
+    await context.db.save(entry)
+    try:
+        assert await node_from_database(entry) is not None
+        saved = await context.db.load_task_by_id(entry.id)
+        assert saved.status == TaskStatus.SUBMITTED
+        assert saved.version == "release-3"
+        assert saved.function_hash == node_code_version(helper_node_func._inner)
+        from simstack.core.services.node_execution_service import run_node_from_registry_with_outcome
+        outcome = await run_node_from_registry_with_outcome(saved)
+        assert outcome.success
+        assert (await context.db.load_task_by_id(saved.id)).status == TaskStatus.COMPLETED
+    finally:
+        await context.db.delete(entry)
+        await context.db.delete(data)
 
 @pytest.mark.asyncio
 async def test_node_from_database_signature_fix(initialized_context, setup_helper_node_model):
@@ -124,19 +243,16 @@ async def test_node_from_database_duplicate(initialized_context, setup_helper_no
         parameters = Parameters()
         
         # Create an EXISTING entry in the database that is already initialized
-        # We need to know the hashes to create a duplicate
         from simstack.core.node import compute_arg_hash
-        from simstack.core.hash import complex_hash_function
         
         arg_hash = compute_arg_hash([input_data])
-        func_hash = complex_hash_function(helper_node_func._inner)
         
         existing_entry = NodeRegistry(
             name="helper_node_func",
             status=TaskStatus.COMPLETED,
             custom_name="duplicate-child-name",
             input_references=[NamedDataReference.from_variable(input_data)],
-            function_hash=func_hash,
+            function_hash=node_code_version(helper_node_func._inner),
             arg_hash=arg_hash,
             func_mapping=f"{CURRENT_MODULE}.helper_node_func",
             parameters=parameters,
@@ -196,17 +312,15 @@ async def test_node_from_database_invalid_mapping_with_duplicate(initialized_con
     
     try:
         from simstack.core.node import compute_arg_hash
-        from simstack.core.hash import complex_hash_function
         
         arg_hash = compute_arg_hash([input_data])
-        func_hash = complex_hash_function(helper_node_func._inner)
         
         # Create an EXISTING entry that is COMPLETED
         existing_entry = NodeRegistry(
             name="helper_node_func",
             status=TaskStatus.COMPLETED,
             input_references=[NamedDataReference.from_variable(input_data)],
-            function_hash=func_hash,
+            function_hash="",
             arg_hash=arg_hash,
             func_mapping=f"{CURRENT_MODULE}.helper_node_func",
             parameters=Parameters(),
@@ -220,7 +334,7 @@ async def test_node_from_database_invalid_mapping_with_duplicate(initialized_con
                 name="helper_node_func",
                 status=TaskStatus.SUBMITTED,
                 input_references=[NamedDataReference.from_variable(input_data)],
-                function_hash=func_hash, # Pre-initialized hashes
+                function_hash="", # Pre-initialized hashes
                 arg_hash=arg_hash,
                 func_mapping="non_existent_module.func", # INVALID MAPPING
                 parameters=Parameters(),
@@ -250,17 +364,15 @@ async def test_node_from_database_ignores_active_duplicate(
     await context.db.save(input_data)
     
     from simstack.core.node import compute_arg_hash
-    from simstack.core.hash import complex_hash_function
     
     arg_hash = compute_arg_hash([input_data])
-    func_hash = complex_hash_function(helper_node_func._inner)
     
     # Create a registry entry that IS ALREADY in the DB and HAS HASHES
     existing_entry = NodeRegistry(
         name="helper_node_func",
         status=TaskStatus.SUBMITTED,
         input_references=[NamedDataReference.from_variable(input_data)],
-        function_hash=func_hash,
+        function_hash="",
         arg_hash=arg_hash,
         func_mapping=f"{CURRENT_MODULE}.helper_node_func",
         parameters=Parameters(),
@@ -273,7 +385,7 @@ async def test_node_from_database_ignores_active_duplicate(
         name="helper_node_func",
         status=TaskStatus.SUBMITTED,
         input_references=[NamedDataReference.from_variable(input_data)],
-        function_hash=func_hash,
+        function_hash="",
         arg_hash=arg_hash,
         func_mapping=f"{CURRENT_MODULE}.helper_node_func",
         parameters=Parameters(),

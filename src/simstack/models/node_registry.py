@@ -40,7 +40,9 @@ class NodeRegistry(Model):
     :ivar completed_at: An optional timestamp indicating when the execution of the node was
                         completed.
     :type completed_at: Optional[datetime]
-    :ivar function_hash: A hash value representing the unique function executed by this node.
+    :ivar function_hash: Namespaced implementation fingerprint used for cache identity.
+                         Includes normalized code and the declared node version,
+                         without source paths, comments or line numbers.
     :type function_hash: str
     :ivar arg_hash: A hash value representing the unique arguments passed to the function of
                     this node.

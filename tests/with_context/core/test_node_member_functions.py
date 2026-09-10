@@ -231,7 +231,6 @@ async def test_get_node_registry(initialized_context, setup_mappings):
     # 1. First call - should create new entry
     status = await n.get_node_registry()
     entry1 = n.registry_entry
-    changed_entry = None
     try:
         assert status == TaskStatus.SUBMITTED
         first_id = n.id
@@ -242,12 +241,12 @@ async def test_get_node_registry(initialized_context, setup_mappings):
         assert status2 == TaskStatus.SUBMITTED
         assert n2.id == first_id
 
-        # 3. Changing the implementation must invalidate the cached task even
-        # when the node name and arguments remain identical.
+        # 3. A changed implementation is a different cache version.
         def changed_sync_node(data: FloatData, **kwargs) -> FloatData:
             return FloatData(value=data.value + 99.0)
 
         changed_sync_node.__name__ = "sync_node"
+        changed_sync_node.__qualname__ = sync_node._inner.__qualname__
         changed = Node(
             data,
             func=changed_sync_node,
@@ -259,7 +258,10 @@ async def test_get_node_registry(initialized_context, setup_mappings):
         assert status_changed == TaskStatus.SUBMITTED
         assert changed.id != first_id
         assert changed_entry is not None
+        assert changed_entry.id != entry1.id
+        assert changed_entry.function_hash
         assert changed_entry.function_hash != entry1.function_hash
+        await context.db.delete(changed_entry)
 
         # 4. Call with force_rerun - should create new entry
         params_rerun = Parameters(force_rerun=True)
@@ -273,8 +275,6 @@ async def test_get_node_registry(initialized_context, setup_mappings):
             if entry3:
                 await context.db.delete(entry3)
     finally:
-        if changed_entry:
-            await context.db.delete(changed_entry)
         if entry1:
             await context.db.delete(entry1)
         await context.db.delete(data)
