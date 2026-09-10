@@ -27,10 +27,11 @@ def model_copy(
             The object to copy.
         deep:
             If True, recursively copy nested containers and embedded models.
-            If False, perform a shallow model reconstruction.
+            If False, copy the root while retaining its nested values.
         preserve_ids:
             If True, preserve ODMantic ``id`` fields on copied ``Model`` objects.
             If False, assign fresh ObjectIds to copied top-level/referenced Models.
+            Models with custom primary keys require preserve_ids=True.
         copy_references:
             If True, recursively clone nested ODMantic ``Model`` instances.
             If False, keep nested ODMantic ``Model`` references as-is.
@@ -63,7 +64,7 @@ def _copy_value(
     if value is None:
         return None
 
-    if not deep:
+    if not deep and not _is_root:
         return value
 
     value_id = id(value)
@@ -77,7 +78,7 @@ def _copy_value(
         if not _is_root and not copy_references:
             return value
 
-        copied = _reconstruct_odmantic_model(
+        copied = _reconstruct_pydantic_model(
             value,
             deep=deep,
             preserve_ids=preserve_ids,
@@ -132,6 +133,9 @@ def _copy_value(
             )
             for item in value
         )
+        # A tuple may have been reached recursively through one of its lists.
+        if value_id in _seen:
+            return _seen[value_id]
         _seen[value_id] = copied_tuple
         return copied_tuple
 
@@ -174,49 +178,6 @@ def _copy_value(
     return value
 
 
-def _reconstruct_odmantic_model(
-    source: Model,
-    *,
-    deep: bool,
-    preserve_ids: bool,
-    copy_references: bool,
-    _seen: dict[int, Any],
-) -> Model:
-    model_cls = type(source)
-
-    payload: dict[str, Any] = {}
-    source_values = object.__getattribute__(source, "__dict__")
-
-    for field_name, field_info in model_cls.model_fields.items():
-        if field_name == "id":
-            continue
-
-        if field_name in source_values:
-            field_value = source_values[field_name]
-        else:
-            field_value = _field_default(field_info)
-
-        payload[field_name] = _copy_value(
-            field_value,
-            deep=deep,
-            preserve_ids=preserve_ids,
-            copy_references=copy_references,
-            _seen=_seen,
-        )
-
-    copied = model_cls.model_validate(payload)
-    _seen[id(source)] = copied
-
-    if preserve_ids:
-        object.__setattr__(copied, "id", source.id)
-    else:
-        object.__setattr__(copied, "id", ObjectId())
-
-    _restore_missing_defaults(copied)
-    _sanitize_odmantic_copy(copied)
-    return copied
-
-
 def _reconstruct_pydantic_model(
     source: BaseModel,
     *,
@@ -225,152 +186,57 @@ def _reconstruct_pydantic_model(
     copy_references: bool,
     _seen: dict[int, Any],
 ) -> BaseModel:
-    model_cls = type(source)
+    # Pydantic's shallow copy preserves validated field names, extras, private
+    # attributes and fields-set state without re-running validators. ODMantic's
+    # model_copy recursively marks embedded objects, including shared originals,
+    # so initialize bookkeeping only on the copies owned by this traversal.
+    copied = BaseModel.__copy__(source)
+    _seen[id(source)] = copied
 
-    payload: dict[str, Any] = {}
-    source_values = object.__getattribute__(source, "__dict__")
-
-    for field_name, field_info in model_cls.model_fields.items():
-        if field_name in source_values:
-            field_value = source_values[field_name]
-        else:
-            field_value = _field_default(field_info)
-
-        payload[field_name] = _copy_value(
-            field_value,
+    def copy_value(value: Any) -> Any:
+        return _copy_value(
+            value,
             deep=deep,
             preserve_ids=preserve_ids,
             copy_references=copy_references,
             _seen=_seen,
         )
 
-    copied = model_cls.model_validate(payload)
-    _seen[id(source)] = copied
+    if deep:
+        object.__setattr__(copied, "__dict__", copy_value(source.__dict__))
+        object.__setattr__(
+            copied, "__pydantic_extra__", copy_value(source.__pydantic_extra__)
+        )
+        object.__setattr__(
+            copied, "__pydantic_private__", copy_value(copied.__pydantic_private__)
+        )
 
-    _restore_missing_defaults(copied)
-    if isinstance(copied, Model):
-        _sanitize_odmantic_copy(copied)
+    model_fields = type(source).model_fields
+    model_values = copied.__dict__
+    for field_name, field_info in model_fields.items():
+        field_value = model_values.get(field_name)
+        if field_name not in model_values or _is_odmantic_field_proxy(field_value):
+            if field_info.is_required():
+                raise ValueError(
+                    f"Cannot copy {type(source).__name__}: missing required field {field_name!r}"
+                )
+            model_values[field_name] = field_info.get_default(call_default_factory=True)
+
+    if isinstance(source, Model) and not preserve_ids:
+        # Standard ODMantic Models use a generated ObjectId. Other primary-key
+        # types must be retained explicitly rather than replaced by invalid data.
+        if source.__primary_field__ != "id" or not isinstance(source.id, ObjectId):
+            raise ValueError("Use preserve_ids=True for a custom ODMantic primary key")
+        model_values["id"] = ObjectId()
+
+    if isinstance(copied, (Model, EmbeddedModel)):
+        object.__setattr__(copied, "__fields_modified__", set(model_fields))
 
     return copied
 
 
-def _field_default(field_info: Any) -> Any:
-    """
-    Return a field default, including explicit None defaults for Optional fields.
-
-    Pydantic/ODMantic models can behave badly if a non-required field is missing
-    from __dict__ but appears in ODMantic's modified-field bookkeeping.
-    """
-    if hasattr(field_info, "is_required") and field_info.is_required():
-        return None
-
-    if hasattr(field_info, "get_default"):
-        try:
-            return field_info.get_default(call_default_factory=True)
-        except TypeError:
-            return field_info.get_default()
-
-    return None
-
-
-def _restore_missing_defaults(value: Any, *, _seen: set[int] | None = None) -> Any:
-    """
-    Ensure every declared Pydantic/ODMantic field exists in __dict__.
-
-    This is important for Optional[float], Optional[str], and similar fields with
-    default=None. ODMantic may later try to dump a field because it is marked as
-    modified; if the field is absent from __dict__, model_dump_doc can fail with
-    a KeyError at raw_doc[field_name].
-    """
-    if not isinstance(value, BaseModel):
-        return value
-
-    if _seen is None:
-        _seen = set()
-
-    value_id = id(value)
-    if value_id in _seen:
-        return value
-    _seen.add(value_id)
-
-    model_values = object.__getattribute__(value, "__dict__")
-    model_cls = type(value)
-    model_fields = model_cls.model_fields
-
-    # Primary pass: Ensure all declared fields are in __dict__
-    for field_name, field_info in model_fields.items():
-        if field_name == "id":
-            continue
-
-        if field_name not in model_values or _is_odmantic_field_proxy(model_values[field_name]):
-            object.__setattr__(value, field_name, _field_default(field_info))
-
-    # Second pass: Recursively restore defaults in nested models
-    # We use a static set of keys to avoid issues if __dict__ changes during iteration
-    for field_name in list(model_values.keys()):
-        field_value = model_values[field_name]
-        if isinstance(field_value, (BaseModel, Model)):
-            _restore_missing_defaults(field_value, _seen=_seen)
-        elif isinstance(field_value, list):
-            for item in field_value:
-                if isinstance(item, (BaseModel, Model)):
-                    _restore_missing_defaults(item, _seen=_seen)
-        elif isinstance(field_value, tuple):
-            for item in field_value:
-                if isinstance(item, (BaseModel, Model)):
-                    _restore_missing_defaults(item, _seen=_seen)
-        elif isinstance(field_value, dict):
-            for item in field_value.values():
-                if isinstance(item, (BaseModel, Model)):
-                    _restore_missing_defaults(item, _seen=_seen)
-
-    return value
-
-
 def _is_odmantic_field_proxy(value: Any) -> bool:
     value_type = type(value)
-    return (
-        value_type.__name__ == "FieldProxy"
-        and value_type.__module__.startswith("odmantic")
+    return value_type.__name__ == "FieldProxy" and value_type.__module__.startswith(
+        "odmantic"
     )
-
-
-def _sanitize_odmantic_copy(value: Any) -> Any:
-    """
-    Normalize ODMantic internal modified-field state after reconstructing a model.
-
-    This keeps the copied model saveable by ODMantic and avoids stale modified-field
-    entries that can appear after manual reconstruction or mutation.
-    """
-    if not isinstance(value, Model):
-        return value
-
-    _restore_missing_defaults(value)
-
-    modified = getattr(value, "__fields_modified__", None)
-    model_values = getattr(value, "__dict__", None)
-
-    if isinstance(modified, set) and isinstance(model_values, dict):
-        valid_fields = set(model_values)
-        valid_fields.add("id")
-
-        sanitized: set[str] = set()
-        for field_name in modified:
-            if field_name not in valid_fields:
-                if field_name in value.model_fields:
-                    # Restore default for missing field that is marked as modified
-                    field_info = value.model_fields[field_name]
-                    object.__setattr__(value, field_name, _field_default(field_info))
-                else:
-                    continue
-            
-            try:
-                # Validate that we can actually dump this field
-                value.model_dump_doc(include={field_name})
-            except Exception:
-                continue
-            sanitized.add(field_name)
-
-        object.__setattr__(value, "__fields_modified__", sanitized)
-
-    return value

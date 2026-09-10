@@ -46,9 +46,15 @@ async def apply_persisted_user_editable_fields(
     for name in USER_EDITABLE_NODE_REGISTRY_FIELDS:
         local_value = getattr(registry_entry, name)
         persisted_value = getattr(persisted, name)
-        if snapshot is None:
-            setattr(registry_entry, name, persisted_value)
-            continue
-        original_value = snapshot[name]
-        if local_value == original_value or persisted_value != original_value:
-            setattr(registry_entry, name, persisted_value)
+        persisted_wins = (
+            snapshot is None
+            or local_value == persisted_value
+            or local_value == snapshot[name]
+            or persisted_value != snapshot[name]
+        )
+        if persisted_wins:
+            # This is a refresh, not a local edit. Keep the field out of
+            # ODMantic's $set so a later UI PATCH cannot be overwritten by
+            # the runner's status update after this read.
+            object.__setattr__(registry_entry, name, persisted_value)
+            registry_entry.__fields_modified__.discard(name)

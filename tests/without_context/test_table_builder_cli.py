@@ -1,9 +1,24 @@
+import asyncio
 import logging
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from simstack.tables.table_builder import TableBuilderBase
+
+
+@pytest.fixture(autouse=True)
+def preserve_event_loop():
+    # cli_main installs and closes its own loop; restore pytest's session loop.
+    policy = asyncio.get_event_loop_policy()
+    try:
+        previous_loop = policy.get_event_loop()
+    except RuntimeError:
+        previous_loop = None
+    yield
+    policy.set_event_loop(previous_loop)
 
 
 class RecordingCliBuilder(TableBuilderBase):
