@@ -87,6 +87,10 @@ General Resource Settings
 
    [resource_name]
    os = "linux"  # optional, defaults to "linux"
+   same-as = "other-resource"  # optional: copy that resource, overlay extra keys
+
+A missing ``[resource_name]`` table, or a missing ``[resource_name.program.name]``
+table when ``get_program`` / ``run`` is called, raises ``ValueError``.
 
 Setup Section
 ~~~~~~~~~~~~~

@@ -62,7 +62,8 @@ def test_os_property(tmp_path, config_file):
     assert rc2.os == "linux"
     
     rc3 = ResourceConfig(tmp_path, "missing")
-    assert rc3.os == "linux" # Default
+    with pytest.raises(ValueError, match=r"config.toml has no \[missing\] resource block"):
+        _ = rc3.os
 
 def test_setup_no_runner(tmp_path, config_file):
     rc = ResourceConfig(tmp_path, "local")
@@ -159,7 +160,10 @@ def test_get_program(tmp_path, config_file):
     params = rc.get_program("orca")
     assert params["run_command"] == "orca orca.inp"
     
-    assert rc.get_program("missing") == {}
+    with pytest.raises(
+        ValueError, match=r"config.toml has no \[local.program.missing\] block"
+    ):
+        rc.get_program("missing")
 
 def test_get_setup_params(tmp_path, config_file):
     rc = ResourceConfig(tmp_path, "local")

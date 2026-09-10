@@ -101,7 +101,10 @@ def docker_image_for_node(
     else:
         task_resource = str(config.resource)
     lookup_resource = str(config.resource) if task_resource == "self" else task_resource
-    program_config = resource_config.get_program(node_name, resource=lookup_resource)
+    try:
+        program_config = resource_config.get_program(node_name, resource=lookup_resource)
+    except ValueError:
+        return None
     image = program_config.get("docker_image") if program_config else None
     if not isinstance(image, str) or not image.strip():
         return None

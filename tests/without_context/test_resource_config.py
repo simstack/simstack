@@ -36,7 +36,8 @@ def test_resource_config_reload_missing_file_clears_config(tmp_path):
 
     config_file.unlink()
     rc.reload()
-    assert rc.get_program("orca") == {}
+    with pytest.raises(ValueError, match=r"config.toml has no \[local\] resource block"):
+        rc.get_program("orca")
 
 def test_resource_config_from_file(tmp_path):
     config_file = tmp_path / "config.toml"
@@ -58,8 +59,8 @@ run_command = "orca orca.inp"
 
 def test_resource_config_missing():
     rc = ResourceConfig(Path("non_existent_path"), "local")
-    params = rc.get_program("any")
-    assert params == {}
+    with pytest.raises(ValueError, match=r"config.toml has no \[local\] resource block"):
+        rc.get_program("any")
 
 def test_resource_config_key_error(tmp_path):
     config_file = tmp_path / "config.toml"
@@ -69,13 +70,125 @@ foo = "bar"
 """
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")
-    assert rc.get_program("orca") == {}
-    
-    assert rc.get_program("other") == {} # Though it's under local.other, get_program expects local.program.other
+    with pytest.raises(ValueError, match=r"has no \[program\] table"):
+        rc.get_program("orca")
+    with pytest.raises(ValueError, match=r"has no \[program\] table"):
+        rc.get_program("other")
 
 def test_resource_config_resource_storage(tmp_path):
     rc = ResourceConfig(tmp_path, "remote-resource")
     assert rc._resource == "remote-resource"
+
+
+def test_same_as_copies_program_setup_and_os(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[int-nano]
+os = "linux"
+docker_registry = "127.0.0.1:5000"
+[int-nano.setup]
+tmp_base_dir = "/scratch/int-nano"
+[int-nano.post-processing]
+scratch_cleanup = true
+[int-nano.program.orca]
+run_command = "$ORCA_HOME/orca orca.inp > orca.out"
+
+[int-nano-new]
+same-as = "int-nano"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "int-nano-new")
+    assert rc.get_program("orca")["run_command"] == "$ORCA_HOME/orca orca.inp > orca.out"
+    assert rc.get_setup_params()["tmp_base_dir"] == "/scratch/int-nano"
+    assert rc.get_postprocessing_params()["scratch_cleanup"] is True
+    assert rc.os == "linux"
+    assert rc.get_docker_registry() == "127.0.0.1:5000"
+
+
+def test_same_as_overlay_merges_program_tables(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[int-nano.program.orca]
+run_command = "orca-base"
+[int-nano.program.vasp]
+run_command = "srun vasp_std"
+
+[int-nano-new]
+same-as = "int-nano"
+[int-nano-new.program.orca]
+run_command = "orca-override"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "int-nano-new")
+    assert rc.get_program("orca")["run_command"] == "orca-override"
+    assert rc.get_program("vasp")["run_command"] == "srun vasp_std"
+
+
+def test_same_as_chain(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[base.program.orca]
+run_command = "from-base"
+[mid]
+same-as = "base"
+[leaf]
+same-as = "mid"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "leaf")
+    assert rc.get_program("orca")["run_command"] == "from-base"
+
+
+def test_same_as_missing_target_raises(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[int-nano-new]
+same-as = "int-nano"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "int-nano-new")
+    with pytest.raises(ValueError, match="does not exist"):
+        rc.get_program("orca")
+
+
+def test_same_as_empty_string_raises(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[int-nano-new]
+same-as = ""
+"""
+    )
+    rc = ResourceConfig(tmp_path, "int-nano-new")
+    with pytest.raises(ValueError, match="non-empty string"):
+        rc.get_program("orca")
+
+
+def test_same_as_cycle_raises(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[a]
+same-as = "b"
+[b]
+same-as = "a"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "a")
+    with pytest.raises(ValueError, match="Circular same-as"):
+        rc.get_program("orca")
+
+
+def test_missing_program_block_raises(tmp_path):
+    (tmp_path / "config.toml").write_text(
+        """
+[int-nano.program.orca]
+run_command = "orca"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "int-nano")
+    with pytest.raises(
+        ValueError, match=r"config.toml has no \[int-nano.program.vasp\] block"
+    ):
+        rc.get_program("vasp")
 
 @pytest.mark.asyncio
 async def test_global_state_initialization(tmp_path):
@@ -181,9 +294,12 @@ scratch_cleanup = false
     post_remote = rc_remote.get_postprocessing_params()
     assert post_remote["scratch_cleanup"] is False
     
-    # Test non-existent
+    # Test non-existent resource
     rc_none = ResourceConfig(tmp_path, "non-existent")
-    assert rc_none.get_postprocessing_params() == {}
+    with pytest.raises(
+        ValueError, match=r"config.toml has no \[non-existent\] resource block"
+    ):
+        rc_none.get_postprocessing_params()
 
 from unittest.mock import AsyncMock
 from types import SimpleNamespace
