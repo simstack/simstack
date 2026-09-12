@@ -587,7 +587,7 @@ async def test_legacy_rule_documents_are_normalized_before_execution(
     )
     assert self_resolution.parameters.resource == "self"
     assert self_resolution.parameters.queue == "default"
-    assert self_resolution.parameters.in_docker is False
+    assert self_resolution.parameters.in_docker is True
     assert self_resolution.parameters.force_rerun is False
     assert self_resolution.parameters.recompute_artifacts is False
     assert self_resolution.parameters.slurm_parameters.nodes == 1
@@ -607,7 +607,7 @@ async def test_legacy_rule_documents_are_normalized_before_execution(
     assert concrete_resolution.parameters.recompute_artifacts is False
 
 
-def test_self_rule_clears_routing_and_execution_overrides():
+def test_self_rule_clears_routing_overrides_but_keeps_in_docker():
     rule = ResourceAssignmentRule(
         name="self-child",
         regex_pattern="workflow.child",
@@ -621,10 +621,34 @@ def test_self_rule_clears_routing_and_execution_overrides():
 
     assert rule.resource_str == "self"
     assert rule.queue is None
-    assert rule.in_docker is None
+    assert rule.in_docker is True
     assert rule.force_rerun is None
     assert rule.recompute_artifacts is None
     assert rule.slurm_parameters == {}
+
+
+@pytest.mark.asyncio
+async def test_self_rule_in_docker_overrides_node_default(odmantic_engine):
+    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+    await odmantic_engine.save(
+        ResourceAssignmentRule(
+            name="self-docker",
+            regex_pattern="workflow.docker_child",
+            resource_str="self",
+            in_docker=True,
+        )
+    )
+
+    resolution = await resolve_resource_assignment(
+        odmantic_engine,
+        call_path="workflow.docker_child",
+        base_parameters=Parameters(in_docker=False),
+    )
+
+    assert resolution.parameters.resource == "self"
+    assert resolution.parameters.queue == "default"
+    assert resolution.parameters.in_docker is True
+    assert resolution.parameters.force_rerun is False
 
 
 @pytest.mark.asyncio
