@@ -327,34 +327,52 @@ class NodeRunner(SimstackResult):
                     shutil.copy2(src, dest)
         return self.scratch_dir
 
-    def execute(self, program_name: str) -> bool:
-        """Run ``run_command`` for ``program_name`` from ResourceConfig.
+    def execute(
+        self,
+        program_name: str,
+        command: str = "run_command",
+        name: Optional[str] = None,
+    ) -> bool:
+        """Run a named command for ``program_name`` from ResourceConfig.
 
         Executes in the staged scratch directory when ``stage`` was called,
         otherwise in the current working directory.
 
         Args:
             program_name: Program key under ``[<resource>.program.<name>]``.
+            command: Key in that program table whose string is executed.
+                Defaults to ``run_command``.
+            name: Subprocess log name. Defaults to ``program_name``.
 
         Returns:
             True if the subprocess returned 0, False otherwise.
 
         Raises:
             ValueError: Context/resource config missing, program not found, or
-                ``run_command`` is missing/empty.
+                the requested command key is missing/empty.
         """
         if not program_name:
             raise ValueError("program_name is required")
+        if not isinstance(command, str) or not command.strip():
+            raise ValueError(f"command must be a non-empty string, got {command!r}")
         resource_config = self._require_resource_config()
         params = resource_config.get_program(program_name)
         if not params:
             raise ValueError(f"Program {program_name!r} not found in ResourceConfig")
-        run_command = params.get("run_command")
-        if not run_command:
-            raise ValueError(f"Program {program_name!r} has no run_command")
+        if command not in params:
+            raise ValueError(
+                f"Program {program_name!r} is missing {command!r}"
+            )
+        run_command = params[command]
+        if not isinstance(run_command, str) or not run_command.strip():
+            raise ValueError(
+                f"Program {program_name!r} {command!r} must be a non-empty "
+                f"string, got {run_command!r}"
+            )
         self._program_name = program_name
         cwd = str(self.scratch_dir) if self.scratch_dir is not None else ""
-        return self.subprocess(program_name, run_command, cwd=cwd)
+        subprocess_name = program_name if name is None else name
+        return self.subprocess(subprocess_name, run_command, cwd=cwd)
 
     def retrieve(
         self,

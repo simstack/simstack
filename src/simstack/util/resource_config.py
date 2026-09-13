@@ -272,11 +272,14 @@ class ResourceConfig:
             if isinstance(node_runner, NodeRunner):
                 if use_temp:
                     node_runner.stage(input_files=input_files)
-                    node_runner.execute(program_name)
+                    ok = node_runner.execute(
+                        program_name, command=command, name=name
+                    )
                     node_runner.retrieve(output_files=output_files)
-                else:
-                    node_runner.execute(program_name)
-                return
+                    return ok
+                return node_runner.execute(
+                    program_name, command=command, name=name
+                )
 
         # scratch_cleanup from postprocessing
         post_params = self.get_postprocessing_params()

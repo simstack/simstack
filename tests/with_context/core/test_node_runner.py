@@ -469,6 +469,43 @@ use_temp = true
         with pytest.raises(ValueError, match="run_command"):
             runner.execute("orca")
 
+    def test_execute_named_command_key(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+        from simstack.util.resource_config import ResourceConfig
+
+        script = tmp_path / "write_define.py"
+        script.write_text(
+            "open('define.out', 'w', encoding='utf-8').write('defined')\n",
+            encoding="utf-8",
+        )
+        exe = sys.executable.replace("\\", "/")
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(
+            f"""
+[self.setup]
+tmp_base_dir = "{(tmp_path / "scratch_base").as_posix()}"
+[self.program.turbomole]
+use_temp = false
+run_command = "echo run"
+define_command = "\\"{exe}\\" \\"{script.as_posix()}\\""
+""",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(context, "_resource_config", ResourceConfig(config_file, "self"))
+        workdir = tmp_path / "work"
+        workdir.mkdir()
+        original_cwd = os.getcwd()
+        os.chdir(workdir)
+        try:
+            runner = NodeRunner("turbomole", "task_abc")
+            assert runner.execute(
+                "turbomole", command="define_command", name="turbomole_define"
+            ) is True
+            assert (workdir / "define.out").read_text(encoding="utf-8") == "defined"
+            assert (workdir / "turbomole_define.log").exists()
+        finally:
+            os.chdir(original_cwd)
+
     def test_retrieve_copies_listed_files(self, tmp_path, monkeypatch):
         from simstack.core.context import context
 
