@@ -15,6 +15,57 @@ import logging
 
 logger = logging.getLogger("runner_utils")
 
+SQUEUE_TIMEOUT_SECONDS = 30
+
+
+class SqueueQueryError(RuntimeError):
+    """squeue did not return a usable listing (timeout, controller down, empty, or garbage)."""
+
+
+def _squeue_label(job_id: str | None) -> str:
+    return f" for job {job_id}" if job_id else ""
+
+
+def _squeue_stdout_from_result(result, *, job_id: str | None = None) -> str:
+    returncode = getattr(result, "returncode", None)
+    stdout = getattr(result, "stdout", None) or ""
+    stderr = (getattr(result, "stderr", None) or "").strip()
+    label = _squeue_label(job_id)
+    if returncode != 0:
+        raise SqueueQueryError(
+            f"squeue{label} failed with return code {returncode}"
+            + (f": {stderr}" if stderr else "")
+        )
+    if not stdout.strip():
+        raise SqueueQueryError(f"squeue{label} returned no output")
+    return stdout
+
+
+def _run_squeue_command(command: str, *, job_id: str | None = None) -> str:
+    try:
+        result = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=SQUEUE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise SqueueQueryError(
+            f"squeue{_squeue_label(job_id)} timed out after {SQUEUE_TIMEOUT_SECONDS}s"
+        ) from exc
+    return _squeue_stdout_from_result(result, job_id=job_id)
+
+
+def _squeue_job_lines(stdout: str, *, job_id: str | None = None) -> list[str]:
+    lines = stdout.splitlines()
+    header = lines[0].strip() if lines else ""
+    if not header.upper().startswith("JOBID"):
+        raise SqueueQueryError(
+            f"squeue{_squeue_label(job_id)} returned unexpected output: {header[:200]}"
+        )
+    return [line for line in lines[1:] if line.strip()]
+
 
 def make_git_status_list() -> List[str]:
     git_status_list = []
@@ -34,66 +85,37 @@ def make_git_status_list() -> List[str]:
 
 
 def run_squeue_for_job(job_id: str) -> str:
-    result = subprocess.run(
-        f"squeue -j {job_id}",
-        shell=True,
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    return result.stdout
+    return _run_squeue_command(f"squeue -j {job_id}", job_id=job_id)
 
 
 def get_job_info(
     job_id: str, task_id: ObjectId, resource: Resource
 ) -> SlurmInfo | None:
-    """Get job information from SLURM queue using squeue"""
-    try:
-        stdout = run_squeue_for_job(job_id)
-        # logger.info(f"task_id: {task_id} running squeue for job {job_id}: result: {stdout}")
+    """Return SlurmInfo while the job is in the queue.
 
-        if not stdout or stdout.strip() == "":
-            # after a while slurm will stop returning info for jobs that are no longer running
-            return None
-
-        lines = stdout.splitlines()
-        # logger.info(f"task_id: {task_id} slurm info for job {job_id}: {lines}")
-        if len(lines) < 2:
-            return None
-        # The first line is the header; the second line is the single info line
-
-        info_line = lines[1].strip()
-        if not info_line:
-            return None
-        # Split the single line into parts separated by whitespace
-        parts = re.split(r"\s+", info_line)
-        # logger.info(f"task_id: {task_id} slurm info for job {job_id}: {parts}")
-        # Expected default squeue columns:
-        # JOBID PARTITION NAME USER ST TIME NODES NODELIST(REASON)
-        name = parts[2] if len(parts) > 2 else ""
-        user = parts[3] if len(parts) > 3 else ""
-        code = parts[4] if len(parts) > 4 else ""
-        time_str = parts[5] if len(parts) > 5 else ""
-        nodelist_raw = parts[7] if len(parts) > 7 else ""
-        # Split nodelist on commas or whitespace, filter empties
-        nodes = [n for n in re.split(r"[,\s]+", nodelist_raw) if n]
-
-        slurm_info = SlurmInfo(
-            node_registry=task_id,
-            resource=resource,
-            job_id=job_id,
-            updated=datetime.now(),
-            name=name,
-            user=user,
-            code=code,
-            time=time_str,
-            nodes=nodes,
-        )
-
-        return slurm_info
-    except Exception as e:
-        logger.exception(f"Error getting job info for {job_id}: {str(e)}")
+    Returns None only when squeue succeeded and the job is no longer listed.
+    Raises SqueueQueryError when squeue itself failed (timeout, overload, empty
+    or unexpected output) so callers do not treat a probe failure as completion.
+    """
+    stdout = run_squeue_for_job(job_id)
+    job_lines = _squeue_job_lines(stdout, job_id=job_id)
+    if not job_lines:
         return None
+    parts = re.split(r"\s+", job_lines[0].strip())
+    # Expected default squeue columns:
+    # JOBID PARTITION NAME USER ST TIME NODES NODELIST(REASON)
+    nodelist_raw = parts[7] if len(parts) > 7 else ""
+    return SlurmInfo(
+        node_registry=task_id,
+        resource=resource,
+        job_id=job_id,
+        updated=datetime.now(),
+        name=parts[2] if len(parts) > 2 else "",
+        user=parts[3] if len(parts) > 3 else "",
+        code=parts[4] if len(parts) > 4 else "",
+        time=parts[5] if len(parts) > 5 else "",
+        nodes=[n for n in re.split(r"[,\s]+", nodelist_raw) if n],
+    )
 
 
 async def clean_slurm_info(resource: Resource, user: str | None = None) -> None:
@@ -106,38 +128,23 @@ async def clean_slurm_info(resource: Resource, user: str | None = None) -> None:
         if context.config.docker:
             watchdog_id = f"slurm_{uuid.uuid4()}"
             queue_dir = context.config.workdir / "queue"
-            result = submit_to_watchdog(squeue_cmd, watchdog_id, queue_dir=queue_dir)
+            stdout = _squeue_stdout_from_result(
+                submit_to_watchdog(squeue_cmd, watchdog_id, queue_dir=queue_dir)
+            )
         else:
-            result = subprocess.run(
-                squeue_cmd,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
+            stdout = _run_squeue_command(squeue_cmd)
 
-        if result.returncode == 0:
-            active_job_ids = set()
-            for line in result.stdout.splitlines():
-                parts = line.split()
-                if not parts or parts[0] == "JOBID":
-                    continue
-                active_job_ids.add(parts[0])
+        active_job_ids = {line.split()[0] for line in _squeue_job_lines(stdout) if line.split()}
 
-            # Find all SLURM info entries for this resource
-            # the user id is truncated on saving
-            running_jobs = await context.db.find(
-                SlurmInfo, SlurmInfo.resource.value == resource.value
-            )
-            # logger.info(f"Found {running_jobs} slurm info entries for {resource}")
-            # logger.info(f"Active job IDs: {active_job_ids} Slurm info IDs: {[job.job_id for job in running_jobs]}")
-            # logger.info(f"User: {user} resource: {resource} ")
+        running_jobs = await context.db.find(
+            SlurmInfo, SlurmInfo.resource.value == resource.value
+        )
+        for job in running_jobs:
+            if job.job_id not in active_job_ids:
+                await context.db.delete(job)
+                logger.info(f"Deleted SLURM info for completed job {job.job_id}")
 
-            # Delete entries for jobs that are no longer running
-            for job in running_jobs:
-                if job.job_id not in active_job_ids:
-                    await context.db.delete(job)
-                    logger.info(f"Deleted SLURM info for completed job {job.job_id}")
-
+    except SqueueQueryError as e:
+        logger.warning(f"Skipping slurm info cleanup for {resource}: {e}")
     except Exception as e:
         logger.exception(f"Error cleaning slurm info for {resource}: {str(e)}")
