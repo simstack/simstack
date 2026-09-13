@@ -34,6 +34,9 @@ class FileTransferClient:
 
     It intentionally avoids adding a mandatory requests/httpx dependency to the
     runner environment while still streaming upload and download bodies.
+    Uploads larger than the configured chunk size (or that receive HTTP 413)
+    are sent as sequential Content-Range requests so reverse proxies with a
+    small client_max_body_size can still accept Gaussian-sized FileStack files.
     """
 
     chunk_size = 1024 * 1024
@@ -185,6 +188,80 @@ class FileTransferClient:
 
         size_bytes = path.stat().st_size
         checksum = hash_file(path)
+        raw_chunk = os.environ.get("SIMSTACK_FILE_TRANSFER_UPLOAD_CHUNK_BYTES")
+        if raw_chunk is None:
+            chunk_size = 8 * 1024 * 1024
+        else:
+            try:
+                chunk_size = int(raw_chunk)
+            except ValueError as exc:
+                raise ValueError(
+                    "SIMSTACK_FILE_TRANSFER_UPLOAD_CHUNK_BYTES must be an integer, "
+                    f"got {raw_chunk!r}"
+                ) from exc
+            if chunk_size <= 0:
+                raise ValueError(
+                    "SIMSTACK_FILE_TRANSFER_UPLOAD_CHUNK_BYTES must be positive, "
+                    f"got {chunk_size}"
+                )
+
+        production_floor = 256 * 1024
+        min_chunk_bytes = (
+            production_floor
+            if chunk_size > production_floor
+            else max(1, chunk_size // 2)
+        )
+        send_ranges = size_bytes > chunk_size
+        while True:
+            try:
+                if not send_ranges:
+                    return self._put_upload(
+                        transfer_id,
+                        path,
+                        offset=0,
+                        length=size_bytes,
+                        total_size=size_bytes,
+                        checksum=checksum,
+                        include_content_range=False,
+                    )
+                result: Dict[str, Any] = {}
+                offset = 0
+                while offset < size_bytes:
+                    length = min(chunk_size, size_bytes - offset)
+                    result = self._put_upload(
+                        transfer_id,
+                        path,
+                        offset=offset,
+                        length=length,
+                        total_size=size_bytes,
+                        checksum=checksum,
+                        include_content_range=True,
+                    )
+                    offset += length
+                return result
+            except FileTransferError as exc:
+                if "HTTP 413" not in str(exc):
+                    raise
+                if not send_ranges:
+                    send_ranges = True
+                    chunk_size = min(chunk_size, 512 * 1024)
+                    continue
+                next_chunk = chunk_size // 2
+                if next_chunk < min_chunk_bytes:
+                    raise
+                chunk_size = next_chunk
+
+    def _put_upload(
+        self,
+        transfer_id: str,
+        path: Path,
+        *,
+        offset: int,
+        length: int,
+        total_size: int,
+        checksum: str,
+        include_content_range: bool,
+    ) -> Dict[str, Any]:
         conn = self._connection()
         try:
             conn.putrequest(
@@ -193,14 +270,23 @@ class FileTransferClient:
             for key, value in self._auth_headers().items():
                 conn.putheader(key, value)
             conn.putheader("Content-Type", "application/octet-stream")
-            conn.putheader("Content-Length", str(size_bytes))
-            conn.putheader("X-File-Size", str(size_bytes))
+            conn.putheader("Content-Length", str(length))
+            conn.putheader("X-File-Size", str(total_size))
             conn.putheader("X-Checksum-SHA256", checksum)
+            if include_content_range:
+                end = offset + length - 1 if length else offset
+                conn.putheader("Content-Range", f"bytes {offset}-{end}/{total_size}")
             conn.endheaders()
 
             with path.open("rb") as handle:
-                for chunk in iter(lambda: handle.read(self.chunk_size), b""):
+                handle.seek(offset)
+                remaining = length
+                while remaining:
+                    chunk = handle.read(min(self.chunk_size, remaining))
+                    if not chunk:
+                        break
                     conn.send(chunk)
+                    remaining -= len(chunk)
 
             return self._parse_response(conn.getresponse())
         finally:
