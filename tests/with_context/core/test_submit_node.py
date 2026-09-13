@@ -215,6 +215,110 @@ async def test_slurm_docker_uses_task_resource_program_and_keeps_task_flag(
 
 
 @pytest.mark.asyncio
+async def test_submit_node_applies_program_env_modules_and_scripts(
+    tmp_path, monkeypatch
+):
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    workdir = tmp_path / "work"
+    database = FakeDatabase()
+
+    class ProgramResourceConfig:
+        def get_program(self, name, resource=None):
+            return {
+                "program_env": {"PARA_ARCH": "SMP"},
+                "environment_modules": ["chem/turbomole", ""],
+                "scripts": ["export TURBOMOLE_SYSNAME=em64t-unknown-linux-gnu"],
+            }
+
+    mock_context = SimpleNamespace(
+        config=SimpleNamespace(
+            project_root=project_root,
+            python_paths=[],
+            workdir=workdir,
+            environment_start="",
+            docker=False,
+            resource="justus",
+            connection_string=None,
+        ),
+        resource_config=ProgramResourceConfig(),
+        db=database,
+    )
+    monkeypatch.setattr("simstack.core.submit_node.context", mock_context)
+    monkeypatch.setattr(
+        "simstack.core.submit_node.subprocess.run",
+        lambda *args, **kwargs: SimpleNamespace(
+            returncode=0,
+            stdout="Submitted batch job 321\n",
+            stderr="",
+        ),
+    )
+    registry = _slurm_registry(
+        "turbomole2",
+        Parameters(
+            resource="justus",
+            queue="slurm-queue",
+            slurm_parameters=SlurmParameters(nodes=1, startup_commands=[]),
+        ),
+    )
+
+    assert await submit_node(registry) is True
+
+    script = (
+        workdir / registry.name / str(registry.id) / "slurm_script.sh"
+    ).read_text()
+    assert "export PARA_ARCH=SMP" in script
+    assert "module load chem/turbomole" in script
+    assert "export TURBOMOLE_SYSNAME=em64t-unknown-linux-gnu" in script
+    assert script.index("export PARA_ARCH=SMP") < script.index(
+        "module load chem/turbomole"
+    )
+    assert script.index("module load chem/turbomole") < script.index(
+        "uv run --directory"
+    )
+    assert registry.parameters.slurm_parameters.startup_commands == []
+
+
+@pytest.mark.asyncio
+async def test_submit_node_rejects_non_string_program_env(tmp_path, monkeypatch):
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    workdir = tmp_path / "work"
+    database = FakeDatabase()
+
+    class ProgramResourceConfig:
+        def get_program(self, name, resource=None):
+            return {"program_env": {"PARA_ARCH": 1}}
+
+    mock_context = SimpleNamespace(
+        config=SimpleNamespace(
+            project_root=project_root,
+            python_paths=[],
+            workdir=workdir,
+            environment_start="",
+            docker=False,
+            resource="justus",
+            connection_string=None,
+        ),
+        resource_config=ProgramResourceConfig(),
+        db=database,
+    )
+    monkeypatch.setattr("simstack.core.submit_node.context", mock_context)
+    registry = _slurm_registry(
+        "orca",
+        Parameters(
+            resource="justus",
+            queue="slurm-queue",
+            slurm_parameters=SlurmParameters(nodes=1),
+        ),
+    )
+
+    assert await submit_node(registry) is False
+    assert registry.status == TaskStatus.FAILED
+    assert "program_env.PARA_ARCH must be a string" in (registry.error or "")
+
+
+@pytest.mark.asyncio
 async def test_sbatch_failure_output_is_bounded_and_sanitized(
     tmp_path, monkeypatch, caplog
 ):

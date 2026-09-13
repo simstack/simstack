@@ -127,6 +127,53 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
             selected_resource,
             registry_entry.name,
         )
+        program_label = f"{selected_resource}.program.{registry_entry.name}"
+        program_env = program_config.get("program_env")
+        if program_env is not None:
+            if not isinstance(program_env, dict):
+                raise ValueError(
+                    f"config.toml [{program_label}].program_env must be a table"
+                )
+            for key, value in program_env.items():
+                if not isinstance(key, str) or key == "":
+                    raise ValueError(
+                        f"config.toml [{program_label}].program_env keys "
+                        "must be non-empty strings"
+                    )
+                if not isinstance(value, str):
+                    raise ValueError(
+                        f"config.toml [{program_label}].program_env.{key} "
+                        "must be a string"
+                    )
+                slurm_parameters.startup_commands.append(f"export {key}={value}")
+        environment_modules = program_config.get("environment_modules")
+        if environment_modules is not None:
+            if not isinstance(environment_modules, list):
+                raise ValueError(
+                    f"config.toml [{program_label}].environment_modules "
+                    "must be a list of strings"
+                )
+            for mod in environment_modules:
+                if not isinstance(mod, str):
+                    raise ValueError(
+                        f"config.toml [{program_label}].environment_modules "
+                        "must be a list of strings"
+                    )
+                if mod == "":
+                    continue
+                slurm_parameters.startup_commands.append(f"module load {mod}")
+        scripts = program_config.get("scripts")
+        if scripts is not None:
+            if not isinstance(scripts, list):
+                raise ValueError(
+                    f"config.toml [{program_label}].scripts must be a list of strings"
+                )
+            for script in scripts:
+                if not isinstance(script, str):
+                    raise ValueError(
+                        f"config.toml [{program_label}].scripts must be a list of strings"
+                    )
+                slurm_parameters.startup_commands.append(script)
         if registry_entry.parameters.in_docker and not program_config.get(
             "docker_image"
         ):
