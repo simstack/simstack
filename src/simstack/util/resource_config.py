@@ -174,21 +174,48 @@ class ResourceConfig:
         input_files: Optional[List[Union[str, "FileStack"]]] = None,
         output_files: Optional[List[Union[str, "FileStack"]]] = None,
         node_runner: Optional[Any] = None,
-    ):
+        command: str = "run_command",
+        name: Optional[str] = None,
+    ) -> bool:
         """
-        Executes the run command with optional temporary directory usage and file handling.
-        Retrieves parameters from the configuration for the specified program.
+        Executes a command from the program table with optional temporary
+        directory usage and file handling.
 
         Args:
             program_name: Name of the program to run.
             input_files: List of input files (str or FileStack). Overrides TOML input_files if provided.
             output_files: List of output files (str or FileStack). Overrides TOML output_files if provided.
             node_runner: Optional NodeRunner instance for execution.
+            command: Key in ``[<resource>.program.<name>]`` whose string is
+                executed. Defaults to ``run_command``. Use e.g.
+                ``define_command`` for a second launcher on the same table.
+            name: Subprocess log name for NodeRunner. Defaults to ``"run"``.
+
+        Returns:
+            True if the subprocess returned 0, False otherwise. Without a
+            node_runner, ``subprocess.run(..., check=True)`` raises on failure
+            and this method returns True.
+
+        Raises:
+            ValueError: ``command`` is empty, or the program table is missing
+                that key or the value is not a non-empty string.
         """
+        if not isinstance(command, str) or not command.strip():
+            raise ValueError(f"command must be a non-empty string, got {command!r}")
 
         params = self.get_program(program_name)
-        run_command = params.get("run_command", "")
-        
+        if command not in params:
+            raise ValueError(
+                f"config.toml [{self._resource}.program.{program_name}] "
+                f"is missing {command!r}"
+            )
+        run_command = params[command]
+        if not isinstance(run_command, str) or not run_command.strip():
+            raise ValueError(
+                f"config.toml [{self._resource}.program.{program_name}] "
+                f"{command!r} must be a non-empty string, got {run_command!r}"
+            )
+
         if input_files is None:
             input_files = params.get("input_files", [])
         
@@ -203,6 +230,8 @@ class ResourceConfig:
         post_params = self.get_postprocessing_params()
         scratch_cleanup = params.get("scratch_cleanup", post_params.get("scratch_cleanup", False))
 
+        subprocess_name = "run" if name is None else name
+        ok = True
         tmp_dir = None
         try:
             exec_dir = Path.cwd()
@@ -220,12 +249,15 @@ class ResourceConfig:
                         if src.exists() and src != exec_dir / f:
                             shutil.copy(src, exec_dir / f)
 
-            # Execute run_command
             if node_runner and hasattr(node_runner, "subprocess"):
-                node_runner.subprocess("run", run_command, cwd=str(exec_dir))
+                ok = bool(
+                    node_runner.subprocess(
+                        subprocess_name, run_command, cwd=str(exec_dir)
+                    )
+                )
             else:
                 subprocess.run(run_command, shell=True, check=True, cwd=exec_dir)
-
+                ok = True
 
             # Copy output files back to cwd
             if use_temp and tmp_dir:
@@ -242,6 +274,7 @@ class ResourceConfig:
         finally:
             if scratch_cleanup and tmp_dir and tmp_dir.exists():
                 shutil.rmtree(tmp_dir)
+        return ok
 
     def get_docker_registry(self, resource: str | None = None) -> Optional[str]:
         """Optional registry host for ``docker pull`` (e.g. ``167.233.117.31:5000``).
