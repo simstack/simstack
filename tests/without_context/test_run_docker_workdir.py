@@ -7,6 +7,7 @@ import pytest
 
 from simstack.core.run_docker import (
     CONTAINER_WORKDIR,
+    LEGACY_CONTAINER_WORKDIR,
     DockerRunResult,
     container_resource_args,
     docker_cidfile_path,
@@ -368,7 +369,9 @@ async def test_run_docker_passes_cidfile(tmp_path: Path):
     expected = tmp_path / "psi4_calculator" / "abc123" / ".docker_cid"
     assert cidfile == expected
     assert f"{tmp_path}:{CONTAINER_WORKDIR}" in cmd
+    assert f"{tmp_path}:{LEGACY_CONTAINER_WORKDIR}" in cmd
     assert CONTAINER_WORKDIR == "/mnt"
+    assert LEGACY_CONTAINER_WORKDIR == "/tmp/simstack"
     assert not CONTAINER_WORKDIR.startswith("/tmp")
     assert not CONTAINER_WORKDIR.startswith("/root/")
 
@@ -493,9 +496,10 @@ async def test_run_docker_apptainer_sigkill_uses_exit_code_heuristic(tmp_path: P
     assert "OOMKilled" not in registry_entry.error
     command = list(mock_exec.await_args.args)
     assert f"{tmp_path}:{CONTAINER_WORKDIR}" in command
+    assert f"{tmp_path}:{LEGACY_CONTAINER_WORKDIR}" in command
     assert CONTAINER_WORKDIR == "/mnt"
+    assert command[command.index("--no-mount") + 1] == "tmp"
     assert f"{tmp_path}:/tmp" not in command
-    assert f"{tmp_path}:/tmp/simstack" not in command
     assert not any("site-packages/simstack" in argument for argument in command)
 
 
