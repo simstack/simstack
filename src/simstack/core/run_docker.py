@@ -27,10 +27,6 @@ _pull_locks: dict[str, asyncio.Lock] = {}
 # exist in typical images. Nested /tmp/simstack is hidden by Apptainer's default
 # host-/tmp bind; do not overlay container /tmp.
 CONTAINER_WORKDIR = "/mnt"
-# Images built before CONTAINER_WORKDIR moved still initialize --in-docker at
-# /tmp/simstack. Bind the host workdir there too; --no-mount tmp keeps the
-# image mkdir visible.
-LEGACY_CONTAINER_WORKDIR = "/tmp/simstack"
 _DOCKER_CIDFILE_NAME = ".docker_cid"
 _SIGKILL_RC = 137
 _SIGSEGV_RC = 139
@@ -514,7 +510,6 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             "-e", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}",
             "-e", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}",
             "-v", f"{workdir}:{CONTAINER_WORKDIR}",
-            "-v", f"{workdir}:{LEGACY_CONTAINER_WORKDIR}",
             *project_mount_args,
             image,
             "--node-id", str(registry_entry.id),
@@ -524,9 +519,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         ]
     elif docker_cmd == "apptainer":
         bind_args = [
-            "--no-mount", "tmp",
             "--bind", f"{workdir}:{CONTAINER_WORKDIR}",
-            "--bind", f"{workdir}:{LEGACY_CONTAINER_WORKDIR}",
         ]
         for host_path, dest in project_file_mounts:
             bind_args.extend(["--bind", f"{host_path}:{dest}"])
