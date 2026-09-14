@@ -491,7 +491,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
     resource_args = container_resource_args(docker_cmd, slurm_parameters)
     if resource_args:
         logger.info(
-            "task_id=%s applying container resource limits from slurm_parameters: %s",
+            "task_id: %s applying container resource limits from slurm_parameters: %s",
             registry_entry.id,
             shlex.join(resource_args),
         )
@@ -500,7 +500,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         or docker_memory_limit(slurm_parameters) is not None
     ):
         logger.info(
-            "task_id=%s omitting apptainer --cpus/--memory (need cgroups v2); "
+            "task_id: %s omitting apptainer --cpus/--memory (need cgroups v2); "
             "Slurm already limits the job",
             registry_entry.id,
         )
@@ -554,7 +554,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         ]
     else:
         registry_entry.error = f"Unsupported command {docker_cmd}"
-        logger.error("%s for task_id=%s", registry_entry.error, registry_entry.id)
+        logger.error("%s for task_id: %s", registry_entry.error, registry_entry.id)
         registry_entry.status = TaskStatus.FAILED
         await context.db.save(registry_entry)
         return DockerRunResult(False, "none", registry_entry.error)
@@ -563,7 +563,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
     registry_entry.status = TaskStatus.SLURM_QUEUED
     await context.db.save(registry_entry)
     logger.info(
-        "task_id=%s status set to %s before docker launch",
+        "task_id: %s status set to %s before docker launch",
         registry_entry.id,
         TaskStatus.SLURM_QUEUED,
     )
@@ -639,7 +639,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
                 f"{base_error}\n{detail_tail}" if detail_tail else base_error
             )
             logger.error(
-                "docker run failed for task_id=%s rc=%s oom_killed=%s error=%s stderr=%s stdout=%s cmd=%s",
+                "docker run failed for task_id: %s rc=%s oom_killed=%s error=%s stderr=%s stdout=%s cmd=%s",
                 registry_entry.id,
                 process.returncode,
                 oom_killed,
@@ -682,12 +682,12 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
 
         if stdout:
             # For `docker run` without -d, stdout is the actual output of the command
-            logger.info("Docker container output for task_id=%s: %s", registry_entry.id, stdout)
+            logger.info("Docker container output for task_id: %s: %s", registry_entry.id, stdout)
         else:
-            logger.info("Docker container spawned for task_id=%s", registry_entry.id)
+            logger.info("Docker container spawned for task_id: %s", registry_entry.id)
         if stderr:
             # Some Docker setups warn on stderr even on success
-            logger.warning("docker run stderr for task_id=%s: %s", registry_entry.id, stderr)
+            logger.warning("docker run stderr for task_id: %s: %s", registry_entry.id, stderr)
 
         return DockerRunResult(True, child_outcome.return_kind)
     except Exception as e:

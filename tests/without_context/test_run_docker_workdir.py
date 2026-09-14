@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -422,7 +423,7 @@ async def test_run_docker_sigkill_without_oomkilled_sets_error(tmp_path: Path):
 
 
 @pytest.mark.asyncio
-async def test_run_docker_generic_failure_is_not_oom(tmp_path: Path):
+async def test_run_docker_generic_failure_is_not_oom(tmp_path: Path, caplog):
     resource_config = _psi4_image_config(tmp_path)
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry()
@@ -434,6 +435,7 @@ async def test_run_docker_generic_failure_is_not_oom(tmp_path: Path):
             side_effect=_fake_docker_exec(returncode=1),
         ),
         patch("simstack.core.run_docker.inspect_docker_oomkilled", return_value=False),
+        caplog.at_level(logging.ERROR, logger="DockerRunner"),
     ):
         result = await run_docker(registry_entry)
 
@@ -444,6 +446,8 @@ async def test_run_docker_generic_failure_is_not_oom(tmp_path: Path):
     assert "out of memory" not in registry_entry.error.lower()
     assert "Likely OOM" not in registry_entry.error
     assert "SIGKILL" not in registry_entry.error
+    assert "task_id: abc123" in caplog.text
+    assert "task_id=abc123" not in caplog.text
 
 
 def test_inspect_docker_oomkilled_parses_true_false():
