@@ -137,13 +137,20 @@ def docker_memory_limit(slurm: object | None, *, uppercase: bool = False) -> str
 
 
 def container_resource_args(docker_cmd: str, slurm: object | None) -> list[str]:
-    """Runtime flags that pin CPU and memory for docker or apptainer."""
+    """Runtime flags that pin CPU and memory for docker.
+
+    Apptainer ``--cpus`` / ``--memory`` need cgroups v2 unified mode, which HPC
+    nodes (Justus) do not provide. Slurm already enforces the job's CPU and memory.
+    """
+    if docker_cmd == "apptainer":
+        return []
+
     args: list[str] = []
     cpu_limit = docker_cpu_limit(slurm)
     if cpu_limit is not None:
         args.extend(["--cpus", str(cpu_limit)])
 
-    memory_limit = docker_memory_limit(slurm, uppercase=docker_cmd == "apptainer")
+    memory_limit = docker_memory_limit(slurm, uppercase=False)
     if memory_limit is not None:
         args.extend(["--memory", memory_limit])
     return args
@@ -485,6 +492,15 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             registry_entry.id,
             shlex.join(resource_args),
         )
+    elif docker_cmd == "apptainer" and (
+        docker_cpu_limit(slurm_parameters) is not None
+        or docker_memory_limit(slurm_parameters) is not None
+    ):
+        logger.info(
+            "task_id=%s omitting apptainer --cpus/--memory (need cgroups v2); "
+            "Slurm already limits the job",
+            registry_entry.id,
+        )
 
     # Prefer the task resource inside the container (self -> local for image/workdir lookups).
     container_resource = lookup_resource
@@ -587,8 +603,10 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
 
         if process.returncode != 0:
             oom_killed = _container_oom_killed(docker_cmd, cidfile)
-            memory_limit = docker_memory_limit(
-                slurm_parameters, uppercase=docker_cmd == "apptainer"
+            memory_limit = (
+                docker_memory_limit(slurm_parameters)
+                if docker_cmd != "apptainer"
+                else None
             )
             base_error = format_container_failure_error(
                 process.returncode,
