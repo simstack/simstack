@@ -158,10 +158,10 @@ class ResourceAssignmentRule(Model):
 
         if (self.resource_str or "").lower() == "self":
             # ``self`` is a child-only placement instruction: stay in the
-            # current execution context and do not carry routing overrides.
+            # current execution context. Queue, Slurm, and rerun flags do not
+            # apply, but ``in_docker`` is an independent child execution flag.
             object.__setattr__(self, "resource_str", "self")
             object.__setattr__(self, "queue", None)
-            object.__setattr__(self, "in_docker", None)
             object.__setattr__(self, "force_rerun", None)
             object.__setattr__(self, "recompute_artifacts", None)
             object.__setattr__(self, "slurm_parameters", {})
