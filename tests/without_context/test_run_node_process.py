@@ -428,6 +428,8 @@ async def test_in_container_context_uses_shared_non_root_workdir(monkeypatch):
 
     assert result == RunNodeResult(True, "model")
     assert init_kwargs["workdir"] == CONTAINER_WORKDIR
+    assert CONTAINER_WORKDIR == "/mnt"
+    assert not CONTAINER_WORKDIR.startswith("/tmp")
     assert not CONTAINER_WORKDIR.startswith("/root/")
 
 
