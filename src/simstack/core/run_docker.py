@@ -23,7 +23,10 @@ logger = logging.getLogger("DockerRunner")
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 _DOCKER_HUB_LIBRARY_PREFIX = "docker.io/library/"
 _pull_locks: dict[str, asyncio.Lock] = {}
-CONTAINER_WORKDIR = "/tmp/simstack"
+# In-container alias for the host resource workdir (not scratch). Must already
+# exist in typical images. Nested /tmp/simstack is hidden by Apptainer's default
+# host-/tmp bind; do not overlay container /tmp.
+CONTAINER_WORKDIR = "/mnt"
 _DOCKER_CIDFILE_NAME = ".docker_cid"
 _SIGKILL_RC = 137
 _SIGSEGV_RC = 139
