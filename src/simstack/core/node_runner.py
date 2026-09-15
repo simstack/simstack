@@ -65,6 +65,7 @@ class NodeRunner(SimstackResult):
         self._logged_scratch = False
         self._scratch_env_backup = {}
         self._scratch_chdir = False
+        self._scratch_program_name = None
         self.info(f"NodeRunner '{self.name}' initialized for task_id: {self.task_id}")
 
 
@@ -203,6 +204,7 @@ class NodeRunner(SimstackResult):
         else:
             self._scratch_cleanup = False
 
+        self._scratch_program_name = program_name
         self.scratch_dir = Path(scratch_path)
         self._scratch_workdir = Path.cwd()
         self._scratch_chdir = bool(chdir)
@@ -218,20 +220,46 @@ class NodeRunner(SimstackResult):
             self._logged_scratch = True
         return self.scratch_dir
 
-    def leave_scratch(self) -> None:
-        """Copy scratch files back to the original workdir and optionally delete scratch."""
+    def leave_scratch(
+        self,
+        output_files: Optional[List[Union[str, FileStack]]] = None,
+    ) -> None:
+        """Copy listed output files from scratch back to the original workdir.
+
+        ``output_files`` is required: pass a list (empty means copy nothing), or
+        set ``output_files`` on the program table used by ``enter_scratch``.
+        Does not copy the rest of the scratch directory. Optionally deletes
+        scratch when ``scratch_cleanup`` is true.
+
+        Raises:
+            ValueError: ``output_files`` is omitted and the program table has no
+                ``output_files`` list, or the value is not a list of names.
+        """
         if self.scratch_dir is None or self._scratch_workdir is None:
             return
         scratch = Path(self.scratch_dir)
         workdir = Path(self._scratch_workdir)
         try:
-            if scratch.exists() and scratch.resolve() != workdir.resolve():
-                for item in scratch.iterdir():
-                    dest = workdir / item.name
-                    if item.is_dir():
-                        shutil.copytree(item, dest, dirs_exist_ok=True)
-                    else:
-                        shutil.copy2(item, dest)
+            if output_files is None:
+                program_name = self._scratch_program_name
+                if not program_name:
+                    raise ValueError("leave_scratch requires output_files")
+                from simstack.core.context import context
+
+                if not context.initialized or context.resource_config is None:
+                    raise ValueError("leave_scratch requires output_files")
+                program_params = context.resource_config.get_program(program_name)
+                if "output_files" not in program_params:
+                    raise ValueError(
+                        "leave_scratch requires output_files, or "
+                        f"[resource.program.{program_name}] output_files"
+                    )
+                output_files = program_params["output_files"]
+            if not isinstance(output_files, list):
+                raise ValueError(
+                    f"output_files must be a list, got {type(output_files).__name__}"
+                )
+            self._copy_named_scratch_outputs(scratch, workdir, output_files)
         finally:
             if self._scratch_chdir:
                 os.chdir(workdir)
@@ -251,6 +279,30 @@ class NodeRunner(SimstackResult):
             self._scratch_chdir = False
             self._scratch_env_backup = {}
             self._logged_scratch = False
+            self._scratch_program_name = None
+
+    def _copy_named_scratch_outputs(
+        self,
+        scratch: Path,
+        workdir: Path,
+        output_files: List[Union[str, FileStack]],
+    ) -> None:
+        if not scratch.exists() or scratch.resolve() == workdir.resolve():
+            return
+        for item in output_files:
+            name = item.name if hasattr(item, "name") else item
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError(
+                    f"output_files entries must be non-empty file names, got {item!r}"
+                )
+            src = scratch / Path(name).name
+            if not src.exists():
+                continue
+            dest = workdir / src.name
+            if src.is_dir():
+                shutil.copytree(src, dest, dirs_exist_ok=True)
+            else:
+                shutil.copy2(src, dest)
 
     def _require_resource_config(self):
         from simstack.core.context import context
@@ -397,20 +449,14 @@ class NodeRunner(SimstackResult):
         try:
             if scratch.exists() and scratch.resolve() != workdir.resolve():
                 if output_files is None:
-                    items = list(scratch.iterdir())
+                    for item in scratch.iterdir():
+                        dest = workdir / item.name
+                        if item.is_dir():
+                            shutil.copytree(item, dest, dirs_exist_ok=True)
+                        else:
+                            shutil.copy2(item, dest)
                 else:
-                    items = []
-                    for item in output_files:
-                        name = item.name if hasattr(item, "name") else item
-                        items.append(scratch / name)
-                for item in items:
-                    if not item.exists():
-                        continue
-                    dest = workdir / item.name
-                    if item.is_dir():
-                        shutil.copytree(item, dest, dirs_exist_ok=True)
-                    else:
-                        shutil.copy2(item, dest)
+                    self._copy_named_scratch_outputs(scratch, workdir, output_files)
             cleanup = False
             resource_config = self._require_resource_config()
             program_params = {}

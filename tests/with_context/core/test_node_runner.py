@@ -616,7 +616,7 @@ class TestNodeRunnerScratch:
                 f"{scratch} task_id: task_abc",
                 stacklevel=2,
             )
-            runner.leave_scratch()
+            runner.leave_scratch(output_files=["tmp.dat"])
             assert Path.cwd().resolve() == workdir.resolve()
             assert (workdir / "tmp.dat").read_text(encoding="utf-8") == "scratch-data"
             assert scratch.exists()
@@ -639,9 +639,89 @@ class TestNodeRunnerScratch:
             runner = NodeRunner("turbomole2", "task_abc")
             runner.enter_scratch(scratch_dir=scratch, chdir=True, scratch_cleanup=True)
             (scratch / "gone.txt").write_text("x", encoding="utf-8")
-            runner.leave_scratch()
+            runner.leave_scratch(output_files=["gone.txt"])
             assert not scratch.exists()
             assert (workdir / "gone.txt").read_text(encoding="utf-8") == "x"
+        finally:
+            os.chdir(original_cwd)
+            for key, previous in saved_env.items():
+                if previous is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = previous
+
+    def test_leave_scratch_copies_listed_files_only(self, tmp_path):
+        workdir = tmp_path / "work"
+        scratch = tmp_path / "scratch"
+        workdir.mkdir()
+        original_cwd = os.getcwd()
+        saved_env = {key: os.environ.get(key) for key in ("TURBOTMPDIR", "TMPDIR", "TMP")}
+        os.chdir(workdir)
+        try:
+            runner = NodeRunner("turbomole2", "task_abc")
+            runner.enter_scratch(scratch_dir=scratch, chdir=True, scratch_cleanup=False)
+            (scratch / "keep.txt").write_text("keep", encoding="utf-8")
+            (scratch / "skip.txt").write_text("skip", encoding="utf-8")
+            runner.leave_scratch(output_files=["keep.txt"])
+            assert (workdir / "keep.txt").read_text(encoding="utf-8") == "keep"
+            assert not (workdir / "skip.txt").exists()
+            assert (scratch / "skip.txt").read_text(encoding="utf-8") == "skip"
+        finally:
+            os.chdir(original_cwd)
+            for key, previous in saved_env.items():
+                if previous is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = previous
+
+    def test_leave_scratch_requires_output_files(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+
+        monkeypatch.setattr(context, "_resource_config", None)
+        workdir = tmp_path / "work"
+        scratch = tmp_path / "scratch"
+        workdir.mkdir()
+        original_cwd = os.getcwd()
+        saved_env = {key: os.environ.get(key) for key in ("TURBOTMPDIR", "TMPDIR", "TMP")}
+        os.chdir(workdir)
+        try:
+            runner = NodeRunner("turbomole2", "task_abc")
+            runner.enter_scratch(scratch_dir=scratch, chdir=True, scratch_cleanup=False)
+            (scratch / "tmp.dat").write_text("scratch-data", encoding="utf-8")
+            with pytest.raises(ValueError, match="leave_scratch requires output_files"):
+                runner.leave_scratch()
+            assert Path.cwd().resolve() == workdir.resolve()
+            assert not (workdir / "tmp.dat").exists()
+        finally:
+            os.chdir(original_cwd)
+            for key, previous in saved_env.items():
+                if previous is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = previous
+
+    def test_leave_scratch_uses_program_output_files(self, tmp_path, monkeypatch):
+        from simstack.core.context import context
+
+        rc, _scratch_base = _write_runner_config(
+            tmp_path,
+            extra_program_lines='use_tmp = true\noutput_files = ["keep.txt"]',
+        )
+        monkeypatch.setattr(context, "_resource_config", rc)
+        workdir = tmp_path / "work"
+        workdir.mkdir()
+        original_cwd = os.getcwd()
+        saved_env = {key: os.environ.get(key) for key in ("TURBOTMPDIR", "TMPDIR", "TMP")}
+        os.chdir(workdir)
+        try:
+            runner = NodeRunner("orca", "task_prog")
+            runner.enter_scratch("orca")
+            scratch = runner.scratch_dir
+            (scratch / "keep.txt").write_text("keep", encoding="utf-8")
+            (scratch / "skip.txt").write_text("skip", encoding="utf-8")
+            runner.leave_scratch()
+            assert (workdir / "keep.txt").read_text(encoding="utf-8") == "keep"
+            assert not (workdir / "skip.txt").exists()
         finally:
             os.chdir(original_cwd)
             for key, previous in saved_env.items():
