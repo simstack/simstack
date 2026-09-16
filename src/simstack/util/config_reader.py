@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import List, TYPE_CHECKING, Union
 from simstack.core.resources import allowed_resources
@@ -126,9 +127,22 @@ class ConfigReader(DatabaseInformation):
                 log_msg += f" {key}: {value}"
         logger.info(log_msg)
 
-        return cls(
+        config_reader = cls(
             db, resource_definition, project_root=project_root, git_list=git_list_final
         )
+        if (
+            toml_reader is not None
+            and toml_reader.use_db()
+            and not config_reader.server_token
+            and not os.environ.get("SIMSTACK_RUNNER_TOKEN")
+        ):
+            token_record = await db.collection("runner_resource_tokens").find_one(
+                {"resource_str": resource_definition.resource_str},
+                {"access_token": 1, "_id": 0},
+            )
+            if token_record:
+                config_reader._server_token = token_record.get("access_token")
+        return config_reader
 
     @property
     def server_url(self) -> str:
