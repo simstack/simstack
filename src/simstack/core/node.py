@@ -1096,6 +1096,7 @@ class Node:
         error = sanitized_tail(
             new_registry_entry.error or f"terminated with status {new_status}",
             getattr(context.config, "connection_string", None),
+            limit=None,
         )
         raise RuntimeError(
             f"Task task_id: {self.id} node: {self.name} failed with {error}"
@@ -1210,7 +1211,9 @@ class Node:
             except Exception as e:
                 # Save the error message if possible
                 clean_error = sanitized_tail(
-                    str(e), getattr(context.config, "connection_string", None)
+                    str(e),
+                    getattr(context.config, "connection_string", None),
+                    limit=None,
                 )
                 if self.registry_entry:
                     self.registry_entry.error = clean_error
@@ -1304,6 +1307,7 @@ class Node:
                     clean_error = sanitized_tail(
                         result.error_message,
                         getattr(context.config, "connection_string", None),
+                        limit=None,
                     )
                     self.registry_entry.error = clean_error
                     logger.error(
@@ -1472,6 +1476,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 f"Failed to load input {ref.variable_mapping} with id "
                 f"{ref.reference}: {e}",
                 getattr(context.config, "connection_string", None),
+                limit=None,
             )
             registry_entry.status = TaskStatus.FAILED
             registry_entry.error = error
@@ -1528,6 +1533,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
         error = sanitized_tail(
             f"Failed to import function {registry_entry.func_mapping}: {e}",
             getattr(context.config, "connection_string", None),
+            limit=None,
         )
         registry_entry.status = TaskStatus.FAILED
         registry_entry.error = error
@@ -1748,6 +1754,7 @@ def node(
                     error = sanitized_tail(
                         current_registry_entry.error,
                         getattr(context.config, "connection_string", None),
+                        limit=None,
                     )
                     raise RuntimeError(
                         f"task_id: {current_registry_entry.id} node: "
@@ -1799,6 +1806,7 @@ def node(
                     error = sanitized_tail(
                         execution_node.registry_entry.error,
                         getattr(context.config, "connection_string", None),
+                        limit=None,
                     )
                     raise RuntimeError(
                         f"task_id: {execution_node.registry_entry.id} node: "
@@ -1814,6 +1822,7 @@ def node(
                     error = sanitized_tail(
                         execution_node.registry_entry.error,
                         getattr(context.config, "connection_string", None),
+                        limit=None,
                     )
                     raise RuntimeError(
                         f"task_id: {execution_node.registry_entry.id} node: "
