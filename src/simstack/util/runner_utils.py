@@ -16,6 +16,20 @@ import logging
 logger = logging.getLogger("runner_utils")
 
 
+class SqueueNotFoundError(RuntimeError):
+    """squeue is not installed or not on PATH."""
+
+
+def _squeue_is_missing(result) -> bool:
+    returncode = getattr(result, "returncode", None)
+    stderr = (getattr(result, "stderr", None) or "").lower()
+    return (
+        returncode == 127
+        or "not found" in stderr
+        or "is not recognized" in stderr
+    )
+
+
 def make_git_status_list() -> List[str]:
     git_status_list = []
     git_path_list = [context.config.project_root]
@@ -34,13 +48,22 @@ def make_git_status_list() -> List[str]:
 
 
 def run_squeue_for_job(job_id: str) -> str:
-    result = subprocess.run(
-        f"squeue -j {job_id}",
-        shell=True,
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
+    try:
+        result = subprocess.run(
+            f"squeue -j {job_id}",
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except FileNotFoundError as exc:
+        raise SqueueNotFoundError(f"squeue for job {job_id} is not available") from exc
+    if _squeue_is_missing(result):
+        stderr = (result.stderr or "").strip()
+        raise SqueueNotFoundError(
+            f"squeue for job {job_id} is not available"
+            + (f": {stderr}" if stderr else "")
+        )
     return result.stdout
 
 
@@ -91,6 +114,8 @@ def get_job_info(
         )
 
         return slurm_info
+    except SqueueNotFoundError:
+        raise
     except Exception as e:
         logger.exception(f"Error getting job info for {job_id}: {str(e)}")
         return None
@@ -108,13 +133,19 @@ async def clean_slurm_info(resource: Resource, user: str | None = None) -> None:
             queue_dir = context.config.workdir / "queue"
             result = submit_to_watchdog(squeue_cmd, watchdog_id, queue_dir=queue_dir)
         else:
-            result = subprocess.run(
-                squeue_cmd,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
+            try:
+                result = subprocess.run(
+                    squeue_cmd,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+            except FileNotFoundError as exc:
+                raise SqueueNotFoundError("squeue is not available") from exc
+
+        if _squeue_is_missing(result):
+            raise SqueueNotFoundError("squeue is not available")
 
         if result.returncode == 0:
             active_job_ids = set()
@@ -139,5 +170,7 @@ async def clean_slurm_info(resource: Resource, user: str | None = None) -> None:
                     await context.db.delete(job)
                     logger.info(f"Deleted SLURM info for completed job {job.job_id}")
 
+    except SqueueNotFoundError:
+        raise
     except Exception as e:
         logger.exception(f"Error cleaning slurm info for {resource}: {str(e)}")
