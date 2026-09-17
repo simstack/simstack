@@ -4,12 +4,26 @@ from datetime import datetime
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.models import NodeRegistry
-from simstack.models.parameters import Resource
+from simstack.models.parameters import Queue, Resource
+from simstack.models.resource_definition import ResourceDefinition
 from simstack.models.slurm_info import SlurmInfo
-from simstack.util.runner_utils import SqueueQueryError, get_job_info, clean_slurm_info
+from simstack.util.runner_utils import (
+    SqueueNotFoundError,
+    SqueueQueryError,
+    get_job_info,
+    clean_slurm_info,
+)
 from simstack.core.services.base_service import BaseService
 
 logger = logging.getLogger("NodeRunner")
+
+
+async def resource_uses_slurm_queue(resource: Resource) -> bool:
+    resource_def = await context.db.find_one(
+        ResourceDefinition,
+        ResourceDefinition.resource_str == str(resource),
+    )
+    return resource_def is not None and resource_def.queue == Queue.SLURM_QUEUE
 
 
 class SlurmStatusService(BaseService):
@@ -19,6 +33,8 @@ class SlurmStatusService(BaseService):
 
     async def execute(self) -> None:
         try:
+            if not await resource_uses_slurm_queue(self._resource):
+                return
             # logger.info(f"Running clean_slurm_info for {self._resource} and user {self._username}")
             await clean_slurm_info(self._resource, user=self._username)
 
@@ -41,6 +57,8 @@ class SlurmStatusService(BaseService):
                     slurm_info = get_job_info(
                         task.job_id, task.id, Resource(value=self._resource_name)
                     )
+                except SqueueNotFoundError:
+                    return
                 except SqueueQueryError as exc:
                     logger.warning(
                         "squeue failed for job %s (task %s); leaving status %s unchanged: %s",
@@ -72,6 +90,8 @@ class SlurmStatusService(BaseService):
                     task.status = TaskStatus.TIME_OUT
                     await context.db.save(task)
 
+        except SqueueNotFoundError:
+            return
         except Exception as e:
             logger.exception(f"Error checking Slurm status: {e}")
             raise e

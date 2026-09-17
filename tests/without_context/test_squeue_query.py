@@ -5,7 +5,12 @@ import pytest
 from odmantic import ObjectId
 
 from simstack.models.parameters import Resource
-from simstack.util.runner_utils import SqueueQueryError, get_job_info
+from simstack.util.runner_utils import (
+    SqueueNotFoundError,
+    SqueueQueryError,
+    get_job_info,
+    run_squeue_for_job,
+)
 
 SQUEUE_HEADER = "JOBID PARTITION NAME USER ST TIME NODES NODELIST(REASON)"
 SQUEUE_JOB_LINE = "12345 batch hyperpol user R 1:23 1 node01"
@@ -72,4 +77,22 @@ def test_get_job_info_raises_when_squeue_output_is_not_a_listing(monkeypatch):
         _completed("slurm_load_jobs error: Unable to contact slurm controller\n"),
     )
     with pytest.raises(SqueueQueryError, match="unexpected output"):
+        get_job_info("12345", ObjectId(), Resource(value="self"))
+
+
+def test_run_squeue_for_job_raises_when_squeue_missing(monkeypatch):
+    _patch_squeue(
+        monkeypatch,
+        _completed("", returncode=127, stderr="/bin/sh: 1: squeue: not found"),
+    )
+    with pytest.raises(SqueueNotFoundError):
+        run_squeue_for_job("12345")
+
+
+def test_get_job_info_raises_when_squeue_missing(monkeypatch):
+    _patch_squeue(
+        monkeypatch,
+        _completed("", returncode=127, stderr="/bin/sh: 1: squeue: not found"),
+    )
+    with pytest.raises(SqueueNotFoundError):
         get_job_info("12345", ObjectId(), Resource(value="self"))
