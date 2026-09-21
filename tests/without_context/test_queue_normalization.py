@@ -1,12 +1,16 @@
 import pytest
 
-from simstack.models.parameters import Parameters, Queue
+from simstack.models.parameters import Parameters, Queue, is_slurm_managed_queue
 from simstack.models.resource_assignment import ResourceAssignmentRule
 from simstack.models.resource_definition import ResourceDefinition
 
 
 def test_queue_enum_contains_only_canonical_execution_queues():
-    assert {queue.value for queue in Queue} == {"default", "slurm-queue"}
+    assert {queue.value for queue in Queue} == {
+        "default",
+        "slurm-queue",
+        "salloc-queue",
+    }
 
 
 @pytest.mark.parametrize(
@@ -18,6 +22,9 @@ def test_queue_enum_contains_only_canonical_execution_queues():
         ("slurm_queue", "slurm-queue", False),
         ("slurm-docker", "slurm-queue", True),
         ("SLURM_DOCKER", "slurm-queue", True),
+        ("salloc", "salloc-queue", False),
+        ("salloc_queue", "salloc-queue", False),
+        (" SALLOC-QUEUE ", "salloc-queue", False),
     ],
 )
 def test_legacy_queue_is_normalized_to_queue_and_flag(
@@ -63,6 +70,8 @@ def test_legacy_queue_normalization_does_not_mutate_input_data():
         ("slurm_queue", "slurm-queue"),
         ("slurm-docker", "slurm-queue"),
         ("SLURM_DOCKER", "slurm-queue"),
+        ("salloc", "salloc-queue"),
+        ("salloc_queue", "salloc-queue"),
     ],
 )
 def test_resource_definition_normalizes_legacy_queue(legacy_queue, canonical_queue):
@@ -85,6 +94,8 @@ def test_resource_definition_normalizes_legacy_queue(legacy_queue, canonical_que
         ("slurm_queue", "slurm-queue", None),
         ("slurm-docker", "slurm-queue", True),
         ("SLURM_DOCKER", "slurm-queue", True),
+        ("salloc", "salloc-queue", None),
+        ("salloc-queue", "salloc-queue", None),
     ],
 )
 def test_assignment_rule_normalizes_legacy_queue_and_preserves_explicit_off(
@@ -106,3 +117,35 @@ def test_assignment_rule_normalizes_legacy_queue_and_preserves_explicit_off(
     assert migrated.in_docker is inferred_docker
     assert explicit_off.queue == canonical_queue
     assert explicit_off.in_docker is False
+
+
+@pytest.mark.parametrize(
+    ("queue", "managed"),
+    [
+        ("default", False),
+        ("docker", False),
+        ("slurm-queue", True),
+        ("slurm", True),
+        ("salloc-queue", True),
+        ("salloc", True),
+    ],
+)
+def test_is_slurm_managed_queue(queue, managed):
+    assert is_slurm_managed_queue(queue) is managed
+    assert is_slurm_managed_queue(Parameters(queue=queue).queue) is managed
+
+
+@pytest.mark.parametrize(
+    ("queue", "managed"),
+    [
+        ("default", False),
+        ("docker", False),
+        ("slurm-queue", True),
+        ("slurm", True),
+        ("salloc-queue", True),
+        ("salloc", True),
+    ],
+)
+def test_is_slurm_managed_queue(queue, managed):
+    assert is_slurm_managed_queue(queue) is managed
+    assert is_slurm_managed_queue(Parameters(queue=queue).queue) is managed

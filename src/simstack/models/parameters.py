@@ -1,4 +1,5 @@
 from enum import Enum
+import shlex
 from typing import Optional, List, ClassVar, Dict, Any
 from odmantic import Field, EmbeddedModel
 from pydantic import field_validator, model_validator
@@ -63,6 +64,7 @@ class Resource(EmbeddedModel):
 class Queue(str, Enum):
     DEFAULT = "default"
     SLURM_QUEUE = "slurm-queue"
+    SALLOC_QUEUE = "salloc-queue"
 
 
 _QUEUE_ALIASES = {
@@ -74,6 +76,9 @@ _QUEUE_ALIASES = {
     "slurm_queue": Queue.SLURM_QUEUE.value,
     "slurm-docker": Queue.SLURM_QUEUE.value,
     "slurm_docker": Queue.SLURM_QUEUE.value,
+    "salloc": Queue.SALLOC_QUEUE.value,
+    "salloc-queue": Queue.SALLOC_QUEUE.value,
+    "salloc_queue": Queue.SALLOC_QUEUE.value,
 }
 _LEGACY_DOCKER_QUEUES = {"docker", "slurm-docker", "slurm_docker"}
 
@@ -92,6 +97,12 @@ def normalize_execution_queue(
 
     alias = stripped_value.lower()
     return _QUEUE_ALIASES.get(alias, stripped_value), alias in _LEGACY_DOCKER_QUEUES
+
+
+def is_slurm_managed_queue(queue: Any) -> bool:
+    """True for queues that allocate via Slurm (sbatch or salloc)."""
+    normalized, _ = normalize_execution_queue(queue, default=Queue.DEFAULT.value)
+    return normalized in {Queue.SLURM_QUEUE.value, Queue.SALLOC_QUEUE.value}
 
 
 # TODO Fix Slurm Parameters
@@ -311,18 +322,26 @@ class SlurmParameters(EmbeddedModel):
 
         return args
 
-    def to_sbatch_header(self) -> str:
-        """Convert parameters to SBATCH header string for script files."""
+    def to_shell_script(self, *, sbatch_header: bool = True) -> str:
+        """Build a bash script, optionally with ``#SBATCH`` directives."""
         lines = ["#!/bin/bash"]
-
-        for arg in self.to_sbatch_args():
-            lines.append(f"#SBATCH {arg}")
-
+        if sbatch_header:
+            for arg in self.to_sbatch_args():
+                lines.append(f"#SBATCH {arg}")
         if self.startup_commands:
             lines.append("")
             lines.extend(self.startup_commands)
-
         return "\n".join(lines)
+
+    def to_sbatch_header(self) -> str:
+        """Convert parameters to SBATCH header string for script files."""
+        return self.to_shell_script(sbatch_header=True)
+
+    def to_salloc_command(self, script_path: str) -> str:
+        """salloc CLI flags plus srun of the startup script (no #SBATCH)."""
+        flags = " ".join(self.to_sbatch_args())
+        quoted_script = shlex.quote(str(script_path))
+        return f"/usr/bin/salloc {flags} /usr/bin/srun bash {quoted_script}"
 
 
 class Parameters(EmbeddedModel):
