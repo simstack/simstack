@@ -33,7 +33,7 @@ def is_iterable(obj: Any) -> bool:
 
 
 def is_primitive_type(obj: Any) -> bool:
-    return isinstance(obj, (int, float, bytes, bool, bytearray, type(None)))
+    return isinstance(obj, (int, float, bool, type(None)))
 
 
 def hash_value(value: Any) -> str:
@@ -129,6 +129,9 @@ class ComplexHash:
 
         if isinstance(obj, type):
             return hash_class_def(obj)
+        elif isinstance(obj, (bytes, bytearray)):
+            # hash() of bytes is salted per process (PYTHONHASHSEED).
+            return hashlib.sha256(bytes(obj)).hexdigest()
         elif is_primitive_type(obj):
             return hash(obj)
         elif isinstance(obj, ObjectId):
