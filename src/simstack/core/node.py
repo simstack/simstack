@@ -119,7 +119,16 @@ def should_handoff_nested_execution(
     On the host, only Docker tasks need a handoff to the runner. In a
     container, an explicit non-Docker task always returns to the host. A
     Docker task stays inline only when both images are known and equal.
+    ``Parameters.separate_cloud_vm`` hands the child off even when the image
+    matches, so the cloud poller can start another VM.
     """
+    if getattr(parameters, "separate_cloud_vm", False):
+        logger.info(
+            "Nested execution handoff: separate_cloud_vm child %s decision=True",
+            node_name,
+        )
+        return True
+
     in_container = process_is_in_docker()
     assignment_in_docker = bool(getattr(parameters, "in_docker", False))
     child_image = None

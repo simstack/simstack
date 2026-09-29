@@ -125,6 +125,25 @@ def test_should_dispatch_false_when_same_image(monkeypatch):
     assert should_handoff_nested_execution(params, "psi4_calculator") is False
 
 
+def test_separate_cloud_vm_hands_off_even_when_the_image_matches(monkeypatch):
+    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: True)
+    monkeypatch.setattr(
+        "simstack.core.node.docker_image_for_node",
+        lambda name, resource=None: PSI4_IMAGE,
+    )
+    monkeypatch.setattr(
+        "simstack.core.node.context",
+        SimpleNamespace(
+            current_node_name="pyscf_hessian",
+            config=SimpleNamespace(resource="cloud"),
+        ),
+    )
+    params = Parameters(
+        resource="cloud", queue="default", in_docker=True, separate_cloud_vm=True
+    )
+    assert should_handoff_nested_execution(params, "pyscf_hessian_for_atoms") is True
+
+
 def test_should_dispatch_true_when_images_differ(monkeypatch):
     monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: True)
     monkeypatch.setattr(
