@@ -48,6 +48,38 @@ def test_make_multi_line_chart_matches_legacy_empty_behavior():
     assert chart.axes[0].max is None
 
 
+def test_make_multi_line_chart_preserves_original_series_samples_in_mongodb_document():
+    artifacts = _artifacts()
+    artifacts[0].data["plot_data"][1]["x"] = 0
+
+    chart = make_multi_line_chart(artifacts, x_key="x", y_key="y")
+    restored = ChartArtifactModel.model_validate_doc(chart.model_dump_doc())
+    expected_series_data = [
+        [
+            {"x": 0.0, "Series_A___unsafe__0": 10.0},
+            {"x": 2.0, "Series_A___unsafe__0": 20.0},
+        ],
+        [
+            {"x": 1.0, "Series_B__1": 15.0},
+            {"x": 3.0, "Series_B__1": 30.0},
+        ],
+    ]
+
+    assert [series.data for series in chart.series] == expected_series_data
+    assert [series.data for series in restored.series] == expected_series_data
+
+
+def test_make_multi_line_chart_preserves_line_and_marker_palette_in_mongodb_document():
+    chart = make_multi_line_chart(_artifacts(), x_key="x", y_key="y")
+    restored = ChartArtifactModel.model_validate_doc(chart.model_dump_doc())
+    expected_colors = ["#FF6B6B", "#4ECDC4"]
+
+    assert [series.stroke for series in chart.series] == expected_colors
+    assert [series.marker["fill"] for series in chart.series] == expected_colors
+    assert [series.stroke for series in restored.series] == expected_colors
+    assert [series.marker["fill"] for series in restored.series] == expected_colors
+
+
 def test_safe_code_executor_exposes_packaged_chart_function():
     code = """
 def build_chart(arg):
