@@ -150,7 +150,7 @@ async def update_node_children(database, drops: str) -> None:
             if short in mapping_by_node_name:
                 resolved.add(mapping_by_node_name[short])
                 if called_from_docstring is not None and short in called_from_docstring:
-                    del called_from_docstring[short]
+                    called_from_docstring.remove(short)
                 continue
 
         # go over the leftovers in the docstring

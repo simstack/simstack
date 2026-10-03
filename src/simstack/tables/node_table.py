@@ -307,13 +307,16 @@ class CreateNodeTable(TableBuilderBase):
         self,
         node_name: str,
         function_mapping: str,
-    ) -> tuple[bool, bool]:
+    ) -> tuple[bool, bool, list[str]]:
         """
         If a NodeModel with the same name exists, delete it (and its pickle if present),
-        but preserve the 'favorite' flag for the new entry.
+        but preserve the favorite flag and called_nodes for the new entry.
+
+        called_nodes is filled by second_stage. A rebuild that drops it leaves the
+        submit UI without child-node dependencies until create_node_table is run again.
 
         Returns:
-            (should_skip, existing_favorite)
+            (should_skip, existing_favorite, existing_called_nodes)
         """
         try:
             existing_model = await self.db.find_one(
@@ -321,10 +324,10 @@ class CreateNodeTable(TableBuilderBase):
             )
         except Exception as e:
             logger.error(f"Error finding existing NodeModel {node_name}: {e}")
-            return False, False
+            return False, False, []
 
         if not existing_model:
-            return False, False
+            return False, False, []
 
         if function_mapping != existing_model.function_mapping:
             logger.error(
@@ -335,6 +338,7 @@ class CreateNodeTable(TableBuilderBase):
             )
 
         existing_favorite = getattr(existing_model, "favorite", False)
+        existing_called_nodes = list(getattr(existing_model, "called_nodes", None) or [])
 
         if getattr(existing_model, "pickle_function", None):
             try:
@@ -347,7 +351,7 @@ class CreateNodeTable(TableBuilderBase):
         except Exception as e:
             logger.error(f"Error deleting existing NodeModel {node_name}: {e}")
 
-        return False, existing_favorite
+        return False, existing_favorite, existing_called_nodes
 
     async def _resolve_input_mappings(
         self,
@@ -443,6 +447,7 @@ class CreateNodeTable(TableBuilderBase):
                 (
                     should_skip,
                     existing_favorite,
+                    existing_called_nodes,
                 ) = await self._delete_existing_node_model_if_needed(
                     node_name, function_mapping
                 )
@@ -486,7 +491,7 @@ class CreateNodeTable(TableBuilderBase):
                     description=node_description,
                     input_mappings=data_mappings,
                     result_mappings=result_mappings,
-                    called_nodes=[],  # we need to first build the full list, will be filled in second_stage
+                    called_nodes=existing_called_nodes,
                     default_parameters=parameters,
                     pickle_function=None,
                     favorite=existing_favorite,
@@ -526,7 +531,14 @@ async def make_node_table(
     This is a thin wrapper around CreateNodeTable for backward compatibility.
     """
     creator = CreateNodeTable(db, write_schema=write_schema, project_root=project_root)
-    await creator.build(dirs=dirs, drops=drops, clear=clear, ignore_entrypoints=ignore_entrypoints)
+    resolved_drops = drops or ""
+    await creator.build(
+        dirs=dirs,
+        drops=resolved_drops,
+        clear=clear,
+        ignore_entrypoints=ignore_entrypoints,
+    )
+    await creator.second_stage(resolved_drops)
 
 
 def create_node_table_main() -> None:
