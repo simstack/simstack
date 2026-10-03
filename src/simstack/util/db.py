@@ -466,12 +466,12 @@ class Database:
         self, name: str, arg_hash: str, function_hash: str
     ) -> Optional["NodeRegistry"]:
         """
-        Load a task based on name, arg_hash and function_hash
+        Load a task based on name and arg_hash.
 
         Args:
             name: Node name
             arg_hash: Hash of the arguments
-            function_hash: Hash of the function
+            function_hash: Unused; kept for call-site compatibility.
 
         Returns:
             The found NodeRegistry instance or None
@@ -479,8 +479,7 @@ class Database:
         result = await self.find_one(
             NodeRegistry,
             (NodeRegistry.name == name)
-            & (NodeRegistry.arg_hash == arg_hash)
-            & (NodeRegistry.function_hash == function_hash),
+            & (NodeRegistry.arg_hash == arg_hash),
         )
         return result
 
