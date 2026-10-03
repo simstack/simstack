@@ -101,7 +101,10 @@ def _mock_context(tmp_path: Path, resource_config: ResourceConfig):
             connection_string="mongodb://localhost:27017",
             db_name="test_db",
         ),
-        db=SimpleNamespace(save=AsyncMock()),
+        db=SimpleNamespace(
+            save=AsyncMock(),
+            get_collection=lambda model: SimpleNamespace(update_one=AsyncMock()),
+        ),
     )
 
 
@@ -148,7 +151,7 @@ async def test_run_docker_does_not_fallback_to_context_registry(tmp_path: Path):
     resource_config = ResourceConfig(tmp_path, "local")
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry(resource="remote")
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 0
     proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
 
@@ -179,7 +182,7 @@ async def test_run_docker_reloads_config_before_image_lookup(tmp_path: Path):
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry()
 
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 0
     proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
 
@@ -212,7 +215,7 @@ async def test_run_docker_applies_slurm_cpu_and_memory_limits(tmp_path: Path):
         slurm_parameters=SimpleNamespace(cpus_per_task=4, tasks=2, mem="8G")
     )
 
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 0
     proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
 
@@ -338,7 +341,7 @@ def _fake_docker_exec(*, returncode: int = 0, cid: str = "cid123"):
             cidfile = Path(cmd_list[cmd_list.index("--cidfile") + 1])
             cidfile.parent.mkdir(parents=True, exist_ok=True)
             cidfile.write_text(cid + "\n", encoding="utf-8")
-        proc = AsyncMock()
+        proc = AsyncMock(pid=4242)
         proc.returncode = returncode
         stdout = _SUCCESS_PROTOCOL if returncode == 0 else b""
         proc.communicate = AsyncMock(return_value=(stdout, b""))
@@ -475,7 +478,7 @@ async def test_run_docker_apptainer_sigkill_uses_exit_code_heuristic(tmp_path: P
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry()
 
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 137
     proc.communicate = AsyncMock(return_value=(b"", b""))
 
@@ -513,7 +516,7 @@ async def test_run_docker_redacts_and_bounds_database_uri_in_child_errors(
     mock_context.config.connection_string = secret
     registry_entry = _registry_entry()
 
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 1
     proc.communicate = AsyncMock(
         return_value=(
@@ -542,7 +545,7 @@ async def test_run_docker_preserves_child_return_kind(tmp_path: Path):
     resource_config = _psi4_image_config(tmp_path)
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry()
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 0
     proc.communicate = AsyncMock(
         return_value=(
@@ -578,7 +581,7 @@ async def test_run_docker_failure_preserves_child_persisted_metadata(tmp_path: P
     mock_context.db.get_collection = lambda model: SimpleNamespace(
         update_one=update_one
     )
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 1
     proc.communicate = AsyncMock(
         return_value=(

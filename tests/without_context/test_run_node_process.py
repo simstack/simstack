@@ -28,6 +28,17 @@ class _Process:
         return self._stdout, self._stderr
 
 
+class _ProcessIdCollection:
+    def __init__(self, entry) -> None:
+        self.entry = entry
+
+    async def update_one(self, query, update):
+        process_id = update["$set"]["process_id"]
+        if type(process_id) is not int:
+            raise ValueError(f"process_id must be an int, got {process_id!r}")
+        self.entry.process_id = process_id
+
+
 class _Database:
     def __init__(self, entry) -> None:
         self.entry = entry
@@ -39,6 +50,9 @@ class _Database:
     async def save(self, entry):
         self.saved.append(entry)
         return entry
+
+    def get_collection(self, model):
+        return _ProcessIdCollection(self.entry)
 
 
 def _process_node(entry, parameters: Parameters | None = None) -> Node:
@@ -336,6 +350,7 @@ async def test_context_system_exit_still_emits_sanitized_failure(monkeypatch):
 @pytest.mark.asyncio
 async def test_runtime_system_exit_is_persisted_as_nonempty_failure(monkeypatch):
     entry = SimpleNamespace(
+        id="task-id",
         parameters=Parameters(in_docker=False),
         status=TaskStatus.RETRIEVED,
         error=None,
@@ -371,6 +386,7 @@ async def test_runtime_system_exit_is_persisted_as_nonempty_failure(monkeypatch)
 @pytest.mark.asyncio
 async def test_false_return_kind_is_preserved_as_failed_child_outcome(monkeypatch):
     entry = SimpleNamespace(
+        id="task-id",
         parameters=Parameters(in_docker=False),
         status=TaskStatus.FAILED,
         error=None,
@@ -399,8 +415,44 @@ async def test_false_return_kind_is_preserved_as_failed_child_outcome(monkeypatc
 
 
 @pytest.mark.asyncio
+async def test_terminating_task_is_not_started(monkeypatch):
+    entry = SimpleNamespace(
+        id="task-id",
+        parameters=Parameters(in_docker=True),
+        status=TaskStatus.TERMINATING,
+        error=None,
+    )
+    database = _Database(entry)
+
+    async def initialize(**kwargs):
+        return None
+
+    started = AsyncMock(side_effect=AssertionError("terminating task was started"))
+    monkeypatch.setattr(
+        "simstack.core.run_node.context",
+        SimpleNamespace(
+            initialize=initialize,
+            config=SimpleNamespace(connection_string=None),
+            db=database,
+        ),
+    )
+    monkeypatch.setattr(
+        "simstack.core.run_node.run_node_from_registry_with_outcome",
+        started,
+    )
+    monkeypatch.setattr("simstack.core.run_node.run_docker_with_outcome", started)
+
+    result = await run_node_from_id("task-id", "local")
+
+    assert result == RunNodeResult(False, "none", "Terminated by user")
+    started.assert_not_called()
+    assert not hasattr(entry, "process_id") or entry.process_id is None
+
+
+@pytest.mark.asyncio
 async def test_in_container_context_uses_shared_non_root_workdir(monkeypatch):
     entry = SimpleNamespace(
+        id="task-id",
         parameters=Parameters(in_docker=True),
         status=TaskStatus.RETRIEVED,
         error=None,
@@ -436,6 +488,7 @@ async def test_in_container_context_uses_shared_non_root_workdir(monkeypatch):
 @pytest.mark.asyncio
 async def test_docker_child_return_kind_is_forwarded(monkeypatch):
     entry = SimpleNamespace(
+        id="task-id",
         parameters=Parameters(in_docker=True),
         status=TaskStatus.COMPLETED,
         error=None,

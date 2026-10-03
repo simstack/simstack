@@ -599,6 +599,9 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             start_new_session=True if platform.system() != "Windows" else False
         )
         process_started = True
+        from simstack.core.services.task_termination import record_process_id
+
+        await record_process_id(registry_entry, process.pid, context.db)
 
         stdout_b, stderr_b = await process.communicate()
         registry_entry = await _reload_registry_after_container(registry_entry)

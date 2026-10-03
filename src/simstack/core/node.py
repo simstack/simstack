@@ -1330,6 +1330,11 @@ class Node:
     async def set_status(self, status: TaskStatus) -> None:
         if self.registry_entry is None:
             raise ValueError("Task has no registry entry")
+        if (
+            status == TaskStatus.RUNNING
+            and self.registry_entry.status == TaskStatus.TERMINATING
+        ):
+            raise RuntimeError("Terminated by user")
         if isinstance(status, TaskStatus):
             self.registry_entry.status = status
         else:

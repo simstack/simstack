@@ -727,7 +727,11 @@ def create_multi_series_line_chart(
 def make_multi_line_chart(
     artifact_list: List[ArtifactModel], **kwargs: Any
 ) -> ChartArtifactModel:
-    """Create the project-independent legacy multi-series line chart artifact."""
+    """Create the project-independent legacy multi-series line chart artifact.
+
+    Each series keeps its original samples; different x-grids need no interpolation.
+    The merged shared table is retained for compatibility with existing consumers.
+    """
     task_id = kwargs.get("task_id", None)
     chart_title_text = kwargs.get("chart_title", "Chart")
     x_axis_title = kwargs.get("x_axis_title", "X")
@@ -773,6 +777,7 @@ def make_multi_line_chart(
 
         this_y_key = _series_key(getattr(artifact, "name", "series"), idx)
         color = colors[idx % len(colors)]
+        series_points: List[Dict[str, Any]] = []
         for point in plot_data:
             if x_key not in point or y_key not in point:
                 continue
@@ -782,6 +787,7 @@ def make_multi_line_chart(
             x_max = max(x_max, x_val)
             y_min = min(y_min, y_val)
             y_max = max(y_max, y_val)
+            series_points.append({x_key: x_val, this_y_key: y_val})
             combined_rows.setdefault(x_val, {x_key: x_val})[this_y_key] = y_val
 
         series_configs.append(
@@ -790,7 +796,8 @@ def make_multi_line_chart(
                 xKey=x_key,
                 yKey=this_y_key,
                 title=getattr(artifact, "name", this_y_key),
-                data=[],
+                data=sorted(series_points, key=lambda point: point[x_key]),
+                stroke=color,
                 strokeWidth=2,
                 strokeOpacity=1.0,
                 marker={"enabled": True, "size": 3, "fill": color},
