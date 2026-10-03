@@ -14,6 +14,7 @@ from simstack.core.node import node_from_database
 from simstack.core.node_claim import claim_submitted_node
 from simstack.core.run_docker import run_docker
 from simstack.core.services.base_service import BaseService
+from simstack.core.services.task_termination import record_process_id, terminate_task
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.submit_node import submit_node
 from simstack.models import NodeRegistry
@@ -86,6 +87,23 @@ async def run_node_from_registry_with_outcome(
         return NodeExecutionOutcome(False, "exception")
     registry_entry = node.registry_entry  # it may have changed
     assert registry_entry is not None
+    fresh = await context.db.load_task_by_id(registry_entry.id)
+    if fresh is not None:
+        node.registry_entry = fresh
+        registry_entry = fresh
+    if node.status == TaskStatus.TERMINATING:
+        logger.info(
+            "task_id: %s skipping terminating task: %s",
+            registry_entry.id,
+            registry_entry.name,
+        )
+        return NodeExecutionOutcome(False, registry_entry.return_kind or "none")
+    if node.status == TaskStatus.FAILED:
+        logger.info(
+            "task_id: %s skipping failed task: %s",
+            registry_entry.id,
+            registry_entry.name,
+        )
     if (
         node.status == TaskStatus.RETRIEVED
         or node.status == TaskStatus.SUBMITTED
@@ -259,6 +277,7 @@ class NodeExecutionService(BaseService):
                     logger.info(
                         f"Spawned detached process for task_id: {registry_entry.id} with PID: {process.pid}"
                     )
+                    await record_process_id(registry_entry, process.pid, context.db)
                     return True
                 else:
                     return await run_node_from_registry(registry_entry)
@@ -298,6 +317,12 @@ class NodeExecutionService(BaseService):
             except Exception as e:
                 logger.exception(f"Task completed with error: {e}")
             self._running_tasks.remove(task)
+
+        terminating_tasks = await context.db.load_terminating_tasks_for_resource(
+            self._resource_name
+        )
+        for entry in terminating_tasks:
+            await terminate_task(entry, runner_pid=self._pid)
 
         # Load tasks
         registry_entry_list = await context.db.load_waiting_tasks_for_resource(self._resource_name)
