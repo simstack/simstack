@@ -506,26 +506,41 @@ class Database:
     async def load_waiting_tasks_for_resource(
         self, resource: str
     ) -> List["NodeRegistry"]:
+        """Load submitted tasks for a specific resource."""
+        return await self.load_tasks_for_resource(resource, TaskStatus.SUBMITTED)
+
+    async def load_terminating_tasks_for_resource(
+        self, resource: str
+    ) -> List["NodeRegistry"]:
+        """Load tasks the runner should kill on this resource."""
+        return await self.load_tasks_for_resource(resource, TaskStatus.TERMINATING)
+
+    async def load_tasks_for_resource(
+        self, resource: str, status: TaskStatus
+    ) -> List["NodeRegistry"]:
         """
-        Load all waiting tasks for a specific resource
+        Load tasks in ``status`` for a specific resource.
 
         Args:
             resource: The resource name
+            status: Registry status to load
 
         Returns:
             List of matching NodeRegistry instances
         """
+        if not isinstance(status, TaskStatus):
+            raise ValueError(f"status must be a TaskStatus, got {status!r}")
         # Try to use the engine directly if find is failing in tests
         try:
             submitted_tasks = await self.find(
-                NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED
+                NodeRegistry, NodeRegistry.status == status
             )
         except Exception as e:
             logger.warning(
-                f"Error calling self.find in load_waiting_tasks_for_resource: {e}. Falling back to engine.find."
+                f"Error calling self.find in load_tasks_for_resource: {e}. Falling back to engine.find."
             )
             submitted_tasks = await self._engine.find(
-                NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED
+                NodeRegistry, NodeRegistry.status == status
             )
 
         # Then filter them in Python by checking the resource field

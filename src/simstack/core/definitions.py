@@ -11,6 +11,7 @@ class TaskStatus(str, Enum):
     FAILED = "failed"
     COMPLETED = "completed"
     RECOVERED = "recovered"
+    TERMINATING = "terminating"
 
 
 # TODO: eliminate
