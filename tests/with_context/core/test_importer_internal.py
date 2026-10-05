@@ -117,7 +117,25 @@ async def test_find_node_model_not_found(initialized_context):
 
 @pytest.mark.asyncio
 async def test_find_model_mapping_not_found(initialized_context):
-    """Test _find_model_mapping returns None when not found (actually it might raise ValueError if no dot, but let's see)."""
-    # _find_model_mapping uses model_path.rsplit(".", 1), so it needs a dot
+    """Test _find_model_mapping returns None when not found."""
     found = await _find_model_mapping("nonexistent.path.NonExistentModel", context.db)
     assert found is None
+
+
+@pytest.mark.asyncio
+async def test_find_model_mapping_name_only_path(initialized_context):
+    """Bare class names must not crash rsplit when looking up ModelMapping."""
+    model_mapping = ModelMapping(
+        name="BareNameModel",
+        mapping="BareNameModel",
+        collection_name="bare_name_collection",
+    )
+    await context.db.save(model_mapping)
+    await context.refresh_mappings()
+    try:
+        found = await _find_model_mapping("BareNameModel", context.db)
+        assert found is not None
+        assert found.id == model_mapping.id
+    finally:
+        await context.db.delete(model_mapping)
+        await context.refresh_mappings()
