@@ -70,12 +70,7 @@ def test_docker_memory_limit_uses_mem_and_mem_per_cpu():
 def test_container_resource_args_for_docker_and_apptainer():
     slurm = SimpleNamespace(cpus_per_task=4, tasks=2, mem="8G")
     assert container_resource_args("docker", slurm) == ["--cpus", "8", "--memory", "8g"]
-    assert container_resource_args("apptainer", slurm) == [
-        "--cpus",
-        "8",
-        "--memory",
-        "8G",
-    ]
+    assert container_resource_args("apptainer", slurm) == []
     assert container_resource_args("docker", None) == []
 
 
@@ -232,6 +227,37 @@ async def test_run_docker_applies_slurm_cpu_and_memory_limits(tmp_path: Path):
     assert cmd[:image_index][cmd[:image_index].index("--memory") + 1] == "8g"
     assert cmd.index("--cpus") < image_index
     assert cmd.index("--memory") < image_index
+
+
+@pytest.mark.asyncio
+async def test_run_docker_apptainer_omits_cpu_and_memory_flags(tmp_path: Path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        "[local.program.psi4_calculator]\n"
+        'docker_image = "molecular-qm-psi4:latest"\n'
+        'docker_cmd = "apptainer"\n'
+    )
+    resource_config = ResourceConfig(tmp_path, "local")
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry(
+        slurm_parameters=SimpleNamespace(cpus_per_task=4, tasks=2, mem="8G")
+    )
+
+    proc = AsyncMock()
+    proc.returncode = 0
+    proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch("asyncio.create_subprocess_exec", AsyncMock(return_value=proc)) as mock_exec,
+    ):
+        result = await run_docker(registry_entry)
+
+    assert result is True
+    command = list(mock_exec.await_args.args)
+    assert command[:2] == ["apptainer", "run"]
+    assert "--cpus" not in command
+    assert "--memory" not in command
 
 
 @pytest.mark.asyncio
