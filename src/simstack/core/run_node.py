@@ -44,7 +44,7 @@ async def run_node_from_id(
             "project_root": project_root,
             "in_docker": bool(in_docker),
         }
-        # Host workdirs (e.g. C:/Users/...) are bind-mounted at a neutral path.
+        # Host resource workdir is bind-mounted at CONTAINER_WORKDIR.
         if in_docker:
             init_kwargs["workdir"] = CONTAINER_WORKDIR
         await context.initialize(**init_kwargs)
