@@ -95,3 +95,64 @@ async def test_runner_manager_run_nodes_orchestration(runner_manager, tmp_path):
         assert runner_manager._pid_file.exists()
         # Ensure stop was called on services
         mock_node_svc_cls.return_value.stop.assert_called()
+        mock_slurm_svc_cls.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_runner_manager_with_jobs_false_skips_job_services(resource, tmp_path):
+    runner_manager = RunnerManager(
+        resource=resource,
+        detach=False,
+        with_jobs=False,
+        with_file_transfer=True,
+        no_pull=True,
+    )
+    with patch("simstack.core.services.runner_manager.context") as mock_context, \
+         patch("simstack.core.services.runner_manager.NodeExecutionService") as mock_node_svc_cls, \
+         patch("simstack.core.services.runner_manager.RunnerStatusService") as mock_stat_svc_cls, \
+         patch("simstack.core.services.runner_manager.RunnerCleanupService") as mock_clean_svc_cls, \
+         patch("simstack.core.services.runner_manager.SlurmStatusService") as mock_slurm_svc_cls, \
+         patch("simstack.core.services.runner_manager.StopCheckService") as mock_stop_svc_cls, \
+         patch("simstack.core.services.runner_manager.FileTransferService") as mock_ft_svc_cls:
+
+        for svc_cls in [
+            mock_node_svc_cls,
+            mock_stat_svc_cls,
+            mock_clean_svc_cls,
+            mock_slurm_svc_cls,
+            mock_stop_svc_cls,
+            mock_ft_svc_cls,
+        ]:
+            svc_cls.return_value.stop = AsyncMock()
+            svc_cls.return_value.start = MagicMock(
+                return_value=asyncio.create_task(asyncio.sleep(0.01))
+            )
+
+        mock_context.config.workdir = tmp_path
+        runner_manager._pid_file = tmp_path / f"runner_{runner_manager._resource}.pid"
+
+        async def set_shutdown():
+            await asyncio.sleep(0.1)
+            runner_manager._shutdown_event.set()
+
+        asyncio.create_task(set_shutdown())
+        await runner_manager.run_nodes_for_resource(polling_interval=0.1)
+
+        mock_node_svc_cls.assert_not_called()
+        mock_slurm_svc_cls.assert_not_called()
+        mock_ft_svc_cls.assert_called_once()
+        mock_stat_svc_cls.assert_called_once()
+        mock_stop_svc_cls.assert_called_once()
+
+
+def test_runner_manager_rejects_jobs_and_file_transfer_both_false(resource):
+    with pytest.raises(
+        ValueError,
+        match="--jobs false and --file-transfer false",
+    ):
+        RunnerManager(
+            resource=resource,
+            detach=False,
+            with_jobs=False,
+            with_file_transfer=False,
+        )

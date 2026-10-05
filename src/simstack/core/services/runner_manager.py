@@ -30,7 +30,12 @@ class RunnerManager:
         no_pull: bool = False,
         is_default: bool = False,
         with_file_transfer: bool = True,
+        with_jobs: bool = True,
     ) -> None:
+        if not with_jobs and not with_file_transfer:
+            raise ValueError(
+                "A runner with --jobs false and --file-transfer false has no work to do."
+            )
         self._resource = resource
         self._detach = detach
         self._no_pull = no_pull
@@ -40,6 +45,7 @@ class RunnerManager:
         self._pid_file: Path = Path(context.config.workdir) / f"runner_{resource}.pid"
         self._is_default = is_default
         self._with_file_transfer = with_file_transfer
+        self._with_jobs = with_jobs
 
     def _is_process_running(self, pid: int) -> bool:
         """Check if a process with given PID is running and is a simstack_runner process"""
@@ -112,22 +118,31 @@ class RunnerManager:
         # Save PID on startup
         self._pid_file.write_text(str(self._pid))
 
-        self._services = [
-            NodeExecutionService(
-                self._resource,
-                polling_interval,
-                max_concurrent,
-                self._shutdown_event,
-                detach=self._detach,
-                is_default=self._is_default,
-            ),
-            RunnerStatusService(self._resource, interval=60),
-            RunnerCleanupService(self._resource, interval=300),
-            SlurmStatusService(self._resource, interval=60),
+        self._services = []
+        if self._with_jobs:
+            self._services.append(
+                NodeExecutionService(
+                    self._resource,
+                    polling_interval,
+                    max_concurrent,
+                    self._shutdown_event,
+                    detach=self._detach,
+                    is_default=self._is_default,
+                )
+            )
+        self._services.extend(
+            [
+                RunnerStatusService(self._resource, interval=60),
+                RunnerCleanupService(self._resource, interval=300),
+            ]
+        )
+        if self._with_jobs:
+            self._services.append(SlurmStatusService(self._resource, interval=60))
+        self._services.append(
             StopCheckService(
                 self._resource, interval=10, shutdown_event=self._shutdown_event
-            ),
-        ]
+            )
+        )
 
         if self._with_file_transfer:
             self._services.append(
