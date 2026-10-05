@@ -2,6 +2,7 @@ import pytest
 import os
 import uuid
 import asyncio
+import logging
 import pytest_asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock
@@ -544,6 +545,51 @@ async def test_process_results_persists_simstack_result_metadata_and_files(
     assert secret not in (loaded.error_message or "")
     assert loaded.info_files[0].name == "info.txt"
     assert loaded.files.elements == [result_file.id]
+
+
+@pytest.mark.asyncio
+async def test_process_results_does_not_truncate_task_error(
+    initialized_context, caplog
+):
+    parameters = Parameters()
+    execution_node = Node(func=sync_node._inner, is_async=False, parameters=parameters)
+    execution_node.registry_entry = NodeRegistry(
+        name="sync_node",
+        status=TaskStatus.RUNNING,
+        function_hash="long-error-function-hash",
+        arg_hash="long-error-arg-hash",
+        func_mapping="tests.sync_node",
+        parameters=parameters,
+    )
+    secret = "mongodb://error-user:error-password@db.internal/simstack"
+    long_error = (
+        "head-marker "
+        + ("x" * 8000)
+        + f" {secret} "
+        + "tail-marker"
+    )
+    result = SimstackResult(
+        status=TaskStatus.FAILED,
+        error_message=long_error,
+        value=FloatData(value=12.0),
+    )
+
+    with caplog.at_level(logging.ERROR, logger="Node"):
+        status, _ = await execution_node.process_results(result)
+
+    assert status == TaskStatus.FAILED
+    persisted = execution_node.registry_entry.error
+    assert persisted is not None
+    assert persisted.startswith("head-marker")
+    assert persisted.endswith("tail-marker")
+    assert "[truncated]" not in persisted
+    assert secret not in persisted
+    assert "error-user" not in persisted
+    assert "returned with error" in caplog.text
+    assert "head-marker" in caplog.text
+    assert "tail-marker" in caplog.text
+    assert "[truncated]" not in caplog.text
+    assert secret not in caplog.text
 
 
 @pytest.mark.asyncio
