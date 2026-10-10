@@ -428,6 +428,73 @@ def test_inspect_docker_oomkilled_parses_true_false():
         assert inspect_docker_oomkilled("cid") is None
 
 
+def _bind_targets(command: list[str]) -> list[str]:
+    return [command[index + 1] for index, arg in enumerate(command[:-1]) if arg == "--bind"]
+
+
+@pytest.mark.asyncio
+async def test_run_docker_apptainer_binds_job_scratch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    scratch = tmp_path / "job-scratch"
+    scratch.mkdir()
+    monkeypatch.setenv("SCRATCH", str(scratch))
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        "[local.program.psi4_calculator]\n"
+        'docker_image = "molecular-qm-psi4:latest"\n'
+        'docker_cmd = "apptainer"\n'
+    )
+    resource_config = ResourceConfig(tmp_path, "local")
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+    proc = AsyncMock()
+    proc.pid = 4242
+    proc.returncode = 0
+    proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch("asyncio.create_subprocess_exec", AsyncMock(return_value=proc)) as mock_exec,
+    ):
+        result = await run_docker(registry_entry)
+
+    assert result is True
+    targets = _bind_targets(list(mock_exec.await_args.args))
+    assert f"{scratch}:{scratch}" in targets
+    assert f"{tmp_path}:{CONTAINER_WORKDIR}" in targets
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scratch_root", ["/tmp", "/scratch", "/ramdisk"])
+async def test_run_docker_apptainer_does_not_bind_scratch_mount_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scratch_root: str
+):
+    monkeypatch.setenv("SCRATCH", scratch_root)
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        "[local.program.psi4_calculator]\n"
+        'docker_image = "molecular-qm-psi4:latest"\n'
+        'docker_cmd = "apptainer"\n'
+    )
+    resource_config = ResourceConfig(tmp_path, "local")
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+    proc = AsyncMock()
+    proc.pid = 4242
+    proc.returncode = 0
+    proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch("asyncio.create_subprocess_exec", AsyncMock(return_value=proc)) as mock_exec,
+        patch.object(Path, "is_dir", return_value=True),
+    ):
+        result = await run_docker(registry_entry)
+
+    assert result is True
+    scratch_path = Path(scratch_root)
+    assert f"{scratch_path}:{scratch_path}" not in _bind_targets(list(mock_exec.await_args.args))
+
+
 @pytest.mark.asyncio
 async def test_run_docker_apptainer_sigkill_uses_exit_code_heuristic(tmp_path: Path):
     config_file = tmp_path / "config.toml"
