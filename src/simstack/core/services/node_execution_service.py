@@ -159,28 +159,37 @@ class NodeExecutionService(BaseService):
 
             if queue == "default":
                 if self._detach:
-                    # Spawn independent process that survives when the runner dies
+                    # Spawn independent process that survives when the runner dies.
+                    # On Windows, DETACHED_PROCESS makes a console program allocate a
+                    # visible console, and CREATE_NO_WINDOW is ignored beside it.
+                    # pythonw is not a console program, so the node process has no window.
                     project_root = str(context.config.project_root)
+                    interpreter = (
+                        "pythonw" if platform.system() == "Windows" else "run_node"
+                    )
                     cmd = [
                         "uv",
                         "run",
                         "--directory",
                         project_root,
-                        "run_node",
-                        "--node-id",
-                        str(registry_entry.id),
-                        "--resource",
-                        str(self._resource_name),
+                        interpreter,
                     ]
+                    if interpreter == "pythonw":
+                        cmd.extend(["-m", "simstack.core.run_node"])
+                    cmd.extend(
+                        [
+                            "--node-id",
+                            str(registry_entry.id),
+                            "--resource",
+                            str(self._resource_name),
+                        ]
+                    )
 
-                    # Use platform specific flags to ensure the process survives if runner is killed
                     creationflags = 0
                     if platform.system() == "Windows":
-                        create_new_process_group = getattr(
+                        creationflags = getattr(
                             subprocess, "CREATE_NEW_PROCESS_GROUP", 0
-                        )
-                        detached_process = getattr(subprocess, "DETACHED_PROCESS", 0)
-                        creationflags = create_new_process_group | detached_process
+                        ) | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 
                     python_path_entries = [project_root]
                     python_path_entries.extend(
