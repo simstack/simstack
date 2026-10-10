@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import platform
 import re
 import shlex
@@ -518,6 +519,15 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         bind_args = [
             "--bind", f"{workdir}:{CONTAINER_WORKDIR}",
         ]
+        scratch = os.environ.get("SCRATCH", "").strip()
+        if scratch:
+            scratch_path = Path(scratch)
+            scratch_root = scratch_path.resolve()
+            mount_roots = {
+                Path(root).resolve() for root in ("/tmp", "/scratch", "/ramdisk")
+            }
+            if scratch_root not in mount_roots and scratch_path.is_dir():
+                bind_args.extend(["--bind", f"{scratch_path}:{scratch_path}"])
         for host_path, dest in project_file_mounts:
             bind_args.extend(["--bind", f"{host_path}:{dest}"])
         cmd = [
