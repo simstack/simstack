@@ -485,6 +485,7 @@ async def test_run_docker_apptainer_binds_job_scratch(tmp_path: Path, monkeypatc
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry()
     proc = AsyncMock()
+    proc.pid = 4242
     proc.returncode = 0
     proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
 
@@ -516,6 +517,7 @@ async def test_run_docker_apptainer_does_not_bind_scratch_mount_root(
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry()
     proc = AsyncMock()
+    proc.pid = 4242
     proc.returncode = 0
     proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
 
