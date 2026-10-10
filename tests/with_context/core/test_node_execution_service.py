@@ -1,5 +1,6 @@
 import asyncio
 import os
+import subprocess
 from types import SimpleNamespace
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
@@ -223,6 +224,66 @@ async def test_detached_spawn_failure_is_sanitized_and_marks_task_failed(
         str(context.config.project_root),
         str(context.config.project_root / "src"),
     ]
+
+
+@pytest.mark.asyncio
+async def test_windows_run_node_spawn_has_no_console(
+    resource, initialized_context, monkeypatch
+):
+    monkeypatch.setattr(
+        "simstack.core.services.node_execution_service.platform.system",
+        lambda: "Windows",
+    )
+    fake_context = SimpleNamespace(
+        config=SimpleNamespace(
+            connection_string=None,
+            db_name=None,
+            project_root=context.config.project_root,
+            python_paths=[],
+            resource=context.config.resource,
+        ),
+        db=context.db,
+    )
+    monkeypatch.setattr(
+        "simstack.core.services.node_execution_service.context", fake_context
+    )
+    service = NodeExecutionService(
+        resource=resource,
+        interval=1,
+        max_concurrent=1,
+        shutdown_event=None,
+        detach=True,
+    )
+    registry_entry = NodeRegistry(
+        name="test_node",
+        status=TaskStatus.SUBMITTED,
+        parameters=Parameters(queue=Queue.DEFAULT, in_docker=False),
+        func_mapping="test_mapping",
+        function_hash="test_func_hash",
+        arg_hash="test_arg_hash",
+    )
+    await context.db.save(registry_entry)
+    monkeypatch.setattr(service, "write_node_event", AsyncMock())
+    spawn = AsyncMock(return_value=SimpleNamespace(pid=4321))
+    monkeypatch.setattr(
+        "simstack.core.services.node_execution_service.asyncio.create_subprocess_exec",
+        spawn,
+    )
+
+    assert await service.run_node(registry_entry) is True
+    command = spawn.await_args.args
+    assert command[:4] == (
+        "uv",
+        "run",
+        "--directory",
+        str(context.config.project_root),
+    )
+    assert command[4:7] == ("pythonw", "-m", "simstack.core.run_node")
+    flags = spawn.await_args.kwargs["creationflags"]
+    no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+    detached = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+    assert flags & no_window
+    assert not flags & detached
 
 
 @pytest.mark.asyncio
