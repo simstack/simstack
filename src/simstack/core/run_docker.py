@@ -584,10 +584,12 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         shlex.join(sanitized_cmd),
     )
 
-    # Use platform specific flags to ensure the process survives if runner is killed
+    # DETACHED_PROCESS opens a console on Windows. CREATE_NO_WINDOW hides it.
     creationflags = 0
     if platform.system() == "Windows":
-        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | getattr(
+            subprocess, "CREATE_NO_WINDOW", 0x08000000
+        )
 
     process_started = False
     try:
