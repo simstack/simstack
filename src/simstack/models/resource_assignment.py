@@ -24,6 +24,7 @@ class SlurmParametersPatch(EmbeddedModel):
     mail_type: Optional[str] = None
     mail_user: Optional[str] = None
     gres: Optional[str] = None
+    extra_options: Optional[list[str]] = None
     account: Optional[str] = None
     priority: Optional[int] = None
     reservation: Optional[str] = None
