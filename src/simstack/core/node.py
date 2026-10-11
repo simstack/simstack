@@ -884,6 +884,7 @@ class Node:
             " ".join(clean_cmd),
         )
 
+        proc = None
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -910,6 +911,37 @@ class Node:
                 },
             )
             stdout_b, stderr_b = await proc.communicate()
+        except asyncio.CancelledError:
+            # TaskGroup cancellation is a BaseException, so the handler below
+            # never runs. Kill this child or its row stays RUNNING.
+            from simstack.core.services.fail_children import fail_abandoned_child
+
+            pids: tuple[int, ...] = ()
+            if proc is not None and proc.returncode is None:
+                pid = getattr(proc, "pid", None)
+                if type(pid) is int and pid > 0:
+                    pids = (pid,)
+                elif pid is not None:
+                    logger.error(
+                        "Task task_id: %s process_id must be a positive int, got %r",
+                        self.id,
+                        pid,
+                    )
+            await fail_abandoned_child(
+                self.registry_entry,
+                parent_id=self.parent_id,
+                runner_pid=os.getpid(),
+                extra_pids=pids,
+            )
+            if proc is not None and proc.returncode is None:
+                try:
+                    await proc.wait()
+                except Exception:
+                    logger.exception(
+                        "Task task_id: %s run_node child could not be reaped",
+                        self.id,
+                    )
+            raise
         except Exception as exc:
             error = sanitized_tail(str(exc), connection_string)
             self.registry_entry.status = TaskStatus.FAILED
@@ -1102,41 +1134,51 @@ class Node:
         self,
     ) -> Union[Model, SimstackResult, bool, None]:
         logger.info(f"entering wait for completion for task_id: {self.id}")
-        while True:
-            new_registry_entry = await context.db.load_task_by_id(self.id)
-            # TODO(recovery): A creator-owned RETRIEVED child can be reused by a
-            # later identical run after its container dies. Persist an execution
-            # owner/process or container ID and track liveness before failing or
-            # reclaiming it; wall-clock timeouts are unsafe for months-long jobs.
-            if new_registry_entry is None:
-                raise RuntimeError(
-                    f"Task task_id: {self.id} could not be found in the database"
-                )
-            new_status = new_registry_entry.status
-            if (
-                new_status != TaskStatus.RUNNING
-                and new_status != TaskStatus.SLURM_RUNNING
-                and new_status != TaskStatus.SUBMITTED
-                and new_status != TaskStatus.SLURM_QUEUED
-                and new_status != TaskStatus.RETRIEVED
-            ):
-                break
+        try:
+            while True:
+                new_registry_entry = await context.db.load_task_by_id(self.id)
+                # TODO(recovery): A creator-owned RETRIEVED child can be reused by a
+                # later identical run after its container dies. Persist an execution
+                # owner/process or container ID and track liveness before failing or
+                # reclaiming it; wall-clock timeouts are unsafe for months-long jobs.
+                if new_registry_entry is None:
+                    raise RuntimeError(
+                        f"Task task_id: {self.id} could not be found in the database"
+                    )
+                new_status = new_registry_entry.status
+                if (
+                    new_status != TaskStatus.RUNNING
+                    and new_status != TaskStatus.SLURM_RUNNING
+                    and new_status != TaskStatus.SUBMITTED
+                    and new_status != TaskStatus.SLURM_QUEUED
+                    and new_status != TaskStatus.RETRIEVED
+                ):
+                    break
 
-            print(f"Task task_id: {self.id} is waiting for results")
-            await asyncio.sleep(5)
+                print(f"Task task_id: {self.id} is waiting for results")
+                await asyncio.sleep(5)
 
-        self.registry_entry = new_registry_entry
-        if new_status == TaskStatus.COMPLETED:
-            logger.info(f"Task task_id: {self.id} completed remotely")
-            return await self.load_results()
-        error = sanitized_tail(
-            new_registry_entry.error or f"terminated with status {new_status}",
-            getattr(context.config, "connection_string", None),
-            limit=None,
-        )
-        raise RuntimeError(
-            f"Task task_id: {self.id} node: {self.name} failed with {error}"
-        )
+            self.registry_entry = new_registry_entry
+            if new_status == TaskStatus.COMPLETED:
+                logger.info(f"Task task_id: {self.id} completed remotely")
+                return await self.load_results()
+            error = sanitized_tail(
+                new_registry_entry.error or f"terminated with status {new_status}",
+                getattr(context.config, "connection_string", None),
+                limit=None,
+            )
+            raise RuntimeError(
+                f"Task task_id: {self.id} node: {self.name} failed with {error}"
+            )
+        except asyncio.CancelledError:
+            from simstack.core.services.fail_children import fail_abandoned_child
+
+            await fail_abandoned_child(
+                self.registry_entry,
+                parent_id=self.parent_id,
+                runner_pid=os.getpid(),
+            )
+            raise
 
     async def execute_node_locally(self) -> Union[Model, SimstackResult, None]:
         """
@@ -1372,6 +1414,10 @@ class Node:
             self.registry_entry.status = TaskStatus(status)
         await context.db.save(self.registry_entry)
         logger.info(f"Task task_id: {self.id} {self.name} is set to {status}, id is: {self.id}")
+        if status == TaskStatus.FAILED:
+            from simstack.core.services.fail_children import fail_and_terminate_children
+
+            await fail_and_terminate_children(self.id, runner_pid=os.getpid())
 
 
 async def _hydrate_embedded_file_stacks(
