@@ -266,6 +266,25 @@ def _is_self_resource(parameters: Optional[Parameters]) -> bool:
     return resource == "self"
 
 
+def _explicit_cloud_child_needs_own_vm(parameters: Optional[Parameters]) -> bool:
+    """True when a cloud assignment from a cloud process needs another VM.
+
+    ``self`` stays on the VM that is already running. An explicit ``cloud``
+    resource with the default queue stays submitted so the Hetzner
+    orchestrator provisions a VM from that child's slurm parameters, including
+    when the Docker image matches the caller.
+    """
+    if parameters is None or _is_self_resource(parameters):
+        return False
+    if parameters.resource != "cloud" or parameters.queue != Queue.DEFAULT:
+        return False
+    try:
+        current_resource = context.config.resource
+    except RuntimeError:
+        return False
+    return current_resource == "cloud"
+
+
 def _execution_route(parameters: Optional[Parameters]) -> Optional[dict[str, Any]]:
     """Return the persisted fields that determine where a task executes."""
     if not isinstance(parameters, Parameters):
@@ -519,6 +538,9 @@ class Node:
         if self._is_nested_self_resource():
             registry_entry.status = TaskStatus.RETRIEVED
             self._owns_inline_nested_execution = True
+            return
+
+        if _explicit_cloud_child_needs_own_vm(self.parameters):
             return
 
         if not process_is_in_docker():
@@ -1008,6 +1030,14 @@ class Node:
                 return await self._wait_for_remote_completion()
             if await claim_submitted_node(self.registry_entry):
                 return await self.run_node_as_process()
+            return await self._wait_for_remote_completion()
+
+        if _explicit_cloud_child_needs_own_vm(self.parameters):
+            logger.info(
+                "Task task_id: %s explicit cloud child of a cloud process; "
+                "waiting for a new VM",
+                self.id,
+            )
             return await self._wait_for_remote_completion()
 
         same_resource_default_queue = (
