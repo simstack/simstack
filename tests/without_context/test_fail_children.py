@@ -4,6 +4,7 @@ from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
+from bson import ObjectId as BsonObjectId
 from odmantic import ObjectId
 
 from simstack.core.definitions import TaskStatus
@@ -126,6 +127,26 @@ async def test_failed_parent_kills_running_children_and_leaves_completed(monkeyp
     assert isinstance(running.completed_at, datetime)
     assert completed.status == TaskStatus.COMPLETED
     assert completed.error is None
+
+
+@pytest.mark.asyncio
+async def test_loaded_bson_parent_id_terminates_children(monkeypatch, tmp_path):
+    parent_id = BsonObjectId("6acc94fd41c9db0721eb8ac0")
+    assert not isinstance(parent_id, ObjectId)
+    running = _entry(process_id=41)
+    database = _Database([running])
+    killed = []
+
+    monkeypatch.setattr(fail_children, "context", _context(database, tmp_path))
+    monkeypatch.setattr(
+        fail_children, "_kill_process_tree", lambda process_id: killed.append(process_id)
+    )
+
+    await fail_and_terminate_children(parent_id, runner_pid=os.getpid())
+
+    assert killed == [41]
+    assert running.status == TaskStatus.FAILED
+    assert running.error == f"Terminated because parent task {parent_id} failed"
 
 
 @pytest.mark.asyncio

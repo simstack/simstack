@@ -9,6 +9,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+from bson import ObjectId as BsonObjectId
 from odmantic import ObjectId
 
 from simstack.core.context import context
@@ -41,9 +42,16 @@ def _require_pid(process_id: object, label: str) -> int:
 def _parent_object_id(parent_id: object) -> ObjectId:
     if isinstance(parent_id, ObjectId):
         return parent_id
+    # model_validate_doc keeps pymongo's ObjectId. It is not an instance of
+    # odmantic.ObjectId, even though both render as ObjectId('...').
+    if isinstance(parent_id, BsonObjectId):
+        return ObjectId(parent_id)
     if isinstance(parent_id, str) and ObjectId.is_valid(parent_id):
         return ObjectId(parent_id)
-    raise ValueError(f"parent task id must be an ObjectId, got {parent_id!r}")
+    raise ValueError(
+        "parent task id must be an ObjectId, got "
+        f"{type(parent_id).__module__}.{type(parent_id).__qualname__} {parent_id!r}"
+    )
 
 
 def _kill_process_tree(process_id: int) -> None:
