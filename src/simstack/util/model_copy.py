@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any, TypeVar
 
-from odmantic import EmbeddedModel, Model, ObjectId
 from pydantic import BaseModel
+
+from simstack.models.document import Model, ObjectId
 
 T = TypeVar("T")
 
@@ -16,11 +17,11 @@ def model_copy(
     copy_references: bool = False,
 ) -> T:
     """
-    Safely copy an ODMantic/Pydantic model tree.
+    Copy a Pydantic model tree while preserving document-reference semantics.
 
-    This avoids using ``model.model_copy(deep=True)`` directly on ODMantic models,
-    because deep-copying ODMantic ``Model`` references can produce objects with
-    broken ODMantic internals, e.g. missing ``__fields_modified__``.
+    Unlike a generic deep copy, nested document models retain their identity
+    unless ``copy_references`` is requested. Embedded values and containers are
+    isolated without re-running validators or losing fields-set/private state.
 
     Args:
         model:
@@ -29,18 +30,18 @@ def model_copy(
             If True, recursively copy nested containers and embedded models.
             If False, copy the root while retaining its nested values.
         preserve_ids:
-            If True, preserve ODMantic ``id`` fields on copied ``Model`` objects.
+            If True, preserve ``id`` fields on copied document models.
             If False, assign fresh ObjectIds to copied top-level/referenced Models.
             Models with custom primary keys require preserve_ids=True.
         copy_references:
-            If True, recursively clone nested ODMantic ``Model`` instances.
-            If False, keep nested ODMantic ``Model`` references as-is.
+            If True, recursively clone nested document models.
+            If False, keep nested document references as-is.
 
-            For ODMantic ``Reference()`` fields this is often the safest default,
-            because references usually represent database identity.
+            Referenced documents usually represent an existing identity rather
+            than a value owned by their containing model.
 
     Returns:
-        A reconstructed copy with valid Pydantic/ODMantic internals.
+        A copy with valid Pydantic state and shared-reference relationships.
     """
     return _copy_value(
         model,
@@ -73,21 +74,11 @@ def _copy_value(
 
     if isinstance(value, Model):
         # Root model is always copied.
-        # Nested ODMantic Models are copied only if copy_references=True.
-        # Otherwise they remain as references to the original DB object.
+        # Nested documents are copied only if copy_references=True.
+        # Otherwise they remain references to the existing domain identity.
         if not _is_root and not copy_references:
             return value
 
-        copied = _reconstruct_pydantic_model(
-            value,
-            deep=deep,
-            preserve_ids=preserve_ids,
-            copy_references=copy_references,
-            _seen=_seen,
-        )
-        return copied
-
-    if isinstance(value, EmbeddedModel):
         copied = _reconstruct_pydantic_model(
             value,
             deep=deep,
@@ -186,10 +177,8 @@ def _reconstruct_pydantic_model(
     copy_references: bool,
     _seen: dict[int, Any],
 ) -> BaseModel:
-    # Pydantic's shallow copy preserves validated field names, extras, private
-    # attributes and fields-set state without re-running validators. ODMantic's
-    # model_copy recursively marks embedded objects, including shared originals,
-    # so initialize bookkeeping only on the copies owned by this traversal.
+    # Start from Pydantic's shallow copy to preserve validated field names,
+    # extras, private attributes and fields-set state without running validators.
     copied = BaseModel.__copy__(source)
     _seen[id(source)] = copied
 
@@ -214,8 +203,7 @@ def _reconstruct_pydantic_model(
     model_fields = type(source).model_fields
     model_values = copied.__dict__
     for field_name, field_info in model_fields.items():
-        field_value = model_values.get(field_name)
-        if field_name not in model_values or _is_odmantic_field_proxy(field_value):
+        if field_name not in model_values:
             if field_info.is_required():
                 raise ValueError(
                     f"Cannot copy {type(source).__name__}: missing required field {field_name!r}"
@@ -223,20 +211,10 @@ def _reconstruct_pydantic_model(
             model_values[field_name] = field_info.get_default(call_default_factory=True)
 
     if isinstance(source, Model) and not preserve_ids:
-        # Standard ODMantic Models use a generated ObjectId. Other primary-key
-        # types must be retained explicitly rather than replaced by invalid data.
-        if source.__primary_field__ != "id" or not isinstance(source.id, ObjectId):
-            raise ValueError("Use preserve_ids=True for a custom ODMantic primary key")
+        # Domain documents use generated ObjectIds. An overridden identity type
+        # must be retained explicitly rather than replaced by an invalid value.
+        if not isinstance(source.id, ObjectId):
+            raise ValueError("Use preserve_ids=True for a custom document identity")
         model_values["id"] = ObjectId()
 
-    if isinstance(copied, (Model, EmbeddedModel)):
-        object.__setattr__(copied, "__fields_modified__", set(model_fields))
-
     return copied
-
-
-def _is_odmantic_field_proxy(value: Any) -> bool:
-    value_type = type(value)
-    return value_type.__name__ == "FieldProxy" and value_type.__module__.startswith(
-        "odmantic"
-    )

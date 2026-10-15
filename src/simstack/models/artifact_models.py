@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Any
 
-from odmantic import Field, Model, ObjectId
+from simstack.models.document import Field, Model, ObjectId
 
 from simstack.models.pickle_models import FunctionPickle
 from simstack.models.simstack_model import simstack_model
@@ -175,7 +175,7 @@ class ArtifactMapping(Model):
 
     """
 
-    name: str = Field(default="artifact", unique=True)
+    name: str = "artifact"
     regex_pattern: str = Field(default="")
     function_mapping: str = Field(default="")
     function_code: str = Field(default="")

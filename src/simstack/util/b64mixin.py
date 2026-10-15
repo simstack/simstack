@@ -4,7 +4,7 @@ import zlib
 
 class BytesB64Mixin:
     """
-    Mixin that teaches Pydantic/ODMantic to serialise *bytes* fields as
+    Mixin that teaches Pydantic to serialise *bytes* fields as
     base-64-encoded ASCII strings when exporting to JSON (dict / response).
     """
 

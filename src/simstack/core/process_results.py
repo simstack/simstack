@@ -1,13 +1,12 @@
-from typing import Any, Tuple, List, Union
-from odmantic import ObjectId, Model
+from typing import List, Tuple, Union
+from simstack.models.document import Model
 from simstack.core.simstack_result import SimstackResult
 from simstack.models import BooleanData
 from simstack.models.files import FileStack
 
-from simstack.core.context import context
-from simstack.models import ModelMapping
 from simstack.models.file_list import FileListModel
 from simstack.models.simstack_model import is_simstack_model
+from simstack.persistence import Repository
 
 from simstack.models.named_data_reference import NamedDataReference
 
@@ -15,7 +14,9 @@ import logging
 logger = logging.getLogger("process_results")
 
 async def process_result_helper(
-    result: Union[SimstackResult,Model, bool, BooleanData], task_id: str = "NA"
+    result: Union[SimstackResult, Model, bool, BooleanData],
+    task_id: str,
+    repository: Repository,
 ) -> Tuple[List[NamedDataReference], List[Model]]:
     """
     Computes the results_references and returns a List[Model].
@@ -31,7 +32,7 @@ async def process_result_helper(
             boolean_data = BooleanData(value=result)
         else:
             boolean_data = result
-        result_model = await context.db.save(boolean_data)
+        result_model = await repository.save(boolean_data)
         result_models.append(result_model)
         results_references.append(NamedDataReference.from_variable(
             boolean_data,
@@ -60,7 +61,7 @@ async def process_result_helper(
                     logger.error(f"Task task_id: {task_id} saving file is NONE")
                     raise ValueError("saving file is NONE")
 
-            saved = await context.db.save(file_list_model)
+            saved = await repository.save(file_list_model)
             results_references.append(NamedDataReference.from_variable(
                 saved,
                 variable_name="files",
@@ -80,7 +81,7 @@ async def process_result_helper(
             ):
                 if isinstance(value, Model):
                     try:
-                        result_model = await context.db.save(value)
+                        result_model = await repository.save(value)
                     except Exception as e:
                         logger.error(f"task_id: {task_id} cannot save model: {key} {str(e)}")
                         raise e
@@ -95,7 +96,7 @@ async def process_result_helper(
                         f"task_id: {task_id} cannot save model: {key} is not a model"
                     )
     elif is_simstack_model(result) and isinstance(result, Model):
-        result_model = await context.db.save(result)
+        result_model = await repository.save(result)
         result_models.append(result_model)
         results_references.append(NamedDataReference.from_variable(
             result_model,

@@ -1,98 +1,47 @@
-_SAMPLE_SIMSTACK_TOML_DICT = {
-    "parameters": {
-        "common": {
-            "resources": [
-                "local",
-                "int-nano",
-                "horeka",
-                "justus",
-                "self",
-                "exchange",
-                "uploads",
-            ],
-            "database": "wolfgang_data",
-            "test_database": "wolfgang_test",
-            "connection_string": "mongodb://localhost:27017/",
-        },
-        "local": {
-            "ssh-key": "C:\\Users\\bj7610\\Documents\\etc\\.ssh\\surface11_openssh",
-            "resource": "local",
-            "workdir": "C:\\Users\\bj7610\\simstack",
-            "python_path": [
-                "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model",
-                "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model\\src",
-            ],
-        },
-        "self": {
-            "ssh-key": "C:\\Users\\bj7610\\Documents\\etc\\.ssh\\surface11_openssh",
-            "resource": "local",
-            "workdir": "C:\\Users\\bj7610\\simstack",
-            "python_path": [
-                "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model",
-                "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model\\src",
-            ],
-        },
-        "uploads": {
-            "ssh-key": "C:\\Users\\bj7610\\Documents\\etc\\.ssh\\surface11_openssh",
-            "resource": "self",
-            "workdir": "C:\\Users\\bj7610\\simstack",
-            "python_path": [
-                "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model",
-                "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model\\src",
-            ],
-        },
-        "int-nano": {
-            "ssh-key": "/home/ws/bj7610/.ssh/idrsa",
-            "workdir": "/home/ws/bj7610/simstack",
-            "python_path": [
-                "/home/ws/bj7610/projects/simstack-model",
-                "/home/ws/bj7610/projects/simstack-model/src",
-            ],
-            "environment_start": "conda activate simstack-env",
-        },
-    },
-    "server": {
-        "port": 8000,
-        "secret_key": "secret_key",
-        "upload_dir": "C:\\Users\\bj7610\\simstack\\uploads",
-    },
-    "hosts": {
-        "local": "localhost",
-        "int-nano": "int-nano.int.kit.edu",
-        "justus": "justus.int.kit.edu",
-        "horeka": "horeka.int.kit.edu",
-    },
-    "routes": [
-        {"source": "local", "target": "int-nano", "host": "local"},
-        {"source": "int-nano", "target": "local", "host": "local"},
-        {"source": "horeka", "target": "local", "host": "horeka"},
-        {"source": "local", "target": "horeka", "host": "horeka"},
-        {"source": "justus", "target": "local", "host": "justus"},
-        {"source": "local", "target": "justus", "host": "justus"},
-    ],
-    "paths": {
-        "models": {"path": "src/simstack/models", "drops": "src"},
-        "methods": {"path": "src/simstack/methods", "drops": "src"},
-        "tests": {"path": "tests", "drops": "", "use_pickle": True},
-    },
-}
+"""Write an API-only runner connection file without secrets or host assumptions."""
+
+import argparse
+import json
+from pathlib import Path
+
+from simstack.runner_api.config import RunnerConnectionSettings
+from simstack.runner_api.errors import RunnerApiConfigurationError
 
 
 def sample_config_writer_entrypoint() -> None:
-    """
-    Entry point to write a sample simstack.toml configuration file.
-    """
-    import os
-    import toml
-
-    config_path = os.path.join(os.getcwd(), "simstack.toml")
-    if os.path.exists(config_path):
-        print(
-            f"simstack.toml already exists at {config_path}. Aborting to avoid overwrite."
+    """Generate runner.toml; execution policy remains an operator-owned file."""
+    parser = argparse.ArgumentParser(
+        description="Write a secret-free API-only runner connection configuration"
+    )
+    parser.add_argument("--server-url", required=True, help="Absolute server API URL")
+    parser.add_argument("--resource", required=True, help="Saved resource name")
+    parser.add_argument("--output", type=Path, default=Path("runner.toml"))
+    args = parser.parse_args()
+    try:
+        connection = RunnerConnectionSettings.from_mapping(
+            {"runner": {"server_url": args.server_url, "resource": args.resource}}
         )
-        return
+    except RunnerApiConfigurationError as exc:
+        parser.error(str(exc))
+    configuration = "\n".join(
+        (
+            "# API-only runner connection. Keep SIMSTACK_RUNNER_TOKEN in the environment.",
+            "# Worker launch policy belongs in a separate operator-owned config.toml.",
+            "[runner]",
+            f"server_url = {json.dumps(connection.server_url, ensure_ascii=False)}",
+            f"resource = {json.dumps(connection.resource, ensure_ascii=False)}",
+            "",
+        )
+    )
+    try:
+        with args.output.open("x", encoding="utf-8") as configuration_file:
+            configuration_file.write(configuration)
+    except FileExistsError:
+        parser.error("Output already exists; refusing to overwrite it")
+    except OSError:
+        parser.error("Runner connection configuration cannot be written")
+    print(f"Runner connection configuration written to {args.output}")
 
-    with open(config_path, "w") as config_file:
-        toml.dump(_SAMPLE_SIMSTACK_TOML_DICT, config_file)
 
-    print(f"Sample simstack.toml written to {config_path}")
+if __name__ == "__main__":
+    sample_config_writer_entrypoint()

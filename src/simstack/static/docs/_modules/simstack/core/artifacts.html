@@ -11,15 +11,15 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="../../../_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -31,7 +31,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -43,17 +43,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -192,10 +192,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -215,8 +215,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../database_migrations.html">Database Migrations</a></li>
@@ -227,12 +225,31 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -245,7 +262,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -277,17 +294,32 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectId</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ObjectId</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.artifact_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArtifactMapping</span><span class="p">,</span> <span class="n">ArtifactModel</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.charts_artifact</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChartArtifactModel</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.node_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_child_nodes</span><span class="p">,</span> <span class="n">NodeRegistry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.images2d</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image2DArtifactModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.node_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeRegistry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.table_artifact</span><span class="w"> </span><span class="kn">import</span> <span class="n">TableArtifactModel</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">Database</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.persistence</span><span class="w"> </span><span class="kn">import</span> <span class="n">Repository</span><span class="p">,</span> <span class="n">eq</span><span class="p">,</span> <span class="n">in_values</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.importer</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_function</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;artifacts&quot;</span><span class="p">)</span>
+
+<span class="n">ARTIFACT_TYPES</span> <span class="o">=</span> <span class="p">(</span><span class="n">ArtifactModel</span><span class="p">,</span> <span class="n">ChartArtifactModel</span><span class="p">,</span> <span class="n">TableArtifactModel</span><span class="p">,</span> <span class="n">Image2DArtifactModel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="find_child_nodes">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.artifacts.find_child_nodes">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_child_nodes</span><span class="p">(</span>
+    <span class="n">repository</span><span class="p">:</span> <span class="n">Repository</span><span class="p">,</span>
+    <span class="n">task_id</span><span class="p">:</span> <span class="n">ObjectId</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">NodeRegistry</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+        <span class="n">NodeRegistry</span><span class="p">,</span>
+        <span class="n">in_values</span><span class="p">(</span><span class="s2">&quot;parent_ids&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">task_id</span><span class="p">]),</span>
+    <span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="ArtifactArguments">
@@ -296,7 +328,7 @@
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="n">ObjectId</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span> <span class="o">=</span> <span class="n">task_id</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="n">result</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">child_artifacts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ArtifactModel</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">child_artifacts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Model</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">call_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="ArtifactArguments.add_attributes">
@@ -322,7 +354,7 @@
 <div class="viewcode-block" id="find_artifact_mappings">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.artifacts.find_artifact_mappings">[docs]</a>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_artifact_mappings</span><span class="p">(</span>
-    <span class="n">node_registry_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">Database</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">node_registry_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">Repository</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ArtifactMapping</span><span class="p">]:</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> Loading artifacts with regex pattern: </span><span class="si">{</span><span class="n">node_registry_path</span><span class="si">}</span><span class="s2"> &quot;</span>
@@ -348,17 +380,18 @@
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.artifacts.register_artifact_mapping">[docs]</a>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">register_artifact_mapping</span><span class="p">(</span>
     <span class="n">artifact_mapping</span><span class="p">:</span> <span class="n">ArtifactMapping</span><span class="p">,</span>
+    <span class="n">repository</span><span class="p">:</span> <span class="n">Repository</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArtifactMapping</span><span class="p">:</span>
     <span class="c1"># Check if an artifact with the same name already exists</span>
-    <span class="n">existing</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
-        <span class="n">ArtifactMapping</span><span class="p">,</span> <span class="n">ArtifactMapping</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">artifact_mapping</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">existing</span> <span class="o">=</span> <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
+        <span class="n">ArtifactMapping</span><span class="p">,</span> <span class="n">eq</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="n">artifact_mapping</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
     <span class="p">)</span>
     <span class="k">if</span> <span class="n">existing</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Replacing existing artifact mapping &#39;</span><span class="si">{</span><span class="n">artifact_mapping</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; already exists with path: </span><span class="si">{</span><span class="n">existing</span><span class="o">.</span><span class="n">regex_pattern</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
         <span class="n">existing</span><span class="o">.</span><span class="n">set_values</span><span class="p">(</span><span class="n">artifact_mapping</span><span class="p">)</span>
-        <span class="n">artifact_mapping</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">existing</span><span class="p">)</span>
+        <span class="n">artifact_mapping</span> <span class="o">=</span> <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">existing</span><span class="p">)</span>
 
     <span class="c1"># Check if the function_mapping is specified and not CODE</span>
     <span class="k">if</span> <span class="p">(</span>
@@ -368,7 +401,7 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># Import the function to verify it exists</span>
             <span class="n">func</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_function</span><span class="p">(</span>
-                <span class="n">artifact_mapping</span><span class="o">.</span><span class="n">function_mapping</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="kc">None</span>
+                <span class="n">artifact_mapping</span><span class="o">.</span><span class="n">function_mapping</span><span class="p">,</span> <span class="n">repository</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="kc">None</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">func</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
@@ -378,26 +411,34 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Error processing function </span><span class="si">{</span><span class="n">artifact_mapping</span><span class="o">.</span><span class="n">function_mapping</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
-    <span class="k">return</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">artifact_mapping</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">artifact_mapping</span><span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="find_all_artifacts">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.artifacts.find_all_artifacts">[docs]</a>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_all_artifacts</span><span class="p">(</span>
-    <span class="n">node_registry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">Database</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ArtifactModel</span><span class="p">]:</span>
-    <span class="k">return</span> <span class="p">[</span>
-        <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">ArtifactModel</span><span class="p">,</span> <span class="n">ArtifactModel</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">artifact_id</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">artifact_id</span> <span class="ow">in</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">artifact_ids</span>
-    <span class="p">]</span></div>
+    <span class="n">node_registry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">Repository</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Model</span><span class="p">]:</span>
+    <span class="n">artifacts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Model</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">artifact_id</span> <span class="ow">in</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">artifact_ids</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">model_class</span> <span class="ow">in</span> <span class="n">ARTIFACT_TYPES</span><span class="p">:</span>
+            <span class="n">artifact</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">model_class</span><span class="p">,</span> <span class="n">eq</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="n">artifact_id</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">artifact</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">artifacts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">artifact</span><span class="p">)</span>
+                <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task artifact is missing: </span><span class="si">{</span><span class="n">artifact_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">artifacts</span></div>
 
 
 
 <div class="viewcode-block" id="create_artifacts">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.artifacts.create_artifacts">[docs]</a>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_artifacts</span><span class="p">(</span>
-    <span class="n">artifact_arguments</span><span class="p">:</span> <span class="n">ArtifactArguments</span><span class="p">,</span> <span class="n">node_registry</span><span class="p">:</span> <span class="n">NodeRegistry</span>
+    <span class="n">artifact_arguments</span><span class="p">:</span> <span class="n">ArtifactArguments</span><span class="p">,</span>
+    <span class="n">node_registry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">,</span>
+    <span class="n">repository</span><span class="p">:</span> <span class="n">Repository</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]:</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">call_path</span> <span class="o">=</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">call_path</span>
@@ -405,17 +446,17 @@
         <span class="n">log_string</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;create artifacts for task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="n">call_path</span><span class="si">}</span><span class="s2">&quot;</span>
 
         <span class="n">artifact_mappings_list</span> <span class="o">=</span> <span class="k">await</span> <span class="n">find_artifact_mappings</span><span class="p">(</span>
-            <span class="n">call_path</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span>
+            <span class="n">call_path</span><span class="p">,</span> <span class="n">repository</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span>
         <span class="p">)</span>
 
-        <span class="n">child_nodes</span> <span class="o">=</span> <span class="k">await</span> <span class="n">find_child_nodes</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="n">child_nodes</span> <span class="o">=</span> <span class="k">await</span> <span class="n">find_child_nodes</span><span class="p">(</span><span class="n">repository</span><span class="p">,</span> <span class="n">task_id</span><span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">log_string</span><span class="si">}</span><span class="s2"> Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">artifact_mappings_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> artifact mappings for path: </span><span class="si">{</span><span class="n">call_path</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">child_nodes</span><span class="p">)</span><span class="si">}</span><span class="s2"> child nodes.&quot;</span>
         <span class="p">)</span>
         <span class="c1"># Concatenate artifacts from all child nodes</span>
-        <span class="n">child_artifacts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ArtifactModel</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">child_artifacts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Model</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">child_node</span> <span class="ow">in</span> <span class="n">child_nodes</span><span class="p">:</span>
-            <span class="n">loaded_artifacts</span> <span class="o">=</span> <span class="k">await</span> <span class="n">find_all_artifacts</span><span class="p">(</span><span class="n">child_node</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="p">)</span>
+            <span class="n">loaded_artifacts</span> <span class="o">=</span> <span class="k">await</span> <span class="n">find_all_artifacts</span><span class="p">(</span><span class="n">child_node</span><span class="p">,</span> <span class="n">repository</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">loaded_artifacts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="n">child_artifacts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">loaded_artifacts</span><span class="p">)</span>
             <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">loaded_artifacts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
@@ -427,29 +468,23 @@
                         <span class="n">node_registry</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">loaded_artifacts</span>
                     <span class="p">},</span>  <span class="c1"># Store all artifacts in a single field</span>
                 <span class="p">)</span>
-                <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">consolidated_artifact</span><span class="p">)</span>
+                <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">consolidated_artifact</span><span class="p">)</span>
                 <span class="n">child_artifacts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">consolidated_artifact</span><span class="p">)</span>
 
         <span class="c1"># child_artifacts = consolidate_artifacts(child_artifacts, call_path, task_id)</span>
         <span class="n">artifact_arguments</span><span class="o">.</span><span class="n">child_artifacts</span> <span class="o">=</span> <span class="n">child_artifacts</span>
         <span class="n">artifact_arguments</span><span class="o">.</span><span class="n">call_path</span> <span class="o">=</span> <span class="n">call_path</span>
 
-        <span class="n">artifact_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ArtifactModel</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">artifact_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Model</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">artifact_mappings_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">artifact_mapping</span> <span class="ow">in</span> <span class="n">artifact_mappings_list</span><span class="p">:</span>
-                <span class="c1"># Count existing artifacts with the same mapping</span>
-                <span class="n">existing_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span>
-                    <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">artifact_list</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">artifact_mapping</span><span class="o">.</span><span class="n">name</span><span class="p">)]</span>
-                <span class="p">)</span>
-                <span class="n">log_string_mapping</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">log_string</span><span class="si">}</span><span class="s2"> Artifact: </span><span class="si">{</span><span class="n">artifact_mapping</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> #:</span><span class="si">{</span><span class="n">existing_count</span><span class="si">}</span><span class="s2">&quot;</span>
-                <span class="p">)</span>
+                <span class="n">log_string_mapping</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">log_string</span><span class="si">}</span><span class="s2"> Artifact: </span><span class="si">{</span><span class="n">artifact_mapping</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">log_string_mapping</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">artifact_mapping</span><span class="o">.</span><span class="n">function_mapping</span> <span class="o">!=</span> <span class="s2">&quot;CODE&quot;</span><span class="p">:</span>
                     <span class="n">func</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_function</span><span class="p">(</span>
                         <span class="n">artifact_mapping</span><span class="o">.</span><span class="n">function_mapping</span><span class="p">,</span>
-                        <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="p">,</span>
+                        <span class="n">repository</span><span class="p">,</span>
                         <span class="n">artifact_arguments</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span>
                     <span class="p">)</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="n">func</span><span class="p">:</span>
@@ -461,6 +496,8 @@
                         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">log_string_mapping</span><span class="si">}</span><span class="s2"> Executing function </span><span class="si">{</span><span class="n">artifact_mapping</span><span class="o">.</span><span class="n">function_mapping</span><span class="si">}</span><span class="s2"> for artifact mapping.&quot;</span>
                     <span class="p">)</span>
                     <span class="n">artifact_result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">artifact_arguments</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isawaitable</span><span class="p">(</span><span class="n">artifact_result</span><span class="p">):</span>
+                        <span class="n">artifact_result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">artifact_result</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.safe_code_executor</span><span class="w"> </span><span class="kn">import</span> <span class="n">safe_code_executor</span>
 
@@ -488,23 +525,15 @@
                             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">log_string_mapping</span><span class="si">}</span><span class="s2"> Artifact is None, skipping.&quot;</span>
                         <span class="p">)</span>
                         <span class="k">continue</span>
-                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">artifact</span><span class="p">,</span> <span class="n">TableArtifactModel</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">artifact</span><span class="p">,</span> <span class="n">ARTIFACT_TYPES</span><span class="p">):</span>
                         <span class="n">artifact</span><span class="o">.</span><span class="n">parent_id</span> <span class="o">=</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">id</span>
-                        <span class="n">saved_artifact</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">artifact</span><span class="p">)</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">log_string_mapping</span><span class="si">}</span><span class="s2"> new table: </span><span class="si">{</span><span class="n">saved_artifact</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="p">)</span>
-                    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">artifact</span><span class="p">,</span> <span class="n">ChartArtifactModel</span><span class="p">):</span>
-                        <span class="n">artifact</span><span class="o">.</span><span class="n">parent_id</span> <span class="o">=</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">id</span>
-                        <span class="n">saved_artifact</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">artifact</span><span class="p">)</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">log_string_mapping</span><span class="si">}</span><span class="s2"> new table: </span><span class="si">{</span><span class="n">saved_artifact</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="p">)</span>
-                    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">artifact</span><span class="p">,</span> <span class="n">ArtifactModel</span><span class="p">):</span>
-                        <span class="n">artifact</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">call_path</span>
-                        <span class="n">saved_artifact</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">artifact</span><span class="p">)</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">log_string_mapping</span><span class="si">}</span><span class="s2"> new: </span><span class="si">{</span><span class="n">saved_artifact</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">artifact</span><span class="p">,</span> <span class="n">ArtifactModel</span><span class="p">):</span>
+                            <span class="n">artifact</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">call_path</span>
+                        <span class="n">saved_artifact</span> <span class="o">=</span> <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">artifact</span><span class="p">)</span>
                         <span class="n">artifact_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">saved_artifact</span><span class="p">)</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">log_string_mapping</span><span class="si">}</span><span class="s2"> new artifact: </span><span class="si">{</span><span class="n">saved_artifact</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">log_string_mapping</span><span class="si">}</span><span class="s2"> not an ArtifactModel object. Got </span><span class="si">{</span><span class="n">artifact</span><span class="si">}</span><span class="s2"> instead.&quot;</span>
@@ -515,115 +544,26 @@
         <span class="k">return</span> <span class="p">[</span><span class="n">artifact</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">artifact</span> <span class="ow">in</span> <span class="n">artifact_list</span><span class="p">]</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error creating artifacts for node </span><span class="si">{</span><span class="n">node_registry</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">[]</span></div>
-
-
-
-<div class="viewcode-block" id="save_artifact_model">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.artifacts.save_artifact_model">[docs]</a>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">save_artifact_model</span><span class="p">(</span><span class="n">artifact</span><span class="p">:</span> <span class="n">ArtifactModel</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArtifactModel</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Custom save function for polymorphic models</span>
-
-<span class="sd">    If the item is a List type, it will also save any unsaved nested items.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Special handling for List type</span>
-    <span class="k">if</span> <span class="n">artifact</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;list&quot;</span><span class="p">:</span>
-        <span class="c1"># Save all nested items first</span>
-        <span class="n">saved_items</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">nested_item</span> <span class="ow">in</span> <span class="n">artifact</span><span class="o">.</span><span class="n">items</span><span class="p">:</span>
-            <span class="c1"># Save the nested item</span>
-            <span class="n">saved_item</span> <span class="o">=</span> <span class="k">await</span> <span class="n">save_artifact_model</span><span class="p">(</span><span class="n">nested_item</span><span class="p">)</span>
-            <span class="n">saved_items</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">saved_item</span><span class="p">)</span>
-
-        <span class="c1"># Update the items list with all saved items</span>
-        <span class="n">artifact</span><span class="o">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">saved_items</span>
-
-    <span class="c1"># Get the model&#39;s collection</span>
-    <span class="n">collection</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">collection</span><span class="p">(</span><span class="n">ArtifactModel</span><span class="p">)</span>
-
-    <span class="c1"># Convert model to dict</span>
-    <span class="n">item_dict</span> <span class="o">=</span> <span class="n">artifact</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="c1"># For List types, we need to convert ArtifactModel objects to their IDs for storage</span>
-    <span class="k">if</span> <span class="n">artifact</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;list&quot;</span><span class="p">:</span>
-        <span class="c1"># Replace ArtifactModel objects with their IDs in the dict for storage</span>
-        <span class="n">item_dict</span><span class="p">[</span><span class="s2">&quot;items&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">nested_item</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">nested_item</span> <span class="ow">in</span> <span class="n">artifact</span><span class="o">.</span><span class="n">items</span><span class="p">]</span>
-
-    <span class="c1"># Check if this artifact already exists in the database</span>
-    <span class="k">if</span> <span class="n">artifact</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">existing</span> <span class="o">=</span> <span class="k">await</span> <span class="n">collection</span><span class="o">.</span><span class="n">find_one</span><span class="p">({</span><span class="s2">&quot;_id&quot;</span><span class="p">:</span> <span class="n">artifact</span><span class="o">.</span><span class="n">id</span><span class="p">})</span>
-        <span class="k">if</span> <span class="n">existing</span><span class="p">:</span>
-            <span class="c1"># ArtifactModel exists, update it</span>
-            <span class="k">await</span> <span class="n">collection</span><span class="o">.</span><span class="n">replace_one</span><span class="p">({</span><span class="s2">&quot;_id&quot;</span><span class="p">:</span> <span class="n">artifact</span><span class="o">.</span><span class="n">id</span><span class="p">},</span> <span class="n">item_dict</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">artifact</span>
-
-    <span class="c1"># ArtifactModel doesn&#39;t exist or has no ID, insert it</span>
-    <span class="c1"># Remove id field if it exists to let MongoDB generate it</span>
-    <span class="k">if</span> <span class="s2">&quot;_id&quot;</span> <span class="ow">in</span> <span class="n">item_dict</span><span class="p">:</span>
-        <span class="k">del</span> <span class="n">item_dict</span><span class="p">[</span><span class="s2">&quot;_id&quot;</span><span class="p">]</span>
-
-    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">collection</span><span class="o">.</span><span class="n">insert_one</span><span class="p">(</span><span class="n">item_dict</span><span class="p">)</span>
-    <span class="n">artifact</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">inserted_id</span>
-
-    <span class="k">return</span> <span class="n">artifact</span></div>
+        <span class="k">raise</span></div>
 
 
 
 <div class="viewcode-block" id="find_artifacts">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.artifacts.find_artifacts">[docs]</a>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_artifacts</span><span class="p">(</span>
-    <span class="n">model_class</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">ArtifactModel</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">model_class</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">ArtifactModel</span><span class="p">],</span>
+    <span class="n">repository</span><span class="p">:</span> <span class="n">Repository</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ArtifactModel</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Custom find function for polymorphic models</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Get the collection</span>
-    <span class="n">collection</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">collection</span><span class="p">(</span><span class="n">ArtifactModel</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Find artifacts through backend-neutral equality criteria.&quot;&quot;&quot;</span>
 
-    <span class="c1"># Add item_type filter for subclasses</span>
     <span class="k">if</span> <span class="n">model_class</span> <span class="o">!=</span> <span class="n">ArtifactModel</span><span class="p">:</span>
         <span class="n">discriminator_value</span> <span class="o">=</span> <span class="n">model_class</span><span class="o">.</span><span class="n">model_fields</span><span class="p">[</span><span class="s2">&quot;artifact_type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">default</span>
         <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;artifact_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">discriminator_value</span>
-
-    <span class="c1"># Execute find</span>
-    <span class="n">cursor</span> <span class="o">=</span> <span class="n">collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
-    <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cursor</span><span class="o">.</span><span class="n">to_list</span><span class="p">(</span><span class="n">length</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-
-    <span class="c1"># Convert results to model instances</span>
-    <span class="n">items</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
-        <span class="n">artifact_type</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;artifact_type&quot;</span><span class="p">)</span>
-
-        <span class="c1"># For List types, we need special handling</span>
-        <span class="k">if</span> <span class="n">artifact_type</span> <span class="o">==</span> <span class="s2">&quot;list&quot;</span><span class="p">:</span>
-            <span class="c1"># Store item_ids temporarily</span>
-            <span class="n">item_ids</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;items&quot;</span><span class="p">,</span> <span class="p">[])</span>
-            <span class="c1"># Remove items field for validation</span>
-            <span class="n">doc_copy</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-            <span class="n">doc_copy</span><span class="p">[</span><span class="s2">&quot;items&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-
-            <span class="c1"># Create the List instance without items first</span>
-            <span class="n">item</span> <span class="o">=</span> <span class="n">model_class</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">doc_copy</span><span class="p">)</span>
-
-            <span class="c1"># Load all referenced items</span>
-            <span class="n">loaded_items</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">item_id</span> <span class="ow">in</span> <span class="n">item_ids</span><span class="p">:</span>
-                <span class="n">nested_item</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
-                    <span class="n">ArtifactModel</span><span class="p">,</span> <span class="n">ArtifactModel</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">item_id</span>
-                <span class="p">)</span>
-                <span class="k">if</span> <span class="n">nested_item</span><span class="p">:</span>
-                    <span class="n">loaded_items</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nested_item</span><span class="p">)</span>
-
-            <span class="c1"># Now assign the loaded items</span>
-            <span class="n">item</span><span class="o">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">loaded_items</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># For non-List types, normal validation is fine</span>
-            <span class="n">item</span> <span class="o">=</span> <span class="n">model_class</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
-
-    <span class="n">items</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">items</span></div>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+        <span class="n">model_class</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">(</span><span class="n">eq</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">field</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()),</span>
+    <span class="p">)</span></div>
 
 
 
@@ -672,7 +612,6 @@
 <span class="c1">#         # load all referenced items</span>
 <span class="c1">#         loaded_items = []</span>
 <span class="c1">#         for artifact_id in item_ids:</span>
-<span class="c1">#             nested_item = await context.db.find_one(ArtifactModel, ArtifactModel.id == artifact_id)</span>
 <span class="c1">#             if nested_item:</span>
 <span class="c1">#                 loaded_items.append(nested_item)</span>
 <span class="c1">#</span>
@@ -706,10 +645,10 @@
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
-          
-          
+
+
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
@@ -717,27 +656,27 @@
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer no-toc">
-      
-      
-      
+
+
+
     </aside>
   </div>
 </div><script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

@@ -1,6 +1,6 @@
 from typing import Iterator, List, TypeVar
 
-from odmantic import Field, Model, ObjectId
+from simstack.models.document import Field, Model, ObjectId
 
 from simstack.models.base_types import BooleanData, StringData
 from simstack.models.simstack_model import simstack_model

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Union, Dict, Any, List, Optional, Set
 
-from odmantic import Model
+from simstack.models.document import Model
 
 
 def make_table_entries_helper(

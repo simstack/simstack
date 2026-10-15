@@ -1,13 +1,28 @@
 import inspect
+from types import ModuleType
 from typing import get_type_hints
 
 import pytest
 
-from simstack.core.context import context
+from simstack.core.node import node
 from simstack.core.simstack_result import SimstackResult
 from simstack.models import FloatData
+from simstack.models.models import NodeModel
+from simstack.persistence import eq
 from simstack.tables.node_table import CreateNodeTable
 from simstack.util.docstring_parser import DocstringParser
+
+
+@pytest.mark.asyncio
+async def test_node_registration_persists_declared_version_for_ui_reruns(repository):
+    module = ModuleType("versioned_registration_fixture")
+    def versioned(value: FloatData, **kwargs) -> FloatData:
+        return value
+    versioned.__module__ = module.__name__
+    module.versioned = node(version="declared-v2")(versioned)
+    await CreateNodeTable(repository)._register_nodes_from_module(module, "")
+    registered = await repository.find_one(NodeModel, eq("function_mapping", f"{module.__name__}.versioned"))
+    assert registered.version == "declared-v2"
 
 
 def test_normalize_docstring_type_strips_only_top_level_qualifier():
@@ -56,8 +71,8 @@ def sample_node(arg1: FloatData, arg2: FloatData, **kwargs) -> SimstackResult:
 
 
 @pytest.mark.asyncio
-async def test_build_outputs_accepts_optional_simstack_result_types():
-    builder = CreateNodeTable(context.db)
+async def test_build_outputs_accepts_optional_simstack_result_types(repository):
+    builder = CreateNodeTable(repository)
     expected_mapping = builder.get_class_mapping(FloatData, "src")
     parser = DocstringParser(
         """

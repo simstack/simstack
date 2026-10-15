@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, List
 
-from odmantic import Model, Field
+from simstack.models.document import Field, Model
 from pydantic import field_validator
 
 from simstack.models import simstack_model

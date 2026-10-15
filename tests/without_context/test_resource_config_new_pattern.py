@@ -1,6 +1,8 @@
 import pytest
+import json
 import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -14,10 +16,13 @@ class MockFileStack:
 
 def test_run_with_parameters_override(tmp_path):
     config_file = tmp_path / "config.toml"
-    content = """
+    command = json.dumps(
+        f'''"{sys.executable}" -c "import shutil; import sys; shutil.copy('param_in.txt', 'param_out.txt')"'''
+    )
+    content = f"""
 [local.program.orca]
 use_temp = true
-run_command = "python -c \\"import shutil; import sys; shutil.copy('param_in.txt', 'param_out.txt')\\""
+run_command = {command}
 input_files = ["toml_in.txt"]
 output_files = ["toml_out.txt"]
 scratch_cleanup = false
@@ -50,10 +55,13 @@ scratch_cleanup = false
 
 def test_run_with_filestack_input(tmp_path):
     config_file = tmp_path / "config.toml"
-    content = """
+    command = json.dumps(
+        f'''"{sys.executable}" -c "import shutil; shutil.copy('fs_in.txt', 'fs_out.txt')"'''
+    )
+    content = f"""
 [local.program.orca]
 use_temp = true
-run_command = "python -c \\"import shutil; shutil.copy('fs_in.txt', 'fs_out.txt')\\""
+run_command = {command}
 scratch_cleanup = false
 """
     config_file.write_text(content)
@@ -87,10 +95,13 @@ scratch_cleanup = false
 
 def test_run_with_filestack_output_name_handling(tmp_path):
     config_file = tmp_path / "config.toml"
-    content = """
+    command = json.dumps(
+        f'''"{sys.executable}" -c "open('fs_out.txt', 'w').write('fs result')"'''
+    )
+    content = f"""
 [local.program.orca]
 use_temp = true
-run_command = "python -c \\"open('fs_out.txt', 'w').write('fs result')\\""
+run_command = {command}
 """
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")

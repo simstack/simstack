@@ -1,14 +1,15 @@
 import os
 
 import pytest
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 from simstack.core.context import context
-from simstack.core.definitions import TaskStatus
+from simstack.runner_protocol.constants import RunnerTaskStatus as TaskStatus
 from simstack.core.node import node
 from simstack.core.node_runner import NodeRunner
 from simstack.models import NodeRegistry, IntData
 from simstack.models.files import FileStack
+from simstack.persistence import eq
 
 
 @node
@@ -67,7 +68,9 @@ def node_returns_bool(arg: IntData, **kwargs) -> bool:
 
 
 def test_failing_node():
-    with pytest.raises(RuntimeError, match=r"Task task_id: .* This is a test exception"):
+    with pytest.raises(
+        RuntimeError, match=r"Task task_id: .* This is a test exception"
+    ):
         failing_node_with_int_arg(IntData(value=1))
 
 
@@ -106,8 +109,8 @@ async def test_failing_node_with_runner(info_file, hello_world_file):
     assert match
     task_id = match.group(1)
 
-    node_registry = await context.db.find_one(
-        NodeRegistry, NodeRegistry.id == ObjectId(task_id)
+    node_registry = await context.repository.find_one(
+        NodeRegistry, eq("id", ObjectId(task_id))
     )
     assert len(node_registry.info_files) == 1
     assert len(node_registry.results_references) == 1

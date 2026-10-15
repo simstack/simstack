@@ -12,15 +12,15 @@
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -32,7 +32,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -44,17 +44,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -193,10 +193,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -216,8 +216,6 @@
 <li class="toctree-l2"><a class="reference internal" href="tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="database_migrations.html">Database Migrations</a></li>
@@ -228,12 +226,31 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -246,7 +263,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -280,105 +297,87 @@
         <article role="main" id="furo-main-content">
           <section id="testing-complex-nodes">
 <h1>Testing Complex Nodes<a class="headerlink" href="#testing-complex-nodes" title="Link to this heading">¶</a></h1>
-<p>This document explains the testing strategy for complex nodes in SimStack, focusing on the test generation and re-execution mechanism.</p>
-<section id="overview">
-<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
-<p>In SimStack, some nodes perform complex tasks that might be difficult to reproduce in a standard unit test environment due to external dependencies, large data volumes, or non-deterministic behavior. To address this, we use a strategy of capturing the state of a successful node execution and using it to generate a repeatable test case.</p>
-<p>The two main components of this strategy are:
-1. <cite>simstack/src/simstack/methods/generate_test.py</cite>: A tool to extract node data from the database and work directory.
-2. <cite>examples/testing/testing_test_generation.py</cite>: An example script demonstrating how to use generated tests and patch complex executions.</p>
-</section>
-<section id="test-generation-generate-test-py">
-<h2>Test Generation (<cite>generate_test.py</cite>)<a class="headerlink" href="#test-generation-generate-test-py" title="Link to this heading">¶</a></h2>
-<p>The <cite>generate_test</cite> method (and its CLI wrapper) allows developers to create a test case from an existing <cite>NodeRegistry</cite> entry.</p>
-<p>Workflow:
-1. <strong>Identify Node</strong>: The user provides a <cite>node_id</cite> (ObjectId of a <cite>NodeRegistry</cite> entry).
-2. <strong>Setup Target</strong>: A target directory is created, organized by node name and argument hash: <cite>target_base / node_name / arg_hash</cite>.
-3. <strong>Capture Files</strong>: All files from the node’s work directory (<cite>workdir / node_name / node_id</cite>) are copied to the target directory.
-4. <strong>Serialize Data</strong>:</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>Input models are loaded from the database based on <cite>input_references</cite> and serialized to <cite>inputs.json</cite>.</p></li>
-<li><p>Output models (results) are loaded based on <cite>results_references</cite> and serialized to <cite>outputs.json</cite>.</p></li>
-<li><p>This is for convenience and not really needed for the test</p></li>
-</ul>
-</div></blockquote>
-<p>This results in a self-contained directory containing everything needed to verify the node’s behavior for a specific set of inputs.</p>
-</section>
-<section id="testing-with-patches-testing-test-generation-py">
-<h2>Testing with Patches (<cite>testing_test_generation.py</cite>)<a class="headerlink" href="#testing-with-patches-testing-test-generation-py" title="Link to this heading">¶</a></h2>
-<p>Once a test case is generated, it can be used to verify that changes to the node’s logic don’t break existing functionality, or to debug complex failures.</p>
-<p>The example script <cite>testing_test_generation.py</cite> demonstrates a pattern for testing nodes that call external functions or have complex side effects.</p>
-<p>### The Problem: Complex Side Effects
-Some nodes call functions that perform operations (like submitting a job to a cluster) which cannot be easily duplicated in testing.
-The idea is to store all of the resulting inout and output files and also serialized versions of all costly intermediate results.
-During a test run, we don’t want to actually submit a new job; instead, we want to simulate the previous execution and
-return the <em>original</em> <cite>task_id</cite> so that SimStack can find the associated files and results.</p>
-<p>### The Solution: Patching and Re-execution
-The strategy involves patching the “inner” execution function during the test run.</p>
-<ol class="arabic">
-<li><p><strong>Setup</strong>: The node is first executed normally (or a previous execution is identified). All of the complex and costly computations are performed
-in a function like <cite>complex_task_execution</cite> which <strong>must</strong> have the signature <a href="#id1"><span class="problematic" id="id2">*</span></a>args, <a href="#id3"><span class="problematic" id="id4">**</span></a>kwargs.</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>The <a href="#id5"><span class="problematic" id="id6">*</span></a>args are used during normal execution to generate the costly data and serialize it.</p></li>
-<li><p>The function returns data needed to locally construct the output models. Generating the input files or arsing the output files of a job, which is
-part of a test, should be outside <cite>complex_task_execution</cite></p></li>
-<li><p>The goal is: Do all the stuff that can be locally and that needs to be testes outside of <a href="#id7"><span class="problematic" id="id8">`</span></a>complex_task_execution</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p><strong>Generation</strong>: <cite>generate_test</cite> is called to create the test data.</p></li>
-<li><dl class="simple">
-<dt><strong>Patching</strong>: Using <cite>unittest.mock.patch</cite>, the function responsible for the side effect (e.g., <cite>complex_task_execution</cite>) is replaced with</dt><dd><p>a <cite>patched_complex_task_execution</cite>. This function also gets the <a href="#id9"><span class="problematic" id="id10">*</span></a>args and <a href="#id11"><span class="problematic" id="id12">**</span></a>kwargs. It needs the latter to automatically find
-the test directory with respect to a test-directory root.</p>
-</dd>
-</dl>
-</li>
-<li><p><strong>Mock Logic</strong>: The patched function:
-- Identifies the correct test directory using <cite>arg_hash</cite> and node name (provided in <cite>kwargs</cite>).
-- The file can compare the input files generated in the test run with the input files in the test directory
-- Restores the necessary files (e.g., <cite>test.txt</cite>) from the test directory to the current execution environment.
-- Deserialize all important information to locally build the outputs of the nodes. In the test this is only the original <cite>task_id</cite>.</p></li>
-<li><p><strong>Re-execution</strong>: The node is called again with <cite>force_rerun=True</cite>.</p></li>
-<li><p><strong>Verification</strong>: The results of the re-execution are compared against the original results to ensure consistency.</p></li>
+<p>Some nodes depend on external services, large files, or non-deterministic work
+that should not be repeated in every test. SimStack can capture a successful
+node execution and replay the inexpensive parts with the external side effect
+patched out.</p>
+<p>The workflow has two parts:</p>
+<ol class="arabic simple">
+<li><p><a class="reference internal" href="simstack/modules/simstack.methods.html#module-simstack.methods.generate_test" title="simstack.methods.generate_test"><code class="xref py py-mod docutils literal notranslate"><span class="pre">simstack.methods.generate_test</span></code></a> extracts the node inputs, outputs, and
+work-directory files into a stable test directory.</p></li>
+<li><p><code class="file docutils literal notranslate"><span class="pre">examples/testing/testing_test_generation.py</span></code> shows the patch-and-replay
+pattern used by a generated test.</p></li>
 </ol>
-<section id="example-patch-implementation">
-<h3>Example Patch Implementation<a class="headerlink" href="#example-patch-implementation" title="Link to this heading">¶</a></h3>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">patched_complex_task_execution</span><span class="p">(</span><span class="n">arg_patched</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs_patched</span><span class="p">):</span>
-    <span class="c1"># Locate the test directory</span>
-    <span class="n">test_dir</span> <span class="o">=</span> <span class="n">local_target_base</span> <span class="o">/</span> <span class="n">node_name</span> <span class="o">/</span> <span class="n">kwargs_patched</span><span class="p">[</span><span class="s2">&quot;arg_hash&quot;</span><span class="p">]</span>
-
-    <span class="c1"># Restore state</span>
-    <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">test_dir</span> <span class="o">/</span> <span class="s2">&quot;test.txt&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;test.txt&quot;</span><span class="p">)</span>
-
-    <span class="c1"># Retrieve original ID</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;test.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="n">original_task_id</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-
-    <span class="k">return</span> <span class="n">original_task_id</span>
-
-<span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s2">&quot;__main__.complex_task_execution&quot;</span><span class="p">,</span> <span class="n">side_effect</span><span class="o">=</span><span class="n">patched_complex_task_execution</span><span class="p">):</span>
-    <span class="n">test_result</span> <span class="o">=</span> <span class="n">complex_task_for_testing</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="n">Parameters</span><span class="p">(</span><span class="n">force_rerun</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
-    <span class="c1"># Assertions...</span>
+<section id="generating-test-data">
+<h2>Generating test data<a class="headerlink" href="#generating-test-data" title="Link to this heading">¶</a></h2>
+<p>The server or another non-runner application can call
+<code class="docutils literal notranslate"><span class="pre">simstack.methods.generate_test.generate_test</span></code> with an explicitly injected
+repository, work directory, and <code class="docutils literal notranslate"><span class="pre">NodeRegistry</span></code> ID. The function creates a
+directory arranged as <code class="docutils literal notranslate"><span class="pre">target_root</span> <span class="pre">/</span> <span class="pre">node_name</span> <span class="pre">/</span> <span class="pre">arg_hash</span></code> and writes two
+convenience files:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">inputs.json</span></code> contains models referenced by <code class="docutils literal notranslate"><span class="pre">input_references</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">outputs.json</span></code> contains models referenced by <code class="docutils literal notranslate"><span class="pre">results_references</span></code>.</p></li>
+</ul>
+<p>Reference keys retain the captured <code class="docutils literal notranslate"><span class="pre">variable_name</span></code>. This is important when
+several arguments or results use the same model type.</p>
+</section>
+<section id="patching-external-work">
+<h2>Patching external work<a class="headerlink" href="#patching-external-work" title="Link to this heading">¶</a></h2>
+<p>Keep local parsing and result construction outside the expensive helper. The
+helper should accept <code class="docutils literal notranslate"><span class="pre">*args</span></code> and <code class="docutils literal notranslate"><span class="pre">**kwargs</span></code> so a replay function can use the
+captured <code class="docutils literal notranslate"><span class="pre">arg_hash</span></code> to locate the matching test data.</p>
+<p>During replay:</p>
+<ol class="arabic simple">
+<li><p>Patch the expensive helper with <code class="xref py py-func docutils literal notranslate"><span class="pre">unittest.mock.patch()</span></code>.</p></li>
+<li><p>Restore any captured files needed by the local parsing code.</p></li>
+<li><p>Return the captured identifier or intermediate result.</p></li>
+<li><p>Invoke the node with <code class="docutils literal notranslate"><span class="pre">Parameters(force_rerun=True)</span></code>.</p></li>
+<li><p>Compare the reconstructed outputs with the captured outputs.</p></li>
+</ol>
+<section id="minimal-replay-helper">
+<h3>Minimal replay helper<a class="headerlink" href="#minimal-replay-helper" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="sd">&quot;&quot;&quot;Minimal pattern for replaying a captured complex-node execution.&quot;&quot;&quot;</span>
+<span class="linenos"> 2</span>
+<span class="linenos"> 3</span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="linenos"> 4</span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
+<span class="linenos"> 5</span><span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">patch</span>
+<span class="linenos"> 6</span>
+<span class="linenos"> 7</span><span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parameters</span>
+<span class="linenos"> 8</span>
+<span class="linenos"> 9</span>
+<span class="linenos">10</span><span class="k">def</span><span class="w"> </span><span class="nf">replay_generated_execution</span><span class="p">(</span>
+<span class="linenos">11</span>    <span class="n">node</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<span class="linenos">12</span>    <span class="n">side_effect</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<span class="linenos">13</span>    <span class="n">input_model</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<span class="linenos">14</span>    <span class="o">*</span><span class="p">,</span>
+<span class="linenos">15</span>    <span class="n">test_root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+<span class="linenos">16</span>    <span class="n">node_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="linenos">17</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="linenos">18</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Run ``node`` while replacing its expensive side effect with saved data.&quot;&quot;&quot;</span>
+<span class="linenos">19</span>
+<span class="linenos">20</span>    <span class="k">def</span><span class="w"> </span><span class="nf">patched_side_effect</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="linenos">21</span>        <span class="n">test_dir</span> <span class="o">=</span> <span class="n">test_root</span> <span class="o">/</span> <span class="n">node_name</span> <span class="o">/</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;arg_hash&quot;</span><span class="p">]</span>
+<span class="linenos">22</span>        <span class="k">return</span> <span class="p">(</span><span class="n">test_dir</span> <span class="o">/</span> <span class="s2">&quot;task_id.txt&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<span class="linenos">23</span>
+<span class="linenos">24</span>    <span class="n">patch_target</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">side_effect</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">side_effect</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="linenos">25</span>    <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="n">patch_target</span><span class="p">,</span> <span class="n">side_effect</span><span class="o">=</span><span class="n">patched_side_effect</span><span class="p">):</span>
+<span class="linenos">26</span>        <span class="k">return</span> <span class="n">node</span><span class="p">(</span>
+<span class="linenos">27</span>            <span class="n">input_model</span><span class="p">,</span>
+<span class="linenos">28</span>            <span class="n">parameters</span><span class="o">=</span><span class="n">Parameters</span><span class="p">(</span><span class="n">force_rerun</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+<span class="linenos">29</span>        <span class="p">)</span>
 </pre></div>
 </div>
+<p>This keeps the test deterministic while still exercising the node’s argument
+handling, local processing, and output construction.</p>
 </section>
-</section>
-<section id="benefits">
-<h2>Benefits<a class="headerlink" href="#benefits" title="Link to this heading">¶</a></h2>
-<ul class="simple">
-<li><p><strong>Reproducibility</strong>: Easily reproduce complex node executions in a local environment.</p></li>
-<li><p><strong>Isolation</strong>: Test node logic without triggering expensive or external side effects.</p></li>
-<li><p><strong>Verification</strong>: Ensure that data processing remains consistent over time.</p></li>
-</ul>
 </section>
 </section>
 
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
           <a class="next-page" href="database_migrations.html">
               <div class="page-info">
@@ -395,9 +394,9 @@ the test directory with respect to a test-directory root.</p>
                 <div class="context">
                   <span>Previous</span>
                 </div>
-                
+
                 <div class="title">Creating Docker Containers for SimStack Nodes</div>
-                
+
               </div>
             </a>
         </div>
@@ -407,20 +406,20 @@ the test directory with respect to a test-directory root.</p>
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer">
-      
-      
+
+
       <div class="toc-sticky toc-scroll">
         <div class="toc-title-container">
           <span class="toc-title">
@@ -431,13 +430,11 @@ the test directory with respect to a test-directory root.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Testing Complex Nodes</a><ul>
-<li><a class="reference internal" href="#overview">Overview</a></li>
-<li><a class="reference internal" href="#test-generation-generate-test-py">Test Generation (<cite>generate_test.py</cite>)</a></li>
-<li><a class="reference internal" href="#testing-with-patches-testing-test-generation-py">Testing with Patches (<cite>testing_test_generation.py</cite>)</a><ul>
-<li><a class="reference internal" href="#example-patch-implementation">Example Patch Implementation</a></li>
+<li><a class="reference internal" href="#generating-test-data">Generating test data</a></li>
+<li><a class="reference internal" href="#patching-external-work">Patching external work</a><ul>
+<li><a class="reference internal" href="#minimal-replay-helper">Minimal replay helper</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#benefits">Benefits</a></li>
 </ul>
 </li>
 </ul>
@@ -445,14 +442,14 @@ the test directory with respect to a test-directory root.</p>
           </div>
         </div>
       </div>
-      
-      
+
+
     </aside>
   </div>
 </div><script src="_static/documentation_options.js?v=5929fcd5"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

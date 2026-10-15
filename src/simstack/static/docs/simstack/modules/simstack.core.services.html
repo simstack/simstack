@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="simstack.methods package" href="simstack.methods.html"><link rel="prev" title="simstack.core package" href="simstack.core.html">
+<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="simstack.domain package" href="simstack.domain.html"><link rel="prev" title="simstack.core.runner_execution package" href="simstack.core.runner_execution.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
         <title>simstack.core.services package - SimStack II documentation</title>
@@ -12,15 +12,15 @@
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../../_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="../../_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -32,7 +32,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -44,17 +44,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -193,10 +193,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -216,8 +216,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../database_migrations.html">Database Migrations</a></li>
@@ -228,12 +226,31 @@
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 current has-children"><a class="reference internal" href="modules.html">simstack</a><input aria-label="Toggle navigation of simstack" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2 current has-children"><a class="reference internal" href="simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 current has-children"><a class="reference internal" href="simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4 current current-page"><a class="current reference internal" href="#">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -246,7 +263,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -307,25 +324,25 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.core.services.base_service.BaseService.write_node_event">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">write_node_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.runner_model.RunnerEventEnum" title="simstack.models.runner_model.RunnerEventEnum"><span class="pre">RunnerEventEnum</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ObjectId</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#BaseService.write_node_event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.base_service.BaseService.write_node_event" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">write_node_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.runner_protocol.html#simstack.runner_protocol.constants.RunnerEventType" title="simstack.runner_protocol.constants.RunnerEventType"><span class="pre">RunnerEventType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">execution_api</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#BaseService.write_node_event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.base_service.BaseService.write_node_event" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.core.services.base_service.BaseService.write_resource_event">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">write_resource_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.runner_model.RunnerEventEnum" title="simstack.models.runner_model.RunnerEventEnum"><span class="pre">RunnerEventEnum</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#BaseService.write_resource_event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.base_service.BaseService.write_resource_event" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">write_resource_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.runner_protocol.html#simstack.runner_protocol.constants.RunnerEventType" title="simstack.runner_protocol.constants.RunnerEventType"><span class="pre">RunnerEventType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#BaseService.write_resource_event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.base_service.BaseService.write_resource_event" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="simstack.core.services.base_service.RestartService">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.base_service.</span></span><span class="sig-name descname"><span class="pre">RestartService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#RestartService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.base_service.RestartService" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.base_service.</span></span><span class="sig-name descname"><span class="pre">RestartService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shutdown_event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Event</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#RestartService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.base_service.RestartService" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.BaseService" title="simstack.core.services.base_service.BaseService"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseService</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
 <p>Intermediate abstract class for services that can trigger a runner restart.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.core.services.base_service.RestartService.trigger_restart">
 <span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">trigger_restart</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#RestartService.trigger_restart"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.base_service.RestartService.trigger_restart" title="Link to this definition">¶</a></dt>
-<dd><p>Spawns an independent process to kill current PID and start new one</p>
+<dd><p>Request shutdown; an external supervisor owns process restart.</p>
 </dd></dl>
 
 </dd></dl>
@@ -343,43 +360,16 @@
 <span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/file_transfer_service.html#FileTransferService.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.file_transfer_service.FileTransferService.execute" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
-</dd></dl>
-
-</section>
-<section id="module-simstack.core.services.git_restart_service">
-<span id="simstack-core-services-git-restart-service-module"></span><h2>simstack.core.services.git_restart_service module<a class="headerlink" href="#module-simstack.core.services.git_restart_service" title="Link to this heading">¶</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="simstack.core.services.git_restart_service.GitRestartService">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.git_restart_service.</span></span><span class="sig-name descname"><span class="pre">GitRestartService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/git_restart_service.html#GitRestartService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.git_restart_service.GitRestartService" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.BaseService" title="simstack.core.services.base_service.BaseService"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseService</span></code></a></p>
-<p>Service that runs an external script to check git/restart the runner</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="simstack.core.services.git_restart_service.GitRestartService.execute">
-<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/git_restart_service.html#GitRestartService.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.git_restart_service.GitRestartService.execute" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simstack.core.services.file_transfer_service.FileTransferService.start">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/file_transfer_service.html#FileTransferService.start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.file_transfer_service.FileTransferService.start" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
-</dd></dl>
-
-</section>
-<section id="module-simstack.core.services.git_uv_update_service">
-<span id="simstack-core-services-git-uv-update-service-module"></span><h2>simstack.core.services.git_uv_update_service module<a class="headerlink" href="#module-simstack.core.services.git_uv_update_service" title="Link to this heading">¶</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="simstack.core.services.git_uv_update_service.GitUvUpdateService">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.git_uv_update_service.</span></span><span class="sig-name descname"><span class="pre">GitUvUpdateService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/git_uv_update_service.html#GitUvUpdateService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.git_uv_update_service.GitUvUpdateService" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.RestartService" title="simstack.core.services.base_service.RestartService"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestartService</span></code></a></p>
-<p>Advanced service that performs git pull and uv lock upgrades.
-If changes are detected, it restarts the runner.</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="simstack.core.services.git_uv_update_service.GitUvUpdateService.execute">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/git_uv_update_service.html#GitUvUpdateService.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.git_uv_update_service.GitUvUpdateService.execute" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="simstack.core.services.file_transfer_service.FileTransferService.stop">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/file_transfer_service.html#FileTransferService.stop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.file_transfer_service.FileTransferService.stop" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="simstack.core.services.git_uv_update_service.get_file_checksum">
-<span class="sig-prename descclassname"><span class="pre">simstack.core.services.git_uv_update_service.</span></span><span class="sig-name descname"><span class="pre">get_file_checksum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/git_uv_update_service.html#get_file_checksum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.git_uv_update_service.get_file_checksum" title="Link to this definition">¶</a></dt>
-<dd><p>Calculate SHA256 checksum of a file</p>
 </dd></dl>
 
 </section>
@@ -387,7 +377,7 @@ If changes are detected, it restarts the runner.</p>
 <span id="simstack-core-services-node-execution-service-module"></span><h2>simstack.core.services.node_execution_service module<a class="headerlink" href="#module-simstack.core.services.node_execution_service" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="simstack.core.services.node_execution_service.NodeExecutionService">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.node_execution_service.</span></span><span class="sig-name descname"><span class="pre">NodeExecutionService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_concurrent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shutdown_event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Event</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detach</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/node_execution_service.html#NodeExecutionService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.node_execution_service.NodeExecutionService" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.node_execution_service.</span></span><span class="sig-name descname"><span class="pre">NodeExecutionService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_concurrent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shutdown_event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Event</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/node_execution_service.html#NodeExecutionService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.node_execution_service.NodeExecutionService" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.BaseService" title="simstack.core.services.base_service.BaseService"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseService</span></code></a></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.core.services.node_execution_service.NodeExecutionService.execute">
@@ -396,46 +386,9 @@ If changes are detected, it restarts the runner.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.core.services.node_execution_service.NodeExecutionService.run_node">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">run_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">registry_entry</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.node_registry.NodeRegistry" title="simstack.models.node_registry.NodeRegistry"><span class="pre">NodeRegistry</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/node_execution_service.html#NodeExecutionService.run_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.node_execution_service.NodeExecutionService.run_node" title="Link to this definition">¶</a></dt>
-<dd><p>Run a single node by its ID from the database</p>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">run_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">registry_entry</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.node_registry.NodeRegistry" title="simstack.models.node_registry.NodeRegistry"><span class="pre">NodeRegistry</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">claim_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attempt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">execution_api</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.runner_api.html#simstack.runner_api.execution.ExecutionRunnerClient" title="simstack.runner_api.execution.ExecutionRunnerClient"><span class="pre">ExecutionRunnerClient</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/node_execution_service.html#NodeExecutionService.run_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.node_execution_service.NodeExecutionService.run_node" title="Link to this definition">¶</a></dt>
+<dd><p>Dispatch a task claimed atomically by the server.</p>
 </dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="simstack.core.services.node_execution_service.run_node_from_registry">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.node_execution_service.</span></span><span class="sig-name descname"><span class="pre">run_node_from_registry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">registry_entry</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.node_registry.NodeRegistry" title="simstack.models.node_registry.NodeRegistry"><span class="pre">NodeRegistry</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/node_execution_service.html#run_node_from_registry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.node_execution_service.run_node_from_registry" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</section>
-<section id="module-simstack.core.services.resource_branch_monitor_service">
-<span id="simstack-core-services-resource-branch-monitor-service-module"></span><h2>simstack.core.services.resource_branch_monitor_service module<a class="headerlink" href="#module-simstack.core.services.resource_branch_monitor_service" title="Link to this heading">¶</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="simstack.core.services.resource_branch_monitor_service.ResourceBranchMonitorService">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.resource_branch_monitor_service.</span></span><span class="sig-name descname"><span class="pre">ResourceBranchMonitorService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/resource_branch_monitor_service.html#ResourceBranchMonitorService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.resource_branch_monitor_service.ResourceBranchMonitorService" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.RestartService" title="simstack.core.services.base_service.RestartService"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestartService</span></code></a></p>
-<p>Monitors the ResourceDefinition for the current resource.
-If the git_branch field changes, it stashes, switches branch, syncs, and restarts.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.core.services.resource_branch_monitor_service.ResourceBranchMonitorService.execute">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/resource_branch_monitor_service.html#ResourceBranchMonitorService.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.resource_branch_monitor_service.ResourceBranchMonitorService.execute" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-</section>
-<section id="module-simstack.core.services.runner_cleanup_service">
-<span id="simstack-core-services-runner-cleanup-service-module"></span><h2>simstack.core.services.runner_cleanup_service module<a class="headerlink" href="#module-simstack.core.services.runner_cleanup_service" title="Link to this heading">¶</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="simstack.core.services.runner_cleanup_service.RunnerCleanupService">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.runner_cleanup_service.</span></span><span class="sig-name descname"><span class="pre">RunnerCleanupService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/runner_cleanup_service.html#RunnerCleanupService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.runner_cleanup_service.RunnerCleanupService" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.BaseService" title="simstack.core.services.base_service.BaseService"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseService</span></code></a></p>
-<p>Service that cleans up old RunnerEvent logs and expired local file cache
-copies for the current resource.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.core.services.runner_cleanup_service.RunnerCleanupService.execute">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/runner_cleanup_service.html#RunnerCleanupService.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.runner_cleanup_service.RunnerCleanupService.execute" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
 
 </dd></dl>
 
@@ -444,7 +397,7 @@ copies for the current resource.</p>
 <span id="simstack-core-services-runner-manager-module"></span><h2>simstack.core.services.runner_manager module<a class="headerlink" href="#module-simstack.core.services.runner_manager" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="simstack.core.services.runner_manager.RunnerManager">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.runner_manager.</span></span><span class="sig-name descname"><span class="pre">RunnerManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">detach</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">no_pull</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_file_transfer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/runner_manager.html#RunnerManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.runner_manager.RunnerManager" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.runner_manager.</span></span><span class="sig-name descname"><span class="pre">RunnerManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_file_transfer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/runner_manager.html#RunnerManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.runner_manager.RunnerManager" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.core.services.runner_manager.RunnerManager.run_nodes_for_resource">
@@ -458,6 +411,12 @@ copies for the current resource.</p>
 <dd><p>Gracefully stop all registered services</p>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="simstack.core.services.runner_manager.runner_pid_file">
+<span class="sig-prename descclassname"><span class="pre">simstack.core.services.runner_manager.</span></span><span class="sig-name descname"><span class="pre">runner_pid_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">workdir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/runner_manager.html#runner_pid_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.runner_manager.runner_pid_file" title="Link to this definition">¶</a></dt>
+<dd><p>Map an opaque server resource name to one contained deterministic path.</p>
 </dd></dl>
 
 </section>
@@ -479,8 +438,9 @@ copies for the current resource.</p>
 <span id="simstack-core-services-slurm-status-service-module"></span><h2>simstack.core.services.slurm_status_service module<a class="headerlink" href="#module-simstack.core.services.slurm_status_service" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="simstack.core.services.slurm_status_service.SlurmStatusService">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.slurm_status_service.</span></span><span class="sig-name descname"><span class="pre">SlurmStatusService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/slurm_status_service.html#SlurmStatusService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.slurm_status_service.SlurmStatusService" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.slurm_status_service.</span></span><span class="sig-name descname"><span class="pre">SlurmStatusService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_concurrent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/slurm_status_service.html#SlurmStatusService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.slurm_status_service.SlurmStatusService" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.BaseService" title="simstack.core.services.base_service.BaseService"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseService</span></code></a></p>
+<p>Reconcile server-owned active tasks with the local Slurm scheduler.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.core.services.slurm_status_service.SlurmStatusService.execute">
 <span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/slurm_status_service.html#SlurmStatusService.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.slurm_status_service.SlurmStatusService.execute" title="Link to this definition">¶</a></dt>
@@ -508,7 +468,7 @@ copies for the current resource.</p>
 <span id="simstack-core-services-timeout-restart-service-module"></span><h2>simstack.core.services.timeout_restart_service module<a class="headerlink" href="#module-simstack.core.services.timeout_restart_service" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="simstack.core.services.timeout_restart_service.TimeoutRestartService">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.timeout_restart_service.</span></span><span class="sig-name descname"><span class="pre">TimeoutRestartService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout_minutes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/timeout_restart_service.html#TimeoutRestartService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.timeout_restart_service.TimeoutRestartService" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.timeout_restart_service.</span></span><span class="sig-name descname"><span class="pre">TimeoutRestartService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout_minutes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shutdown_event</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/timeout_restart_service.html#TimeoutRestartService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.timeout_restart_service.TimeoutRestartService" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.RestartService" title="simstack.core.services.base_service.RestartService"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestartService</span></code></a></p>
 <p>Service that restarts the runner after a specified timeout</p>
 <dl class="py method">
@@ -521,32 +481,159 @@ copies for the current resource.</p>
 </section>
 <section id="module-simstack.core.services">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-simstack.core.services" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.core.services.BaseService">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.</span></span><span class="sig-name descname"><span class="pre">BaseService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shutdown_event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Event</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#BaseService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.BaseService" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>A managed periodic service that can be stopped gracefully</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.BaseService.execute">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#BaseService.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.BaseService.execute" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.BaseService.start">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#BaseService.start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.BaseService.start" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.BaseService.stop">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#BaseService.stop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.BaseService.stop" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.BaseService.write_node_event">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">write_node_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.runner_protocol.html#simstack.runner_protocol.constants.RunnerEventType" title="simstack.runner_protocol.constants.RunnerEventType"><span class="pre">RunnerEventType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">execution_api</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#BaseService.write_node_event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.BaseService.write_node_event" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.BaseService.write_resource_event">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">write_resource_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.runner_protocol.html#simstack.runner_protocol.constants.RunnerEventType" title="simstack.runner_protocol.constants.RunnerEventType"><span class="pre">RunnerEventType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#BaseService.write_resource_event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.BaseService.write_resource_event" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.core.services.NodeExecutionService">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.</span></span><span class="sig-name descname"><span class="pre">NodeExecutionService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_concurrent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shutdown_event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Event</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/node_execution_service.html#NodeExecutionService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.NodeExecutionService" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.BaseService" title="simstack.core.services.base_service.BaseService"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseService</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.NodeExecutionService.execute">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/node_execution_service.html#NodeExecutionService.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.NodeExecutionService.execute" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.NodeExecutionService.run_node">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">run_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">registry_entry</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.node_registry.NodeRegistry" title="simstack.models.node_registry.NodeRegistry"><span class="pre">NodeRegistry</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">claim_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attempt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">execution_api</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.runner_api.html#simstack.runner_api.execution.ExecutionRunnerClient" title="simstack.runner_api.execution.ExecutionRunnerClient"><span class="pre">ExecutionRunnerClient</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/node_execution_service.html#NodeExecutionService.run_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.NodeExecutionService.run_node" title="Link to this definition">¶</a></dt>
+<dd><p>Dispatch a task claimed atomically by the server.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.core.services.RestartService">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.</span></span><span class="sig-name descname"><span class="pre">RestartService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shutdown_event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Event</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#RestartService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.RestartService" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.BaseService" title="simstack.core.services.base_service.BaseService"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseService</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Intermediate abstract class for services that can trigger a runner restart.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.RestartService.trigger_restart">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">trigger_restart</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/base_service.html#RestartService.trigger_restart"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.RestartService.trigger_restart" title="Link to this definition">¶</a></dt>
+<dd><p>Request shutdown; an external supervisor owns process restart.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.core.services.RunnerManager">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.</span></span><span class="sig-name descname"><span class="pre">RunnerManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_file_transfer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/runner_manager.html#RunnerManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.RunnerManager" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.RunnerManager.run_nodes_for_resource">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">run_nodes_for_resource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">polling_interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_concurrent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/runner_manager.html#RunnerManager.run_nodes_for_resource"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.RunnerManager.run_nodes_for_resource" title="Link to this definition">¶</a></dt>
+<dd><p>Orchestrates multiple independent services</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.RunnerManager.stop_all_services">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">stop_all_services</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/runner_manager.html#RunnerManager.stop_all_services"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.RunnerManager.stop_all_services" title="Link to this definition">¶</a></dt>
+<dd><p>Gracefully stop all registered services</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.core.services.RunnerStatusService">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.</span></span><span class="sig-name descname"><span class="pre">RunnerStatusService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/runner_status_service.html#RunnerStatusService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.RunnerStatusService" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.BaseService" title="simstack.core.services.base_service.BaseService"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseService</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.RunnerStatusService.execute">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/runner_status_service.html#RunnerStatusService.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.RunnerStatusService.execute" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.core.services.SlurmStatusService">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.</span></span><span class="sig-name descname"><span class="pre">SlurmStatusService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_concurrent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/slurm_status_service.html#SlurmStatusService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.SlurmStatusService" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.BaseService" title="simstack.core.services.base_service.BaseService"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseService</span></code></a></p>
+<p>Reconcile server-owned active tasks with the local Slurm scheduler.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.SlurmStatusService.execute">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/core/services/slurm_status_service.html#SlurmStatusService.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.SlurmStatusService.execute" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.core.services.StopCheckService">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.</span></span><span class="sig-name descname"><span class="pre">StopCheckService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shutdown_event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Event</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/stop_check_service.html#StopCheckService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.StopCheckService" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.BaseService" title="simstack.core.services.base_service.BaseService"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseService</span></code></a></p>
+<p>Service that checks for STOP file and triggers shutdown</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.StopCheckService.execute">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/stop_check_service.html#StopCheckService.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.StopCheckService.execute" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="simstack.core.services.TimeoutRestartService">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.core.services.</span></span><span class="sig-name descname"><span class="pre">TimeoutRestartService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.parameters.Resource" title="simstack.models.parameters.Resource"><span class="pre">Resource</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout_minutes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shutdown_event</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/timeout_restart_service.html#TimeoutRestartService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.TimeoutRestartService" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#simstack.core.services.base_service.RestartService" title="simstack.core.services.base_service.RestartService"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestartService</span></code></a></p>
+<p>Service that restarts the runner after a specified timeout</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.core.services.TimeoutRestartService.execute">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/core/services/timeout_restart_service.html#TimeoutRestartService.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.core.services.TimeoutRestartService.execute" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
 </section>
 
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
-          <a class="next-page" href="simstack.methods.html">
+          <a class="next-page" href="simstack.domain.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">simstack.methods package</div>
+                <div class="title">simstack.domain package</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="simstack.core.html">
+          <a class="prev-page" href="simstack.core.runner_execution.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
-                
-                <div class="title">simstack.core package</div>
-                
+
+                <div class="title">simstack.core.runner_execution package</div>
+
               </div>
             </a>
         </div>
@@ -556,20 +643,20 @@ copies for the current resource.</p>
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer">
-      
-      
+
+
       <div class="toc-sticky toc-scroll">
         <div class="toc-title-container">
           <span class="toc-title">
@@ -599,44 +686,16 @@ copies for the current resource.</p>
 <li><a class="reference internal" href="#module-simstack.core.services.file_transfer_service">simstack.core.services.file_transfer_service module</a><ul>
 <li><a class="reference internal" href="#simstack.core.services.file_transfer_service.FileTransferService"><code class="docutils literal notranslate"><span class="pre">FileTransferService</span></code></a><ul>
 <li><a class="reference internal" href="#simstack.core.services.file_transfer_service.FileTransferService.execute"><code class="docutils literal notranslate"><span class="pre">FileTransferService.execute()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.core.services.file_transfer_service.FileTransferService.start"><code class="docutils literal notranslate"><span class="pre">FileTransferService.start()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.core.services.file_transfer_service.FileTransferService.stop"><code class="docutils literal notranslate"><span class="pre">FileTransferService.stop()</span></code></a></li>
 </ul>
 </li>
-</ul>
-</li>
-<li><a class="reference internal" href="#module-simstack.core.services.git_restart_service">simstack.core.services.git_restart_service module</a><ul>
-<li><a class="reference internal" href="#simstack.core.services.git_restart_service.GitRestartService"><code class="docutils literal notranslate"><span class="pre">GitRestartService</span></code></a><ul>
-<li><a class="reference internal" href="#simstack.core.services.git_restart_service.GitRestartService.execute"><code class="docutils literal notranslate"><span class="pre">GitRestartService.execute()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li><a class="reference internal" href="#module-simstack.core.services.git_uv_update_service">simstack.core.services.git_uv_update_service module</a><ul>
-<li><a class="reference internal" href="#simstack.core.services.git_uv_update_service.GitUvUpdateService"><code class="docutils literal notranslate"><span class="pre">GitUvUpdateService</span></code></a><ul>
-<li><a class="reference internal" href="#simstack.core.services.git_uv_update_service.GitUvUpdateService.execute"><code class="docutils literal notranslate"><span class="pre">GitUvUpdateService.execute()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#simstack.core.services.git_uv_update_service.get_file_checksum"><code class="docutils literal notranslate"><span class="pre">get_file_checksum()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-simstack.core.services.node_execution_service">simstack.core.services.node_execution_service module</a><ul>
 <li><a class="reference internal" href="#simstack.core.services.node_execution_service.NodeExecutionService"><code class="docutils literal notranslate"><span class="pre">NodeExecutionService</span></code></a><ul>
 <li><a class="reference internal" href="#simstack.core.services.node_execution_service.NodeExecutionService.execute"><code class="docutils literal notranslate"><span class="pre">NodeExecutionService.execute()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.core.services.node_execution_service.NodeExecutionService.run_node"><code class="docutils literal notranslate"><span class="pre">NodeExecutionService.run_node()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#simstack.core.services.node_execution_service.run_node_from_registry"><code class="docutils literal notranslate"><span class="pre">run_node_from_registry()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#module-simstack.core.services.resource_branch_monitor_service">simstack.core.services.resource_branch_monitor_service module</a><ul>
-<li><a class="reference internal" href="#simstack.core.services.resource_branch_monitor_service.ResourceBranchMonitorService"><code class="docutils literal notranslate"><span class="pre">ResourceBranchMonitorService</span></code></a><ul>
-<li><a class="reference internal" href="#simstack.core.services.resource_branch_monitor_service.ResourceBranchMonitorService.execute"><code class="docutils literal notranslate"><span class="pre">ResourceBranchMonitorService.execute()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li><a class="reference internal" href="#module-simstack.core.services.runner_cleanup_service">simstack.core.services.runner_cleanup_service module</a><ul>
-<li><a class="reference internal" href="#simstack.core.services.runner_cleanup_service.RunnerCleanupService"><code class="docutils literal notranslate"><span class="pre">RunnerCleanupService</span></code></a><ul>
-<li><a class="reference internal" href="#simstack.core.services.runner_cleanup_service.RunnerCleanupService.execute"><code class="docutils literal notranslate"><span class="pre">RunnerCleanupService.execute()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -647,6 +706,7 @@ copies for the current resource.</p>
 <li><a class="reference internal" href="#simstack.core.services.runner_manager.RunnerManager.stop_all_services"><code class="docutils literal notranslate"><span class="pre">RunnerManager.stop_all_services()</span></code></a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#simstack.core.services.runner_manager.runner_pid_file"><code class="docutils literal notranslate"><span class="pre">runner_pid_file()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-simstack.core.services.runner_status_service">simstack.core.services.runner_status_service module</a><ul>
@@ -677,7 +737,47 @@ copies for the current resource.</p>
 </li>
 </ul>
 </li>
-<li><a class="reference internal" href="#module-simstack.core.services">Module contents</a></li>
+<li><a class="reference internal" href="#module-simstack.core.services">Module contents</a><ul>
+<li><a class="reference internal" href="#simstack.core.services.BaseService"><code class="docutils literal notranslate"><span class="pre">BaseService</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.core.services.BaseService.execute"><code class="docutils literal notranslate"><span class="pre">BaseService.execute()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.core.services.BaseService.start"><code class="docutils literal notranslate"><span class="pre">BaseService.start()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.core.services.BaseService.stop"><code class="docutils literal notranslate"><span class="pre">BaseService.stop()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.core.services.BaseService.write_node_event"><code class="docutils literal notranslate"><span class="pre">BaseService.write_node_event()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.core.services.BaseService.write_resource_event"><code class="docutils literal notranslate"><span class="pre">BaseService.write_resource_event()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simstack.core.services.NodeExecutionService"><code class="docutils literal notranslate"><span class="pre">NodeExecutionService</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.core.services.NodeExecutionService.execute"><code class="docutils literal notranslate"><span class="pre">NodeExecutionService.execute()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.core.services.NodeExecutionService.run_node"><code class="docutils literal notranslate"><span class="pre">NodeExecutionService.run_node()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simstack.core.services.RestartService"><code class="docutils literal notranslate"><span class="pre">RestartService</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.core.services.RestartService.trigger_restart"><code class="docutils literal notranslate"><span class="pre">RestartService.trigger_restart()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simstack.core.services.RunnerManager"><code class="docutils literal notranslate"><span class="pre">RunnerManager</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.core.services.RunnerManager.run_nodes_for_resource"><code class="docutils literal notranslate"><span class="pre">RunnerManager.run_nodes_for_resource()</span></code></a></li>
+<li><a class="reference internal" href="#simstack.core.services.RunnerManager.stop_all_services"><code class="docutils literal notranslate"><span class="pre">RunnerManager.stop_all_services()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simstack.core.services.RunnerStatusService"><code class="docutils literal notranslate"><span class="pre">RunnerStatusService</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.core.services.RunnerStatusService.execute"><code class="docutils literal notranslate"><span class="pre">RunnerStatusService.execute()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simstack.core.services.SlurmStatusService"><code class="docutils literal notranslate"><span class="pre">SlurmStatusService</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.core.services.SlurmStatusService.execute"><code class="docutils literal notranslate"><span class="pre">SlurmStatusService.execute()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simstack.core.services.StopCheckService"><code class="docutils literal notranslate"><span class="pre">StopCheckService</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.core.services.StopCheckService.execute"><code class="docutils literal notranslate"><span class="pre">StopCheckService.execute()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simstack.core.services.TimeoutRestartService"><code class="docutils literal notranslate"><span class="pre">TimeoutRestartService</span></code></a><ul>
+<li><a class="reference internal" href="#simstack.core.services.TimeoutRestartService.execute"><code class="docutils literal notranslate"><span class="pre">TimeoutRestartService.execute()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -685,14 +785,14 @@ copies for the current resource.</p>
           </div>
         </div>
       </div>
-      
-      
+
+
     </aside>
   </div>
 </div><script src="../../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

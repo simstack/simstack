@@ -1,18 +1,18 @@
 Program Execution
 =================
 
-When developers write new nodes that execute external programs they cannot know the specifics of the resources on which these nodes are to be run. 
-Simstack separates the program execution logic from the specifics of a particular resource. The ``ResourceConfig`` class handles resource-specific 
-configurations from a ``config.toml`` file. It provides methods to retrieve program parameters, setup scripts, 
+When developers write new nodes that execute external programs they cannot know the specifics of the resources on which these nodes are to be run.
+Simstack separates the program execution logic from the specifics of a particular resource. The ``ResourceConfig`` class handles resource-specific
+configurations from a ``config.toml`` file. It provides methods to retrieve program parameters, setup scripts,
 and run commands in a controlled environment (optionally using temporary directories).
 
 
 The config toml is structured by resources, i.e. if you have resources hpc1 and small-computer and my-laptop sections starting with [hpc1], [small-computer], [my-laptop]
-contain the data for each of these nodes. The convenience functions return the data for the actual resource. In principle you are totally free 
+contain the data for each of these nodes. The convenience functions return the data for the actual resource. In principle you are totally free
 which information you store in ``config.toml`` for your own nodes, but the convenience functions implement often used features, such as
 
-- using scratch space for program execution and where that is 
-- startup scripts 
+- using scratch space for program execution and where that is
+- startup scripts
 - the actual command to execute to run the programs
 
 .. note::
@@ -29,8 +29,8 @@ The documentation below explains the current defaults. Standard nodes are then s
    from simstack.core.context import context
 
    input_files: List[str | FileStack] = [...]
-   output_files: List[str | FileStack] = [...] 
-   result = context.resource_config.run("program-name", input_files, output_files) 
+   output_files: List[str | FileStack] = [...]
+   result = context.resource_config.run("program-name", input_files, output_files)
 
 
 
@@ -57,7 +57,7 @@ The ``ResourceConfig`` is initialized with a path to the configuration file (or 
 
    config = ResourceConfig(Path("/path/to/project"), "local")
    config.program = "orca"
-   
+
 
 Methods
 ~~~~~~~
@@ -87,10 +87,6 @@ General Resource Settings
 
    [resource_name]
    os = "linux"  # optional, defaults to "linux"
-   same-as = "other-resource"  # optional: copy that resource, overlay extra keys
-
-A missing ``[resource_name]`` table, or a missing ``[resource_name.program.name]``
-table when ``get_program`` / ``run`` is called, raises ``ValueError``.
 
 Setup Section
 ~~~~~~~~~~~~~
@@ -126,7 +122,7 @@ Defines configuration for specific applications on the resource.
    [resource_name.program.orca]
    use_tmp = true
    run_command = "orca orca.inp > orca.out"
- 
+
 
 Example config.toml
 ~~~~~~~~~~~~~~~~~~~

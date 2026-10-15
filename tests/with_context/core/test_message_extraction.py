@@ -1,4 +1,4 @@
-from simstack.util.db_logger import extract_task_id
+from simstack.runner_protocol.logs import extract_task_id
 
 
 def test_task_id_extraction():

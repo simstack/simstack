@@ -1,6 +1,5 @@
-from odmantic import ObjectId
-
-from simstack.core.definitions import TaskStatus
+from simstack.runner_protocol.constants import RunnerTaskStatus as TaskStatus
+from simstack.models.document import ObjectId
 from simstack.models.node_registry import NodeRegistry
 from simstack.models.parameters import Parameters
 
@@ -40,3 +39,14 @@ def test_reassigning_parameters_keeps_project_none_when_not_set():
 
     assert node_registry.project is None
     assert node_registry.model_dump_doc()["project"] is None
+
+
+def test_parameters_remain_an_embedded_document_not_a_reference():
+    node_registry = _build_node_registry()
+
+    parameters_schema = NodeRegistry.model_json_schema()["properties"]["parameters"]
+    dumped_parameters = node_registry.model_dump_doc()["parameters"]
+
+    assert parameters_schema == {"$ref": "#/$defs/Parameters"}
+    assert isinstance(dumped_parameters, dict)
+    assert dumped_parameters["queue"] == "default"

@@ -1,5 +1,5 @@
 import pytest
-from odmantic import Model
+from simstack.models.document import Model
 
 from simstack.core.context import context
 from simstack.models.models import ModelMapping, NodeModel, Parameters
@@ -37,13 +37,15 @@ def _install_late_function(function_name: str):
 
 async def _delete_saved_model(saved_model):
     try:
-        await context.db.delete(saved_model)
+        await context.repository.delete(saved_model)
     except Exception:
         pass
 
 
 @pytest.mark.asyncio
-async def test_import_class_refreshes_stale_model_mapping_cache(initialized_context):
+async def test_import_class_queries_repository_without_mutating_context_cache(
+    initialized_context,
+):
     class_name = "LateModelMappingCacheByPath"
     model_class = _install_late_model(class_name)
     mapping_path = f"{__name__}.{class_name}"
@@ -57,13 +59,13 @@ async def test_import_class_refreshes_stale_model_mapping_cache(initialized_cont
     assert context.model_mappings.get_by_name(class_name) is None
 
     try:
-        await context.db.save(model_mapping)
+        await context.repository.save(model_mapping)
         assert context.model_mappings.get_by_name(class_name) is None
 
-        imported_class = await import_class(mapping_path, context.db)
+        imported_class = await import_class(mapping_path, context.repository)
 
         assert imported_class is model_class
-        assert context.model_mappings.get_by_name(class_name) is not None
+        assert context.model_mappings.get_by_name(class_name) is None
     finally:
         await _delete_saved_model(model_mapping)
         globals().pop(class_name, None)
@@ -71,7 +73,7 @@ async def test_import_class_refreshes_stale_model_mapping_cache(initialized_cont
 
 
 @pytest.mark.asyncio
-async def test_import_class_by_name_refreshes_stale_model_mapping_cache():
+async def test_import_class_by_name_queries_repository_without_mutating_context_cache():
     class_name = "LateModelMappingCacheByName"
     model_class = _install_late_model(class_name)
     mapping_path = f"{__name__}.{class_name}"
@@ -83,15 +85,15 @@ async def test_import_class_by_name_refreshes_stale_model_mapping_cache():
 
     await context.refresh_mappings(models=True, nodes=False)
     assert context.model_mappings.get_by_name(class_name) is None
-    db = context.db
+    repository = context.repository
     try:
-        await context.db.save(model_mapping)
+        await context.repository.save(model_mapping)
         assert context.model_mappings.get_by_name(class_name) is None
 
-        imported_class = await import_class_by_name(class_name, db)
+        imported_class = await import_class_by_name(class_name, repository)
 
         assert imported_class is model_class
-        assert context.model_mappings.get_by_name(class_name) is not None
+        assert context.model_mappings.get_by_name(class_name) is None
     finally:
         await _delete_saved_model(model_mapping)
         globals().pop(class_name, None)
@@ -99,7 +101,7 @@ async def test_import_class_by_name_refreshes_stale_model_mapping_cache():
 
 
 @pytest.mark.asyncio
-async def test_import_function_refreshes_stale_node_mapping_cache():
+async def test_import_function_queries_repository_without_mutating_context_cache():
     function_name = "late_node_mapping_cache_by_path"
     function = _install_late_function(function_name)
     function_mapping = f"{__name__}.{function_name}"
@@ -115,14 +117,14 @@ async def test_import_function_refreshes_stale_node_mapping_cache():
     assert context.node_mappings.get_by_mapping(function_mapping) is None
 
     try:
-        await context.db.save(node_model)
+        await context.repository.save(node_model)
         assert context.node_mappings.get_by_mapping(function_mapping) is None
 
-        imported_function = await import_function(function_mapping, context.db)
+        imported_function = await import_function(function_mapping, context.repository)
 
         assert imported_function is function
         assert imported_function("fresh") == "fresh"
-        assert context.node_mappings.get_by_mapping(function_mapping) is not None
+        assert context.node_mappings.get_by_mapping(function_mapping) is None
     finally:
         await _delete_saved_model(node_model)
         globals().pop(function_name, None)
@@ -130,7 +132,7 @@ async def test_import_function_refreshes_stale_node_mapping_cache():
 
 
 @pytest.mark.asyncio
-async def test_import_function_by_name_refreshes_stale_node_mapping_cache():
+async def test_import_function_by_name_queries_repository_without_mutating_context_cache():
     function_name = "late_node_mapping_cache_by_name"
     function = _install_late_function(function_name)
     function_mapping = f"{__name__}.{function_name}"
@@ -146,14 +148,18 @@ async def test_import_function_by_name_refreshes_stale_node_mapping_cache():
     assert context.node_mappings.get_by_name(function_name) is None
 
     try:
-        await context.db.save(node_model)
+        await context.repository.save(node_model)
         assert context.node_mappings.get_by_name(function_name) is None
 
-        imported_function = await import_function_by_name(function_name, db=context.db, task_id=None)
+        imported_function = await import_function_by_name(
+            function_name,
+            repository=context.repository,
+            task_id=None,
+        )
 
         assert imported_function is function
         assert imported_function("fresh") == "fresh"
-        assert context.node_mappings.get_by_name(function_name) is not None
+        assert context.node_mappings.get_by_name(function_name) is None
     finally:
         await _delete_saved_model(node_model)
         globals().pop(function_name, None)

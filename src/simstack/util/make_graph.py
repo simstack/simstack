@@ -1,10 +1,10 @@
 def model_to_graph_data(model, exclude_none=True, exclude_unset=True, exclude=None):
     """
-    Checks if an odmantic Model contains fields that can be interpreted as graph data
+    Checks if a SimStack document model contains graph-compatible fields.
     (multiple lists of the same length) and converts it to a format suitable for ag-graph.
 
     Args:
-        model: An odmantic Model instance
+        model: A SimStack document model instance
         exclude_none (bool): Whether to exclude None values
         exclude_unset (bool): Whether to exclude unset values
         exclude (set): Fields to exclude

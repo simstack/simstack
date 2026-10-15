@@ -11,15 +11,15 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="../../../_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -31,7 +31,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -43,17 +43,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -192,10 +192,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -215,8 +215,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../database_migrations.html">Database Migrations</a></li>
@@ -227,12 +225,31 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -245,7 +262,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -277,14 +294,12 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">DocumentParsingError</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationError</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelMapping</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">DocumentParsingError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.persistence</span><span class="w"> </span><span class="kn">import</span> <span class="n">Repository</span><span class="p">,</span> <span class="n">eq</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.simstack_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_simstack_model</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">Database</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.path_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">path_manager</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.tables.table_builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">TableBuilderBase</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;ModelTable&quot;</span><span class="p">)</span>
@@ -297,20 +312,13 @@
 <span class="sd">    Helper class to build the model table without passing around many parameters.</span>
 
 <span class="sd">    Usage:</span>
-<span class="sd">        creator = CreateModelTable(db)</span>
-<span class="sd">        await creator.make_model_table()</span>
+<span class="sd">        creator = CreateModelTable(repository)</span>
+<span class="sd">        await creator.build()</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">logger</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">logger</span>
-
-<div class="viewcode-block" id="CreateModelTable.build">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.model_table.CreateModelTable.build">[docs]</a>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">refresh_mappings</span><span class="p">(</span><span class="n">models</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nodes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
-
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_process_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_models_from_module</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">drops</span><span class="p">)</span>
@@ -320,7 +328,7 @@
         <span class="n">classes</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">class_name</span><span class="p">,</span> <span class="n">new_class</span> <span class="ow">in</span> <span class="n">classes</span><span class="p">:</span>
-            <span class="c1"># this is required because of the Odmantic Metaclass Model</span>
+            <span class="c1"># This is required by the document-model metaclass.</span>
             <span class="c1"># subclass does not work even if applied to the imported classes</span>
             <span class="c1"># this is a bug in importlib</span>
             <span class="n">bases</span> <span class="o">=</span> <span class="p">[</span><span class="n">base</span><span class="o">.</span><span class="vm">__name__</span> <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">new_class</span><span class="o">.</span><span class="vm">__bases__</span><span class="p">]</span>
@@ -357,8 +365,8 @@
             <span class="c1"># Remove any existing ModelMapping entry for this class</span>
 
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">existing_entries</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
-                    <span class="n">ModelMapping</span><span class="p">,</span> <span class="n">ModelMapping</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">class_name</span>
+                <span class="n">existing_entries</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">repository</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+                    <span class="n">ModelMapping</span><span class="p">,</span> <span class="n">eq</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="n">class_name</span><span class="p">)</span>
                 <span class="p">)</span>
             <span class="k">except</span> <span class="p">(</span><span class="n">ValidationError</span><span class="p">,</span> <span class="ne">NameError</span><span class="p">,</span> <span class="n">DocumentParsingError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
@@ -366,21 +374,23 @@
                 <span class="p">)</span>
                 <span class="n">existing_entries</span> <span class="o">=</span> <span class="p">[]</span>
 
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="n">error_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Fatal error: Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">)</span><span class="si">}</span><span class="s2"> ModelMapping entries for class_name &#39;</span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">&#39;. Expected at most one.&quot;</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
-                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
-
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="n">existing_mapping</span> <span class="o">=</span> <span class="n">existing_entries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mapping</span>
-                <span class="k">if</span> <span class="n">existing_mapping</span> <span class="o">!=</span> <span class="n">full_mapping</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
                     <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Replacing ModelMapping entry for </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">: &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;old mapping &#39;</span><span class="si">{</span><span class="n">existing_mapping</span><span class="si">}</span><span class="s2">&#39; -&gt; new mapping &#39;</span><span class="si">{</span><span class="n">full_mapping</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">)</span><span class="si">}</span><span class="s2"> ModelMapping entries for class_name &#39;</span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;Expected at most one. Deleting all existing entries.&quot;</span>
                     <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">existing_mapping</span> <span class="o">=</span> <span class="n">existing_entries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mapping</span>
+                    <span class="k">if</span> <span class="n">existing_mapping</span> <span class="o">!=</span> <span class="n">full_mapping</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Replacing ModelMapping entry for </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">: &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;old mapping &#39;</span><span class="si">{</span><span class="n">existing_mapping</span><span class="si">}</span><span class="s2">&#39; -&gt; new mapping &#39;</span><span class="si">{</span><span class="n">full_mapping</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                        <span class="p">)</span>
 
-                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Deleted ModelMapping entry for </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">existing_entries</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">repository</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Deleted ModelMapping entry for </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">mapping</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 
             <span class="c1"># EmbeddedModels have no collection by may be simstack_models. They are never saved/retrieved</span>
             <span class="n">collection_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">new_class</span><span class="p">,</span> <span class="s2">&quot;__collection__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
@@ -420,29 +430,19 @@
                     <span class="n">name</span><span class="o">=</span><span class="n">class_name</span><span class="p">,</span>
                     <span class="n">mapping</span><span class="o">=</span><span class="n">full_mapping</span><span class="p">,</span>
                     <span class="n">collection_name</span><span class="o">=</span><span class="n">collection_name</span><span class="p">,</span>
+                    <span class="n">json_schema</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">new_class</span><span class="o">.</span><span class="n">model_json_schema</span><span class="p">()),</span>
                 <span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;Model: </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2"> Mapping: </span><span class="si">{</span><span class="n">full_mapping</span><span class="si">}</span><span class="s2"> Collection: </span><span class="si">{</span><span class="n">collection_name</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
 
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model_entry</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_make_models_for_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build model mappings for all Python files under a configured path.&quot;&quot;&quot;</span>
-        <span class="n">path_info</span> <span class="o">=</span> <span class="n">path_manager</span><span class="o">.</span><span class="n">get_path</span><span class="p">(</span><span class="n">path_name</span><span class="p">)</span>
-        <span class="n">path</span> <span class="o">=</span> <span class="n">path_info</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">]</span>
-        <span class="n">drops</span> <span class="o">=</span> <span class="n">path_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;drops&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Making model_table entries for files in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Process each file in this path</span>
-        <span class="k">for</span> <span class="n">file_path</span> <span class="ow">in</span> <span class="n">path_manager</span><span class="o">.</span><span class="n">find_python_files</span><span class="p">(</span><span class="n">path_name</span><span class="p">):</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_model_models_from_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">drops</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">repository</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model_entry</span><span class="p">)</span>
 
 <div class="viewcode-block" id="CreateModelTable.clear_table">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.model_table.CreateModelTable.clear_table">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">clear_table</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Clearing ModelMapping collection&quot;</span><span class="p">)</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">ModelMapping</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">()</span></div>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">repository</span><span class="o">.</span><span class="n">delete_all</span><span class="p">(</span><span class="n">ModelMapping</span><span class="p">)</span></div>
 </div>
 
 
@@ -451,8 +451,8 @@
 <div class="viewcode-block" id="make_model_table">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.model_table.make_model_table">[docs]</a>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">make_model_table</span><span class="p">(</span>
-    <span class="n">db</span> <span class="p">:</span> <span class="n">Database</span><span class="p">,</span>
-    <span class="n">dirs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">repository</span><span class="p">:</span> <span class="n">Repository</span><span class="p">,</span>
+    <span class="n">dirs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
     <span class="n">write_schema</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">clear</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -460,32 +460,27 @@
     <span class="n">ignore_entrypoints</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Rebuild the model table using the given database.</span>
+<span class="sd">    Rebuild the model table using the given repository.</span>
 
-<span class="sd">    This is a thin wrapper around CreateModelTable for backward compatibility.</span>
+<span class="sd">    This is the application-service entry point for model-table registration.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">creator</span> <span class="o">=</span> <span class="n">CreateModelTable</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">write_schema</span><span class="o">=</span><span class="n">write_schema</span><span class="p">,</span> <span class="n">project_root</span><span class="o">=</span><span class="n">project_root</span><span class="p">)</span>
-    <span class="k">await</span> <span class="n">creator</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">dirs</span><span class="o">=</span><span class="n">dirs</span><span class="p">,</span> <span class="n">drops</span><span class="o">=</span><span class="n">drops</span><span class="p">,</span> <span class="n">clear</span><span class="o">=</span><span class="n">clear</span><span class="p">,</span> <span class="n">ignore_entrypoints</span><span class="o">=</span><span class="n">ignore_entrypoints</span><span class="p">)</span></div>
+    <span class="n">creator</span> <span class="o">=</span> <span class="n">CreateModelTable</span><span class="p">(</span>
+        <span class="n">repository</span><span class="p">,</span>
+        <span class="n">write_schema</span><span class="o">=</span><span class="n">write_schema</span><span class="p">,</span>
+        <span class="n">project_root</span><span class="o">=</span><span class="n">project_root</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">await</span> <span class="n">creator</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
+        <span class="n">dirs</span><span class="o">=</span><span class="n">dirs</span><span class="p">,</span> <span class="n">drops</span><span class="o">=</span><span class="n">drops</span><span class="p">,</span> <span class="n">clear</span><span class="o">=</span><span class="n">clear</span><span class="p">,</span> <span class="n">ignore_entrypoints</span><span class="o">=</span><span class="n">ignore_entrypoints</span>
+    <span class="p">)</span></div>
 
-
-
-<div class="viewcode-block" id="create_model_table_main">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.model_table.create_model_table_main">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">create_model_table_main</span><span class="p">():</span>
-    <span class="n">TableBuilderBase</span><span class="o">.</span><span class="n">cli_main</span><span class="p">(</span><span class="n">CreateModelTable</span><span class="p">)</span></div>
-
-
-
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="n">create_model_table_main</span><span class="p">()</span>
 </pre></div>
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
-          
-          
+
+
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
@@ -493,27 +488,27 @@
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer no-toc">
-      
-      
-      
+
+
+
     </aside>
   </div>
 </div><script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

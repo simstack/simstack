@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from typing import List, Dict, Any
 
-from bson import ObjectId
+from simstack.models.document import ObjectId
 from simstack.core.context import context
 from simstack.util.custom_model_dump import custom_model_dump
 from simstack.util.importer import import_class
@@ -20,7 +20,7 @@ async def extract_node_data(node_id_str: str, target_dir_path: Path):
 
     # 2. Load NodeRegistry entry
     node_id = ObjectId(node_id_str)
-    node_registry = await context.db.load_task_by_id(node_id)
+    node_registry = await context.repository.load_task_by_id(node_id)
     if not node_registry:
         print(f"Error: NodeRegistry with ID {node_id_str} not found.")
         return
@@ -51,9 +51,9 @@ async def extract_node_data(node_id_str: str, target_dir_path: Path):
             table = ref.variable_mapping
             oid = ref.reference
             name = ref.variable_name
-            model_cls = await import_class(table, context.db)
+            model_cls = await import_class(table, context.repository)
             if model_cls:
-                model_inst = await context.db.find_one(model_cls, model_cls.id == oid)
+                model_inst = await context.repository.find_one(model_cls, model_cls.id == oid)
                 if model_inst:
                     data = await custom_model_dump(model_inst)
                     serialized.append({

@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="simstack.util package" href="simstack.util.html"><link rel="prev" title="simstack.models package" href="simstack.models.html">
+<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="simstack.util package" href="simstack.util.html"><link rel="prev" title="simstack.runner_runtime.watchdog package" href="simstack.runner_runtime.watchdog.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
         <title>simstack.tables package - SimStack II documentation</title>
@@ -12,15 +12,15 @@
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../../_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="../../_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -32,7 +32,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -44,17 +44,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -193,10 +193,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -216,8 +216,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../database_migrations.html">Database Migrations</a></li>
@@ -228,12 +226,31 @@
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 current has-children"><a class="reference internal" href="modules.html">simstack</a><input aria-label="Toggle navigation of simstack" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2 current has-children"><a class="reference internal" href="simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3 current current-page"><a class="current reference internal" href="#">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -246,7 +263,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -287,32 +304,14 @@
 <span id="simstack-tables-model-table-module"></span><h2>simstack.tables.model_table module<a class="headerlink" href="#module-simstack.tables.model_table" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="simstack.tables.model_table.CreateModelTable">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.tables.model_table.</span></span><span class="sig-name descname"><span class="pre">CreateModelTable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.util.html#simstack.util.db.Database" title="simstack.util.db.Database"><span class="pre">Database</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/tables/model_table.html#CreateModelTable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.model_table.CreateModelTable" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.tables.model_table.</span></span><span class="sig-name descname"><span class="pre">CreateModelTable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repository</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.persistence.html#simstack.persistence.ports.Repository" title="simstack.persistence.ports.Repository"><span class="pre">Repository</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/tables/model_table.html#CreateModelTable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.model_table.CreateModelTable" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simstack.tables.table_builder.TableBuilderBase" title="simstack.tables.table_builder.TableBuilderBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">TableBuilderBase</span></code></a></p>
 <p>Helper class to build the model table without passing around many parameters.</p>
 <dl class="simple">
-<dt>Usage:</dt><dd><p>creator = CreateModelTable(db)
-await creator.make_model_table()</p>
+<dt>Usage:</dt><dd><p>creator = CreateModelTable(repository)
+await creator.build()</p>
 </dd>
 </dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.tables.model_table.CreateModelTable.build">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/tables/model_table.html#CreateModelTable.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.model_table.CreateModelTable.build" title="Link to this definition">¶</a></dt>
-<dd><p>Build the table.</p>
-<ul class="simple">
-<li><p>If <cite>dirs</cite> is None: use configured <cite>path_manager</cite> paths (existing behavior).</p></li>
-<li><p>If <cite>dirs</cite> is a list: scan those directories for Python files and process them.</p></li>
-</ul>
-<dl class="simple">
-<dt><cite>exclude</cite> entries can match:</dt><dd><ul class="simple">
-<li><p>path parts (e.g. “.venv”, “__pycache__”)</p></li>
-<li><p>glob patterns (e.g. “<a href="#id1"><span class="problematic" id="id2">*</span></a>.generated.py”)</p></li>
-<li><p>nested relative paths (e.g. “src/simstack/models”)</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.tables.model_table.CreateModelTable.clear_table">
 <span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">clear_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/tables/model_table.html#CreateModelTable.clear_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.model_table.CreateModelTable.clear_table" title="Link to this definition">¶</a></dt>
@@ -327,15 +326,10 @@ await creator.make_model_table()</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="simstack.tables.model_table.create_model_table_main">
-<span class="sig-prename descclassname"><span class="pre">simstack.tables.model_table.</span></span><span class="sig-name descname"><span class="pre">create_model_table_main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/tables/model_table.html#create_model_table_main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.model_table.create_model_table_main" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="simstack.tables.model_table.make_model_table">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.tables.model_table.</span></span><span class="sig-name descname"><span class="pre">make_model_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.util.html#simstack.util.db.Database" title="simstack.util.db.Database"><span class="pre">Database</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dirs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drops</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clear</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_entrypoints</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/tables/model_table.html#make_model_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.model_table.make_model_table" title="Link to this definition">¶</a></dt>
-<dd><p>Rebuild the model table using the given database.</p>
-<p>This is a thin wrapper around CreateModelTable for backward compatibility.</p>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.tables.model_table.</span></span><span class="sig-name descname"><span class="pre">make_model_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repository</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.persistence.html#simstack.persistence.ports.Repository" title="simstack.persistence.ports.Repository"><span class="pre">Repository</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dirs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drops</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clear</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_entrypoints</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/tables/model_table.html#make_model_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.model_table.make_model_table" title="Link to this definition">¶</a></dt>
+<dd><p>Rebuild the model table using the given repository.</p>
+<p>This is the application-service entry point for model-table registration.</p>
 </dd></dl>
 
 </section>
@@ -362,32 +356,14 @@ await creator.make_model_table()</p>
 <span id="simstack-tables-node-table-module"></span><h2>simstack.tables.node_table module<a class="headerlink" href="#module-simstack.tables.node_table" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="simstack.tables.node_table.CreateNodeTable">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.tables.node_table.</span></span><span class="sig-name descname"><span class="pre">CreateNodeTable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.util.html#simstack.util.db.Database" title="simstack.util.db.Database"><span class="pre">Database</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/tables/node_table.html#CreateNodeTable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.node_table.CreateNodeTable" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.tables.node_table.</span></span><span class="sig-name descname"><span class="pre">CreateNodeTable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repository</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.persistence.html#simstack.persistence.ports.Repository" title="simstack.persistence.ports.Repository"><span class="pre">Repository</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/tables/node_table.html#CreateNodeTable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.node_table.CreateNodeTable" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simstack.tables.table_builder.TableBuilderBase" title="simstack.tables.table_builder.TableBuilderBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">TableBuilderBase</span></code></a></p>
 <p>Helper class to build the node table without passing around many parameters.</p>
 <dl class="simple">
-<dt>Usage:</dt><dd><p>creator = CreateNodeTable(database)
-await creator.make_node_table()</p>
+<dt>Usage:</dt><dd><p>creator = CreateNodeTable(repository)
+await creator.build()</p>
 </dd>
 </dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.tables.node_table.CreateNodeTable.build">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/tables/node_table.html#CreateNodeTable.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.node_table.CreateNodeTable.build" title="Link to this definition">¶</a></dt>
-<dd><p>Build the table.</p>
-<ul class="simple">
-<li><p>If <cite>dirs</cite> is None: use configured <cite>path_manager</cite> paths (existing behavior).</p></li>
-<li><p>If <cite>dirs</cite> is a list: scan those directories for Python files and process them.</p></li>
-</ul>
-<dl class="simple">
-<dt><cite>exclude</cite> entries can match:</dt><dd><ul class="simple">
-<li><p>path parts (e.g. “.venv”, “__pycache__”)</p></li>
-<li><p>glob patterns (e.g. “<a href="#id3"><span class="problematic" id="id4">*</span></a>.generated.py”)</p></li>
-<li><p>nested relative paths (e.g. “src/simstack/models”)</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.tables.node_table.CreateNodeTable.clear_table">
 <span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">clear_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/tables/node_table.html#CreateNodeTable.clear_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.node_table.CreateNodeTable.clear_table" title="Link to this definition">¶</a></dt>
@@ -414,13 +390,6 @@ await creator.make_node_table()</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="simstack.tables.node_table.create_node_table_main">
-<span class="sig-prename descclassname"><span class="pre">simstack.tables.node_table.</span></span><span class="sig-name descname"><span class="pre">create_node_table_main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/tables/node_table.html#create_node_table_main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.node_table.create_node_table_main" title="Link to this definition">¶</a></dt>
-<dd><p>CLI-style entry point to (re)build the node table.</p>
-<p>Uses a dedicated event loop, matching the pattern used for model table creation.</p>
-</dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="simstack.tables.node_table.is_node_function">
 <span class="sig-prename descclassname"><span class="pre">simstack.tables.node_table.</span></span><span class="sig-name descname"><span class="pre">is_node_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../_modules/simstack/tables/node_table.html#is_node_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.node_table.is_node_function" title="Link to this definition">¶</a></dt>
 <dd><p>Check if a function is marked as a node using the &#64;node decorator.</p>
@@ -428,9 +397,9 @@ await creator.make_node_table()</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simstack.tables.node_table.make_node_table">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.tables.node_table.</span></span><span class="sig-name descname"><span class="pre">make_node_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.util.html#simstack.util.db.Database" title="simstack.util.db.Database"><span class="pre">Database</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dirs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drops</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clear</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_entrypoints</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/tables/node_table.html#make_node_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.node_table.make_node_table" title="Link to this definition">¶</a></dt>
-<dd><p>Rebuild the node table using the given databse.</p>
-<p>This is a thin wrapper around CreateNodeTable for backward compatibility.</p>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.tables.node_table.</span></span><span class="sig-name descname"><span class="pre">make_node_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repository</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.persistence.html#simstack.persistence.ports.Repository" title="simstack.persistence.ports.Repository"><span class="pre">Repository</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dirs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drops</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clear</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_entrypoints</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/tables/node_table.html#make_node_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.node_table.make_node_table" title="Link to this definition">¶</a></dt>
+<dd><p>Rebuild the node table using the given repository.</p>
+<p>This is the application-service entry point for node-table registration.</p>
 </dd></dl>
 
 </section>
@@ -438,28 +407,34 @@ await creator.make_node_table()</p>
 <span id="simstack-tables-table-builder-module"></span><h2>simstack.tables.table_builder module<a class="headerlink" href="#module-simstack.tables.table_builder" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="simstack.tables.table_builder.TableBuilderBase">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.tables.table_builder.</span></span><span class="sig-name descname"><span class="pre">TableBuilderBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.util.html#simstack.util.db.Database" title="simstack.util.db.Database"><span class="pre">Database</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/tables/table_builder.html#TableBuilderBase"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.table_builder.TableBuilderBase" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.tables.table_builder.</span></span><span class="sig-name descname"><span class="pre">TableBuilderBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repository</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.persistence.html#simstack.persistence.ports.Repository" title="simstack.persistence.ports.Repository"><span class="pre">Repository</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/tables/table_builder.html#TableBuilderBase"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.table_builder.TableBuilderBase" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
 <dl class="simple">
 <dt>Shared pipeline for building “tables” by scanning:</dt><dd><ol class="arabic simple">
-<li><p>installed simstack modules (packages)</p></li>
-<li><p>configured project paths (python files)</p></li>
+<li><p>installed simstack.modules entry points (listed at INFO as each is scanned)</p></li>
+<li><p>explicit –dir / dirs arguments</p></li>
+<li><p>deprecated config.toml active_dirs when no dirs were given</p></li>
 </ol>
 </dd>
 </dl>
 <p>Subclasses only implement <cite>_process_module(module, drops)</cite>.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.tables.table_builder.TableBuilderBase.build">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">dirs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">Path</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drops</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clear</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_entrypoints</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/tables/table_builder.html#TableBuilderBase.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.table_builder.TableBuilderBase.build" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">dirs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">Path</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drops</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clear</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_entrypoints</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/tables/table_builder.html#TableBuilderBase.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.table_builder.TableBuilderBase.build" title="Link to this definition">¶</a></dt>
 <dd><p>Build the table.</p>
 <ul class="simple">
-<li><p>If <cite>dirs</cite> is None: use configured <cite>path_manager</cite> paths (existing behavior).</p></li>
-<li><p>If <cite>dirs</cite> is a list: scan those directories for Python files and process them.</p></li>
+<li><p>Installed <cite>simstack.modules</cite> entry points are processed unless
+<cite>ignore_entrypoints</cite> is true. With -v (INFO), each entry point is
+listed as it is scanned.</p></li>
+<li><p>If <cite>dirs</cite> is a non-empty list, those directories are scanned.</p></li>
+<li><p>If <cite>dirs</cite> is omitted or empty, <cite>active_dirs</cite> from project-root
+<cite>config.toml</cite> is scanned and a deprecation warning is emitted.
+The current working directory is not scanned.</p></li>
 </ul>
 <dl class="simple">
 <dt><cite>exclude</cite> entries can match:</dt><dd><ul class="simple">
 <li><p>path parts (e.g. “.venv”, “__pycache__”)</p></li>
-<li><p>glob patterns (e.g. “<a href="#id5"><span class="problematic" id="id6">*</span></a>.generated.py”)</p></li>
+<li><p>glob patterns (e.g. “<a href="#id1"><span class="problematic" id="id2">*</span></a>.generated.py”)</p></li>
 <li><p>nested relative paths (e.g. “src/simstack/models”)</p></li>
 </ul>
 </dd>
@@ -470,25 +445,6 @@ await creator.make_node_table()</p>
 <dt class="sig sig-object py" id="simstack.tables.table_builder.TableBuilderBase.clear_table">
 <span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">clear_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/tables/table_builder.html#TableBuilderBase.clear_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.table_builder.TableBuilderBase.clear_table" title="Link to this definition">¶</a></dt>
 <dd><p>an optional hook to clear the table before building</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.tables.table_builder.TableBuilderBase.cli_main">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cli_main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#simstack.tables.table_builder.TableBuilderBase" title="simstack.tables.table_builder.TableBuilderBase"><span class="pre">TableBuilderBase</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/tables/table_builder.html#TableBuilderBase.cli_main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.tables.table_builder.TableBuilderBase.cli_main" title="Link to this definition">¶</a></dt>
-<dd><p>Reusable CLI entry point.</p>
-<dl>
-<dt>Options:</dt><dd><dl class="option-list">
-<dt><kbd><span class="option">--dir <var>RELPATH</var></span></kbd></dt>
-<dd><p>(repeatable) Directories (relative to CWD) to scan for <a href="#id7"><span class="problematic" id="id8">*</span></a>.py files.
-If omitted, defaults to scanning the current working directory.</p>
-</dd>
-<dt><kbd><span class="option">--drops <var>STRING</var></span></kbd></dt>
-<dd><p>Drops prefix (string) applied while processing these CLI dirs.</p>
-</dd>
-</dl>
-<p>-v/–verbose    Increase logging verbosity.</p>
-</dd>
-</dl>
 </dd></dl>
 
 <dl class="py property">
@@ -518,7 +474,7 @@ If omitted, defaults to scanning the current working directory.</p>
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
           <a class="next-page" href="simstack.util.html">
               <div class="page-info">
@@ -529,15 +485,15 @@ If omitted, defaults to scanning the current working directory.</p>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="simstack.models.html">
+          <a class="prev-page" href="simstack.runner_runtime.watchdog.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
-                
-                <div class="title">simstack.models package</div>
-                
+
+                <div class="title">simstack.runner_runtime.watchdog package</div>
+
               </div>
             </a>
         </div>
@@ -547,20 +503,20 @@ If omitted, defaults to scanning the current working directory.</p>
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer">
-      
-      
+
+
       <div class="toc-sticky toc-scroll">
         <div class="toc-title-container">
           <span class="toc-title">
@@ -574,12 +530,10 @@ If omitted, defaults to scanning the current working directory.</p>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
 <li><a class="reference internal" href="#module-simstack.tables.model_table">simstack.tables.model_table module</a><ul>
 <li><a class="reference internal" href="#simstack.tables.model_table.CreateModelTable"><code class="docutils literal notranslate"><span class="pre">CreateModelTable</span></code></a><ul>
-<li><a class="reference internal" href="#simstack.tables.model_table.CreateModelTable.build"><code class="docutils literal notranslate"><span class="pre">CreateModelTable.build()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.model_table.CreateModelTable.clear_table"><code class="docutils literal notranslate"><span class="pre">CreateModelTable.clear_table()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.model_table.CreateModelTable.logger"><code class="docutils literal notranslate"><span class="pre">CreateModelTable.logger</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#simstack.tables.model_table.create_model_table_main"><code class="docutils literal notranslate"><span class="pre">create_model_table_main()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.model_table.make_model_table"><code class="docutils literal notranslate"><span class="pre">make_model_table()</span></code></a></li>
 </ul>
 </li>
@@ -590,14 +544,12 @@ If omitted, defaults to scanning the current working directory.</p>
 </li>
 <li><a class="reference internal" href="#module-simstack.tables.node_table">simstack.tables.node_table module</a><ul>
 <li><a class="reference internal" href="#simstack.tables.node_table.CreateNodeTable"><code class="docutils literal notranslate"><span class="pre">CreateNodeTable</span></code></a><ul>
-<li><a class="reference internal" href="#simstack.tables.node_table.CreateNodeTable.build"><code class="docutils literal notranslate"><span class="pre">CreateNodeTable.build()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.node_table.CreateNodeTable.clear_table"><code class="docutils literal notranslate"><span class="pre">CreateNodeTable.clear_table()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.node_table.CreateNodeTable.get_class_mapping"><code class="docutils literal notranslate"><span class="pre">CreateNodeTable.get_class_mapping()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.node_table.CreateNodeTable.logger"><code class="docutils literal notranslate"><span class="pre">CreateNodeTable.logger</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.node_table.CreateNodeTable.second_stage"><code class="docutils literal notranslate"><span class="pre">CreateNodeTable.second_stage()</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#simstack.tables.node_table.create_node_table_main"><code class="docutils literal notranslate"><span class="pre">create_node_table_main()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.node_table.is_node_function"><code class="docutils literal notranslate"><span class="pre">is_node_function()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.node_table.make_node_table"><code class="docutils literal notranslate"><span class="pre">make_node_table()</span></code></a></li>
 </ul>
@@ -606,7 +558,6 @@ If omitted, defaults to scanning the current working directory.</p>
 <li><a class="reference internal" href="#simstack.tables.table_builder.TableBuilderBase"><code class="docutils literal notranslate"><span class="pre">TableBuilderBase</span></code></a><ul>
 <li><a class="reference internal" href="#simstack.tables.table_builder.TableBuilderBase.build"><code class="docutils literal notranslate"><span class="pre">TableBuilderBase.build()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.table_builder.TableBuilderBase.clear_table"><code class="docutils literal notranslate"><span class="pre">TableBuilderBase.clear_table()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.tables.table_builder.TableBuilderBase.cli_main"><code class="docutils literal notranslate"><span class="pre">TableBuilderBase.cli_main()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.table_builder.TableBuilderBase.logger"><code class="docutils literal notranslate"><span class="pre">TableBuilderBase.logger</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.table_builder.TableBuilderBase.project_root"><code class="docutils literal notranslate"><span class="pre">TableBuilderBase.project_root</span></code></a></li>
 <li><a class="reference internal" href="#simstack.tables.table_builder.TableBuilderBase.second_stage"><code class="docutils literal notranslate"><span class="pre">TableBuilderBase.second_stage()</span></code></a></li>
@@ -622,14 +573,14 @@ If omitted, defaults to scanning the current working directory.</p>
           </div>
         </div>
       </div>
-      
-      
+
+
     </aside>
   </div>
 </div><script src="../../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

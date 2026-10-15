@@ -20,13 +20,13 @@ authors = [
 license = { text = "MIT" }
 
 dependencies = [
-    "odmantic>=1.0.2,<2",
+    "packaging>=24",
+    "pydantic>=2.12,<3",
     "cloudpickle>=3.1.1,<4",
     "coolname>=2.2.0,<3",
     "nest-asyncio>=1.6.0,<2",
     "numpy>=2.3.0",
     "pandas==2.3.2", # lock this for int-nano
-    "pytest>=8.4.2",
     "docutils>=0.22",
     "pandas-stubs~=2.3.3",
     "types-docutils~=0.22.3",
@@ -36,9 +36,7 @@ dependencies = [
 Homepage = "https://gitlab.kit.edu/kit/ag_wenzel/simstack-model/"
 
 [project.scripts]
-create_node_table = "simstack.tables.node_table:create_node_table_main"
-create_model_table = "simstack.tables.model_table:create_model_table_main"
-create_test_from_node = "simstack.methods.generate_test:generate_test_main"
+simstack_workflow = "simstack.workflows.cli:main"
 simstack_runner = "simstack.core.runner:runner_main"
 run_node = "simstack.core.run_node:run_node_main"
 simstack_write_sample_config = "simstack.util.sample_config:sample_config_writer_entrypoint"
@@ -71,8 +69,6 @@ test = [
     "pytest>=8",
     "pytest-cov",
     "pytest-asyncio>=0.26.0,<1",
-    "mongomock>=4.1.0,<5",
-    "mongomock-motor>=0.0.32,<1",
     "contextvars>=2.4,<3",
 ]
 docker = [

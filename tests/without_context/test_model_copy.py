@@ -1,13 +1,13 @@
-"""Copy model trees without losing Pydantic state or ODMantic identities."""
+"""Copy model trees without losing Pydantic state or document identities."""
 
 from typing import List, Optional
 
 import pytest
-from odmantic import EmbeddedModel, Model, Reference
 from pydantic import BaseModel, PrivateAttr
 
 from simstack.core.simstack_result import SimstackResult
 from simstack.models.artifact_models import ArtifactModel
+from simstack.models.document import EmbeddedModel, Model, Reference
 from simstack.util.model_copy import model_copy
 
 
@@ -37,7 +37,7 @@ def original():
     )
 
 
-def test_default_copy_isolates_embedded_and_lists_but_keeps_database_references(
+def test_default_copy_isolates_embedded_and_lists_but_keeps_document_references(
     original,
 ):
     copied = model_copy(original)
@@ -53,7 +53,7 @@ def test_default_copy_isolates_embedded_and_lists_but_keeps_database_references(
 
 
 @pytest.mark.parametrize("preserve_ids", [False, True])
-def test_explicit_reference_copy_preserves_sharing_and_valid_odmantic_state(
+def test_explicit_reference_copy_preserves_sharing_and_valid_pydantic_state(
     original, preserve_ids
 ):
     copied = model_copy(original, copy_references=True, preserve_ids=preserve_ids)
@@ -61,9 +61,13 @@ def test_explicit_reference_copy_preserves_sharing_and_valid_odmantic_state(
     assert copied.first is not original.first
     assert (copied.id == original.id) is preserve_ids
     assert (copied.first.id == original.first.id) is preserve_ids
-    for model in (copied, copied.first, copied.embedded):
-        assert isinstance(model.__fields_modified__, set)
-        assert model.model_dump_doc(include=model.__fields_modified__)
+    for source, cloned in (
+        (original, copied),
+        (original.first, copied.first),
+        (original.embedded, copied.embedded),
+    ):
+        assert cloned.model_fields_set == source.model_fields_set
+        assert cloned.model_dump()
     assert copied.optional is None
     assert copied.embedded.optional is None
 
@@ -118,24 +122,25 @@ def test_copy_handles_a_valid_pydantic_alias():
 
 
 def test_shallow_copy_keeps_reference_and_embedded_bookkeeping_unchanged(original):
-    object.__setattr__(original.first, "__fields_modified__", set())
-    object.__setattr__(original.embedded, "__fields_modified__", set())
+    reference_fields = original.first.model_fields_set.copy()
+    embedded_fields = original.embedded.model_fields_set.copy()
     copied = model_copy(original, deep=False, preserve_ids=True)
     assert copied is not original
     assert copied.id == original.id
-    assert original.first.__fields_modified__ == set()
-    assert original.embedded.__fields_modified__ == set()
-    assert copied.__fields_modified__ == set(type(copied).model_fields)
+    assert original.first.model_fields_set == reference_fields
+    assert original.embedded.model_fields_set == embedded_fields
+    assert copied.model_fields_set == original.model_fields_set
+    assert copied.model_fields_set is not original.model_fields_set
 
 
 def test_deep_copy_does_not_restore_defaults_on_retained_references(original):
     del original.first.__dict__["description"]
-    object.__setattr__(original.first, "__fields_modified__", set())
+    reference_fields = original.first.model_fields_set.copy()
     source_values = original.first.__dict__.copy()
     copied = model_copy(original)
     assert copied.first is original.first
     assert original.first.__dict__ == source_values
-    assert original.first.__fields_modified__ == set()
+    assert original.first.model_fields_set == reference_fields
 
 
 def test_copy_does_not_rerun_model_validators():
@@ -188,19 +193,19 @@ def test_copy_preserves_shared_containers_across_fields_and_extra_state():
     assert copied.additional_values is copied.values
 
 
-def test_copy_preserves_custom_odmantic_primary_key_only_when_requested():
-    from odmantic import Field
+def test_copy_preserves_custom_document_identity_only_when_requested():
+    from pydantic import Field
 
     class CustomKey(Model):
-        key: str = Field(primary_field=True)
+        id: str = Field(alias="_id")
         value: int
 
-    original = CustomKey(key="identity", value=7)
+    original = CustomKey(id="identity", value=7)
     with pytest.raises(ValueError, match="preserve_ids=True"):
         model_copy(original)
     copied = model_copy(original, preserve_ids=True)
     assert copied is not original
-    assert copied.key == original.key
+    assert copied.id == original.id
     assert copied.model_dump_doc()["_id"] == "identity"
 
 
@@ -212,36 +217,27 @@ def test_copy_does_not_silently_fill_missing_required_values(original):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("copy_references", [False, True])
-async def test_odmantic_saves_copied_models_and_references(
-    original, monkeypatch, copy_references
+async def test_repository_saves_copied_models_and_references(
+    original, copy_references
 ):
-    from contextlib import asynccontextmanager
-    from unittest.mock import AsyncMock
+    from simstack.persistence import eq
+    from tests.support.in_memory_repository import InMemoryRepository
 
-    from mongomock_motor import AsyncMongoMockClient
-    from odmantic import AIOEngine
-
-    @asynccontextmanager
-    async def mock_session():
-        yield None
-
-    client = AsyncMongoMockClient()
-    # Only sessions are unavailable in mongomock; retain ODMantic's actual
-    # recursive save and dirty-field serialization rather than replacing save.
-    monkeypatch.setattr(client, "start_session", AsyncMock(side_effect=mock_session))
-    engine = AIOEngine(client=client, database="model_copy_test")
-    await engine.save(original)
+    repository = InMemoryRepository()
+    await repository.save(original.first)
+    await repository.save(original)
     copied = model_copy(original, copy_references=copy_references)
     copied.embedded.values.append(9)
-    await engine.save(copied)
+    await repository.save(copied.first)
+    await repository.save(copied)
 
-    roots = engine.get_collection(CopyRoot)
-    references = engine.get_collection(CopyReference)
-    source_doc = await roots.find_one({"_id": original.id})
-    copied_doc = await roots.find_one({"_id": copied.id})
+    source = await repository.find_one(CopyRoot, eq("id", original.id))
+    stored_copy = await repository.find_one(CopyRoot, eq("id", copied.id))
+    source_doc = source.model_dump_doc()
+    copied_doc = stored_copy.model_dump_doc()
     assert source_doc["embedded"]["values"] == [1]
     assert copied_doc["embedded"]["values"] == [1, 9]
     assert copied_doc["first"] == copied_doc["second"] == copied.first.id
-    assert await references.find_one({"_id": copied.first.id}) is not None
-    assert await roots.count_documents({}) == 2
-    assert await references.count_documents({}) == (2 if copy_references else 1)
+    assert await repository.find_one(CopyReference, eq("id", copied.first.id)) is not None
+    assert len(await repository.find(CopyRoot)) == 2
+    assert len(await repository.find(CopyReference)) == (2 if copy_references else 1)

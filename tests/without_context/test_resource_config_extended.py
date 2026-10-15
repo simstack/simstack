@@ -1,7 +1,9 @@
 import pytest
 from pathlib import Path
+import json
 import os
 import shutil
+import sys
 import tempfile
 from simstack.util.resource_config import ResourceConfig
 
@@ -33,9 +35,10 @@ def test_resource_config_setup(tmp_path, monkeypatch):
     script_file = tmp_path / "test_script.py"
     script_file.write_text("print('hello from script')")
     
+    command = json.dumps(f'"{sys.executable}" "{script_file}"')
     content = f"""
 [local.setup]
-scripts = ["python {script_file.as_posix()}"]
+scripts = [{command}]
 """
     config_file.write_text(content)
     
@@ -45,10 +48,13 @@ scripts = ["python {script_file.as_posix()}"]
 
 def test_resource_config_run_without_temp(tmp_path):
     config_file = tmp_path / "config.toml"
-    content = """
+    command = json.dumps(
+        f'''"{sys.executable}" -c "import shutil; shutil.copy('input.txt', 'output.txt')"'''
+    )
+    content = f"""
 [local.program.test_prog]
 use_temp = false
-run_command = "python -c \\"import shutil; shutil.copy('input.txt', 'output.txt')\\""
+run_command = {command}
 input_files = ["input.txt"]
 output_files = ["output.txt"]
 """
@@ -74,10 +80,13 @@ output_files = ["output.txt"]
 
 def test_resource_config_run_with_temp(tmp_path):
     config_file = tmp_path / "config.toml"
-    content = """
+    command = json.dumps(
+        f'''"{sys.executable}" -c "import shutil; shutil.copy('input.txt', 'output.txt')"'''
+    )
+    content = f"""
 [local.program.test_prog]
 use_temp = true
-run_command = "python -c \\"import shutil; shutil.copy('input.txt', 'output.txt')\\""
+run_command = {command}
 input_files = ["input.txt"]
 output_files = ["output.txt"]
 # scratch_cleanup = true # Wait, I will use setup_params to mock base dir

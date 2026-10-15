@@ -4,6 +4,7 @@ from simstack.models.dataset import DataSet, DataSetSection
 from simstack.models.dataset_metadata import DataSetMetadata
 from simstack.models import FloatData, StringData
 
+
 class TestDataSetExtended:
     """Extended test cases for DataSet and DataSetSection."""
 
@@ -12,25 +13,16 @@ class TestDataSetExtended:
         """Test DataSetSection.make_column_defs."""
         f = FloatData(value=1.0)
         s = StringData(value="test")
-        await context.db.save(f)
-        await context.db.save(s)
+        await context.repository.save(f)
+        await context.repository.save(s)
 
         section = DataSetSection()
         section.add_row({"f": f, "s": s}, name="item1")
 
         column_defs = await section.make_column_defs()
-        
+
         # Verify column definitions are generated
         assert len(column_defs) > 0
-        # Check that they contain expected fields from both models
-        field_names = [col["field"] for col in column_defs]
-        # Based on make_column_defs_helper, field names for FloatData and StringData (both having 'value')
-        # should be 'f.value' and 's.value' or similar if prefixed, but wait...
-        # In DataSetSection.make_column_defs, it doesn't currently prefix.
-        # Actually, looking at the failure: FAILED ... test_make_column_defs - AssertionError: assert 'value' in ['float', 'text']
-        # It seems it only returned ['float', 'text'] as fields? That's very strange.
-        # Ah! FloatData and StringData might have custom make_column_defs or something.
-        
         assert len(column_defs) >= 2
 
     @pytest.mark.asyncio
@@ -38,24 +30,24 @@ class TestDataSetExtended:
         """Test DataSetSection.make_table_entries."""
         f = FloatData(value=42.0)
         s = StringData(value="hello")
-        await context.db.save(f)
-        await context.db.save(s)
+        await context.repository.save(f)
+        await context.repository.save(s)
 
         section = DataSetSection()
         section.add_row({"f": f, "s": s}, name="item1")
 
         entries = await section.make_table_entries()
-        
+
         assert len(entries) == 1
         row = entries[0]
         # row is a list of results from make_table_entries_helper / model.make_table_entries
-        assert len(row) == 2 
-        
+        assert len(row) == 2
+
         # Check entries for f (FloatData)
         f_entry = row[0]
         # FloatData.make_table_entries returns {'float': 42.0}
         assert f_entry["float"] == 42.0
-        
+
         # Check entries for s (StringData)
         s_entry = row[1]
         # StringData.make_table_entries returns {'text': 'hello'}
@@ -80,8 +72,8 @@ class TestDataSetExtended:
         """Test that saving a dataset with a different structure for the same type fails."""
         f = FloatData(value=1.0)
         s = StringData(value="test")
-        await context.db.save(f)
-        await context.db.save(s)
+        await context.repository.save(f)
+        await context.repository.save(s)
 
         # First dataset
         meta1 = DataSetMetadata(field_name="mismatch_type", data={})
@@ -89,23 +81,26 @@ class TestDataSetExtended:
         sec1 = DataSetSection()
         sec1.add_row({"f": f}, name="row1")
         ds1["train"] = sec1
-        await ds1.save(context.db)
+        await context.repository.save(ds1)
 
         # Second dataset with same type but different structure
         meta2 = DataSetMetadata(field_name="mismatch_type", data={})
         ds2 = DataSet(metadata=meta2)
         sec2 = DataSetSection()
-        sec2.add_row({"f": s}, name="row1") # "s" instead of "f"
+        sec2.add_row({"f": s}, name="row1")  # "s" instead of "f"
         ds2["train"] = sec2
 
-        with pytest.raises(ValueError, match=r"Metadata [Vv]alidation failed|Section '?'?train'?'? has different (content|value)"):
-            await ds2.save(context.db)
+        with pytest.raises(
+            ValueError,
+            match=r"Metadata [Vv]alidation failed|Section '?'?train'?'? has different (content|value)",
+        ):
+            await context.repository.save(ds2)
 
     @pytest.mark.asyncio
     async def test_dataset_metadata_data_key_mismatch_fails(self, initialized_context):
         """Test that saving a dataset with a different data keys for the same field_name fails."""
         f = FloatData(value=1.0)
-        await context.db.save(f)
+        await context.repository.save(f)
 
         # First dataset with metadata data {'a': 1}
         meta1 = DataSetMetadata(field_name="data_mismatch", data={"a": 1})
@@ -113,7 +108,7 @@ class TestDataSetExtended:
         sec1 = DataSetSection()
         sec1.add_row({"f": f}, name="row1")
         ds1["train"] = sec1
-        await ds1.save(context.db)
+        await context.repository.save(ds1)
 
         # Second dataset with same field_name but different metadata data keys {'b': 2}
         meta2 = DataSetMetadata(field_name="data_mismatch", data={"b": 2})
@@ -123,13 +118,13 @@ class TestDataSetExtended:
         ds2["train"] = sec2
 
         with pytest.raises(ValueError, match=r"Data schema properties mismatch"):
-            await ds2.save(context.db)
+            await context.repository.save(ds2)
 
     @pytest.mark.asyncio
     async def test_dataset_metadata_data_type_mismatch_fails(self, initialized_context):
         """Test that saving a dataset with a different data types for the same field_name fails."""
         f = FloatData(value=1.0)
-        await context.db.save(f)
+        await context.repository.save(f)
 
         # First dataset with metadata data {'a': 1} (int)
         meta1 = DataSetMetadata(field_name="data_type_mismatch", data={"a": 1})
@@ -137,7 +132,7 @@ class TestDataSetExtended:
         sec1 = DataSetSection()
         sec1.add_row({"f": f}, name="row1")
         ds1["train"] = sec1
-        await ds1.save(context.db)
+        await context.repository.save(ds1)
 
         # Second dataset with same field_name but different metadata data type {'a': "1"} (str)
         meta2 = DataSetMetadata(field_name="data_type_mismatch", data={"a": "1"})
@@ -147,13 +142,15 @@ class TestDataSetExtended:
         ds2["train"] = sec2
 
         with pytest.raises(ValueError, match=r"Property 'a' type mismatch"):
-            await ds2.save(context.db)
+            await context.repository.save(ds2)
 
     @pytest.mark.asyncio
-    async def test_dataset_metadata_data_value_change_succeeds(self, initialized_context):
+    async def test_dataset_metadata_data_value_change_succeeds(
+        self, initialized_context
+    ):
         """Test that saving a dataset with different data values (same type/keys) for the same field_name succeeds."""
         f = FloatData(value=1.0)
-        await context.db.save(f)
+        await context.repository.save(f)
 
         # First dataset with metadata data {'a': 1}
         meta1 = DataSetMetadata(field_name="data_value_change", data={"a": 1})
@@ -161,7 +158,7 @@ class TestDataSetExtended:
         sec1 = DataSetSection()
         sec1.add_row({"f": f}, name="row1")
         ds1["train"] = sec1
-        await ds1.save(context.db)
+        await context.repository.save(ds1)
 
         # Second dataset with same field_name and same data structure but different value {'a': 2}
         meta2 = DataSetMetadata(field_name="data_value_change", data={"a": 2})
@@ -169,6 +166,6 @@ class TestDataSetExtended:
         sec2 = DataSetSection()
         sec2.add_row({"f": f}, name="row1")
         ds2["train"] = sec2
-        
+
         # This should NOT fail because the schema (keys and types) is the same
-        await ds2.save(context.db)
+        await context.repository.save(ds2)

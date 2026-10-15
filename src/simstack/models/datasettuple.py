@@ -1,8 +1,6 @@
 from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List
 
-from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
-
-
+from simstack.models.document import EmbeddedModel, Field, Model, ObjectId
 from simstack.models import simstack_model
 from simstack.models.dataset_metadata import DataSetMetadata
 
@@ -38,6 +36,16 @@ class DataSetTupleSection(EmbeddedModel):
 
     model_config = {"extra": "forbid"}
 
+    def _set_cache(self, cache: List[Tuple[Model, ...]]) -> None:
+        object.__getattribute__(self, "__dict__")["_cache"] = cache
+
+    def _get_cache(self) -> List[Tuple[Model, ...]]:
+        values = object.__getattribute__(self, "__dict__").get("_cache")
+        if values is None:
+            values = []
+            self._set_cache(values)
+        return values
+
     async def add_model_group(self, models: Union[Model, Tuple[Model, ...]]) -> None:
         """
         Add a tuple of models to this section.
@@ -49,20 +57,6 @@ class DataSetTupleSection(EmbeddedModel):
             models = (models,)
         model_names = [model.__class__.__name__ for model in models]
 
-        # Verify that all the models are already stored, otherwise store them
-        from simstack.core.context import context
-        engine = context.db
-        stored_models = []
-        model_ids = []
-        for model in models:
-            if model is None:
-                model_ids.append(None)
-                continue
-            stored_model = await engine.save(model)
-            stored_models.append(stored_model)
-            model_ids.append(model.id)
-
-
         # If this is the first tuple, set the model types
         if not self.model_types:
             self.model_types = model_names
@@ -73,7 +67,8 @@ class DataSetTupleSection(EmbeddedModel):
                     f"Model types {model_names} don't match section's expected types {self.model_types}"
                 )
 
-        self.data.append(model_ids)
+        self.data.append([model.id for model in models])
+        self._get_cache().append(tuple(models))
 
     async def make_column_defs(self):
         """
@@ -82,36 +77,19 @@ class DataSetTupleSection(EmbeddedModel):
         :return: List of column definitions for ag-grid
         """
         column_defs = []
-        if len(self.data) == 0:
+        cache = self._get_cache()
+        if not cache:
             return column_defs
-        from simstack.core.context import context
-        db = context.db
-        from simstack.util.importer import import_class_by_name
-        for model_group_id, model_type in zip(self.data[0], self.model_types):
-            model_class = await import_class_by_name(model_type,db)
-            model_instance = await db.find_one(
-                model_class, model_class.id == model_group_id
-            )
-            if model_instance is None:
-                raise ValueError(f"DB-Save Model of type {model_type} with id {model_group_id} not found")
+        for model_instance in cache[0]:
             model_columns = make_column_defs_instance(model_instance)
             column_defs.extend(model_columns)
         return column_defs
 
     async def make_table_entries(self):
         all_data = []
-        from simstack.core.context import context
-        from simstack.util.importer import import_class_by_name
-        db = context.db
-
-        for model_group_ids in self.data:
+        for model_group in self._get_cache():
             data = []
-            for model_group_id, model_type in zip(model_group_ids, self.model_types):
-                model_class = await import_class_by_name(model_type, db)
-                model_instance = await db.find_one(
-                   model_class, model_class.id == model_group_id
-                )
-
+            for model_instance in model_group:
                 model_data = make_table_entries_helper(model_instance)
                 data.append(model_data)
             all_data.append(data)
@@ -129,28 +107,12 @@ class DataSetTupleSection(EmbeddedModel):
                 f"Index {index} out of range for section with {len(self.data)} model groups"
             )
 
-        model_ids = self.data[index]
-        models = []
-
-        from simstack.util.importer import import_class_by_name
-        from simstack.core.context import context
-        db = context.db
-        for model_type, model_id in zip(self.model_types, model_ids):
-            model_class = await import_class_by_name(model_type, db)
-
-            if model_id is None:
-                models.append(None)
-                continue
-            model_instance = await db.find_one(
-                model_class, model_class.id == model_id
+        cache = self._get_cache()
+        if len(cache) != len(self.data):
+            raise RuntimeError(
+                "DataSetTupleSection references must be hydrated by a repository service"
             )
-            if model_instance is None:
-                raise ValueError(
-                    f"Model of type {model_type} with id {model_id} not found"
-                )
-            models.append(model_instance)
-
-        return tuple(models)
+        return cache[index]
 
     async def get_all_model_groups(self) -> List[Tuple[Model, ...]]:
         """
@@ -206,6 +168,9 @@ class DataSetTupleSection(EmbeddedModel):
             )
 
         self.data[index] = model_ids
+        cache = self._get_cache()
+        if len(cache) == len(self.data):
+            cache[index] = tuple(value)
 
     def __delitem__(self, index: int) -> None:
         """
@@ -218,6 +183,9 @@ class DataSetTupleSection(EmbeddedModel):
                 f"Index {index} out of range for section with {len(self.data)} model groups"
             )
         del self.data[index]
+        cache = self._get_cache()
+        if index < len(cache):
+            del cache[index]
 
     async def append(self, models: Tuple[Model, ...]) -> None:
         """
@@ -248,8 +216,9 @@ class DataSetTupleSection(EmbeddedModel):
                 )
 
         self.data.insert(index, model_ids)
+        self._get_cache().insert(index, tuple(models))
 
-    def extend(self, models_list: List[Tuple[Model, ...]]) -> None:
+    async def extend(self, models_list: List[Tuple[Model, ...]]) -> None:
         """
         Extend the section with multiple tuples of models.
 
@@ -258,7 +227,7 @@ class DataSetTupleSection(EmbeddedModel):
         # This used to be async but the requirement is to keep it sync.
         # Note: add_model_group is NOT async, so this is fine.
         for models in models_list:
-            self.add_model_group(models)
+            await self.add_model_group(models)
 
     async def pop(self, index: int = -1) -> Tuple[Model, ...]:
         """
@@ -273,6 +242,7 @@ class DataSetTupleSection(EmbeddedModel):
         # Get the models first before removing
         models = await self.get_model_group(index)
         del self.data[index]
+        del self._get_cache()[index]
         return models
 
     async def remove(self, models: Tuple[Model, ...]) -> None:
@@ -284,14 +254,19 @@ class DataSetTupleSection(EmbeddedModel):
         """
         model_ids = [model.id for model in models]
         try:
-            self.data.remove(model_ids)
+            index = self.data.index(model_ids)
         except ValueError:
             raise ValueError(f"Tuple {models} not found in DataSetSection")
+        del self.data[index]
+        cache = self._get_cache()
+        if index < len(cache):
+            del cache[index]
 
     def clear(self) -> None:
         """Remove all model groups from the section."""
         self.data.clear()
         self.model_types.clear()
+        self._set_cache([])
 
     async def index(
         self, models: Tuple[Model, ...], start: int = 0, stop: int = None
@@ -328,6 +303,7 @@ class DataSetTupleSection(EmbeddedModel):
     def reverse(self) -> None:
         """Reverse the order of model groups in the section."""
         self.data.reverse()
+        self._get_cache().reverse()
 
     def __iter__(self):
         """
@@ -370,19 +346,6 @@ class DataSetTuple(Model):
     @property
     def dataset_type(self) -> str:
         return self.metadata.dataset_type
-
-    async def save(self, engine):
-        # engine = current_engine_context.get()
-        structure = self.collect_structure()
-        ok = await self.metadata.validate_dict(structure, dataset_tuple=True)
-        if not ok:
-            raise ValueError("Metadata validation failed")
-
-        for key, section in self.sections.items():
-            self.sections[key].column_defs = await section.make_column_defs()
-            self.sections[key].table_entries = await section.make_table_entries()
-
-        await engine.save_unchecked(self)
 
     async def custom_model_dump(self, **kwargs) -> Dict[str, str]:
         """
@@ -513,75 +476,8 @@ class DataSetTupleSelection(Model):
     dataset_id: ObjectId
     dataset_selection_fields: List[DataSetTupleSelectionField] = Field(default_factory=list)
 
-    async def get_dataset(self):
-        from simstack.core.context import context
-        return await context.db.find_one(DataSetTuple, DataSetTuple.id == self.dataset_id)
-
-    async def get_selected_elements(self, section_name: str = None) -> List[Tuple[Model, ...]]:
-        """
-        Retrieve all selected model groups from the dataset.
-
-        :param section_name: Optional section name to filter results. If None, returns all sections.
-        :return: List of tuples of model instances for all selected elements
-        """
-        from simstack.core.context import context
-        db = context.db
-        dataset = await db.find_one(DataSetTuple, DataSetTuple.id == self.dataset_id)
-
-        if dataset is None:
-            raise ValueError(f"Dataset with id {self.dataset_id} not found")
-
-        selected_elements = []
-        for selection_field in self.dataset_selection_fields:
-            if section_name is not None and selection_field.section_name != section_name:
-                continue
-
-            section = dataset.sections.get(selection_field.section_name)
-            if section is None:
-                raise ValueError(f"Section {selection_field.section_name} not found in dataset")
-
-            for index in selection_field.indices:
-                if index >= len(section):
-                    raise IndexError(
-                        f"Index {index} out of range for section {selection_field.section_name} with {len(section)} elements"
-                    )
-                model_group = section.get_model_group(index)
-                selected_elements.append(model_group)
-
-        return selected_elements
-
-    async def __aiter__(self, section_name: str = None):
-        """
-        Async iterator over all selected model groups.
-
-        :param section_name: Optional section name to filter results. If None, returns all sections.
-        :return: Async iterator yielding tuples of model instances
-        """
-        from simstack.core.context import context
-        db = context.db
-        dataset = await db.find_one(DataSetTuple, DataSetTuple.id == self.dataset_id)
-
-        if dataset is None:
-            raise ValueError(f"Dataset with id {self.dataset_id} not found")
-
-        for selection_field in self.dataset_selection_fields:
-            if section_name is not None and selection_field.section_name != section_name:
-                continue
-
-            section = dataset.sections.get(selection_field.section_name)
-            if section is None:
-                raise ValueError(f"Section {selection_field.section_name} not found in dataset")
-
-            for index in selection_field.indices:
-                if index >= len(section):
-                    raise IndexError(
-                        f"Index {index} out of range for section {selection_field.section_name} with {len(section)} elements"
-                    )
-                yield section.get_model_group(index)
-
     @classmethod
     def ui_schema(cls) -> dict:
         return {
             "ui:field": "DataSetSelectionField",
         }
-

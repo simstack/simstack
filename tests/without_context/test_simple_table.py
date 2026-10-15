@@ -1,4 +1,3 @@
-from bson import BSON
 import pytest
 from pydantic import ValidationError
 
@@ -45,13 +44,10 @@ def test_simple_table_add_column_normalizes_type():
     assert table.type == [SimpleTableColumnType.NUMBER, SimpleTableColumnType.STRING]
 
 
-def test_simple_table_column_type_remains_string_in_bson():
+def test_simple_table_column_type_remains_string_in_document_dump():
     table = SimpleTable()
     table.add_column("energy", "float")
-    doc = table.model_dump(by_alias=True)
-    doc["_id"] = table.id
-
-    decoded = BSON(BSON.encode(doc)).decode()
+    decoded = table.model_dump_doc()
 
     assert decoded["type"] == ["number"]
     assert isinstance(decoded["type"][0], str)

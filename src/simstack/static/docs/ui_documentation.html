@@ -12,15 +12,15 @@
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -32,7 +32,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -44,17 +44,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -193,10 +193,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -216,8 +216,6 @@
 <li class="toctree-l2"><a class="reference internal" href="tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="database_migrations.html">Database Migrations</a></li>
@@ -228,12 +226,31 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -246,7 +263,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -304,7 +321,7 @@ including the</p>
 <section id="dashboard">
 <h2>Dashboard<a class="headerlink" href="#dashboard" title="Link to this heading">¶</a></h2>
 <figure class="align-center" id="id2">
-<img alt="SimStack Dashboard" src="resources/dashboard.png" />
+<img alt="SimStack Dashboard" src="_images/dashboard.png" />
 <figcaption>
 <p><span class="caption-text">The main dashboard showing workflow tasks and their status</span><a class="headerlink" href="#id2" title="Link to this image">¶</a></p>
 </figcaption>
@@ -344,7 +361,7 @@ Rows are color-coded based on their status for easy identification.</p>
 <section id="viewing-task-details">
 <h2>Viewing Task Details<a class="headerlink" href="#viewing-task-details" title="Link to this heading">¶</a></h2>
 <figure class="align-center" id="id3">
-<img alt="Task Details View" src="resources/task_details.png" />
+<img alt="Task Details View" src="_images/task_details.png" />
 <figcaption>
 <p><span class="caption-text">Detailed view of a workflow task showing parameters, outputs, and logs</span><a class="headerlink" href="#id3" title="Link to this image">¶</a></p>
 </figcaption>
@@ -374,7 +391,7 @@ In most cases these logs are the most relevant for users to understand the behav
 </ul>
 <p>You can navigate through different tabs to access various aspects of the task data.</p>
 <figure class="align-center" id="id4">
-<img alt="Example Chart Artifact" src="resources/artifacts.png" />
+<img alt="Example Chart Artifact" src="_images/artifacts.png" />
 <figcaption>
 <p><span class="caption-text">Example image artifact created by ag-charts. The user can interaction with the data and download it as needed.</span><a class="headerlink" href="#id4" title="Link to this image">¶</a></p>
 </figcaption>
@@ -415,7 +432,7 @@ To submit a new workflow:</p>
 <h3>Node Selector<a class="headerlink" href="#node-selector" title="Link to this heading">¶</a></h3>
 <p>The CascadingNodeSelector is the primary interface for browsing and selecting computational models from the available node registry.</p>
 <figure class="align-center" id="id5">
-<a class="reference internal image-reference" href="resources/node_selector.png"><img alt="Node Selector Interface" src="resources/node_selector.png" style="width: 700px;" />
+<a class="reference internal image-reference" href="_images/node_selector.png"><img alt="Node Selector Interface" src="_images/node_selector.png" style="width: 700px;" />
 </a>
 <figcaption>
 <p><span class="caption-text"><em>Hierarchical model browser with favorites and tree structure</em></span><a class="headerlink" href="#id5" title="Link to this image">¶</a></p>
@@ -426,7 +443,7 @@ To submit a new workflow:</p>
 </dd>
 </dl>
 <figure class="align-center" id="id6">
-<a class="reference internal image-reference" href="resources/model-tree-structure.png"><img alt="Model Tree Structure" src="resources/model-tree-structure.png" style="width: 500px;" />
+<a class="reference internal image-reference" href="_images/model-tree-structure.png"><img alt="Model Tree Structure" src="_images/model-tree-structure.png" style="width: 500px;" />
 </a>
 <figcaption>
 <p><span class="caption-text"><em>Example of hierarchical model organization which mirrors the directory structure of your project</em></span><a class="headerlink" href="#id6" title="Link to this image">¶</a></p>
@@ -447,7 +464,7 @@ To submit a new workflow:</p>
 <h3>Parameter Settings<a class="headerlink" href="#parameter-settings" title="Link to this heading">¶</a></h3>
 <p>The ParametersAccordion section provides comprehensive job parameter configuration options.</p>
 <figure class="align-center" id="id7">
-<a class="reference internal image-reference" href="resources/job-parameters.png"><img alt="Parameters Accordion" src="resources/job-parameters.png" style="width: 700px;" />
+<a class="reference internal image-reference" href="_images/job-parameters.png"><img alt="Parameters Accordion" src="_images/job-parameters.png" style="width: 700px;" />
 </a>
 <figcaption>
 <p><span class="caption-text"><em>Complete parameters configuration interface (for a slurm-queue job)</em></span><a class="headerlink" href="#id7" title="Link to this image">¶</a></p>
@@ -504,7 +521,7 @@ To submit a new workflow:</p>
 <p>The Input section handles data configuration for each input mapping required by the selected model.
 For each input mapping defined by the selected model:</p>
 <figure class="align-center" id="id8">
-<a class="reference internal image-reference" href="resources/sample-input.png"><img alt="Input Mapping Card" src="resources/sample-input.png" style="width: 650px;" />
+<a class="reference internal image-reference" href="_images/sample-input.png"><img alt="Input Mapping Card" src="_images/sample-input.png" style="width: 650px;" />
 </a>
 <figcaption>
 <p><span class="caption-text"><em>Individual input mapping configuration card</em></span><a class="headerlink" href="#id8" title="Link to this image">¶</a></p>
@@ -697,7 +714,7 @@ data analysis and data visualization using three main mechanisms:</p>
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
           <a class="next-page" href="developer_guide.html">
               <div class="page-info">
@@ -714,9 +731,9 @@ data analysis and data visualization using three main mechanisms:</p>
                 <div class="context">
                   <span>Previous</span>
                 </div>
-                
+
                 <div class="title">Workflows</div>
-                
+
               </div>
             </a>
         </div>
@@ -726,20 +743,20 @@ data analysis and data visualization using three main mechanisms:</p>
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer">
-      
-      
+
+
       <div class="toc-sticky toc-scroll">
         <div class="toc-title-container">
           <span class="toc-title">
@@ -775,14 +792,14 @@ data analysis and data visualization using three main mechanisms:</p>
           </div>
         </div>
       </div>
-      
-      
+
+
     </aside>
   </div>
 </div><script src="_static/documentation_options.js?v=5929fcd5"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

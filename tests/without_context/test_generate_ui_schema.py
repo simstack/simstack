@@ -1,6 +1,5 @@
-from odmantic import EmbeddedModel, Model
-
 from simstack.models import simstack_model
+from simstack.models.document import EmbeddedModel, Model
 
 
 def test_generate_ui_schema_uses_nested_model_import_path():

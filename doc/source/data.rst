@@ -6,34 +6,33 @@ Persisting and Visualizing Data
 .. note::
     This section is intended for node-developers.
 
-Simstack persists data using a MongoDB database, which is exposed via the
-fast-api server to a web-frontend. Each user has a dedicated database
-on a MongoDB server which is configured in the configuration file
-(:ref:`configuration-file`).
+Simstack domain data is represented by Pydantic models from
+:mod:`simstack.models.document`. These classes contain validation,
+serialization, reference metadata, and JSON-safe identifiers, but no database
+client or active-record API. The FastAPI server owns the persistence repository
+and any MongoDB-specific conversion. Remote runners exchange model documents
+with that server through the runner API and must not connect to the database.
 
-To facilitate access to the database in the python workflows, Simstack II uses the odmantic
-package to provide an object-oriented access to the data via odmantic
-Models. Odmantic Models are drived from pydantic (V2) classes and developers
-of nodes (:ref:`workflows`) can define their own classes deriving from Model.
+Node developers (:ref:`workflows`) can define document models by deriving from
+:class:`simstack.models.document.Model`, or inline value objects by deriving
+from :class:`simstack.models.document.EmbeddedModel`.
 
 To customize the appearance of the models in the UI, the model definition
 should be decorated by ``@simstack_model``
-(:func:`simstack.core.simstack_model.simstack_model`)
+(:func:`simstack.models.simstack_model.simstack_model`)
 which provides ui-related functionality discussed below
 (:ref:`model-appearance`)
 
 Model Definitions
 ~~~~~~~~~~~~~~~~~~
 
-For detailed information on odmantic models, consult the odmantic
-documentation.
-
-A basic model definition look like:
+A basic model definition looks like:
 
 .. code-block:: python
 
    from typing import Optional, List
-   from odmantic import Model, EmbeddedModel, Field
+   from simstack.models import simstack_model
+   from simstack.models.document import EmbeddedModel, Field, Model, Reference
 
    @simstack_model
    class OtherModel(Model):
@@ -41,26 +40,27 @@ A basic model definition look like:
         max: float
 
    @simstack_model
-   class SmallData(EmbeddedModel)
+   class SmallData(EmbeddedModel):
         number: int
 
    @simstack_model
-   class ComplexData(Model)
+   class ComplexData(Model):
         counter: int = Field(default=1)
         limit: Optional[int] = None
-        other_model: OtherModel = Reference() # this defines a reference to the
-                                              # other table in the db
-                                              # loading ComplexData will load
-                                              # the other model too
-        small_data: SmallData # directly stored in the complex_data table
+        # A separately persisted document reference. The server resolves it.
+        other_model: OtherModel = Reference()
+        # Embedded values are stored inline in the ComplexData document.
+        small_data: SmallData
 
 
 
 .. important::
-   - The node developer does not have explicitly save models to the db, the
-     @node decorator will take care of this.
-   - There is **no Model inheritance**, which is a real pain.
-   - ODMantic Issue #484: https://github.com/art049/odmantic/issues/484
+   - Node code does not save models directly. The node execution contract sends
+     declared inputs and results through the server API.
+   - ``Reference()`` is for independently persisted ``Model`` documents.
+     Use ``EmbeddedModel`` for values owned by their parent document.
+   - Model inheritance follows normal Pydantic behavior. Give persisted model
+     families an intentional collection contract when they share storage.
 
 .. note::
     Even though its formally allowed do not use Dict[str,Any] in models,
@@ -92,27 +92,21 @@ And for file management (see :doc:`files`):
 - FileList
 - FileListModel
 
-And the parallel execution utilities (see :doc:`mass_runner` and :doc:`fire_and_forget_runner`):
-
-- MassRunner
-- FireAndForgetRunner
-
-:class:`simstack.models.array_storage.ArrayStorage` is an example of a class which
-packs its content by serializing and deserializing it. This is the
-recommended procedure for all content which MongoDB cannot natively store. To
-interact with such classes, the developer has to provide access functions and
-a member function ``custom_model_dump`` which the fast-api server to convert
-the content of the class into a dict which can be visualized in the GUI.
+:class:`simstack.models.array_storage.ArrayStorage` is an example of a class
+which packs its content into ordinary document fields. Values that need a wire
+representation should use the public document codec rather than importing BSON
+or a database driver. ``model_dump_doc`` produces the storage-shaped,
+JSON-safe document consumed by the server boundary.
 
 .. _model-appearance:
 
 Model Appearance in the GUI
 ---------------------------
 
-The :class:`simstack.models.models.ModelTable` table in the database stores
-for each class a json-schema (derived from the pydantic json-schema) and a
-``ui_scheme`` which is created by
-:func:`simstack.core.model_table.make_model_table`.
+The server's :class:`simstack.models.models.ModelMapping` registry stores a
+JSON Schema (derived from Pydantic) and a UI schema for each registered class.
+The records are created by
+:func:`simstack.tables.model_table.make_model_table`.
 
 The UI used a package react-json-forms (rjsf) to interpret these schema to
 provide input and output representations of the model. When queried the
@@ -130,9 +124,9 @@ compatible with the json-schema. 8
 +---------------+-------------------------------------+------------------+
 | ui_make_title | title for the model in ui           | class name       |
 +---------------+-------------------------------------+------------------+
-| from_dict     | create model instance from dict     | odmantic func    |
+| from_dict     | create model instance from dict     | Pydantic helper  |
 +---------------+-------------------------------------+------------------+
-| from_model    | copy constructor                    | odmantic default |
+| from_model    | copy constructor                    | Pydantic helper  |
 +---------------+-------------------------------------+------------------+
 
 **Instance Functions**

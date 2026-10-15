@@ -38,13 +38,13 @@ async def setup_node_model(initialized_context):
         input_mappings=[],
         default_parameters=parameters,
     )
-    await context.db.save(node_model)
+    await context.repository.save(node_model)
     await context.refresh_mappings()
 
-    yield context.db
+    yield context.repository
 
     # Clean up the node_model
-    await context.db.delete(node_model)
+    await context.repository.delete(node_model)
     await context.refresh_mappings()
 
 
@@ -60,7 +60,7 @@ async def setup_pickled_function(initialized_context):
     function_pickle.store_function(another_node_for_testing)
 
     # Save the FunctionPickle instance
-    await context.db.save(function_pickle)
+    await context.repository.save(function_pickle)
 
     # Create a NodeModel entry that references the FunctionPickle
     parameters = Parameters()
@@ -72,13 +72,13 @@ async def setup_pickled_function(initialized_context):
         default_parameters=parameters,
         pickle_function=function_pickle,  # Pass the FunctionPickle instance directly
     )
-    await context.db.save(node_model)
+    await context.repository.save(node_model)
     await context.refresh_mappings()
 
-    yield context.db
+    yield context.repository
 
-    await context.db.delete(node_model)
-    await context.db.delete(function_pickle)
+    await context.repository.delete(node_model)
+    await context.repository.delete(function_pickle)
     await context.refresh_mappings()
 
 
@@ -89,7 +89,7 @@ async def test_import_function_from_node_model(setup_node_model, initialized_con
     """Test importing a function using NodeModel."""
     # Import the test_function using import_function
 
-    func = await import_function(f"{CURRENT_MODULE}.node_for_testing", context.db)
+    func = await import_function(f"{CURRENT_MODULE}.node_for_testing", context.repository)
 
     # Verify that the function was imported correctly
     assert func.__name__ == node_for_testing.__name__
@@ -107,7 +107,7 @@ async def test_import_function_nonexistent(initialized_context):
         LookupError,
         match="Function simstack_tests.with_context.core.test_import_function.nonexistent_function not found in the NodeModel Table",
     ):
-        await import_function("simstack_tests.with_context.core.test_import_function.nonexistent_function", context.db)
+        await import_function("simstack_tests.with_context.core.test_import_function.nonexistent_function", context.repository)
 
 
 if __name__ == "__main__":

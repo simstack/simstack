@@ -11,7 +11,8 @@ The recovery process involves three main components:
 
 1. **The Failing Node**: A node that performs some work, writes output to a file, but then fails (e.g., due to an exception).
 2. **The Repair Function**: A helper function that knows how to locate the output of a failed node and "repair" the result by collecting the files and marking it as successful.
-3. **The Recovery Node**: A node that queries the database for failed instances of specific nodes and applies the repair function to them.
+3. **The Recovery Operation**: A server-side operation that selects failed task
+   instances and applies the repair function through the control plane.
 
 Implementation Details
 ----------------------
@@ -32,7 +33,13 @@ How it Works
    This function takes a `NodeRegistry` entry. It constructs the path to the original node's working directory using `context.config.workdir`. If it finds the expected output files, it uses `node_runner.succeed()` to provide the missing data.
 
 3. **sxt_recovery_node**:
-   This is the orchestrator for recovery. It uses `context.db.find` to search for `NodeRegistry` entries with a `failed` status and a specific `call_path`. For each failed node found, it calls `stx_repair_node`. If repair is successful, it updates the original node's status in the database.
+   The historical example queried persistence from workflow code. That pattern is
+   no longer supported. Task selection and state transitions belong to a
+   server-owned recovery endpoint/repository service; a runner may only submit
+   claim-scoped recovery results through the control-plane API. There is no
+   direct-database fallback.
 
 4. **Main Execution**:
-   The `main` function first runs several instances of `sxt_failing_node`, which all fail. Then, it runs `sxt_recovery_node` to automatically fix these failures and recover the data.
+   The `main` function first runs several instances of `sxt_failing_node`, which
+   all fail. Recovery must then be initiated by the server-side recovery
+   operation, not by injecting persistence into a runner.

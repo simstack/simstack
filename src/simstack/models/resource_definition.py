@@ -3,7 +3,7 @@ import urllib.parse
 import socket
 import re
 from pathlib import Path
-from odmantic import EmbeddedModel, Field, Model
+from simstack.models.document import Field, Model
 from pydantic import field_validator, model_serializer
 
 from simstack.models.parameters import normalize_execution_queue
@@ -43,7 +43,7 @@ class GitRepo(Model):
         return v
 
 class ResourceDefinition(Model):
-    resource_str: str = Field(unique=True)
+    resource_str: str
     workdir: str  # Change Path to str
     hostname: str
     python_paths: List[str] = Field(default_factory=list)  # Change List[Path] to List[str]

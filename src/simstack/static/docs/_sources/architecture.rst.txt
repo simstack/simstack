@@ -17,9 +17,14 @@ MongoDB database to persist data. The backend also interacts with remote
 resources, so called runners, where the python code is actually executed. The graphical user interface
 is decribed in more detail in :ref:`using_gui_section`.
 
-In a typical installation Simstack II requrires only one instance of the
-Next-JS frontend, one instance of the FastAPI backend and one instance of
-the MongoDB database server. Each user has his/her own database in the
-MongoDB server. The runners are installed for each user on the required remote resources and automatically update themselves
-from one or several GIT repositories, which may be different for different users.
+In a typical installation Simstack II requires one Next-JS frontend, one
+FastAPI backend, and one MongoDB database server. The backend is the only
+component that connects to MongoDB. Runners are installed on the required
+execution resources and communicate with the backend through the authenticated
+runner API.
 
+Runner processes do not update their own checkout or environment. They never
+run Git or a dependency manager and never inspect a particular lock file or
+user-specific dependency file. CI or the deployment supervisor must prepare a
+validated, secret-free source snapshot and production environment, replace the
+deployment, and restart the runner explicitly.

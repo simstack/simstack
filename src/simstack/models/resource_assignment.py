@@ -1,7 +1,7 @@
 import re
 from typing import Optional, ClassVar, Dict, Any
 
-from odmantic import Field, Model, EmbeddedModel
+from simstack.models.document import EmbeddedModel, Field, Model
 from pydantic import field_validator, model_validator
 
 from simstack.models.parameters import normalize_execution_queue
@@ -55,7 +55,7 @@ def _normalize_slurm_parameters_value(value: Any) -> Dict[str, Any]:
 
 
 class ResourceAssignmentRule(Model):
-    name: str = Field(unique=True)
+    name: str
     regex_pattern: str
     priority: int = Field(default=0)
     enabled: bool = Field(default=True)

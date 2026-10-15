@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import logging
 import shutil
+import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, Union
 
-from odmantic import EmbeddedModel, Field, ObjectId
-from pydantic import model_validator
+from simstack.models.document import EmbeddedModel, Field, ObjectId
+from pydantic import field_validator, model_validator
 
 from simstack.models import simstack_model
 from simstack.models.parameters import Resource
-from simstack.util.file_transfer_client import transfer_resource_name
+from simstack.runner_api.file_transfer import transfer_resource_name
 from simstack.util.file_hashing import hash_file
 
 logger = logging.getLogger("file_instance")
@@ -61,14 +62,21 @@ class FileInstance(EmbeddedModel):
     )
     status: str = Field(default="available", description="Instance lifecycle status")
 
+    @field_validator("id")
+    @classmethod
+    def validate_persisted_id(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value.strip() or value != value.strip():
+            raise ValueError("File instance id must be an opaque non-empty string")
+        return value
+
     @model_validator(mode="before")
     def migration(cls, values: Any) -> Any:
         if isinstance(values.get("resource"), str):
             values["resource"] = Resource(value=values["resource"])
         if "path" in values and isinstance(values["path"], Path):
             values["path"] = str(values["path"])
-        if not values.get("id"):
-            values["id"] = str(uuid.uuid4())
         if not values.get("location_type"):
             values["location_type"] = "local_path"
         if not values.get("status"):
@@ -86,6 +94,9 @@ class FileInstance(EmbeddedModel):
         file_stack_id: ObjectId,
         make_copy: bool = True,
         tasks_id: str = "",
+        *,
+        workdir: Path | str | None = None,
+        resource: Resource | None = None,
     ) -> FileInstance:
         """
         Creates a FileInstance object from a local file path.
@@ -106,45 +117,61 @@ class FileInstance(EmbeddedModel):
         :raises ValueError: If there are issues during the creation of the
             `FileInstance` from the specified local file.
         """
-        source_path = path if isinstance(path, Path) else Path(path)
-
-        # Prepare the content field if in_memory is True
-        resolved_path = Path(path).resolve()
-        # Find 'simstack' in the path and compute the relative path from its parent
-        from simstack.core.context import context
-
-        workdir = context.config.workdir
-        resolved_workdir = Path(workdir).resolve()
-        if tasks_id == "":
-            logger.debug(f"workdir is {resolved_workdir} path is {resolved_path}")
-        else:
-            logger.debug(
-                f"task_id: {tasks_id} workdir is {resolved_workdir} path is {resolved_path}"
+        source_path = Path(path).resolve(strict=True)
+        if not source_path.is_file():
+            raise ValueError(f"FileInstance source is not a file: {source_path}")
+        if (workdir is None) != (resource is None):
+            raise ValueError(
+                "FileInstance requires both workdir and resource, or runner context"
             )
-        try:
-            relative_path = resolved_path.relative_to(resolved_workdir)
-        except ValueError:
-            if tasks_id == "":
-                logger.error(
-                    f"Path {resolved_path} is not under workdir {resolved_workdir}"
-                )
-            else:
-                logger.error(
-                    f"Path {resolved_path} is not under workdir {resolved_workdir} for task_id: {tasks_id}"
-                )
-            import getpass
+        from simstack.core.file_io import current_file_io
 
-            username = getpass.getuser()
-            relative_path = Path(username) / str(file_stack_id)
-            absolute_dir = Path(context.config.workdir) / relative_path
-            absolute_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy(source_path, absolute_dir)
+        provider = current_file_io()
+        if workdir is None:
+            from simstack.core.context import context
+
+            if provider is not None:
+                workdir, resource = provider.workdir, provider.resource
+            else:
+                workdir = context.config.workdir
+                resource = context.config.resource
+        resolved_workdir = Path(workdir).resolve()
+        try:
+            relative_path = source_path.relative_to(resolved_workdir)
+        except ValueError:
+            # A location must remain usable by the resource's upload service;
+            # an external absolute path cannot be persisted as a location.
+            make_copy = True
+        if make_copy:
+            # A scoped artifact port exposes only its request-local output
+            # directory. Explicit context passed by FileStack must not bypass it.
+            file_root = (
+                provider.staging_dir
+                if provider is not None
+                and resolved_workdir == Path(provider.workdir).resolve()
+                and transfer_resource_name(resource)
+                == transfer_resource_name(provider.resource)
+                else resolved_workdir / "files"
+            )
+            file_root.mkdir(parents=True, exist_ok=True)
+            absolute_dir = Path(tempfile.mkdtemp(prefix="instance-", dir=file_root))
+            stored_path = absolute_dir / source_path.name
+            try:
+                shutil.copyfile(source_path, stored_path)
+            except Exception:
+                stored_path.unlink(missing_ok=True)
+                absolute_dir.rmdir()
+                raise
+            relative_path = stored_path.relative_to(resolved_workdir)
+        else:
+            stored_path = source_path
 
         file_instance = FileInstance(
+            id=str(uuid.uuid4()),
             path=str(relative_path),
-            resource=Resource(value=transfer_resource_name(context.config.resource)),
+            resource=Resource(value=transfer_resource_name(resource)),
             created_at=datetime.now(),
-            size_bytes=source_path.stat().st_size if source_path.exists() else None,
-            checksum_sha256=hash_file(source_path) if source_path.exists() else None,
+            size_bytes=stored_path.stat().st_size,
+            checksum_sha256=hash_file(stored_path),
         )
         return file_instance

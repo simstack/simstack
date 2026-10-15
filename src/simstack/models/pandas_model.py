@@ -1,14 +1,11 @@
-import asyncio
 import json
 import io
-from pprint import pprint
 from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
-from odmantic import Model
+from simstack.models.document import Model
 
-from simstack.core.context import context
 from simstack.models import simstack_model
 from simstack.models.files import FileStack
 
@@ -91,16 +88,12 @@ class PandasModel(Model):
         """
         Convert the DataFrame to a JSON string suitable for React visualization libraries.
 
-        Parameters:
-        - orient: Determines the JSON string layout:
-          'records' - list like [{column -> value}, ... , {column -> value}] (default)
-          'columns' - {column -> [values, ...]}
-          'index'   - {column -> value}}
-          'split'   - {index -> [index], columns -> [columns], data -> [values]}
-          'table'   - {'schema': {schema}, 'data': {data}}
+        Args:
+            orient: JSON layout, defaulting to ``records``. Other layouts are
+                ``columns``, ``index``, ``split``, and ``table``.
 
         Returns:
-        - String: JSON formatted string ready for React
+            str: JSON formatted string ready for React.
         """
         df = self.table
         if df.empty:
@@ -190,50 +183,3 @@ class PandasModel(Model):
         if len(df) > 5:
             return f"PandasModel with shape {df.shape}:\n{df.head(5).to_string()}\n..."
         return f"PandasModel with shape {df.shape}:\n{df.to_string()}"
-
-#TODO move to test
-async def main():
-    await context.initialize()
-    # Create the data structure
-    data = []
-
-    # Iteration names
-    iterations = ["iter1", "iter2", "iter3"]
-
-    # For each iteration
-    for index, iteration in enumerate(iterations):
-        # Generate 4 x values (for example, increasing by 0.5)
-        x_values = np.arange(1, 3, 0.5)  # Creates [1.0, 1.5, 2.0, 2.5]
-
-        # Generate 2 sets of 4 y values for each iteration
-        y_values_set1 = np.sin((index + 1) * x_values)  # 4 random values around mean=8
-        y_values_set2 = np.sin((index + 1) * x_values)
-        # Add the data for this iteration
-        for i, x in enumerate(x_values):
-            data.append(
-                {
-                    "iteration": iteration,
-                    "x": x,
-                    "y_set1": y_values_set1[i],
-                    "y_set2": y_values_set2[i],
-                }
-            )
-
-    # Create the DataFrame
-    df = pd.DataFrame(data)
-    # Replace Styler usage (requires jinja2) with console-safe formatting.
-    print(_format_df_for_console(df, precision=2))
-
-    model = PandasModel.from_data_frame(df)
-
-    pprint(await model.custom_model_dump())
-    saved_model = await context.db.save(model)
-
-    retrieved_model = await context.db.find_one(
-        PandasModel, PandasModel.id == saved_model.id
-    )
-    print("Retrieved Model", retrieved_model)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

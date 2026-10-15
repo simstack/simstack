@@ -12,15 +12,15 @@
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -32,7 +32,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -44,17 +44,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -193,10 +193,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -216,8 +216,6 @@
 <li class="toctree-l2"><a class="reference internal" href="tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="database_migrations.html">Database Migrations</a></li>
@@ -228,12 +226,31 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -246,7 +263,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -295,8 +312,8 @@
 <section id="example">
 <h3>Example:<a class="headerlink" href="#example" title="Link to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">Model</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.base_lists</span><span class="w"> </span><span class="kn">import</span> <span class="n">GenericListMixin</span>
 
 <span class="nd">@simstack_model</span>
@@ -333,20 +350,26 @@
 </section>
 <section id="objectlistmixin">
 <h2>ObjectListMixin<a class="headerlink" href="#objectlistmixin" title="Link to this heading">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">ObjectListMixin</span></code> is designed for lists of <code class="docutils literal notranslate"><span class="pre">Model</span></code> instances. Instead of storing the full objects, it stores only their <code class="docutils literal notranslate"><span class="pre">ObjectId</span></code>. This is useful for keeping the parent model small and avoiding deep nesting in MongoDB. Interaction with the objects is done asynchronously through the database.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">ObjectListMixin</span></code> is designed for lists of separately persisted
+<code class="docutils literal notranslate"><span class="pre">Model</span></code> instances. Its document field stores their domain <code class="docutils literal notranslate"><span class="pre">ObjectId</span></code>
+values, while an in-memory cache provides normal model instances to node code.
+The server prepares that dependency closure and an API-only runner hydrates the
+cache from the task bundle; the runner does not load list elements from a
+database.</p>
 <section id="id1">
 <h3>Requirements:<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
 <p>To use <code class="docutils literal notranslate"><span class="pre">ObjectListMixin</span></code>, your class must:</p>
 <ol class="arabic simple">
-<li><p>Inherit from <code class="docutils literal notranslate"><span class="pre">ObjectListMixin[T]</span></code> where <code class="docutils literal notranslate"><span class="pre">T</span></code> is an odmantic <code class="docutils literal notranslate"><span class="pre">Model</span></code>.</p></li>
+<li><p>Inherit from <code class="docutils literal notranslate"><span class="pre">ObjectListMixin[T]</span></code> where <code class="docutils literal notranslate"><span class="pre">T</span></code> is a
+<a class="reference internal" href="simstack/modules/simstack.models.document.html#simstack.models.document.Model" title="simstack.models.document.Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">simstack.models.document.Model</span></code></a>.</p></li>
 <li><p>Have an attribute named <code class="docutils literal notranslate"><span class="pre">elements</span></code> of type <code class="docutils literal notranslate"><span class="pre">List[ObjectId]</span></code>.</p></li>
 </ol>
 </section>
 <section id="id2">
 <h3>Example:<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">ObjectId</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span><span class="p">,</span> <span class="n">StringData</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ObjectId</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.base_lists</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectListMixin</span>
 
 <span class="nd">@simstack_model</span>
@@ -365,23 +388,25 @@
 <li><p><a class="reference internal" href="array_lists.html"><span class="doc">Array Lists</span></a>: <code class="docutils literal notranslate"><span class="pre">ArrayList</span></code> uses <code class="docutils literal notranslate"><span class="pre">ObjectListMixin[ArrayStorage]</span></code>.</p></li>
 <li><p><a class="reference internal" href="tables.html"><span class="doc">Tables</span></a>: <code class="docutils literal notranslate"><span class="pre">SimpleTable</span></code> (while not using list mixins directly, it’s a related data structure).</p></li>
 </ul>
-<section id="available-methods-mostly-async">
-<h3>Available Methods (mostly Async):<a class="headerlink" href="#available-methods-mostly-async" title="Link to this heading">¶</a></h3>
+<section id="id3">
+<h3>Available Methods:<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">append(element:</span> <span class="pre">T)</span></code>: Saves the <code class="docutils literal notranslate"><span class="pre">Model</span></code> instance to the database and adds its ID to the list.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">extend(elements:</span> <span class="pre">Union[List[T],</span> <span class="pre">ObjectListMixin[T]])</span></code>: Extends the list, saving any new models to the database.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">get(index:</span> <span class="pre">int)</span> <span class="pre">-&gt;</span> <span class="pre">T</span></code>: Retrieves the full model from the database at the specified index.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">find(pattern:</span> <span class="pre">str)</span> <span class="pre">-&gt;</span> <span class="pre">Optional[T]</span></code>: Searches for a model with a matching <code class="docutils literal notranslate"><span class="pre">name</span></code> attribute in the database.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">find_all(pattern:</span> <span class="pre">str)</span> <span class="pre">-&gt;</span> <span class="pre">List[T]</span></code>: Searches for all models matching the regex <code class="docutils literal notranslate"><span class="pre">pattern</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">for</span> <span class="pre">element</span> <span class="pre">in</span> <span class="pre">my_list</span></code>: Support for asynchronous iteration over the full objects.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">len(my_list)</span></code>: Returns the number of IDs in the list.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">my_list[index]</span></code>: Returns the <code class="docutils literal notranslate"><span class="pre">ObjectId</span></code> at the specified index (sync).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">element</span> <span class="pre">in</span> <span class="pre">my_list</span></code>: Checks if a <code class="docutils literal notranslate"><span class="pre">Model</span></code> or <code class="docutils literal notranslate"><span class="pre">ObjectId</span></code> is in the list (sync).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">append(element:</span> <span class="pre">T)</span></code>: Adds the model to the cache and its ID to
+<code class="docutils literal notranslate"><span class="pre">elements</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">extend(elements)</span></code>: Appends several already constructed models.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get(index:</span> <span class="pre">int)</span> <span class="pre">-&gt;</span> <span class="pre">T</span></code>: Returns a hydrated cached model; it fails if the
+requested entry was not supplied in the dependency bundle.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">find(pattern)</span></code> and <code class="docutils literal notranslate"><span class="pre">find_all(pattern)</span></code>: Search the hydrated cache by
+<code class="docutils literal notranslate"><span class="pre">name</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">len(my_list)</span></code>: Returns the number of stored IDs.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">my_list[index]</span></code>: Returns a hydrated model when available, otherwise its
+<code class="docutils literal notranslate"><span class="pre">ObjectId</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">element</span> <span class="pre">in</span> <span class="pre">my_list</span></code>: Checks a model, <code class="docutils literal notranslate"><span class="pre">ObjectId</span></code>, or hydrated value.</p></li>
 </ul>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Interaction with <code class="docutils literal notranslate"><span class="pre">ObjectListMixin</span></code> requires an active database engine context, which is typically provided during node execution.</p>
-</div>
+<p>List models are persistence-neutral values. The server repository hydrates
+referenced elements before a task is dispatched and persists committed results
+after execution. There are no model-level <code class="docutils literal notranslate"><span class="pre">save</span></code> or postprocess hooks, and an
+API-only runner never receives a repository.</p>
 </section>
 </section>
 </section>
@@ -389,7 +414,7 @@
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
           <a class="next-page" href="array_lists.html">
               <div class="page-info">
@@ -406,9 +431,9 @@
                 <div class="context">
                   <span>Previous</span>
                 </div>
-                
+
                 <div class="title">Datasets</div>
-                
+
               </div>
             </a>
         </div>
@@ -418,20 +443,20 @@
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer">
-      
-      
+
+
       <div class="toc-sticky toc-scroll">
         <div class="toc-title-container">
           <span class="toc-title">
@@ -455,7 +480,7 @@
 </ul>
 </li>
 <li><a class="reference internal" href="#concrete-implementations">Concrete Implementations</a><ul>
-<li><a class="reference internal" href="#available-methods-mostly-async">Available Methods (mostly Async):</a></li>
+<li><a class="reference internal" href="#id3">Available Methods:</a></li>
 </ul>
 </li>
 </ul>
@@ -465,14 +490,14 @@
           </div>
         </div>
       </div>
-      
-      
+
+
     </aside>
   </div>
 </div><script src="_static/documentation_options.js?v=5929fcd5"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

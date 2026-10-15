@@ -29,7 +29,7 @@ tmp_base_dir = "set TMP_BASE_DIR=/tmp/base"
 scratch_cleanup = true
 
 [local.program.orca]
-use_tmp = true
+use_temp = false
 run_command = "orca orca.inp"
 
 [remote]
@@ -70,16 +70,16 @@ def test_setup_no_runner(tmp_path, config_file):
     with patch("subprocess.run") as mock_run:
         rc.setup()
         assert mock_run.call_count == 2
-        mock_run.assert_any_call("echo setup1", shell=True, check=True)
-        mock_run.assert_any_call("echo setup2", shell=True, check=True)
+        mock_run.assert_any_call(rc._command_argv("echo setup1", {}), shell=False, check=True)
+        mock_run.assert_any_call(rc._command_argv("echo setup2", {}), shell=False, check=True)
 
 def test_setup_with_runner(tmp_path, config_file):
     rc = ResourceConfig(tmp_path, "local")
     runner = MockNodeRunner("mock", "NA")
     rc.setup(node_runner=runner)
     assert runner.subprocess.call_count == 2
-    runner.subprocess.assert_any_call("setup_0", "echo setup1")
-    runner.subprocess.assert_any_call("setup_1", "echo setup2")
+    runner.subprocess.assert_any_call("setup_0", rc._command_argv("echo setup1", {}))
+    runner.subprocess.assert_any_call("setup_1", rc._command_argv("echo setup2", {}))
 
 def test_run_with_runner(tmp_path, config_file):
     rc = ResourceConfig(tmp_path, "local")
@@ -92,7 +92,7 @@ def test_run_with_runner(tmp_path, config_file):
             rc.run(program_name="orca", node_runner=runner)
             runner.subprocess.assert_called_once()
             args, kwargs = runner.subprocess.call_args
-            assert args == ("run", "orca orca.inp")
+            assert args == ("run", rc._command_argv("orca orca.inp", {}))
             assert Path(kwargs["cwd"]).samefile(test_cwd)
         finally:
             os.chdir(old_cwd)

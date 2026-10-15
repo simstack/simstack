@@ -6,9 +6,12 @@ import subprocess
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Union
+from typing import TYPE_CHECKING, Dict, Any, Optional, List, Union
 
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
+
+if TYPE_CHECKING:
+    from simstack.models.files import FileStack
 
 import logging
 logger = logging.getLogger("ResourceConfig")
@@ -142,12 +145,79 @@ class ResourceConfig:
         setup_params = self.get_setup_params()
         scripts = setup_params.get("scripts", [])
         for i, script in enumerate(scripts):
-            # Note: shell=True is needed to execute shell commands/scripts
-            # and might be OS dependent for the actual commands.
-            if node_runner and hasattr(node_runner, "subprocess"):
-                node_runner.subprocess(f"setup_{i}", script)
-            else:
-                subprocess.run(script, shell=True, check=True)
+            self._execute(f"setup_{i}", script, setup_params, node_runner=node_runner)
+
+    def _command_argv(self, command: str | list[str], params: Dict[str, Any]) -> list[str]:
+        """Keep TOML strings as scripts, rather than re-tokenizing shell syntax.
+
+        A ``shell`` argv prefix may be configured on the resource, setup table,
+        or program. The script is appended as one argument. Plain argv commands
+        do not use a shell at all.
+        """
+        if isinstance(command, list):
+            if command and all(isinstance(item, str) and item for item in command):
+                return list(command)
+            raise ValueError("ResourceConfig argv commands must contain non-empty strings")
+        if not isinstance(command, str) or not command.strip():
+            raise ValueError("ResourceConfig commands must be non-empty scripts or argv lists")
+        shell = params.get("shell", self._resource_section(self._resource).get("shell"))
+        if shell is None:
+            shell = (
+                [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/s", "/c"]
+                if os.name == "nt"
+                else ["/bin/sh", "-c"]
+            )
+        if not isinstance(shell, list) or not shell or not all(
+            isinstance(item, str) and item for item in shell
+        ):
+            raise ValueError("ResourceConfig shell must be a non-empty argv prefix")
+        return [*shell, command]
+
+    def _execute(
+        self,
+        name: str,
+        command: str | list[str],
+        params: Dict[str, Any],
+        *,
+        node_runner: Optional[Any] = None,
+        cwd: Path | None = None,
+    ) -> None:
+        argv = self._command_argv(command, params)
+        if node_runner is not None:
+            success = node_runner.subprocess(name, argv, **({"cwd": str(cwd)} if cwd else {}))
+            if success is False:
+                raise subprocess.CalledProcessError(
+                    node_runner.last_returncode or 1,
+                    argv,
+                    output=node_runner.last_stdout,
+                    stderr=node_runner.last_stderr,
+                )
+        else:
+            subprocess.run(argv, shell=False, check=True, **({"cwd": cwd} if cwd else {}))
+
+    def _execution_temp_dir(self, node_runner: Optional[Any]) -> Path:
+        from simstack.core.node_runner import NodeRunner
+
+        if not isinstance(node_runner, NodeRunner):
+            task_id = node_runner.task_id if node_runner else uuid.uuid4()
+            return self.tmp_dir(task_id)
+
+        # Operator scratch roots must not expand the worker's filesystem boundary.
+        # Each invocation owns only its newly created directory, never a reused
+        # task directory containing artifacts from another attempt.
+        task_root = node_runner.task_workdir
+        configured_root = self.get_setup_params().get("tmp_base_dir")
+        scratch_root = task_root / "scratch"
+        if configured_root:
+            candidate = Path(os.path.expandvars(os.path.expanduser(configured_root)))
+            if not candidate.is_absolute():
+                candidate = task_root / candidate
+            if candidate.resolve().is_relative_to(task_root):
+                scratch_root = candidate
+        if not scratch_root.resolve().is_relative_to(task_root):
+            raise ValueError("ResourceConfig scratch must stay in the claimed task workdir")
+        scratch_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        return Path(tempfile.mkdtemp(prefix="resource-", dir=scratch_root))
 
     def tmp_dir(self, task_id: ObjectId | str) -> Path:
         if isinstance(task_id, ObjectId):
@@ -195,7 +265,7 @@ class ResourceConfig:
         if output_files is None:
             output_files = params.get("output_files", [])
             
-        use_temp = params.get("use_temp", False)
+        use_temp = params.get("use_temp", params.get("use_tmp", False))
         
         # tmp_base_dir can come from setup or the program itself, but usually it's in setup for the resource
     
@@ -207,8 +277,7 @@ class ResourceConfig:
         try:
             exec_dir = Path.cwd()
             if use_temp:
-                tmp_id = node_runner.task_id if node_runner else uuid.uuid4()
-                tmp_dir = self.tmp_dir(tmp_id)
+                tmp_dir = self._execution_temp_dir(node_runner)
                 exec_dir = tmp_dir
                 
                 # Copy input files to exec_dir
@@ -216,15 +285,14 @@ class ResourceConfig:
                     if hasattr(f, "get"):  # It's a FileStack
                         f.get(local_dir=exec_dir)
                     else:  # It's a string (filename)
-                        src = Path.cwd() / f
-                        if src.exists() and src != exec_dir / f:
-                            shutil.copy(src, exec_dir / f)
+                        src = self._file_path(Path.cwd(), f, node_runner)
+                        destination = self._file_path(exec_dir, f, node_runner)
+                        if src.exists() and src != destination:
+                            destination.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copy(src, destination)
 
             # Execute run_command
-            if node_runner and hasattr(node_runner, "subprocess"):
-                node_runner.subprocess("run", run_command, cwd=str(exec_dir))
-            else:
-                subprocess.run(run_command, shell=True, check=True, cwd=exec_dir)
+            self._execute("run", run_command, params, node_runner=node_runner, cwd=exec_dir)
 
 
             # Copy output files back to cwd
@@ -235,13 +303,25 @@ class ResourceConfig:
                     # If it's a FileStack, we might need to update its content from the local file
                     # but the standard behavior for output_files here is copying back to cwd.
                     filename = f.name if hasattr(f, "name") else f
-                    src = tmp_dir / filename
+                    src = self._file_path(tmp_dir, filename, node_runner)
+                    destination = self._file_path(Path.cwd(), filename, node_runner)
                     if src.exists():
-                        shutil.copy(src, Path.cwd() / filename)
+                        destination.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy(src, destination)
 
         finally:
             if scratch_cleanup and tmp_dir and tmp_dir.exists():
                 shutil.rmtree(tmp_dir)
+
+    @staticmethod
+    def _file_path(base: Path, filename: str, node_runner: Optional[Any]) -> Path:
+        from simstack.core.node_runner import NodeRunner
+
+        path = base / filename
+        if isinstance(node_runner, NodeRunner):
+            if Path(filename).is_absolute() or not path.resolve().is_relative_to(base.resolve()):
+                raise ValueError("ResourceConfig files must stay relative to their task directory")
+        return path
 
     def get_docker_registry(self, resource: str | None = None) -> Optional[str]:
         """Optional registry host for ``docker pull`` (e.g. ``167.233.117.31:5000``).

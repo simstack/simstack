@@ -15,11 +15,8 @@ In this section we compiled a list of how-to's to help developers to use simstac
    tables
    files
    resource_config
-   mass_runner
-   fire_and_forget_runner
    docker_nodes
    testing_complex_nodes
    database_migrations
    ci_pipeline
    misc
-

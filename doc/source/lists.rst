@@ -24,8 +24,8 @@ Example:
 .. code-block:: python
 
    from typing import List
-   from odmantic import Model, Field
    from simstack.models import simstack_model
+   from simstack.models.document import Field, Model
    from simstack.models.base_lists import GenericListMixin
 
    @simstack_model
@@ -60,14 +60,20 @@ The mixin also provides convenience methods for searching elements if they have 
 ObjectListMixin
 ---------------
 
-The ``ObjectListMixin`` is designed for lists of ``Model`` instances. Instead of storing the full objects, it stores only their ``ObjectId``. This is useful for keeping the parent model small and avoiding deep nesting in MongoDB. Interaction with the objects is done asynchronously through the database.
+The ``ObjectListMixin`` is designed for lists of separately persisted
+``Model`` instances. Its document field stores their domain ``ObjectId``
+values, while an in-memory cache provides normal model instances to node code.
+The server prepares that dependency closure and an API-only runner hydrates the
+cache from the task bundle; the runner does not load list elements from a
+database.
 
 Requirements:
 ~~~~~~~~~~~~~
 
 To use ``ObjectListMixin``, your class must:
 
-1. Inherit from ``ObjectListMixin[T]`` where ``T`` is an odmantic ``Model``.
+1. Inherit from ``ObjectListMixin[T]`` where ``T`` is a
+   :class:`simstack.models.document.Model`.
 2. Have an attribute named ``elements`` of type ``List[ObjectId]``.
 
 Example:
@@ -76,8 +82,8 @@ Example:
 .. code-block:: python
 
    from typing import List
-   from odmantic import Model, Field, ObjectId
    from simstack.models import simstack_model, StringData
+   from simstack.models.document import Field, Model, ObjectId
    from simstack.models.base_lists import ObjectListMixin
 
    @simstack_model
@@ -94,18 +100,22 @@ Several core SimStack models utilize these mixins:
 *   :doc:`array_lists`: ``ArrayList`` uses ``ObjectListMixin[ArrayStorage]``.
 *   :doc:`tables`: ``SimpleTable`` (while not using list mixins directly, it's a related data structure).
 
-Available Methods (mostly Async):
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Available Methods:
+~~~~~~~~~~~~~~~~~~
 
-- ``await append(element: T)``: Saves the ``Model`` instance to the database and adds its ID to the list.
-- ``await extend(elements: Union[List[T], ObjectListMixin[T]])``: Extends the list, saving any new models to the database.
-- ``await get(index: int) -> T``: Retrieves the full model from the database at the specified index.
-- ``await find(pattern: str) -> Optional[T]``: Searches for a model with a matching ``name`` attribute in the database.
-- ``await find_all(pattern: str) -> List[T]``: Searches for all models matching the regex ``pattern``.
-- ``async for element in my_list``: Support for asynchronous iteration over the full objects.
-- ``len(my_list)``: Returns the number of IDs in the list.
-- ``my_list[index]``: Returns the ``ObjectId`` at the specified index (sync).
-- ``element in my_list``: Checks if a ``Model`` or ``ObjectId`` is in the list (sync).
+- ``append(element: T)``: Adds the model to the cache and its ID to
+  ``elements``.
+- ``extend(elements)``: Appends several already constructed models.
+- ``get(index: int) -> T``: Returns a hydrated cached model; it fails if the
+  requested entry was not supplied in the dependency bundle.
+- ``find(pattern)`` and ``find_all(pattern)``: Search the hydrated cache by
+  ``name``.
+- ``len(my_list)``: Returns the number of stored IDs.
+- ``my_list[index]``: Returns a hydrated model when available, otherwise its
+  ``ObjectId``.
+- ``element in my_list``: Checks a model, ``ObjectId``, or hydrated value.
 
-.. note::
-   Interaction with ``ObjectListMixin`` requires an active database engine context, which is typically provided during node execution.
+List models are persistence-neutral values. The server repository hydrates
+referenced elements before a task is dispatched and persists committed results
+after execution. There are no model-level ``save`` or postprocess hooks, and an
+API-only runner never receives a repository.

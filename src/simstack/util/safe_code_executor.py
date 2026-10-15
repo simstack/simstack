@@ -1,4 +1,5 @@
 import threading
+from contextvars import copy_context
 from typing import Dict
 
 from simstack.core.artifacts import ArtifactArguments
@@ -152,7 +153,10 @@ def safe_code_executor(
 
     try:
         # Start execution in a separate thread
-        thread = threading.Thread(target=execute_code, daemon=True)
+        execution_context = copy_context()
+        thread = threading.Thread(
+            target=execution_context.run, args=(execute_code,), daemon=True
+        )
         thread.start()
         thread.join(timeout=timeout)
 

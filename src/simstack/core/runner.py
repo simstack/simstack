@@ -3,104 +3,98 @@ import asyncio
 import logging
 import os
 
-from simstack.core.definitions import DBType
-
 from simstack.core.context import context
-from simstack.models.resource_definition import ResourceDefinition
-from simstack.tables.node_table import make_node_table
-from simstack.tables.model_table import make_model_table
 from simstack.core.services.runner_manager import RunnerManager
+from simstack.runner_api.config import RunnerConnectionSettings
+from simstack.runner_api.errors import RunnerApiConfigurationError
+from simstack.runner_runtime.environment import (
+    discard_runner_token_from_environment,
+    sanitize_runner_process_environment,
+)
 
 logger = logging.getLogger("NodeRunner")
 
 
-async def initialize_default_resource() -> ResourceDefinition | None:
-    """
-    Checks if the current resource is the default one.
-    If so, syncs the node and model tables from entry points and optional dirs.
-    """
-    resource_def = await context.db.find_one(
-        ResourceDefinition,
-        ResourceDefinition.resource_str == str(context.config.resource),
-    )
-
-    if resource_def is None:
-        logger.warning(
-            "No ResourceDefinition found for '%s'; skipping default-resource initialization.",
-            str(context.config.resource),
-        )
-        return None
-
-    if resource_def.is_default:
-        logger.info("Default resource: initializing model and node tables")
-        try:
-            await make_model_table(context.db)
-            await make_node_table(context.db)
-        except Exception as e:
-            logger.error(f"Failed to initialize default resource tables: {e}")
-
-    return resource_def
-
-
 async def async_main(args: argparse.Namespace) -> None:
-    """Async entry point"""
-    if args.connection_string == "none" or args.db_name == "none":
-        await context.initialize(resource=args.resource, config_file=args.config)
-    else:
-        await context.initialize(
-            resource=args.resource,
-            db_name=args.db_name,
-            connection_string=args.connection_string,
-            db_type=DBType.MONGODB,
-            config_file=args.config,
-        )
+    """Start an API-only runner. Missing API credentials abort startup."""
+    connection_kwargs = {}
+    resource = args.resource
+    if connection_path := getattr(args, "connection_config", None):
+        connection = RunnerConnectionSettings.from_file(connection_path)
+        if resource is not None and resource != connection.resource:
+            raise RunnerApiConfigurationError(
+                "--resource does not match the runner connection configuration"
+            )
+        resource = connection.resource
+        # An explicitly selected file is authoritative; no fallback to another
+        # server or legacy configuration if its bootstrap fails.
+        connection_kwargs["server_url"] = connection.server_url
+    sanitize_runner_process_environment(
+        allowed_environment_names=tuple(args.allow_environment)
+    )
+    await context.initialize_runner(
+        resource=resource,
+        config_file=args.config,
+        project_root=args.project_root,
+        workdir_override=args.workdir,
+        with_file_transfer=args.with_file_transfer,
+        **connection_kwargs,
+    )
+    discard_runner_token_from_environment()
 
-    # Initialize tables if this is the default resource
-    resource_def = await initialize_default_resource()
-    is_default_resource = bool(resource_def and resource_def.is_default)
-
-    if args.resource:
-        logger.info(f"Setting resource for runner to {args.resource}")
-        runner_manager = RunnerManager(
-            context.config.resource,
-            detach=args.detach,
-            no_pull=not args.pull,
-            is_default=is_default_resource,
-            with_file_transfer=args.file_transfer,
-        )
-        await runner_manager.run_nodes_for_resource(
-            args.polling_interval, 10, timeout=args.timeout
-        )
+    resource = context.config.resource
+    logger.info("Setting resource for runner to %s", resource)
+    runner_manager = RunnerManager(
+        resource,
+        is_default=context.config.is_default,
+        with_file_transfer=args.with_file_transfer,
+    )
+    await runner_manager.run_nodes_for_resource(
+        args.polling_interval, 10, timeout=args.timeout
+    )
 
 
 def runner_main() -> None:
     parser = argparse.ArgumentParser(description="Run nodes for a specific resource")
     parser.add_argument(
+        "--connection-config",
+        type=str,
+        help=(
+            "Path to secret-free runner.toml downloaded from the UI; "
+            "the resource token still comes from SIMSTACK_RUNNER_TOKEN"
+        ),
+    )
+    parser.add_argument(
         "--config",
         type=str,
-        # default="config.toml",
-        help="Path to the configuration file",
+        help=(
+            "Path to operator-owned execution-adapter config.toml "
+            "(defaults to <project-root>/config.toml); not the connection file"
+        ),
     )
 
     parser.add_argument(
         "--resource",
         type=str,
-        default="local",
-        help="Resource name to process tasks for",
+        default=None,
+        help="Expected token resource (defaults to the resource in the runner token)",
     )
 
     parser.add_argument(
-        "--db-name",
+        "--project-root",
         type=str,
-        default="none",
-        help="Specify a non-standard database",
+        default=None,
+        help="Local checkout root (auto-detected by default)",
     )
 
     parser.add_argument(
-        "--connection-string",
+        "--workdir",
         type=str,
-        default="none",
-        help="Specify a non-standard connection string",
+        default=None,
+        help=(
+            "Explicit runner work directory override; useful when the "
+            "server-owned path is mounted elsewhere in an execution container"
+        ),
     )
 
     parser.add_argument(
@@ -111,13 +105,6 @@ def runner_main() -> None:
     )
 
     parser.add_argument(
-        "--detach",
-        type=lambda x: (str(x).lower() not in ["false", "0", "no"]),
-        default=True,
-        help="If true (default), run nodes in an external process. Set to 'false' to run inline.",
-    )
-
-    parser.add_argument(
         "--timeout",
         type=int,
         default=None,
@@ -125,22 +112,27 @@ def runner_main() -> None:
     )
 
     parser.add_argument(
-        "--pull",
-        type=lambda x: (str(x).lower() not in ["false", "0", "no"]),
-        default=True,
-        help="If true (default), pull from git (GitUvUpdateService will be started). Set to 'false' to skip.",
-    )
-
-    parser.add_argument(
-        "--file-transfer",
+        "--with-file-transfer",
         type=lambda x: (str(x).lower() not in ["false", "0", "no"]),
         default=True,
         help="If true (default), start the FileTransferService. Set to 'false' to skip.",
     )
 
+    parser.add_argument(
+        "--allow-environment",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help=(
+            "Explicitly preserve one non-SimStack environment variable for "
+            "configured workers; may be repeated"
+        ),
+    )
+
     args = parser.parse_args()
     # Run the async main function
     asyncio.run(async_main(args))
+    logging.shutdown()
     pid = os.getpid()
     logger.info(f"runner with pid {pid} shutting down normally")
 

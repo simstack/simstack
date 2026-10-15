@@ -1,9 +1,8 @@
 from datetime import datetime
 from typing import Optional, List
 
-from odmantic import Model, Field, ObjectId, Reference
-
-from simstack.core.definitions import TaskStatus
+from simstack.models.document import Field, Model, ObjectId
+from simstack.runner_protocol.constants import RunnerTaskStatus as TaskStatus
 from simstack.models.file_list import FileList
 from simstack.models.parameters import Parameters
 from simstack.models.named_data_reference import NamedDataReference
@@ -62,9 +61,12 @@ class NodeRegistry(Model):
     status: TaskStatus
     custom_name: Optional[str] = None
     version: Optional[str] = None
-    # Keep this as Optional[ObjectId] instead of Reference(Project):
-    # in the ODMantic version used here, nullable references are not supported
-    # as Optional[Project] + Reference() field definitions.
+    workflow_package: Optional[str] = None
+    workflow_installation_id: Optional[str] = None
+    workflow_revision: Optional[str] = None
+    runtime_profile: Optional[str] = None
+    # Keep the nullable project reference explicit in the wire/storage schema
+    # instead of coupling this control-plane document to a Project instance.
     project: Optional[ObjectId] = Field(default=None)
     category: Optional[str] = None
     description: Optional[str] = None
@@ -91,7 +93,7 @@ class NodeRegistry(Model):
     arg_hash: str
     func_mapping: str
     is_async: bool = False
-    parameters: Parameters = Reference()
+    parameters: Parameters = Field()
 
     def populate_results_from_duplicate(self, duplicate: "NodeRegistry"):
         self.results_references = duplicate.results_references
@@ -105,7 +107,3 @@ class NodeRegistry(Model):
         self.return_kind = duplicate.return_kind
         if duplicate.custom_name is not None:
             self.custom_name = duplicate.custom_name
-
-async def find_child_nodes(task_id: str) -> List[NodeRegistry]:
-    from simstack.core.context import context
-    return await context.db.find(NodeRegistry, {"parent_ids": {"$in": [task_id]}})

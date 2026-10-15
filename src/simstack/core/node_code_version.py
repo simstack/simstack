@@ -124,7 +124,7 @@ def compute_node_code_version(func: Callable[..., Any]) -> str:
     return hashlib.sha256(json.dumps(payload, ensure_ascii=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def node_code_version(func: Callable[..., Any]) -> str:
+def node_code_version(func: Callable[..., Any], *, workflow_revision: str | None = None) -> str:
     """Keep the declaration's identity stable while captured runtime state changes."""
     declared_version = getattr(func, "_node_version", None)
     defaults = _encode((func.__defaults__, func.__kwdefaults__), {}, declared_version)
@@ -133,4 +133,11 @@ def node_code_version(func: Callable[..., Any]) -> str:
     if cached is None or cached[0] != cache_key:
         cached = (cache_key, compute_node_code_version(func))
         setattr(func, "_node_code_version", cached)
-    return cached[1]
+    if workflow_revision is None:
+        return cached[1]
+    if len(workflow_revision) != 64 or any(char not in "0123456789abcdef" for char in workflow_revision):
+        raise ValueError("Workflow revision must be a canonical SHA256 digest")
+    # A package snapshot includes imported helpers and dependencies that the
+    # local function fingerprint deliberately cannot discover.
+    payload = ["simstack-packaged-node-v1", workflow_revision, cached[1]]
+    return hashlib.sha256(json.dumps(payload, separators=(",", ":")).encode()).hexdigest()

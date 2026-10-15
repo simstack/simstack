@@ -12,15 +12,15 @@
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -32,7 +32,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -44,17 +44,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -193,10 +193,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -216,8 +216,6 @@
 <li class="toctree-l2"><a class="reference internal" href="tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="database_migrations.html">Database Migrations</a></li>
@@ -228,12 +226,31 @@
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Simstack II Setup</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -246,7 +263,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -393,60 +410,67 @@ It is unclear what you need on other systems.</p>
 </section>
 <section id="sync-dependencies">
 <h3>Sync dependencies<a class="headerlink" href="#sync-dependencies" title="Link to this heading">¶</a></h3>
+<p>Install the runner from the locked production dependency set. Do not start a
+runner from a development/test environment: that group intentionally contains
+MongoDB test packages and runner startup rejects it.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span><span class="w"> </span>~/.bashrc
-uv<span class="w"> </span>sync<span class="w"> </span>--locked
+uv<span class="w"> </span>sync<span class="w"> </span>--locked<span class="w"> </span>--no-dev
 </pre></div>
 </div>
-<p>Note: This will install all required dependencies, including <code class="docutils literal notranslate"><span class="pre">mongomock</span></code> and <code class="docutils literal notranslate"><span class="pre">mongomock-motor</span></code>, which are used for in-memory database support during testing.</p>
+<p>The production environment must not contain <code class="docutils literal notranslate"><span class="pre">bson</span></code>, <code class="docutils literal notranslate"><span class="pre">motor</span></code>, <code class="docutils literal notranslate"><span class="pre">odmantic</span></code>,
+or <code class="docutils literal notranslate"><span class="pre">pymongo</span></code>. Test dependencies belong in a separate virtual environment and
+must never be used to launch <code class="docutils literal notranslate"><span class="pre">simstack_runner</span></code>.</p>
 </section>
-<section id="create-simstack-toml">
-<span id="configuration-file"></span><h3>Create <code class="docutils literal notranslate"><span class="pre">simstack.toml</span></code><a class="headerlink" href="#create-simstack-toml" title="Link to this heading">¶</a></h3>
-<p>Create a <code class="docutils literal notranslate"><span class="pre">simstack.toml</span></code> file (placeholders shown below):</p>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[parameters]</span>
-<span class="k">[parameters.general]</span>
-<span class="n">use_db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
-<span class="n">workdir_self</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;PATH_TO_SIMSTACK_DATA_DIR&gt;&quot;</span>
-<span class="c1"># these are parameters for one user for all hosts</span>
-
-<span class="k">[parameters.db]</span>
-<span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;NAME&gt;_data&quot;</span>
-<span class="n">test_database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;NAME&gt;_test&quot;</span>
-<span class="n">connection_string</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mongodb://&lt;USER&gt;:&lt;PASSWORD&gt;@&lt;HOST&gt;:27017/&quot;</span>
-<span class="n">mongodump_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;PATH_TO_MONGODUMP_EXE&gt;&quot;</span>
-</pre></div>
-</div>
-<p>Where:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;PATH_TO_SIMSTACK_DATA_DIR&gt;</span></code> is the path to the data directory created above (e.g. <code class="docutils literal notranslate"><span class="pre">$HOME/simstack</span></code>)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;NAME&gt;</span></code> is your database name (often your first name in lower case)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;PASSWORD&gt;</span></code> is the database password</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;PATH_TO_MONGODUMP_EXE&gt;</span></code> is the path to the <code class="docutils literal notranslate"><span class="pre">mongodump</span></code> executable (required for database backups)</p></li>
-</ul>
+<section id="prepare-the-execution-checkout">
+<span id="configuration-file"></span><h3>Prepare the execution checkout<a class="headerlink" href="#prepare-the-execution-checkout" title="Link to this heading">¶</a></h3>
+<p>The path passed as <code class="docutils literal notranslate"><span class="pre">--project-root</span></code> is readable by workflow code and is
+mounted read-only into Docker/Apptainer workers. It must therefore be a
+secret-free execution snapshot. Do not put <code class="docutils literal notranslate"><span class="pre">simstack.toml</span></code>, <code class="docutils literal notranslate"><span class="pre">.env</span></code> files,
+database URLs, private keys, or unrelated credentials in that tree. A
+read-only mount prevents writes; it does not hide readable secrets.</p>
+<p>Runner-side <code class="docutils literal notranslate"><span class="pre">config.toml</span></code> contains only explicit process launch contracts.
+Every local, container, Slurm, and watchdog execution path requires a
+non-empty <code class="docutils literal notranslate"><span class="pre">worker_network_guard_command</span></code> and a
+<code class="docutils literal notranslate"><span class="pre">worker_environment_allowlist</span></code>. The guard runs immediately before workflow
+code inside the selected execution boundary. The runner can require this
+contract but cannot prove that an arbitrary command (for example <code class="docutils literal notranslate"><span class="pre">true</span></code>)
+actually isolates a network; production deployment must supply and test a
+real OS/container/HPC policy that prevents workflow access to database
+endpoints and other forbidden egress.</p>
+<p>No runner-side database configuration exists. Resource metadata, mappings,
+task payload limits, claims, status, logs, results, and file-transfer state are
+obtained from the authenticated server API.</p>
+<p>Model/node catalogue administration and database migrations are server-side
+operations. A runner token is not a database credential and cannot perform
+those operations.</p>
 </section>
-<section id="initialize-the-system">
-<h3>Initialize the system<a class="headerlink" href="#initialize-the-system" title="Link to this heading">¶</a></h3>
-<p>This will happen automatically when the default runner starts.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>create_model_table<span class="w"> </span>--dir<span class="w"> </span>examples<span class="w"> </span>--dir<span class="w"> </span>applications
-uv<span class="w"> </span>run<span class="w"> </span>create_node_table<span class="w"> </span>--dir<span class="w"> </span>examples<span class="w"> </span>--dir<span class="w"> </span>applications
-</pre></div>
-</div>
-<p>Note: this may crash if your database is very old.</p>
-</section>
-<section id="configure-git-identity-required">
-<h3>Configure Git identity (required)<a class="headerlink" href="#configure-git-identity-required" title="Link to this heading">¶</a></h3>
-<p>Because the runner performs Git operations, ensure you have:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.email<span class="w"> </span><span class="s2">&quot;&lt;YOUR_EMAIL_ADDRESS&gt;&quot;</span>
-git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.name<span class="w"> </span><span class="s2">&quot;&lt;YOUR_NAME&gt;&quot;</span>
-</pre></div>
-</div>
+<section id="deploy-updates-outside-the-runner">
+<h3>Deploy updates outside the runner<a class="headerlink" href="#deploy-updates-outside-the-runner" title="Link to this heading">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">simstack_runner</span></code> never runs <code class="docutils literal notranslate"><span class="pre">git</span></code>, changes branches, stashes local files,
+or invokes a dependency manager. It also does not inspect a particular lock
+file or per-user extras file. Build and validate the secret-free source
+snapshot and production environment in CI or a deployment supervisor, then
+replace the deployment and restart the runner explicitly. A failed update must
+leave the currently running deployment untouched.</p>
 </section>
 <section id="start-the-runner">
 <h3>Start the runner<a class="headerlink" href="#start-the-runner" title="Link to this heading">¶</a></h3>
 <p>From <code class="docutils literal notranslate"><span class="pre">$HOME/projects/simstack-model</span></code>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>nohup<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>simstack_runner<span class="w"> </span>--resource<span class="w"> </span>&lt;RESOURCE_NAME&gt;<span class="w"> </span><span class="p">&amp;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">SIMSTACK_SERVER_URL</span><span class="o">=</span><span class="s2">&quot;https://simstack.example&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">SIMSTACK_RUNNER_TOKEN</span><span class="o">=</span><span class="s2">&quot;&lt;RESOURCE_SCOPED_RUNNER_TOKEN&gt;&quot;</span>
+nohup<span class="w"> </span>.venv/bin/simstack_runner<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--resource<span class="w"> </span>&lt;RESOURCE_NAME&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--project-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">&amp;</span>
 </pre></div>
 </div>
-<p>Where <code class="docutils literal notranslate"><span class="pre">&lt;RESOURCE_NAME&gt;</span></code> is one of the resources you defined in the UI.</p>
+<p>Where <code class="docutils literal notranslate"><span class="pre">&lt;RESOURCE_NAME&gt;</span></code> is one of the resources you defined in the UI.
+Startup fails closed when credentials, bootstrap capabilities, launch commands,
+the network guard, or required allowlisted worker variables are missing. If a
+workflow needs a non-SimStack variable such as a licence path, preserve it
+explicitly with a repeated <code class="docutils literal notranslate"><span class="pre">--allow-environment</span> <span class="pre">NAME</span></code> argument; arbitrary
+ambient variables are removed from the supervisor environment.</p>
+<p>There is no <code class="docutils literal notranslate"><span class="pre">--no-pull</span></code> switch: no pull or self-update path exists in the
+runner.</p>
 </section>
 </section>
 <section id="ignore-after-this-line">
@@ -464,7 +488,7 @@ git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
           <a class="next-page" href="simstack/modules/modules.html">
               <div class="page-info">
@@ -481,9 +505,9 @@ git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"
                 <div class="context">
                   <span>Previous</span>
                 </div>
-                
+
                 <div class="title">Miscellaneous</div>
-                
+
               </div>
             </a>
         </div>
@@ -493,20 +517,20 @@ git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer">
-      
-      
+
+
       <div class="toc-sticky toc-scroll">
         <div class="toc-title-container">
           <span class="toc-title">
@@ -526,9 +550,8 @@ git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"
 <li><a class="reference internal" href="#clone-the-repository">Clone the repository</a></li>
 <li><a class="reference internal" href="#host-specific-environment-notes">Host-specific environment notes</a></li>
 <li><a class="reference internal" href="#sync-dependencies">Sync dependencies</a></li>
-<li><a class="reference internal" href="#create-simstack-toml">Create <code class="docutils literal notranslate"><span class="pre">simstack.toml</span></code></a></li>
-<li><a class="reference internal" href="#initialize-the-system">Initialize the system</a></li>
-<li><a class="reference internal" href="#configure-git-identity-required">Configure Git identity (required)</a></li>
+<li><a class="reference internal" href="#prepare-the-execution-checkout">Prepare the execution checkout</a></li>
+<li><a class="reference internal" href="#deploy-updates-outside-the-runner">Deploy updates outside the runner</a></li>
 <li><a class="reference internal" href="#start-the-runner">Start the runner</a></li>
 </ul>
 </li>
@@ -540,14 +563,14 @@ git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"
           </div>
         </div>
       </div>
-      
-      
+
+
     </aside>
   </div>
 </div><script src="_static/documentation_options.js?v=5929fcd5"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

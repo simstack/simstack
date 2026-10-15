@@ -1,177 +1,101 @@
-# SimStack File Transfer System
+# SimStack file transfers
 
-This document provides an overview of the SimStack File Transfer System, which allows for efficient file transfers between different computing resources.
+File transfer is a bounded module inside SimStack Server, not a separately
+deployed application. The Server owns metadata, authorization, claim checks,
+temporary objects, and lifecycle transitions. Runners use HTTP only: no database
+driver, database credentials, SSH routes, or direct-database fallback.
 
-## Overview
+## File representation and storage
 
-The SimStack File Transfer System is designed to manage the transfer of files between different computing resources in a distributed environment. It provides a high-level abstraction for file management, handling both local and remote file operations, with support for in-memory storage and remote file retrieval.
+A `FileStack` contains compressed inline content or resource-local `FileInstance`
+locations with opaque IDs, workdir-relative canonical paths, immutable size and
+SHA256 checksum. `FileStack.from_local_file(path)` compresses incrementally and
+switches to file-backed storage when its complete portable document exceeds the
+Server-advertised capacity or an explicit request policy. External files are
+copied into the resource workdir; the actual copied file path is persisted.
+`make_copy=False` avoids a copy only if the source is already in that workdir.
+Large runner `FileStack.from_string(...)` values are staged in the active task
+directory instead of rejected by an arbitrary total-file-size limit.
 
-## Key Components
+MongoDB's physical BSON-document capacity still applies to inline documents.
+The Server validates actual encoded BSON before writes. UI uploads switch to
+file-backed storage if compressed content plus metadata does not fit. The whole
+runner request is checked separately against an operator policy only if set;
+factory-time checks cannot predict sibling results or the complete task envelope.
 
-### FileInstance
+## Runner-to-runner lifecycle
 
-`FileInstance` represents a file at a specific location (resource). A file can exist on multiple resources simultaneously.
+1. The target execution worker calls `FileStack.get()`: inline content is
+   decompressed locally and an available local location is validated and reused.
+2. Otherwise it creates an idempotent transfer with a task/claim/attempt-bound
+   execution token. The Server checks declared file inputs/dependencies.
+3. The source `FileTransferService` discovers requests using its supervisor token
+   and uploads with streaming HTTP. Large requests use `Content-Range`; proxy
+   size rejections can reduce the chunk size.
+4. Shared-filesystem locks serialize competing writers. HTTP 423 is retryable.
+   The Server validates immutable size/checksum and rechecks the task claim
+   before publication.
+5. The target verifies a temporary download before atomic, non-overwriting
+   publication, then completes the transfer. The target path must belong to the
+   active task directory. The Server adds a reusable location with compare-and-set
+   semantics and deletes staging objects.
+6. A stale hydrated `FileStack` reads completed target metadata through the API
+   and reuses the cache only after task-directory, size, and checksum checks.
+   If that cache was deleted, an explicit restart API creates a separate,
+   predecessor-derived idempotent successor. Previous completions cannot mutate
+   the successor; changed local contents are rejected rather than overwritten.
 
-Key attributes:
-- `path`: Path to the file relative to the resource's working directory
-- `resource`: Name of the resource where the file is located
-- `in_memory`: Boolean indicating if the file content is stored in memory
-- `content`: Compressed file content when stored in memory
-- `is_hashable`: Whether the file has a hash for content verification
-- `hash`: Hash value for content verification
-- `created_at`: Timestamp of when the file instance was created
-- `file_stack_id`: Reference to the parent FileStack
+API workers serving this module must share its staging filesystem and metadata.
+A different storage backend needs an explicit adapter, not a guessed fallback.
 
-Methods:
-- `transfer_to(target_resource, target_path)`: Transfer the file to another resource
+## UI downloads and cleanup
 
-### FileStack
+UI downloads use inline data or a workdir-contained, resource-matching Server
+location. Remote files use the same source upload service before streaming to
+the browser. ZIP archives use it for remote members too and are assembled on
+disk rather than entirely in RAM. Response cleanup completes staging requests.
 
-`FileStack` represents a collection of `FileInstance` objects for the same logical file across different resources. It manages the different locations of a file and provides methods to retrieve the file to the local system.
+Infrastructure failures leave source uploads recoverable. Invalid paths,
+missing source files, or immutable-content mismatches fail explicitly. Stale
+claims cannot upload, download, or publish locations. Expired requests are
+rejected without waiting for a cleanup poll. Cleanup removes payload and partial
+objects for expired transfers without sweeping neighbors.
+Normal runner shutdown cancels queued uploads, signals active streaming uploads
+cooperatively, and awaits their I/O threads before returning. Interrupted
+transfers retain their claim and immutable metadata for the next source poll.
 
-Key functionality:
-- Tracking instances across multiple resources
-- Retrieving a file to the local system using the best available method
-- Handling remote file retrieval through job orchestration
-- Transferring files between resources
+## Server artifact files
 
-Methods:
-- `get(local_dir)`: Retrieve the file to a local directory
-- `transfer_to_resource(target_resource, local_dir)`: Transfer the file to a target resource
+Registered server artifact callables receive a request-scoped file I/O port,
+not a global runner or repository context. Remote files in the argument graph
+are prepared asynchronously through the bounded transfer service before the
+callable runs; both sync and async functions can then use `FileStack.get()`.
+Inline/local files and file-backed factories use explicit Server resource and
+storage configuration. Each rendering gets an isolated artifact-files directory;
+file-backed output locations remain valid after the callback returns. Runners
+cannot install this server-side port or bypass their claim-bound API path.
 
-### @copy Decorator
+## Configuration and verification
 
-The `@copy` decorator is a powerful utility for simplifying file transfers between resources. It wraps functions that provide file transfer information and handles the actual transfer process.
+Optional `SIMSTACK_FILE_TRANSFER_MAX_BYTES` and `SIMSTACK_RUNNER_MAX_PAYLOAD_BYTES`
+policies default to unset: no arbitrary application-level total-file/request
+cap, while physical inline-storage constraints remain.
 
-Key features:
-- Orchestrates file transfers according to defined routes
-- Handles job submission and monitoring
-- Provides a consistent interface for various transfer scenarios
+Transfer settings include `SIMSTACK_FILE_TRANSFER_TMP_DIR` (default
+`<server-workdir>/file-transfers`), `SIMSTACK_FILE_TRANSFER_TTL_SECONDS`,
+`SIMSTACK_FILE_TRANSFER_UPLOAD_CHUNK_BYTES`,
+`SIMSTACK_FILE_TRANSFER_REQUEST_TIMEOUT_SECONDS`,
+`SIMSTACK_FILE_TRANSFER_TIMEOUT_SECONDS`, and
+`SIMSTACK_FILE_TRANSFER_POLL_SECONDS`. UI waits use
+`SIMSTACK_UI_FILE_TRANSFER_TIMEOUT_SECONDS` and
+`SIMSTACK_UI_FILE_TRANSFER_POLL_SECONDS`. Malformed/non-positive intervals fail
+explicitly rather than silently reverting to defaults.
 
-The decorated function should return a tuple of:
-- `source_resource`: The resource where the file is currently located
-- `source_path`: The path to the file on the source resource
-- `target_resource`: The resource where the file should be transferred to
-- `target_path`: The path where the file should be placed on the target resource
-
-### Route Finding
-
-The route finding system determines the best path to transfer a file from one resource to another.
-
-Key components:
-- `find_minimal_route`: Finds the shortest path between resources based on defined routes
-- `find_shortest_route`: Alias for compatibility with existing code
-
-Routes are defined in the SimStack configuration file (`simstack.toml`) and specify:
-- The source resource
-- The target resource
-- The host responsible for executing the transfer
-
-## File Retrieval Process
-
-When retrieving a file using `FileStack.get()`, the system follows this process:
-
-1. **Check for local instances**:
-   - First, check for in-memory instances on the local resource
-   - If not found, check for on-disk instances on the local resource
-
-2. **Remote retrieval** (if no suitable local instance is found):
-   - Identify remote resources with instances of the file
-   - For each remote resource:
-     - Find a route from the remote resource to the local resource
-     - Submit a copy job to the appropriate executing host
-     - Poll for job completion
-     - Return the local file path once the transfer completes
-
-3. **Error handling**:
-   - If a transfer fails, the system tries the next available remote instance
-   - If all transfers fail, an appropriate error is raised
-
-## Configuration
-
-Routes for file transfers are configured in the `simstack.toml` file:
-
-```toml
-# Example route configuration
-[[routes]]
-source = "local"
-target = "remote1"
-host = "local"
-
-[[routes]]
-source = "remote1"
-target = "local"
-host = "remote1"
-```
-
-Each route specifies:
-- `source`: The resource where the file currently exists
-- `target`: The resource where the file should be transferred to
-- `host`: The resource responsible for executing the transfer
-
-## Examples
-
-### Basic Usage
-
-```python
-from simstack.models.files import FileStack
-from simstack.models.file_instance import FileInstance
-
-# Create a FileStack from a local file
-file_stack = FileStack.from_local_file("/path/to/local/file.txt")
-
-# Retrieve the file to a specific directory
-output_path = file_stack.get(resource, local_dir="/output/directory")
-
-# Transfer the file to a remote resource
-file_stack.transfer_to_resource("remote_resource")
-```
-
-### Using the @copy Decorator
-
-The `@copy` decorator can be applied to functions that provide file transfer information:
-
-```python
-from simstack.models.files import copy
-
-@copy
-def transfer_file(source_resource, target_resource, filename):
-    source_path = f"/path/on/{source_resource}/{filename}"
-    target_path = f"/path/on/{target_resource}/{filename}"
-    
-    # Return transfer information for the decorator to handle
-    return (source_resource, source_path, target_resource, target_path)
-
-# Call the decorated function to perform the transfer
-result = transfer_file("local", "remote1", "example.txt")
-```
-
-### Example Scripts
-
-The following example scripts demonstrate different aspects of the file transfer system:
-
-- `examples/remote_file_retrieval.py`: Demonstrates retrieving files from remote resources using `FileStack.get()`
-- `examples/remote_file_retrieval_standalone.py`: Standalone version with simplified dependencies
-- `examples/copy_decorator_example.py`: Shows how to use the `@copy` decorator for file transfers
-- `examples/copy_file.py`: Basic example of copying files between resources
-
-## Testing
-
-The file transfer functionality includes comprehensive tests in `tests/test_remote_file_transfer.py` covering:
-
-1. Retrieving files from local in-memory instances
-2. Retrieving files from local on-disk instances
-3. Retrieving files from remote resources
-4. Handling multiple remote instances with fallback when the first resource fails
-5. Error cases when no valid instances or routes are available
-
-## Implementation Details
-
-The file transfer system uses a job-based approach for transferring files between resources:
-
-1. `submit_copy_job`: Submits a job to copy a file from one resource to another
-2. `check_job_status`: Checks the status of a submitted job
-3. Route finder: Determines the best path to transfer files between resources
-4. `@copy` decorator: Orchestrates file transfers based on routes and job monitoring
-
-The system is designed to be extensible and can be adapted for different transfer mechanisms and orchestration systems. 
+Core tests cover containment, copy semantics, complete inline-envelope sizing,
+atomic verified downloads and retries. Server tests cover claims/resources,
+concurrent uploads, chunks, completion replay, neighboring-task rejection,
+expiration and partial cleanup. Real loopback HTTP tests include runner transfer,
+UI download, disk-backed archives and separate driver-free source/target client
+subprocesses, including partial-upload shutdown/resume and repeated deleted-cache
+restarts. Set `SIMSTACK_RUNNER_TEST_PYTHON` to a driver-free Core interpreter
+for the subprocess test.

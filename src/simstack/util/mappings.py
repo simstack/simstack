@@ -1,6 +1,7 @@
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional, Tuple
+
 from simstack.models.models import ModelMapping, NodeModel
-from odmantic import AIOEngine
+
 
 class ModelMappingTable:
     def __init__(self, mappings: List[ModelMapping]):
@@ -13,10 +14,9 @@ class ModelMappingTable:
     def get_by_mapping(self, mapping: str) -> Optional[ModelMapping]:
         return self._by_mapping.get(mapping)
 
-    @classmethod
-    async def load(cls, engine: AIOEngine):
-        mappings = await engine.find(ModelMapping)
-        return cls(list(mappings))
+    def all_mappings(self) -> Tuple[ModelMapping, ...]:
+        return tuple(self._by_mapping.values())
+
 
 class NodeMappingTable:
     def __init__(self, nodes: List[NodeModel]):
@@ -28,14 +28,3 @@ class NodeMappingTable:
 
     def get_by_mapping(self, mapping: str) -> Optional[NodeModel]:
         return self._by_mapping.get(mapping)
-
-    @classmethod
-    async def load(cls, engine: AIOEngine):
-        try:
-            nodes = await engine.find(NodeModel)
-        except Exception as e:
-            print(f"Error loading NodeModel from database: {e}")
-            print("WARNING: Returning empty NodeMappingTable to fix obviously corrupted case.")
-            print("Rebuild the NodeMappingTable by rerunning the database initialization or migration scripts.")
-            nodes = []
-        return cls(list(nodes))

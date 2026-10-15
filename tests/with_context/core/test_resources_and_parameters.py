@@ -1,7 +1,6 @@
 import pytest
-from pygments.lexers import resource
 
-from simstack.models.parameters import Resource, Parameters, SlurmParameters
+from simstack.models.parameters import Parameters, Queue, Resource, SlurmParameters
 from simstack.core.resources import allowed_resources
 
 
@@ -15,7 +14,12 @@ class TestResource:
         original_resources = allowed_resources.get_resources()
 
         # Set test resources
-        allowed_resources._resources = ["cpu_cluster", "gpu_cluster", "high_memory", "self"]
+        allowed_resources._resources = [
+            "cpu_cluster",
+            "gpu_cluster",
+            "high_memory",
+            "self",
+        ]
 
         yield
 
@@ -107,7 +111,12 @@ class TestParameters:
         original_resources = allowed_resources.get_resources()
 
         # Set test resources
-        allowed_resources._resources = ["cpu_cluster", "gpu_cluster", "high_memory", "self"]
+        allowed_resources._resources = [
+            "cpu_cluster",
+            "gpu_cluster",
+            "high_memory",
+            "self",
+        ]
         yield
 
         # Restore original state
@@ -122,6 +131,9 @@ class TestParameters:
         assert params.resource == "self"
         assert params.queue == "default"
         assert params.in_docker is False
+        assert params.recompute_artifacts is False
+        assert "other_value" not in params.model_dump()
+        assert "test_dict" not in params.model_dump()
         assert params.slurm_parameters == SlurmParameters()
 
     def test_parameters_creation_with_valid_resource(self):
@@ -204,8 +216,9 @@ class TestParameters:
         test_data = {
             "force_rerun": True,
             "resource": Resource(value="high_memory"),
-            "in_docker": True,
-            "queue": "priority",
+            "queue": Queue.SLURM_QUEUE,
+            "other_value": "custom",
+            "test_dict": {"custom": "data", "number": 42},
             "slurm_parameters_data": {
                 "nodes": 10,
                 "job_name": "full_test",
@@ -219,8 +232,10 @@ class TestParameters:
 
         assert params.force_rerun is True
         assert params.resource == "high_memory"
-        assert params.in_docker is True
-        assert params.queue == "priority"
+        assert params.queue == Queue.SLURM_QUEUE.value
+        assert "other_value" not in params.model_dump()
+        assert "test_dict" not in params.model_dump()
+        assert "slurm_parameters_data" not in params.model_dump()
 
         slurm_params = params.slurm_parameters
         assert slurm_params.nodes == 10
@@ -265,7 +280,9 @@ class TestIntegration:
         """Test serialization and deserialization of Parameters."""
 
         original_params = Parameters(
-            force_rerun=True, resource=Resource(value="gpu_node"), queue="gpu_queue"
+            force_rerun=True,
+            resource=Resource(value="gpu_node"),
+            queue=Queue.SLURM_QUEUE,
         )
         original_params.slurm_parameters = SlurmParameters(nodes=4, time="12:00:00")
 

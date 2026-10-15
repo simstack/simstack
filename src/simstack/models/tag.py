@@ -1,10 +1,10 @@
 from typing import Optional
 
-from odmantic import Field, Model
+from simstack.models.document import Field, Model
 
 
 class Tag(Model):
-    name: str = Field(unique=True)
+    name: str
     description: Optional[str] = None
 
     model_config = {

@@ -1,12 +1,8 @@
 import re
 from typing import Generic, Optional, List, Iterator, Type, Union, Iterable, TypeVar, TYPE_CHECKING
 
-from odmantic import ObjectId, Model
-
+from simstack.models.document import Model, ObjectId
 from simstack.util.generic_list_mixin import GenericListMixin
-
-if TYPE_CHECKING:
-    from simstack.util.db import Database
 
 T = TypeVar("T")
 
@@ -77,15 +73,6 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
     def extend(self, elements: Union[List[T], "ObjectListMixin[T]"]):
         for element in elements:
            self.append(element)
-
-    async def save(self, db: "Database"):
-        cache = self._get_cache()
-        # Save each element first (this might trigger their own custom saves)
-        for element in cache:
-            await db.save(element)
-        if isinstance(self, Model):  # embedded models are save with the parent
-            await db.save_unchecked(self)
-        return self
 
     def insert(self, index: int, element: T):
         self.elements.insert(index, element.id)
@@ -212,46 +199,6 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
             if name and regex.search(name):
                 yield obj
 
-
-    async def db_find_postprocess(self, db: "Database"):
-        """Instance-level post-processing"""
-        cache = self._get_cache()
-        model_class = self._get_model_class()
-        # Identify which IDs are missing from the cache
-        missing_ids = [obj_id for obj_id in self.elements if not any(getattr(o, "id", None) == obj_id for o in cache)]
-
-        if missing_ids:
-            # Load all missing elements at once
-            query = model_class.id.in_(missing_ids)
-            # engine.find might return a cursor or a list
-            results = await db.find(model_class, query)
-
-            # Map results by ID for efficient lookup
-            loaded_map = {}
-            for obj in results:
-                # Recursively unwrap nested collections (mock DB behavior)
-                it = obj
-                while isinstance(it, (list, tuple)) and len(it) > 0:
-                    it = it[0]
-
-                # Check for Model or duck-typed object
-                if hasattr(it, "id"):
-                    loaded_map[it.id] = it
-
-            # Update cache maintaining the order of self.elements
-            new_cache = []
-            for obj_id in self.elements:
-                # Find in existing cache
-                existing = next((o for o in cache if getattr(o, "id", None) == obj_id), None)
-                if existing:
-                    new_cache.append(existing)
-                elif obj_id in loaded_map:
-                    new_cache.append(loaded_map[obj_id])
-                else:
-                    import logging
-                    logging.getLogger(__name__).warning(f"Could not load object {obj_id} for {model_class.__name__}")
-            self._set_cache(new_cache)
-        return self
 
     def delete_element(self, element: Union[T, ObjectId]):
         cache = self._get_cache()

@@ -1,45 +1,41 @@
 from pathlib import Path
-from typing import List, TYPE_CHECKING, Union
-from simstack.core.resources import allowed_resources
+from typing import List
 from simstack.models.parameters import Resource
 from simstack.models.resource_definition import ResourceDefinition, GitRepo
 from simstack.util.transform_file_name import transform_file_name
-from simstack.util.init_data_source import initialize_resource_from_db
+from simstack.util.init_data_source import load_resource_definition
 
 from simstack.util.toml_reader import TomlReader
-from simstack.util.database_information import DatabaseInformation
-
-if TYPE_CHECKING:
-    from simstack.util.db import Database
+from simstack.persistence import Repository
 
 
-class ConfigReader(DatabaseInformation):
+class ConfigReader:
     """
-    Represents a configuration reader that integrates with a database and a resource
+    Represents a configuration reader that integrates with a repository and a resource
     definition system.
     """
 
     def __init__(
         self,
-        db_info: Union[DatabaseInformation, "Database"],
         resource_definition: ResourceDefinition,
         *,
         project_root: Path,
         git_list: list[GitRepo] | None = None,
+        server_url: str | None = None,
+        server_token: str | None = None,
     ):
-        db_temp_info = DatabaseInformation.from_db_info_or_db(db_info)
-        super().__init__(*db_temp_info.get_information())
-
         self._project_root = project_root
         self._resource_definition = resource_definition
         self._git_list = list(git_list or [])
         self._resource_str = resource_definition.resource_str
+        self._server_url = server_url
+        self._server_token = server_token
 
     @classmethod
     async def create(
         cls,
         resource_str,
-        db: "Database",
+        repository: Repository,
         toml_reader: TomlReader,
         project_root: Path,
         **kwargs,
@@ -49,7 +45,7 @@ class ConfigReader(DatabaseInformation):
         the idea here is to attempt to get:
 
         1) all required data from the kwargs, if available
-        2) if the data is not all available, get it from the database
+        2) if the data is not all available, get it from the repository
 
         """
         import logging
@@ -92,7 +88,11 @@ class ConfigReader(DatabaseInformation):
             else:
                 workdir_self = Path(workdir_self)
 
-        resource_definition = await initialize_resource_from_db(resource_str, db, workdir_self)
+        resource_definition = await load_resource_definition(
+            resource_str,
+            repository,
+            workdir_self,
+        )
             # else:
             #     raise RuntimeError("initialization from toml file is deprecated")
             #     allowed_resources_list = toml_reader.get_allowed_resources()
@@ -127,15 +127,19 @@ class ConfigReader(DatabaseInformation):
         logger.info(log_msg)
 
         return cls(
-            db, resource_definition, project_root=project_root, git_list=git_list_final
+            resource_definition,
+            project_root=project_root,
+            git_list=git_list_final,
+            server_url=kwargs.get("server_url"),
+            server_token=kwargs.get("server_token"),
         )
 
     @property
-    def server_url(self) -> str:
+    def server_url(self) -> str | None:
         return self._server_url
 
     @property
-    def server_token(self) -> str:
+    def server_token(self) -> str | None:
         return self._server_token
 
     @property

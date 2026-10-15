@@ -1,11 +1,13 @@
-import pytest
-from unittest.mock import MagicMock, patch, mock_open, call
+import hashlib
 import os
-import subprocess
+import sys
+from unittest.mock import ANY, MagicMock, call, patch
+
+import pytest
 
 from simstack.core.node_runner import NodeRunner
 from simstack.core.simstack_result import SimstackResult
-from simstack.core.definitions import TaskStatus
+from simstack.runner_protocol.constants import RunnerTaskStatus as TaskStatus
 from simstack.models.files import FileStack
 
 
@@ -15,8 +17,9 @@ class TestNodeRunner:
         return MagicMock()
 
     @pytest.fixture
-    def node_runner(self, mock_logger):
+    def node_runner(self, mock_logger, monkeypatch, tmp_path):
         """Create a NodeRunner instance for testing"""
+        monkeypatch.chdir(tmp_path)
         return NodeRunner("test_node", "test_123", logger=mock_logger)
 
     def test_init_default_values(self, mock_logger):
@@ -37,9 +40,7 @@ class TestNodeRunner:
 
     def test_init_custom_values(self, mock_logger):
         """Test NodeRunner initialization with custom values"""
-        runner = NodeRunner(
-            "custom_node", "custom_123", logger=mock_logger
-        )
+        runner = NodeRunner("custom_node", "custom_123", logger=mock_logger)
 
         assert runner.name == "custom_node"
         assert runner.task_id == "custom_123"
@@ -85,11 +86,8 @@ class TestNodeRunner:
         )
 
     @patch("subprocess.run")
-    @patch("builtins.open", new_callable=mock_open)
     @patch.object(FileStack, "from_local_file")
-    def test_subprocess_success(
-        self, mock_file_stack, mock_file, mock_subprocess, node_runner
-    ):
+    def test_subprocess_success(self, mock_file_stack, mock_subprocess, node_runner):
         """Test successful subprocess execution"""
         # Mock subprocess return
         mock_process = MagicMock()
@@ -102,33 +100,30 @@ class TestNodeRunner:
         mock_file_stack_instance = MagicMock()
         mock_file_stack.return_value = mock_file_stack_instance
 
-        result = node_runner.subprocess("test_command", "echo 'hello'")
+        result = node_runner.subprocess("test_command", ["echo", "hello"])
 
         assert result is True
-        expected_kwargs = {
-            "shell": True,
-            "capture_output": True,
-            "text": True,
-            "encoding": "utf-8",
-            "cwd": None,
-        }
-        if os.name == "nt":
-            expected_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-        mock_subprocess.assert_called_once_with("echo 'hello'", **expected_kwargs)
+        mock_subprocess.assert_called_once_with(
+            ["echo", "hello"],
+            shell=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            cwd=ANY,
+            env=None,
+            check=False,
+        )
 
-        # Check that log file was created and FileStack was added
-        mock_file.assert_called_with("test_command.log", "w", encoding="utf-8")
+        log_path = mock_file_stack.call_args.args[0]
+        assert log_path.is_file()
         mock_file_stack.assert_called_once_with(
-            "test_command.log", in_memory=True, is_hashable=True, secure_source=True
+            log_path, in_memory=True, is_hashable=True, secure_source=True
         )
         assert mock_file_stack_instance in node_runner.info_files
 
     @patch("subprocess.run")
-    @patch("builtins.open", new_callable=mock_open)
     @patch.object(FileStack, "from_local_file")
-    def test_subprocess_failure(
-        self, mock_file_stack, mock_file, mock_subprocess, node_runner
-    ):
+    def test_subprocess_failure(self, mock_file_stack, mock_subprocess, node_runner):
         """Test failed subprocess execution"""
         # Mock subprocess return
         mock_process = MagicMock()
@@ -141,16 +136,15 @@ class TestNodeRunner:
         mock_file_stack_instance = MagicMock()
         mock_file_stack.return_value = mock_file_stack_instance
 
-        result = node_runner.subprocess("test_command", "false")
+        result = node_runner.subprocess("test_command", ["false"])
 
         assert result is False
         assert mock_file_stack_instance in node_runner.info_files
 
     @patch("subprocess.run")
-    @patch("builtins.open", new_callable=mock_open)
     @patch.object(FileStack, "from_local_file")
     def test_subprocess_default_name(
-        self, mock_file_stack, mock_file, mock_subprocess, node_runner
+        self, mock_file_stack, mock_subprocess, node_runner
     ):
         """Test subprocess with empty name defaults to 'process'"""
         mock_process = MagicMock()
@@ -160,11 +154,13 @@ class TestNodeRunner:
         mock_file_stack_instance = MagicMock()
         mock_file_stack.return_value = mock_file_stack_instance
 
-        node_runner.subprocess("", "echo 'test'")
+        node_runner.subprocess("", ["echo", "test"])
 
-        mock_file.assert_called_with("process.log", "w", encoding="utf-8")
+        log_path = mock_file_stack.call_args.args[0]
+        assert log_path.name.startswith(f"process-{hashlib.sha256(b'process').hexdigest()}-")
+        assert log_path.suffix == ".log"
         mock_file_stack.assert_called_once_with(
-            "process.log", in_memory=True, is_hashable=True, secure_source=True
+            log_path, in_memory=True, is_hashable=True, secure_source=True
         )
 
     def test_fail_method(self, node_runner, mock_logger):
@@ -260,23 +256,21 @@ class TestNodeRunnerIntegration:
         os.chdir(tmp_path)
 
         try:
-            runner = NodeRunner(
-                "integration_test", "int_123", logger=mock_logger
-            )
+            runner = NodeRunner("integration_test", "int_123", logger=mock_logger)
 
             # Test subprocess with real command
-            result = runner.subprocess("test_echo", "echo 'Hello World'")
+            result = runner.subprocess("test_echo", ["echo", "Hello World"])
 
             assert result is True
 
             # Check that log file was actually created
-            log_file = tmp_path / "test_echo.log"
+            log_file = next(tmp_path.glob("process-*.log"))
             assert log_file.exists()
 
             # Check log file contents
             log_content = log_file.read_text()
             assert "Command: test_echo" in log_content
-            assert "echo 'Hello World'" in log_content
+            assert "['echo', 'Hello World']" in log_content
             assert "Hello World" in log_content
 
             # Test success method
@@ -296,17 +290,17 @@ class TestNodeRunnerIntegration:
         os.chdir(tmp_path)
 
         try:
-            runner = NodeRunner(
-                "integration_fail", "fail_123", logger=mock_logger
-            )
+            runner = NodeRunner("integration_fail", "fail_123", logger=mock_logger)
 
             # Test subprocess with failing command
-            result = runner.subprocess("test_fail", "exit 1")
+            result = runner.subprocess(
+                "test_fail", [sys.executable, "-c", "raise SystemExit(1)"]
+            )
 
             assert result is False
 
             # Check that log file was created even for failed command
-            log_file = tmp_path / "test_fail.log"
+            log_file = next(tmp_path.glob("process-*.log"))
             assert log_file.exists()
 
             # Test fail method

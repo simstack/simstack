@@ -123,67 +123,61 @@ On ``justus`` you may need:
 Sync dependencies
 ~~~~~~~~~~~~~~~~~
 
+Install the runner from the locked production dependency set. Do not start a
+runner from a development/test environment: that group intentionally contains
+MongoDB test packages and runner startup rejects it.
+
 .. code-block:: bash
 
    source ~/.bashrc
-   uv sync --locked
+   uv sync --locked --no-dev
 
-Note: This will install all required dependencies, including ``mongomock`` and ``mongomock-motor``, which are used for in-memory database support during testing.
+The production environment must not contain ``bson``, ``motor``, ``odmantic``,
+or ``pymongo``. Test dependencies belong in a separate virtual environment and
+must never be used to launch ``simstack_runner``.
 
 
 .. _configuration-file:
 
-Create ``simstack.toml``
-~~~~~~~~~~~~~~~~~~~~~~~~
+Prepare the execution checkout
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Create a ``simstack.toml`` file (placeholders shown below):
+The path passed as ``--project-root`` is readable by workflow code and is
+mounted read-only into Docker/Apptainer workers. It must therefore be a
+secret-free execution snapshot. Do not put ``simstack.toml``, ``.env`` files,
+database URLs, private keys, or unrelated credentials in that tree. A
+read-only mount prevents writes; it does not hide readable secrets.
 
-.. code-block:: toml
+Runner-side ``config.toml`` contains only explicit process launch contracts.
+Every local, container, Slurm, and watchdog execution path requires a
+non-empty ``worker_network_guard_command`` and a
+``worker_environment_allowlist``. The guard runs immediately before workflow
+code inside the selected execution boundary. The runner can require this
+contract but cannot prove that an arbitrary command (for example ``true``)
+actually isolates a network; production deployment must supply and test a
+real OS/container/HPC policy that prevents workflow access to database
+endpoints and other forbidden egress.
 
-   [parameters]
-   [parameters.general]
-   use_db = true
-   workdir_self = "<PATH_TO_SIMSTACK_DATA_DIR>"
-   # these are parameters for one user for all hosts
+No runner-side database configuration exists. Resource metadata, mappings,
+task payload limits, claims, status, logs, results, and file-transfer state are
+obtained from the authenticated server API.
 
-   [parameters.db]
-   database = "<NAME>_data"
-   test_database = "<NAME>_test"
-   connection_string = "mongodb://<USER>:<PASSWORD>@<HOST>:27017/"
-   mongodump_path = "<PATH_TO_MONGODUMP_EXE>"
-
-Where:
-
-* ``<PATH_TO_SIMSTACK_DATA_DIR>`` is the path to the data directory created above (e.g. ``$HOME/simstack``)
-* ``<NAME>`` is your database name (often your first name in lower case)
-* ``<PASSWORD>`` is the database password
-* ``<PATH_TO_MONGODUMP_EXE>`` is the path to the ``mongodump`` executable (required for database backups)
-
-
-Initialize the system
-~~~~~~~~~~~~~~~~~~~~~
-
-This will happen automatically when the default runner starts.
-
-.. code-block:: bash
-
-   uv run create_model_table --dir examples --dir applications
-   uv run create_node_table --dir examples --dir applications
-
-Note: this may crash if your database is very old.
+Model/node catalogue administration and database migrations are server-side
+operations. A runner token is not a database credential and cannot perform
+those operations.
 
 
 
 
-Configure Git identity (required)
+Deploy updates outside the runner
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Because the runner performs Git operations, ensure you have:
-
-.. code-block:: bash
-
-   git config --global user.email "<YOUR_EMAIL_ADDRESS>"
-   git config --global user.name "<YOUR_NAME>"
+``simstack_runner`` never runs ``git``, changes branches, stashes local files,
+or invokes a dependency manager. It also does not inspect a particular lock
+file or per-user extras file. Build and validate the secret-free source
+snapshot and production environment in CI or a deployment supervisor, then
+replace the deployment and restart the runner explicitly. A failed update must
+leave the currently running deployment untouched.
 
 
 Start the runner
@@ -193,9 +187,21 @@ From ``$HOME/projects/simstack-model``:
 
 .. code-block:: bash
 
-   nohup uv run simstack_runner --resource <RESOURCE_NAME> &
+   export SIMSTACK_SERVER_URL="https://simstack.example"
+   export SIMSTACK_RUNNER_TOKEN="<RESOURCE_SCOPED_RUNNER_TOKEN>"
+   nohup .venv/bin/simstack_runner \
+     --resource <RESOURCE_NAME> \
+     --project-root "$PWD" &
 
 Where ``<RESOURCE_NAME>`` is one of the resources you defined in the UI.
+Startup fails closed when credentials, bootstrap capabilities, launch commands,
+the network guard, or required allowlisted worker variables are missing. If a
+workflow needs a non-SimStack variable such as a licence path, preserve it
+explicitly with a repeated ``--allow-environment NAME`` argument; arbitrary
+ambient variables are removed from the supervisor environment.
+
+There is no ``--no-pull`` switch: no pull or self-update path exists in the
+runner.
 
 
 

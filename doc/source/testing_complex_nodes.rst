@@ -16,9 +16,11 @@ The workflow has two parts:
 Generating test data
 --------------------
 
-The ``create_test_from_node`` command accepts a ``NodeRegistry`` ID and creates
-a directory arranged as ``target_root / node_name / arg_hash``. It copies the
-node work directory and writes two convenience files:
+The server or another non-runner application can call
+``simstack.methods.generate_test.generate_test`` with an explicitly injected
+repository, work directory, and ``NodeRegistry`` ID. The function creates a
+directory arranged as ``target_root / node_name / arg_hash`` and writes two
+convenience files:
 
 * ``inputs.json`` contains models referenced by ``input_references``.
 * ``outputs.json`` contains models referenced by ``results_references``.

@@ -8,7 +8,7 @@ from simstack.models.resource_assignment import (
     ResourceAssignmentRule,
     SlurmParametersPatch,
 )
-from simstack.util.db import Database
+from simstack.persistence import Repository
 
 logger = logging.getLogger("resource_assignment")
 
@@ -183,7 +183,7 @@ def _select_matching_rule(
 
 
 async def resolve_resource_assignment(
-    db: Database,
+    db: Repository,
     *,
     call_path: Optional[str],
     base_parameters: Optional[Parameters],
@@ -222,7 +222,7 @@ async def resolve_resource_assignment(
 
 
 async def apply_resource_assignment_to_node_registry(
-    db: Database,
+    db: Repository,
     node_registry: NodeRegistry,
     *,
     parent_parameters: Optional[Parameters] = None,

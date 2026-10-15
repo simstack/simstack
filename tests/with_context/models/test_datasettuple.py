@@ -6,6 +6,7 @@ from simstack.models.datasettuple import DataSetTuple, DataSetTupleSection
 from simstack.models.dataset_metadata import DataSetMetadata
 from simstack.models import FloatData, StringData
 from simstack.models.node_registry import NodeRegistry
+from simstack.persistence import eq
 
 
 class TestDataSetSection:
@@ -27,8 +28,8 @@ class TestDataSetSection:
         # Create and save test models
         float_data = FloatData(value=3.14)
         string_data = StringData(value="test")
-        await context.db.save(float_data)
-        await context.db.save(string_data)
+        await context.repository.save(float_data)
+        await context.repository.save(string_data)
 
         try:
             section = DataSetTupleSection()
@@ -39,8 +40,8 @@ class TestDataSetSection:
             assert section.data[0] == [float_data.id, string_data.id]
             assert bool(section)
         finally:
-            await context.db.delete(float_data)
-            await context.db.delete(string_data)
+            await context.repository.delete(float_data)
+            await context.repository.delete(string_data)
 
     @pytest.mark.asyncio
     async def test_add_multiple_model_groups_same_types(self):
@@ -53,7 +54,7 @@ class TestDataSetSection:
 
         models = [float1, float2, string1, string2]
         for model in models:
-            await context.db.save(model)
+            await context.repository.save(model)
 
         try:
             section = DataSetTupleSection()
@@ -66,7 +67,7 @@ class TestDataSetSection:
             assert section.data[1] == [float2.id, string2.id]
         finally:
             for model in models:
-                await context.db.delete(model)
+                await context.repository.delete(model)
 
     @pytest.mark.asyncio
     async def test_add_model_group_type_mismatch_fails(self):
@@ -76,7 +77,7 @@ class TestDataSetSection:
 
         models = [float_data, string_data]
         for model in models:
-            await context.db.save(model)
+            await context.repository.save(model)
 
         try:
             section = DataSetTupleSection()
@@ -89,7 +90,7 @@ class TestDataSetSection:
                 await section.add_model_group((float_data, float_data))
         finally:
             for model in models:
-                await context.db.delete(model)
+                await context.repository.delete(model)
 
     @pytest.mark.asyncio
     async def test_get_model_group(self):
@@ -97,8 +98,8 @@ class TestDataSetSection:
         float_data = FloatData(value=42.0)
         string_data = StringData(value="answer")
 
-        await context.db.save(float_data)
-        await context.db.save(string_data)
+        await context.repository.save(float_data)
+        await context.repository.save(string_data)
 
         try:
             section = DataSetTupleSection()
@@ -112,8 +113,8 @@ class TestDataSetSection:
             assert retrieved[0].value == 42.0
             assert retrieved[1].value == "answer"
         finally:
-            await context.db.delete(float_data)
-            await context.db.delete(string_data)
+            await context.repository.delete(float_data)
+            await context.repository.delete(string_data)
 
     @pytest.mark.asyncio
     async def test_get_model_group_index_error(self):
@@ -133,7 +134,7 @@ class TestDataSetSection:
 
         models = [float1, float2, string1, string2]
         for model in models:
-            await context.db.save(model)
+            await context.repository.save(model)
 
         try:
             section = DataSetTupleSection()
@@ -149,7 +150,7 @@ class TestDataSetSection:
             assert all_tuples[1][1].value == "two"
         finally:
             for model in models:
-                await context.db.delete(model)
+                await context.repository.delete(model)
 
     @pytest.mark.asyncio
     async def test_list_like_operations(self):
@@ -163,7 +164,7 @@ class TestDataSetSection:
 
         models = [float1, float2, float3, string1, string2, string3]
         for model in models:
-            await context.db.save(model)
+            await context.repository.save(model)
 
         try:
             section = DataSetTupleSection()
@@ -192,7 +193,7 @@ class TestDataSetSection:
             assert section.model_types == []
         finally:
             for model in models:
-                await context.db.delete(model)
+                await context.repository.delete(model)
 
 
 class TestDataSet:
@@ -208,14 +209,14 @@ class TestDataSet:
 
         dataset = DataSetTuple(metadata=metadata)
 
-        await dataset.save(context.db)
+        await context.repository.save(dataset)
 
         try:
             assert dataset.metadata.field_name == "test_empty_with_description"
             assert len(dataset) == 0
             assert len(dataset.sections) == 0
         finally:
-            await context.db.delete(dataset)
+            await context.repository.delete(dataset)
 
     @pytest.mark.asyncio
     async def test_dataset_with_sections(self, node_registry):
@@ -232,7 +233,7 @@ class TestDataSet:
 
         models = [float_data, string_data]
         for model in models:
-            await context.db.save(model)
+            await context.repository.save(model)
 
         try:
             # Create sections
@@ -247,17 +248,17 @@ class TestDataSet:
             dataset = DataSetTuple(metadata=metadata)
             dataset["training"] = section1
             dataset["validation"] = section2
-            await dataset.save(context.db)
+            await context.repository.save(dataset)
 
             try:
                 assert len(dataset) == 2
                 assert "training" in dataset
                 assert "validation" in dataset
             finally:
-                await context.db.delete(dataset)
+                await context.repository.delete(dataset)
         finally:
             for model in models:
-                await context.db.delete(model)
+                await context.repository.delete(model)
 
     @pytest.mark.asyncio
     async def test_dict_like_operations(self, initialized_context):
@@ -271,7 +272,7 @@ class TestDataSet:
 
         # Create a test section
         float_data = FloatData(value=99.9)
-        await context.db.save(float_data)
+        await context.repository.save(float_data)
 
         try:
             section = DataSetTupleSection()
@@ -281,7 +282,7 @@ class TestDataSet:
             dataset["test"] = section
 
 
-            await dataset.save(context.db)
+            await context.repository.save(dataset)
             try:
                 assert dataset["test"] == section
 
@@ -305,9 +306,9 @@ class TestDataSet:
                 assert returned == new_section
                 assert dataset["new"] == new_section
             finally:
-                await context.db.delete(dataset)
+                await context.repository.delete(dataset)
         finally:
-            await context.db.delete(float_data)
+            await context.repository.delete(float_data)
 
     @pytest.mark.asyncio
     async def test_dataset_persistence(self):
@@ -322,8 +323,8 @@ class TestDataSet:
         float_data = FloatData(value=123.45)
         string_data = StringData(value="persistence_test")
 
-        await context.db.save(float_data)
-        await context.db.save(string_data)
+        await context.repository.save(float_data)
+        await context.repository.save(string_data)
 
         try:
             # Create dataset with section
@@ -334,12 +335,14 @@ class TestDataSet:
             dataset["main"] = section
 
             # Save dataset
-            await context.db.save(dataset)
+            await context.repository.save(dataset)
             try:
                 dataset_id = dataset.id
 
                 # Load dataset from database
-                loaded_dataset = await context.db.find_one(DataSetTuple, DataSetTuple.id == dataset_id)
+                loaded_dataset = await context.repository.find_one(
+                    DataSetTuple, eq("id", dataset_id)
+                )
 
                 assert loaded_dataset is not None
                 assert loaded_dataset.metadata.field_name == "test_persistence_tuple"
@@ -356,10 +359,10 @@ class TestDataSet:
                 assert retrieved_models[0].value == 123.45
                 assert retrieved_models[1].value == "persistence_test"
             finally:
-                await context.db.delete(dataset)
+                await context.repository.delete(dataset)
         finally:
-            await context.db.delete(float_data)
-            await context.db.delete(string_data)
+            await context.repository.delete(float_data)
+            await context.repository.delete(string_data)
 
     @pytest.mark.asyncio
     async def test_complex_dataset_workflow(self, initialized_context):
@@ -394,7 +397,7 @@ class TestDataSet:
 
                 models.extend([float_model, string_model, node_model])
                 for model in [float_model, string_model, node_model]:
-                    await context.db.save(model)
+                    await context.repository.save(model)
 
             # Create a dataset with multiple sections
             dataset = DataSetTuple(metadata=metadata)
@@ -420,7 +423,7 @@ class TestDataSet:
 
             # Save and verify
 
-            await dataset.save(context.db)
+            await context.repository.save(dataset)
             try:
                 assert len(dataset) == 3
                 assert len(dataset["training"]) == 2
@@ -440,13 +443,13 @@ class TestDataSet:
                 node_tuple = await dataset["nodes"].get_model_group(0)
                 assert isinstance(node_tuple[0], NodeRegistry)
             finally:
-                await context.db.delete(dataset)
+                await context.repository.delete(dataset)
         finally:
             for model in models:
-                await context.db.delete(model)
+                await context.repository.delete(model)
 
     # ---------------------------------------------------------------------
-    # Additional tests for DataSet.save() structure validation
+    # Additional tests for repository lifecycle structure validation
     # ---------------------------------------------------------------------
 
     @pytest.mark.asyncio
@@ -461,8 +464,8 @@ class TestDataSet:
         f = FloatData(value=1.23)
         s = StringData(value="abc")
         node = node_registry
-        await context.db.save(f)
-        await context.db.save(s)
+        await context.repository.save(f)
+        await context.repository.save(s)
 
         try:
             # First dataset defines the structure under dataset_type "ds_struct_v1"
@@ -478,7 +481,7 @@ class TestDataSet:
             ds1["a"] = sec_a
             ds1["b"] = sec_b
 
-            await ds1.save(context.db)
+            await context.repository.save(ds1)
 
             try:
                 # Second dataset with SAME dataset_type but DIFFERENT section names, same structure
@@ -496,18 +499,18 @@ class TestDataSet:
 
                 # Should not raise
 
-                await ds2.save(context.db)
+                await context.repository.save(ds2)
 
                 try:
                     assert len(ds1) == 2
                     assert len(ds2) == 2
                 finally:
-                    await context.db.delete(ds2)
+                    await context.repository.delete(ds2)
             finally:
-                await context.db.delete(ds1)
+                await context.repository.delete(ds1)
         finally:
-            await context.db.delete(f)
-            await context.db.delete(s)
+            await context.repository.delete(f)
+            await context.repository.delete(s)
 
     @pytest.mark.asyncio
     async def test_dataset_save_same_type_different_structure_fails(
@@ -521,8 +524,8 @@ class TestDataSet:
         f1 = FloatData(value=10.0)
         s1 = StringData(value="x")
         node = node_registry
-        await context.db.save(f1)
-        await context.db.save(s1)
+        await context.repository.save(f1)
+        await context.repository.save(s1)
 
         try:
             # First dataset establishes structure: {"pair": ["FloatData", "StringData"], "nodes": ["NodeRegistry"]}
@@ -538,12 +541,12 @@ class TestDataSet:
             ds1["pair"] = sec_pair
             ds1["nodes"] = sec_nodes
 
-            await ds1.save(context.db)
+            await context.repository.save(ds1)
 
             try:
                 # Second dataset with SAME dataset_type but DIFFERENT structure: change "pair" to only ["FloatData"]
                 f2 = FloatData(value=99.9)
-                await context.db.save(f2)
+                await context.repository.save(f2)
 
                 try:
                     meta2 = DataSetMetadata(
@@ -560,11 +563,11 @@ class TestDataSet:
                     with pytest.raises(
                         ValueError, match=r"Section 'pair' (content mismatch|has different content)"
                     ):
-                        await ds2.save(context.db)
+                        await context.repository.save(ds2)
                 finally:
-                    await context.db.delete(f2)
+                    await context.repository.delete(f2)
             finally:
-                await context.db.delete(ds1)
+                await context.repository.delete(ds1)
         finally:
-            await context.db.delete(f1)
-            await context.db.delete(s1)
+            await context.repository.delete(f1)
+            await context.repository.delete(s1)

@@ -22,11 +22,11 @@ async def node_registry():
         parameters=parameters,  # Required field
     )
 
-    await context.db.save(node_data)
+    await context.repository.save(node_data)
     
     yield node_data
     
     try:
-        await context.db.delete(node_data)
+        await context.repository.delete(node_data)
     except Exception:
         pass

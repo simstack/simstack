@@ -1,10 +1,10 @@
 from typing import List, Optional
 
-from odmantic import Model, Field, ObjectId
+from simstack.models.document import Field, Model, ObjectId
 
 
 class Project(Model):
-    field_name: str = Field(unique=True)
+    field_name: str
     description: Optional[str] = None
     tag_ids: List[ObjectId] = Field(default_factory=list)
 

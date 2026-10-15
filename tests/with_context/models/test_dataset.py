@@ -1,11 +1,11 @@
 import pytest
-from datetime import datetime
 import uuid
 
 from simstack.core.context import context
 from simstack.models.dataset import DataSet, DataSetSection
 from simstack.models.dataset_metadata import DataSetMetadata
 from simstack.models import FloatData, StringData
+from simstack.persistence import eq
 
 class TestDataSetSection:
     """Test cases for DataSetSection functionality."""
@@ -32,7 +32,7 @@ class TestDataSetSection:
 
         assert len(section) == 1
         assert section.model_types == {"f": "FloatData", "s": "StringData"}
-        # Note: data is only synchronized in save()
+        # Persisted row IDs are synchronized by the repository lifecycle.
         assert section.data == {}
         
         # Verify it's in the cache
@@ -74,7 +74,7 @@ class TestDataSetSection:
         """Test retrieving items by name."""
         from simstack.core.context import context
         float_data = FloatData(value=42.0)
-        await context.db.save(float_data)
+        await context.repository.save(float_data)
 
         section = DataSetSection()
         section.add_row({"f": float_data}, name="test_item")
@@ -104,7 +104,7 @@ class TestDataSet:
             data={"description": "Empty test dataset"},
         )
         dataset = DataSet(metadata=metadata)
-        await context.db.save(dataset)
+        await context.repository.save(dataset)
 
         assert dataset.field_name == "dataset"
         assert len(dataset) == 0
@@ -120,7 +120,7 @@ class TestDataSet:
         )
         
         float_data = FloatData(value=1.0)
-        # Note: we don't save float_data here, DataSet.save() should do it
+        # The repository lifecycle persists referenced row models with the dataset.
 
         section1 = DataSetSection()
         section1.add_row({"f": float_data}, name="s1_i1")
@@ -128,14 +128,16 @@ class TestDataSet:
         dataset = DataSet(metadata=metadata)
         dataset["train"] = section1
         
-        await dataset.save(context.db)
+        await context.repository.save(dataset)
         
         assert len(dataset) == 1
         assert "train" in dataset
         assert len(dataset["train"]) == 1
         
         # Verify float_data is saved
-        reloaded_float = await context.db.find_one(FloatData, FloatData.id == float_data.id)
+        reloaded_float = await context.repository.find_one(
+            FloatData, eq("id", float_data.id)
+        )
         assert reloaded_float is not None
         assert reloaded_float.value == 1.0
 
@@ -155,10 +157,9 @@ class TestDataSet:
 
         dataset = DataSet(metadata=metadata)
         dataset["data"] = section
-        await dataset.save(context.db)
+        await context.repository.save(dataset)
 
-        # Reload from DB
-        loaded = await context.db.find_one(DataSet, DataSet.id == dataset.id)
+        loaded = await context.repository.find_one(DataSet, eq("id", dataset.id))
         assert loaded is not None
         assert "data" in loaded
         assert len(loaded["data"]) == 1
@@ -273,20 +274,25 @@ class TestDataSetSectionDict:
         assert section["i3"]["f"] is f3
 
     @pytest.mark.asyncio
-    async def test_load_to_cache(self, initialized_context):
+    async def test_repository_hydrates_section_cache(self, initialized_context):
         f1 = FloatData(value=10.0)
-        await context.db.save(f1)
+        await context.repository.save(f1)
 
         section = DataSetSection()
-        # data is synchronized in save, or we can set it manually for this test
-        section.model_types = {"f": "FloatData"}
-        section.data = {"item1": {"f": f1.id}}
+        section.add_row({"f": f1}, name="item1")
+        dataset = DataSet(
+            metadata=DataSetMetadata(
+                field_name=f"cache-hydration-{uuid.uuid4()}",
+                data={"version": "1"},
+            ),
+            sections={"data": section},
+        )
+        await context.repository.save(dataset)
 
-        # Cache should be empty initially
-        assert "item1" not in section._get_cache()
+        loaded = await context.repository.find_one(DataSet, eq("id", dataset.id))
 
-        await section.load_to_cache(context.db)
-
-        assert "item1" in section._get_cache()
-        assert section["item1"]["f"].id == f1.id
-        assert section["item1"]["f"].value == 10.0
+        assert loaded is not None
+        loaded_section = loaded["data"]
+        assert "item1" in loaded_section._get_cache()
+        assert loaded_section["item1"]["f"].id == f1.id
+        assert loaded_section["item1"]["f"].value == 10.0

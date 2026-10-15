@@ -1,8 +1,9 @@
-from typing import Optional, List
+from collections.abc import Mapping
+from typing import Any, Optional, List
 
 from pydantic import BaseModel, Field, ConfigDict
 
-from simstack.core.definitions import TaskStatus
+from simstack.runner_protocol.constants import RunnerTaskStatus as TaskStatus
 from simstack.models.files import FileStack
 
 
@@ -40,3 +41,12 @@ class SimstackResult(BaseModel):
     custom_name: Optional[str] = None
     files: List[FileStack] = Field(default_factory=list)
     info_files: List[FileStack] = Field(default_factory=list)
+
+    @classmethod
+    def from_task_metadata(cls, task: Mapping[str, Any], *, info_files: list[FileStack]) -> "SimstackResult":
+        """Restore the same result metadata in repository and API execution."""
+        return cls(
+            status=task["status"], custom_name=task.get("custom_name"),
+            message=task.get("message"), error_message=task.get("error"),
+            info_files=info_files,
+        )

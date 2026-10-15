@@ -42,7 +42,7 @@ the following:
 To achievieve this, we need to make the following changes in the code:
 
 * decorate the functions that should be visible in the GUI with the `@node` decorator
-* ensure that all input and output types of the nodes are registered odmantic Models
+* ensure that all input and output types are registered Simstack document models
 * specifiy where the nodes should be executed
 
 For the specific example above the code looks as follows:
@@ -69,9 +69,10 @@ models for these types (see: :mod:`simstack.models.base_types`).
 The @node decorator embeds the simple python functions into a complex workflow class
 (see: :func:`simstack.core.node.node` in module: :mod:`simstack.core.node`).
 
-To allow Simstack II with new data models you need to register them once, see :ref:`persisting_models`.
-In order execute nodes via the UI you need to register the nodes. This would result in a workflow where all nodes are
-visible in the GUI (:ref:`submitting-workflows`).
+Install new workflow packages through the Server API, using the UI or
+``simstack_workflow`` command described in :ref:`registering`. The installer
+discovers their document models and decorated nodes and publishes the catalogue
+for the authenticated user. Runners do not register database tables.
 The nodes `adder` and `multiplier` would be executed on a runner running on "my-remote-host".
 The adder would be submitted to the "slurm-queue" and the multiplier would be executed immediately in the foreground.
 add_multiply_python would be executed on the default resource by a runner called `local`. You can change these defaults in the UI.
@@ -81,17 +82,19 @@ and the representation of this data in the GUI, these models are discussed in :r
 Here are some ground rules to write workflows in Simstack II:
 
 .. important::
-  - Node functions must have a **unique name** (across the whole installation).
-  - Node functions must have the **\*\*kwargs argument**
-  - Node functions must **pass** the \*\*kwargs argument to nodes they call
-  - Node functions must be **registered in the node_model table** of the database
-    by running make_node_table (:ref:`registering`)
-  - All positional arguments of node functions must be **registered Models** in the model_table of the database
-    by running make_model_table (:ref:`registering`). Presently kwargs for models are not supported.
+  - Export decorated nodes and document classes at module level. Their
+    canonical module-qualified paths identify them, not their short names.
+  - Declare each node input as a SimStack ``Model`` and declare its return
+    contract. Positional and keyword Model inputs are supported.
+  - ``**kwargs`` is optional. Use it when the function needs execution helpers
+    such as ``node_runner`` or explicitly forwards execution metadata.
+  - Install the package through the Server before submitting its nodes. No
+    runner-side ``make_node_table`` or ``make_model_table`` call is required.
 
 Beyond that nodes functions are normal python functions which can use the full flexibility of python.
 The can call other functions or other nodes, but should **avoid "closures"**, such as global variables.
-For this reason, node function should **not be class members** unless they are class members of an odmantic model.
+For this reason, node functions should **not be class members** unless the
+method is intentionally part of a registered Simstack document model.
 
 You can consult the documentation of this class to understand how this works but this is not required to write
 workflows.
@@ -101,15 +104,16 @@ by the following considerations:
 
 - Only nodes are visible in the GUI
 - only nodes can be executed automatically on remote resources
-- in principle nodes can call normal functions which can call nodes, as long as the \*\*kwargs
-  are passed correctly
+- nodes can call normal functions or other decorated nodes; nested API calls
+  inherit the active execution claim without requiring ``**kwargs`` forwarding
 
 Return Types
 ~~~~~~~~~~~~
 
-In workflows, the results of node functions must be visible in the databse and may be
-processed by other nodes. This means that **results** of the nodes must by odmantic models which
-can be visualized in the GUI and passed to other nodes which may execute on different resources.
+In workflows, node results must be visible through the server and may be
+processed by other nodes. Results must therefore be registered
+:class:`simstack.models.document.Model` documents that can be validated,
+visualized in the GUI, and transferred to nodes on other resources.
 
 In order to encapsulate data processing, this essentially **precludes the use
 of files as relevant results**. Many terminal nodes will call external
@@ -229,10 +233,10 @@ You can add output by:
 
 **Logging**
 
-In order to keep track of the node execution, the Simstack core modules and
-user written nodes should write logs. Simstack will initialize a custom
-database logger which will be added to the logging system. In your node you
-can therefore just instantiate and use a logger
+In order to keep track of node execution, Simstack core modules and user code
+should write logs. Runner processes do not install a database log handler;
+control-plane log delivery and task commits go through the server API. In node
+code you can use a standard logger and the ``NodeRunner`` helpers:
 
 .. code-block:: python
 
@@ -244,7 +248,7 @@ can therefore just instantiate and use a logger
 
         node_runner = kwargs['node_runner'] # should never fail
 
-        # this will log to the database and be visible in the general logs
+        # Standard process log output
         logger.info("Some message I will never find")
 
         # this will be shown in a special tab called task-logs which collects
@@ -325,24 +329,21 @@ of operations controlled by the class Node.
 - before execution all arguments and the function body are hashed using
   :func:`simstack.core.hash.complex_hash_function`, which will infer how to
   deal with nested objects, such as list, dicts, classes, etc.
-  For odmantic models which have a ``complex_hash_function`` this function will
-  override the default behavior. Odmantic ObjectId are not hashed.
-- if a completed NodeRegistry :class:`simstack.models.node_registry.NodeRegistry`
-  entry matching the function name, argument hash and function hash is found,
-  its result is reused. A non-completed matching entry is reused only when its
-  resource, queue, Docker flag and Slurm parameters match the current execution
-  route. Otherwise, a new registry entry is created. ``force_rerun=True`` always
-  bypasses reuse.
-- if no reusable NodeRegistry entry exists a new one is created with
-  TaskStatus.SUBMITTED
-- the node class then calls the function :func:`simstack.core.node.Node.run_somewhere`
-  which executes the node locally using
-  :func:`simstack.core.node.Node.execute_node_locally` or waits until
-  the task status is changed in the database by a runner. This function will
-  set the ``status`` field in the ``node_registry`` entry depending on the
-  outcome of the node execution an process the data in ``node_runner``
-- after node execution the results from remote nodes are loaded from the
-  database.
+  A domain model's ``complex_hash`` method overrides the default behavior.
+  :class:`simstack.models.document.ObjectId` values are excluded where identity
+  must not change the content hash.
+- A completed NodeRegistry entry is reused only for the same input content and
+  loaded implementation fingerprint (including the declared node version).
+  Pending entries must also match the execution route; ``force_rerun`` bypasses
+  reuse. The worker establishes initially unknown root identity through its
+  claim-scoped API before execution.
+- if no such NodeRegistry entry exists a new one is created with TaskStatus.SUBMITTED
+- the server atomically claims remote work for a runner. The runner fetches a
+  claim-scoped task bundle, executes the declared function, and commits results
+  or failure through the server API.
+- nested node calls made inside a runner are resolved through that same API;
+  runner processes do not read or update ``node_registry`` directly.
+- the caller obtains completed results from the server-owned persistence layer.
 
 .. note::
   Timeouts for remote execution are not yet implemented.
@@ -350,100 +351,235 @@ of operations controlled by the class Node.
 Remote Execution
 ~~~~~~~~~~~~~~~~
 
-Nodes scheduled to run on a remote execution require a runner
-(:func:`simstack.core.runner.runner`) to be running on that resource with the
---resource flag set to the name of that node. The user or the administrator
-has to install Simstack and the relevant user repositories on the remote
-server and specify the information relevant to the remote node in the
-``simstack.toml`` configuration file (see: :ref:`configuration-file`). This
-needs to be done only once.
+Nodes scheduled for remote execution require ``simstack_runner`` on that
+resource. In the UI, save the resource under **Profile → Resources**, use
+**Generate token**, and then **Download runner.toml**. The download contains a
+``[runner]`` section with ``server_url`` from the UI's configured API URL and
+``resource``. It contains no token or database configuration. The API URL must
+be reachable from the resource; change a local-only address when connecting a
+remote machine.
 
-When someone is actively developing new nodes or other code to be run on the
-remote node, it is important to keep the code on the remote server up-to-date.
-The preferred way is to periodically check for a git-update or other server
-crashes and restart the server if such events are detected.
-The legacy file :file:`scripts/old/check_runner.sh` provides a template that
-must be adapted to the configuration of the remote node. This needs to be
-done only once.
+Install the coordinated new Core version in a separate Runner environment
+without MongoDB drivers. The local, uncommitted version is not supplied by an
+older published package. The resource operator must also supply an execution
+``config.toml`` with worker launch commands, network isolation, environment
+allowlists, and the approved ``workflow_profiles``. The downloaded connection
+file does not generate this deployment-specific execution configuration.
+
+.. code-block:: bash
+
+    export SIMSTACK_RUNNER_TOKEN="<resource Runner token>"
+    simstack_runner \
+      --connection-config /absolute/path/runner.toml \
+      --config /absolute/path/config.toml \
+      --project-root /absolute/path/execution-root
+
+``SIMSTACK_RUNNER_TOKEN`` is mandatory and is not read from either TOML file.
+``--connection-config`` supplies the API URL and expected resource. When
+``--resource`` is also passed, it must match the connection file and the
+token-bound resource. Without a connection file, ``SIMSTACK_SERVER_URL`` is
+required; an explicit connection file is authoritative when provided. The
+server bootstrap supplies resource, model-mapping, and node-mapping metadata.
+Local ``config.toml`` contains execution settings only. Database URLs, drivers,
+and old ``simstack.toml`` database settings are not part of Runner bootstrap,
+and there is no database fallback.
+
+The execution ``--project-root`` must be a secret-free source snapshot because
+workflow processes can read it, including through read-only container mounts.
+Each local, container, Slurm, and watchdog launch contract must also provide a
+real, deployment-verified ``worker_network_guard_command``. A non-empty argv is
+required by the framework, but the operating environment is responsible for
+ensuring that the selected guard actually blocks database and other forbidden
+network access.
+
+Deploy the Runner/Core installation through the deployment system. The package
+installer separately delivers immutable workflow archives through the API and
+prepares revision-local dependency environments under an operator-approved
+runtime profile. It does not replace Core or mutate a live checkout.
+``simstack_runner`` never stashes files, changes branches, pulls Git repositories
+or synchronizes that checkout's dependencies.
 
 .. _registering:
 
 Registering Models and Nodes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Database access to the mongodb database in Simstack II is facilitated by a
-using the odmantic package, which provides asynchronous object oriented access
-to the database (see :ref:`persisting_data`). This means that data in the
-generic code-base of Simstack is loaded/stored by storing class instances.
+The UI and CLI use the same authenticated ``/workflow-installations`` API.
+The Server owns the user's catalogue and persistence; the Runner only receives
+approved source archives and task/bootstrap contracts through the API. Installing
+a workflow does not give it database credentials or a generic database API.
 
-These classes cannot be imported via the standard ``import`` statements,
-because they are unknown to the SimStack core modules. To overcome this
-problem a dynamic import system has been implemented, where the module paths
-of Simstack Models and Nodes are stored in database tables (``node_model``
-and ``model_table``, respectively).
+Package format
+^^^^^^^^^^^^^^
 
-The functions :func:`simstack.core.model_table.make_model_table` and
-:func:`simstack.core.node_table.make_node_table` scan the directories
-provided in the path section of the configuration file
-(:ref:`configuration_file`)
-
+Put ``simstack-workflow.toml`` at the archive root, alongside the importable
+Python package. For example, ``example/nodes.py`` can contain:
 
 .. code-block:: python
 
-    [paths]
-    # Path configuration for the PathManager.
-    # Each path entry should have a path and an optional drops value.
-    # The path is the directory to search for Python files
-    # The "drops" value is a prefix to drop from module names (for import paths)
-    models = { path = "src\\simstack\\models", drops = "src" }
-    methods = { path = "src\\simstack\\methods", drops = "src" }
-    ui_testing = { path = "src\\simstack\\ui_testing", drops = "src" }
-    applications = { path = "applications", drops = "", use_pickle = false }
-    tests = { path = "tests", drops = "", use_pickle = false }
-    projects = { path = "projects", drops = "",
-                         use_pickle = false }
+    from simstack.core.node import node
+    from simstack.models.document import Model, Reference
 
-The first 4 entries are standard paths. The first three (models, methods,
-ui_testing) belong to the Simstack core. ``applications`` is the standard
-directory where you should install community application packages for
-specific application domains.
+    class Sample(Model):
+        value: float
 
-The nodes and application programs written by you should go under
-``projects``.
+    class ScaleInput(Model):
+        sample: Sample = Reference()
+        factor: float = 2.0
+
+    class ScaleOutput(Model):
+        source: ScaleInput = Reference()
+        value: float
+
+    @node
+    def scale(data: ScaleInput) -> ScaleOutput:
+        return ScaleOutput(source=data, value=data.sample.value * data.factor)
+
+Include ``example/__init__.py`` and this minimal manifest:
+
+.. code-block:: toml
+
+    [workflow]
+    id = "org.example.scale"
+    version = "1.0.0"
+    modules = ["example.nodes"]
+    runtime_profile = "python"
+
+``id``, ``version``, ``modules`` and ``runtime_profile`` are required.
+``source_root`` defaults to ``.``; use ``source_root = "src"`` for a ``src``
+layout. Explicit ``dependencies`` are optional: when omitted they are read from
+static ``[project].dependencies`` in ``pyproject.toml``, or are empty when there
+is no project file. Dependencies are index requirements; uploaded build recipes,
+URL/path requirements and database-driver dependencies are not supported.
+
+Model schemas, ``Reference`` dependencies, canonical model/node mappings and
+annotated input/output contracts are derived from Python. Do not duplicate them
+as database tables or a hand-written schema registry. A single Model return has
+the result name ``result``. ``SimstackResult`` returns require named result
+declarations through the supported docstring contract or manifest node overrides.
+Boolean returns also require an explicit document result contract; arbitrary
+dictionaries and an unannotated return are not a substitute for it.
+
+The installer checks archive containment, manifest structure and SimStack
+interfaces. It imports the declared modules in an isolated runtime for discovery,
+but does not call workflow node bodies, create fake datasets, run scientific
+calculations or prove business correctness. Keep module imports free of workload
+side effects. Ambiguous static child-call analysis and unavailable optional
+``ui_schema()`` hooks appear as non-blocking preview warnings. Optional explicit
+``called_nodes`` overrides can describe dynamic child calls.
+
+UI installation
+^^^^^^^^^^^^^^^
+
+Open **Submit → Install workflows** in the left navigation. Choose a ZIP or use
+the native folder picker, explicitly select target resources, and click
+**Review package**.
+The folder is uploaded as an archive, not as a local filesystem path. Review the
+derived models, nodes, dependencies, revision and warnings, then click
+**Confirm installation** to start delivery. ``staged`` is only a preview;
+``installing`` is not ready to execute. An offline Runner leaves its resource
+pending. The catalogue becomes active only after every selected resource is
+ready. Open **Activity** to search/filter dated installation attempts and inspect
+each resource's progress. A ready historical attempt is not necessarily the
+currently published package revision. Use **Submit** separately to launch a workflow.
+
+An interrupted ``validating`` job can be resumed into a preview; confirmation
+to deliver it remains a separate action. A failed inspection requires a corrected
+package upload. A confirmed job with failed resources can be explicitly retried
+without reinstalling targets that are already ready.
+
+CLI installation
+^^^^^^^^^^^^^^^^
+
+``simstack_workflow`` can run directly on a resource (or your computer) with Core
+installed. It accepts the same ZIP or folder and uses a normal user bearer
+token, not a resource Runner token. Supply an existing token via
+``SIMSTACK_USER_TOKEN`` or ``--token-file``; the command does not save passwords
+or tokens. The supplied ``--server-url`` is the API base URL verbatim. It does
+not automatically append ``/api``: include a reverse-proxy prefix only if your
+deployment uses one.
+
+.. code-block:: bash
+
+    simstack_workflow --server-url "$WORKFLOW_API_URL" --token-file /secure/user-token \
+      upload ./my-workflow --resource local
+    simstack_workflow --server-url "$WORKFLOW_API_URL" --token-file /secure/user-token \
+      status INSTALLATION_ID
+    simstack_workflow --server-url "$WORKFLOW_API_URL" --token-file /secure/user-token \
+      confirm INSTALLATION_ID
+    simstack_workflow --server-url "$WORKFLOW_API_URL" --token-file /secure/user-token \
+      wait INSTALLATION_ID
+
+Read the upload response and warnings before confirming. ``upload --confirm``
+is an explicit non-interactive opt-in, not the default. Resource names are the
+user's configured ``resource_str`` values, and ``--resource`` may be repeated.
+
+Runtime profiles and revisions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Each target resource needs an operator-configured profile matching the manifest's
+``runtime_profile``. The profile provides ``installer_python``, worker launch
+commands, a verified ``worker_network_guard_command`` and an environment
+allowlist. A package cannot provide its own launcher or fall back to an old
+per-node program when its profile is missing. See the Server README for the
+separate required inspection sandbox configuration.
+
+The Server stores the archive and versioned catalogue for the authenticated user.
+Runners download it through a resource-scoped installation claim, verify its
+SHA-256 revision, prepare an isolated environment and report readiness through
+the API. Task bindings include package, installation ID, revision and profile.
+Workers use that exact source snapshot; installing a newer version does not
+silently redirect an existing task to the latest code. Core's operator-deployed
+environment and the workflow's private dependencies remain separate.
+
+Code-installation budgets are finite operator policy, not restrictions on
+scientific workflow data. Server operators override shared defaults through
+``SIMSTACK_WORKFLOW_INSTALL_LIMITS``; Runner profiles use an
+``installation_limits`` table. Archive bytes, expansion, entry count, storage,
+output and process budgets apply on both initial preparation and cache reuse.
+The process boundary requires an unprivileged Linux UID and the configured
+sandbox; it never falls back to unsandboxed execution on unsupported hosts.
+The service/container must additionally have finite cgroup-v2 ``memory.max``
+and ``cpu.max`` ceilings within ``max_process_tree_memory_bytes`` and
+``max_process_tree_cpu_cores``. For the defaults, run the Server and Runner
+containers with an unprivileged UID, ``--memory=4g --cpus=2`` (and an
+operator-owned writable storage directory). This kernel boundary caps the
+aggregate memory and CPU bandwidth of descendants; individual ``rlimit``
+settings alone do not do that. Preparation fails closed when the required
+quotas are absent or exceed policy. These are shared service/container budgets,
+not independent per-installation cgroups: concurrent installations share them.
+The wall-clock timeout still bounds elapsed runtime; ``cpu.max`` is a bandwidth
+ceiling, not a lifetime CPU-seconds allowance for each installation.
+Private dependencies may overlay ordinary libraries, but may not replace Core,
+database namespaces, Python startup files or interpreter-startup hooks.
 
 Most Common Errors & Problems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* remote runners are not on the same branch or not up-to-date (see Health
-  Check in the GUI)
-* you can set the branch of the runners in the GUI (in profile). Unless in ver special
-circumstances all runners should be on the same branch.
-* all runners will periodically update from git. when the branch has changed the **default runner** will
-recreate models and nodes. the runners will update --locked, i.e. they need an up-to-date uv.lock
-* model and node creation is incremental. when you move things around the exisiting bindings will be
-overridden, but if you delete models and nodes the database will not know this (which is intended because
-data may still exist in the db)
-* when you not only develop your own package but also the simstack core (you should not), it makes
-sense to clone simstack as a subrepo into you main repo. You then must run ``uv lock --upgrade-package simstack``
-after commits of simstack to keep your pyproject.toml up to date. after that you must run `` uv sync --locked`` and commit again
-your main repo so that the runners can update simstack.
+* a deployment has not installed the intended immutable source snapshot (see
+  the runner version reported by the deployment and Health Check)
+* changing branch metadata in the GUI does not mutate a running checkout; the
+  deployment system must build, validate, and activate the intended revision
+* an installation is only staged, or one of its selected resources is not ready
+* when you develop both an application package and Simstack core, update and
+  validate the application's dependency lock in CI before deploying the new
+  snapshot; the runner itself will not repair or synchronize that environment
 * node or model not registered in the database (see :ref:`registering`)
 * node or model not imported correctly (see below)
-* forgetting \*\*kwargs in the node function definition. Nodes will crash.
+* missing or mismatched operator runtime profile; there is no legacy fallback
 * relative imports suggested by IDE:
 
 .. code-block:: python
 
-    from models import Model
-    from core.nodes import node
+    from simstack.models.document import Model
+    from simstack.core.node import node
 
 
 make sure all imports are relative to simstack. For example:
 
 .. code-block:: python
 
-    from simstack.core.parameters import Parameters
-    from simstack.core.workflow import Workflow
-    from simstack.core.runner import Runner
+    from simstack.models import Parameters
+    from simstack.core.node import node
 
 or relative the other top-level modules. e.g. applications

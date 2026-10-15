@@ -2,13 +2,19 @@ Miscellaneous
 ==============
 
 
-BUGS:
------
+Persistence Boundary
+--------------------
 
-Optional fields in embedded models are not handled correctly
+Simstack models are ordinary Pydantic domain objects implemented by
+:mod:`simstack.models.document`. Optional and embedded fields follow Pydantic
+semantics. A ``Reference()`` marks an independently persisted document; an
+``EmbeddedModel`` is stored inline with its owner.
 
-https://github.com/art049/odmantic/issues/370
-https://github.com/art049/odmantic/issues/484
+The shared package does not create a MongoDB client. The FastAPI server owns
+repositories and database-driver conversion. Runners receive bootstrap data,
+task documents, and dependency closures from the server and return results
+through claim-scoped APIs. Direct ``context.db`` access is rejected in runner
+mode.
 
 References
 ----------
@@ -36,7 +42,8 @@ Customizing Simstack Models
 
 .. note:: General information about Simstack models
 
-Simstack models are built on top of `odmantic`, which uses `pydantic` for data validation.
+Simstack models are built directly on Pydantic through
+``simstack.models.document`` and contain no database client.
 By decorating a class with `@simstack_model`, you enable additional UI-related features.
 You can customize how a model appears in the GUI by implementing `json_schema` and `ui_schema` methods.
 Refer to :ref:`persisting_data` for more details.
@@ -51,16 +58,18 @@ Running the above code as a workflow we would like to achieve the following:
 * the workflow can be run from a GUI
 * (workflows can be created from existing components in a GUI)
 
-To address the first points, all data must be serializable. This can be achieved by pickling the inputs/outputs but
-then the data is hidden in the pickled string and not searchable. Here we have chosen odmantic classes to persist the
-data in a database. See: :ref:`persisting-results-section`. This has the charm that routes to access this data can be
-automatically generated.
+To address the first points, all data must be serializable. Pickling arbitrary
+inputs and outputs would hide their structure. Simstack therefore uses typed
+Pydantic document models and explicit model mappings. See
+:ref:`persisting-results-section`. The server can validate and persist these
+documents and expose them through typed routes without putting a database
+driver in workflow or runner code.
 
 Overall we need four "servers" to run the workflow:
 
 * The "workflow server" that manages and executes workflows
 * The "runners" that execute parts of workflows on remote resources
-* The "database server" provides an API to the database for the GUI
+* The FastAPI server owns persistence and provides APIs to the GUI and runners
 * The webserver that serves the GUI
 
 
@@ -84,9 +93,9 @@ Overall we need four "servers" to run the workflow:
 
 **Allowed Arguments**
 
-- All **positional** arguments of the wrapped function (my_node) must be
-  **registered** odmantic Models. These arguments are automatically persisted
-  in the database.
+- All declared arguments of the wrapped function (``my_node``) must be
+  registered :class:`simstack.models.document.Model` documents. The server
+  persists them and sends the required dependency closure to a remote runner.
 - The my_node function must have \*\*kwargs even if they are not used in the
   function.
 - \*\*kwargs is used to pass information to process the node, but
@@ -103,4 +112,3 @@ Overall we need four "servers" to run the workflow:
 While it is easy to check whether the variables
 passed to nodes can be persisted in the database, this can be checked for
 results only in post-processing.
-

@@ -1,27 +1,14 @@
 from datetime import datetime
-from enum import Enum
 from typing import Optional, List
 
-from odmantic import Model, ObjectId, Field
+from simstack.models.document import Field, Model, ObjectId
 from pydantic import ConfigDict
 
 from simstack.models.parameters import Resource
+from simstack.runner_protocol.constants import RunnerEventType, RunnerProcessType
 
-
-class RunnerEventEnum(str, Enum):
-    SHUTDOWN = "shutdown"
-    RUNNER_STARTED = "runner_started"
-    NODE_STARTED = "node_started"
-    NODE_SUBMIT = "node_submit"
-    ALIVE = "alive"
-    RESTART = "restart"
-    CRONTAB_OK = "crontab_ok"
-    CRONTAB_GONE = "crontab_gone"
-
-
-class RunnerType(str, Enum):
-    NODE_RUNNER = "node_runner"
-    RESOURCE_RUNNER = "resource_runner"
+RunnerEventEnum = RunnerEventType
+RunnerType = RunnerProcessType
 
 
 class RunnerEvent(Model):
@@ -34,6 +21,7 @@ class RunnerEvent(Model):
     hostname: Optional[str] = None
     user: Optional[str] = None
     pid: Optional[int] = None
+    runner_version: Optional[str] = None
     node_id: Optional[ObjectId] = None
     message: Optional[str] = None
     git_status: List[str] = Field(default_factory=list)

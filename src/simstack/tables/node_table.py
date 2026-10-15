@@ -5,13 +5,12 @@ from pathlib import Path
 from typing import Callable, List, get_type_hints, Dict, Any, Type
 
 
-from simstack.core.simstack_result import SimstackResult
-from simstack.core.context import context
-from simstack.tables.node_children import update_node_children
 from simstack.models import Parameters
 from simstack.models.models import NodeModel, ModelMapping, DataMapping
+from simstack.persistence import Repository, eq
+from simstack.core.simstack_result import SimstackResult
+from simstack.tables.node_children import update_node_children
 from simstack.tables.table_builder import TableBuilderBase
-from simstack.util.db import Database
 from simstack.util.docstring_parser import DocstringParser
 from simstack.util.importer import import_class_by_name
 
@@ -28,20 +27,13 @@ class CreateNodeTable(TableBuilderBase):
     Helper class to build the node table without passing around many parameters.
 
     Usage:
-        creator = CreateNodeTable(database)
-        await creator.make_node_table()
+        creator = CreateNodeTable(repository)
+        await creator.build()
     """
 
     @property
     def logger(self) -> logging.Logger:
         return logger
-
-    async def build(self, *args, **kwargs) -> None:
-        if not context.initialized:
-            await context.initialize()
-        await context.refresh_mappings(models=True, nodes=False)
-        await super().build(*args, **kwargs)
-        await context.refresh_mappings(models=False, nodes=True)
 
     async def _process_module(self, module: Any, drops: str) -> None:
         await self._register_nodes_from_module(module, drops)
@@ -106,7 +98,9 @@ class CreateNodeTable(TableBuilderBase):
                 type_str = self._annotation_type_str(resolved_type)
 
             if resolved_type is None:
-                logger.error(f"Could not parse type for {param_name}: missing annotation")
+                logger.error(
+                    f"Could not parse type for {param_name}: missing annotation"
+                )
                 continue
 
             param_info: Dict[str, Any] = {
@@ -166,7 +160,9 @@ class CreateNodeTable(TableBuilderBase):
         outputs: List[Dict[str, Any]] = []
         return_type = type_hints.get("return", None)
         doc_returns = parser.returns()
-        if return_type and return_type != type(None):  # Check for actual return type
+        if return_type and return_type is not type(
+            None
+        ):  # Check for actual return type
             output_info: Dict[str, Any] = {
                 "name": "result",
                 "type_str": str(return_type),
@@ -180,7 +176,6 @@ class CreateNodeTable(TableBuilderBase):
             output["type"] == SimstackResult for output in outputs
         )
         result_mappings = []
-        db = context.db
         if returns_simstack_result:
             if len(outputs) > 1:
                 logger.warning(
@@ -189,7 +184,9 @@ class CreateNodeTable(TableBuilderBase):
             else:
                 doc_simstack_result = parser.simstack_results()
                 if doc_simstack_result is None:
-                    logger.warning(f"The docstring of {func_name} does not defines its SimstackResult outputs")
+                    logger.warning(
+                        f"The docstring of {func_name} does not defines its SimstackResult outputs"
+                    )
                 else:
                     for name, data in doc_simstack_result.items():
                         output_mapping = None
@@ -210,7 +207,7 @@ class CreateNodeTable(TableBuilderBase):
                                 else:
                                     try:
                                         inner_model = await import_class_by_name(
-                                            inner_type_str, db
+                                            inner_type_str, self.repository
                                         )
                                     except (ValueError, LookupError):
                                         inner_model = None
@@ -230,7 +227,7 @@ class CreateNodeTable(TableBuilderBase):
                                 # It's a single class name
                                 try:
                                     output_model = await import_class_by_name(
-                                        output_type, db
+                                        output_type, self.repository
                                     )
                                     output_mapping = self.get_class_mapping(
                                         output_model, drops
@@ -264,12 +261,15 @@ class CreateNodeTable(TableBuilderBase):
                         # Handle Optional[T] / T | None
                         from typing import get_args, get_origin, Union
                         import types
+
                         origin = get_origin(output_type)
                         if origin is types.UnionType or origin is Union:
                             args = get_args(output_type)
                             if type(None) in args:
                                 # It's an Optional, take the first non-None argument
-                                output_type = next(arg for arg in args if arg is not type(None))
+                                output_type = next(
+                                    arg for arg in args if arg is not type(None)
+                                )
                         output_mapping = self.get_class_mapping(output_type, drops)
                     result_mappings.append(
                         DataMapping(
@@ -279,7 +279,9 @@ class CreateNodeTable(TableBuilderBase):
                         )
                     )
                 except ValueError:
-                    logger.error(f"Could not parse '{output['type']}' to mapping in {func_name}")
+                    logger.error(
+                        f"Could not parse '{output['type']}' to mapping in {func_name}"
+                    )
         return result_mappings
 
     def _extract_default_parameters(self, func: Callable[..., Any]) -> Parameters:
@@ -316,8 +318,8 @@ class CreateNodeTable(TableBuilderBase):
             (should_skip, existing_favorite)
         """
         try:
-            existing_model = await self.db.find_one(
-                NodeModel, NodeModel.name == node_name
+            existing_model = await self.repository.find_one(
+                NodeModel, eq("name", node_name)
             )
         except Exception as e:
             logger.error(f"Error finding existing NodeModel {node_name}: {e}")
@@ -338,12 +340,12 @@ class CreateNodeTable(TableBuilderBase):
 
         if getattr(existing_model, "pickle_function", None):
             try:
-                await self.db.delete(existing_model.pickle_function)
+                await self.repository.delete(existing_model.pickle_function)
             except Exception as e:
                 logger.error(f"Error deleting FunctionPickle for {node_name}: {e}")
 
         try:
-            await self.db.delete(existing_model)
+            await self.repository.delete(existing_model)
         except Exception as e:
             logger.error(f"Error deleting existing NodeModel {node_name}: {e}")
 
@@ -378,8 +380,8 @@ class CreateNodeTable(TableBuilderBase):
                     if drops and input_mapping.startswith(drops + "."):
                         input_mapping = input_mapping[len(drops) + 1 :]
 
-                    input_mapping_found = await self.db.find_one(
-                        ModelMapping, ModelMapping.mapping == input_mapping
+                    input_mapping_found = await self.repository.find_one(
+                        ModelMapping, eq("mapping", input_mapping)
                     )
                     if not input_mapping_found and input_mapping:
                         logger.error(
@@ -482,6 +484,7 @@ class CreateNodeTable(TableBuilderBase):
 
                 node_model = NodeModel(
                     name=node_name,
+                    version=getattr(func, "_node_version", None),
                     function_mapping=function_mapping,
                     description=node_description,
                     input_mappings=data_mappings,
@@ -495,7 +498,7 @@ class CreateNodeTable(TableBuilderBase):
                 logger.debug(
                     f"NodeModel: {node_model.name}, {node_model.function_mapping}, {node_model.input_mappings}"
                 )
-                await self.db.save(node_model)
+                await self.repository.save(node_model)
 
             except Exception as e:
                 logger.error(f"Error creating/saving NodeModel {node_name}: {e}")
@@ -504,16 +507,16 @@ class CreateNodeTable(TableBuilderBase):
                 traceback.print_exc()
 
     async def second_stage(self, drops: str) -> None:
-        await update_node_children(self.db, drops)
+        await update_node_children(self.repository, drops)
 
     async def clear_table(self) -> None:
         self.logger.info("Clearing NodeModel collection")
-        await self.db.get_collection(NodeModel).drop()
+        await self.repository.delete_all(NodeModel)
 
 
 async def make_node_table(
-    db: Database,
-    dirs: list[str] | None = None,
+    repository: Repository,
+    dirs: list[str],
     drops: str | None = None,
     write_schema: bool = False,
     clear: bool = False,
@@ -521,22 +524,15 @@ async def make_node_table(
     ignore_entrypoints: bool = False,
 ) -> None:
     """
-    Rebuild the node table using the given databse.
+    Rebuild the node table using the given repository.
 
-    This is a thin wrapper around CreateNodeTable for backward compatibility.
+    This is the application-service entry point for node-table registration.
     """
-    creator = CreateNodeTable(db, write_schema=write_schema, project_root=project_root)
-    await creator.build(dirs=dirs, drops=drops, clear=clear, ignore_entrypoints=ignore_entrypoints)
-
-
-def create_node_table_main() -> None:
-    """
-    CLI-style entry point to (re)build the node table.
-
-    Uses a dedicated event loop, matching the pattern used for model table creation.
-    """
-    TableBuilderBase.cli_main(CreateNodeTable)
-
-
-if __name__ == "__main__":
-    create_node_table_main()
+    creator = CreateNodeTable(
+        repository,
+        write_schema=write_schema,
+        project_root=project_root,
+    )
+    await creator.build(
+        dirs=dirs, drops=drops, clear=clear, ignore_entrypoints=ignore_entrypoints
+    )

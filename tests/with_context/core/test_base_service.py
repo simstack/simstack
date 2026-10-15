@@ -1,9 +1,14 @@
 import asyncio
+import json
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
 import pytest
-from simstack.core.context import context
 from simstack.models.parameters import Resource
-from simstack.models.runner_model import RunnerEvent, RunnerEventEnum, RunnerType
+from simstack.models.runner_model import RunnerEventEnum
 from simstack.core.services.base_service import BaseService
+from simstack.runner_protocol import RunnerLogBatchRequestV1
+
 
 class MockService(BaseService):
     def __init__(self, name, resource, interval):
@@ -25,6 +30,17 @@ class FailingService(BaseService):
     async def execute(self):
         self.execute_count += 1
         raise RuntimeError("temporary failure")
+
+
+class CountingService(BaseService):
+    def __init__(self, name, resource, interval):
+        super().__init__(name, resource, interval)
+        self.execute_count = 0
+        self.first_execution = asyncio.Event()
+
+    async def execute(self):
+        self.execute_count += 1
+        self.first_execution.set()
 
 
 @pytest.mark.asyncio
@@ -52,58 +68,109 @@ async def test_base_service_waits_between_failed_executions(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_one_second_interval_does_not_truncate_to_busy_loop():
+    service = CountingService(
+        "CountingService",
+        Resource(value="self"),
+        interval=1,
+    )
+    task = service.start()
+
+    await asyncio.wait_for(service.first_execution.wait(), timeout=1)
+    await asyncio.sleep(0.1)
+
+    assert service.execute_count == 1
+    await asyncio.wait_for(service.stop(), timeout=0.2)
+    assert task.done()
+
+
+@pytest.mark.asyncio
 async def test_base_service_lifecycle(initialized_context):
     resource = Resource(value="self")
     interval = 1
     service = MockService("TestService", resource, interval)
-    
+
     # Start the service
     task = service.start()
     assert task is not None
     assert not task.done()
-    
+
     # Wait for at least one execution
     await asyncio.wait_for(service.execute_event.wait(), timeout=5)
     assert service.execute_count >= 1
-    
+
     # Stop the service
     await service.stop()
     assert task.done()
     assert service._stop_event.is_set()
 
-@pytest.mark.asyncio
-async def test_base_service_write_resource_event(initialized_context):
-    resource = Resource(value="self")
-    service = MockService("TestService", resource, 60)
-    
-    await service.write_resource_event(RunnerEventEnum.ALIVE, message="Test Message")
-    
-    # Check if event was saved
-    event = await context.db.find_one(
-        RunnerEvent,
-        (RunnerEvent.runner_type == RunnerType.RESOURCE_RUNNER)
-        & (RunnerEvent.resource == resource)
-        & (RunnerEvent.event == RunnerEventEnum.ALIVE)
-    )
-    assert event is not None
-    # We don't check the exact uptime string as it can be 0 or 1s
-    assert event.message.startswith("Uptime: ")
 
 @pytest.mark.asyncio
-async def test_base_service_write_node_event(initialized_context):
-    from odmantic import ObjectId
+async def test_base_service_write_resource_event(monkeypatch):
+    resource = Resource(value="self")
+    service = MockService("TestService", resource, 60)
+    runner_api = SimpleNamespace(heartbeat=AsyncMock())
+    monkeypatch.setattr(
+        "simstack.core.services.base_service.context",
+        SimpleNamespace(runner_api=runner_api),
+    )
+
+    await service.write_resource_event(RunnerEventEnum.ALIVE, message="Test Message")
+
+    runner_api.heartbeat.assert_awaited_once()
+    assert runner_api.heartbeat.await_args.kwargs["message"].startswith("Uptime: ")
+
+
+@pytest.mark.asyncio
+async def test_base_service_write_node_event():
+    from simstack.models.document import ObjectId
+
     resource = Resource(value="self")
     service = MockService("TestService", resource, 60)
     node_id = ObjectId()
-    
-    await service.write_node_event(RunnerEventEnum.NODE_STARTED, node_id, message="Node Started")
-    
-    # Check if event was saved
-    event = await context.db.find_one(
-        RunnerEvent,
-        (RunnerEvent.runner_type == RunnerType.NODE_RUNNER)
-        & (RunnerEvent.node_id == node_id)
-        & (RunnerEvent.event == RunnerEventEnum.NODE_STARTED)
+    execution_api = SimpleNamespace(send_logs=AsyncMock(return_value={}))
+
+    await service.write_node_event(
+        RunnerEventEnum.NODE_STARTED,
+        node_id,
+        execution_api=execution_api,
+        message="Node Started",
     )
-    assert event is not None
-    assert event.message == "Node Started"
+
+    execution_api.send_logs.assert_awaited_once()
+    event = execution_api.send_logs.await_args.kwargs["events"][0]
+    assert event["node_id"] == str(node_id)
+    assert event["message"] == "Node Started"
+
+
+@pytest.mark.asyncio
+async def test_base_service_events_match_exact_runner_http_dto(monkeypatch):
+    from simstack.models.document import ObjectId
+
+    resource = Resource(value="self")
+    service = MockService("TestService", resource, 60)
+    supervisor_api = SimpleNamespace(send_logs=AsyncMock(return_value={}))
+    execution_api = SimpleNamespace(send_logs=AsyncMock(return_value={}))
+    monkeypatch.setattr(
+        "simstack.core.services.base_service.context",
+        SimpleNamespace(runner_api=supervisor_api),
+    )
+
+    await service.write_resource_event(RunnerEventEnum.RUNNER_STARTED)
+    await service.write_node_event(
+        RunnerEventEnum.NODE_STARTED,
+        ObjectId(),
+        execution_api=execution_api,
+    )
+
+    emitted_batches = (
+        supervisor_api.send_logs.await_args.kwargs["events"],
+        execution_api.send_logs.await_args.kwargs["events"],
+    )
+    for events in emitted_batches:
+        request_json = json.dumps({"logs": [], "events": events})
+        parsed = RunnerLogBatchRequestV1.model_validate_json(
+            request_json,
+            strict=True,
+        )
+        assert parsed.events[0].timestamp.endswith("+00:00")

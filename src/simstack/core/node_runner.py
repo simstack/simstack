@@ -1,14 +1,15 @@
 import glob
+import hashlib
 import logging
 import os
 import subprocess
 import uuid
 from pathlib import Path
-from typing import Set, List, Tuple, Union, Optional
+from typing import List, Set
 
-from odmantic import ObjectId, Model
+from simstack.models.document import ObjectId
 
-from simstack.core.definitions import TaskStatus
+from simstack.runner_protocol.constants import RunnerTaskStatus as TaskStatus
 from simstack.core.simstack_result import SimstackResult
 from simstack.models.files import FileStack
 
@@ -35,7 +36,13 @@ class NodeRunner(SimstackResult):
         info_file_patterns (Set[str]): Set of file patterns (e.g., "*.log") used to collect information files.
     """
 
-    def __init__(self, name: str, task_id: str | ObjectId, logger: logging.Logger = None, **kwargs):
+    def __init__(
+        self,
+        name: str,
+        task_id: str | ObjectId,
+        logger: logging.Logger = None,
+        **kwargs,
+    ):
         """
         Initialize the NodeRunner instance.
 
@@ -51,11 +58,11 @@ class NodeRunner(SimstackResult):
         self.logger = logger or local_logger
         self.last_stdout = ""
         self.last_stderr = ""
+        self.last_returncode: int | None = None
         self.log_string = ""
         self.info_file_patterns = {"*.in", "*.out", "*.err", "*.log"}
         self.custom_name = None
         self.info(f"NodeRunner '{self.name}' initialized for task_id: {self.task_id}")
-
 
     @classmethod
     def from_kwargs(cls, **kwargs) -> "NodeRunner":
@@ -112,7 +119,9 @@ class NodeRunner(SimstackResult):
                     if "*" in value:
                         self.info_file_patterns.add(value)
                     else:
-                        filepath = value if os.path.isabs(value) else str(search_cwd / value)
+                        filepath = (
+                            value if os.path.isabs(value) else str(search_cwd / value)
+                        )
                         if os.path.exists(filepath) and os.access(filepath, os.R_OK):
                             files_set.add(filepath)
 
@@ -121,7 +130,9 @@ class NodeRunner(SimstackResult):
             # Add files matching patterns
             for pattern in self.info_file_patterns:
                 # If pattern is not absolute, join it with search_cwd
-                search_pattern = pattern if os.path.isabs(pattern) else str(search_cwd / pattern)
+                search_pattern = (
+                    pattern if os.path.isabs(pattern) else str(search_cwd / pattern)
+                )
                 for filepath in glob.glob(search_pattern):
                     if os.path.exists(filepath) and os.access(filepath, os.R_OK):
                         files_set.add(filepath)
@@ -205,58 +216,57 @@ class NodeRunner(SimstackResult):
             exc_info=True,
         )
 
-    def subprocess(self, name: str, command: str | List[str], cwd: str = "") -> bool:
+    def subprocess(self, name: str, command: List[str], cwd: str = "") -> bool:
         """
-        Execute a shell command as a subprocess and capture its output.
+        Execute an explicit argv command and capture its output.
 
         This method runs a shell command, captures stdout and stderr, creates a log file
         with the execution details, and adds the log file to the info_files collection.
 
         Args:
             name (str): Name identifier for the subprocess (used for log file naming)
-            command (str): Shell command to execute
+            command (List[str]): Executable and arguments; scripts require an explicit interpreter.
             cwd (str, optional): Working directory for command execution. Defaults to current directory.
 
         Returns:
             bool: True if the subprocess completed successfully (return code 0), False otherwise
 
         Note:
-            - Creates a log file named "{name}.log" containing command details and output
+            - Creates a private, unique log for each invocation, including retries
             - Updates last_stdout and last_stderr attributes with the most recent output
             - Log file is automatically added to info_files collection
         """
-        if name == "":
-            name = "process"
-        if isinstance(command, list):
-            command = " ".join(command)
+        command_argv = self._validated_command(command)
+        process_cwd = self._validated_process_cwd(cwd)
+        log_path = self._private_process_log(name)
 
-        with open(f"{name}.log", "w", encoding="utf-8") as process_log:
-            process_log.write(f"Command: {name}\n{command}\n")
-            # TODO adapt for docker
-            run_kwargs = {
-                "shell": True,  # Important: use shell=True for shell operators like &&
-                "capture_output": True,
-                "text": True,
-                "encoding": "utf-8",
-                "cwd": cwd if cwd else None,
-            }
-            if os.name == "nt":
-                run_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-            process = subprocess.run(command, **run_kwargs)
+        with self._open_private_log(log_path) as process_log:
+            process_log.write(f"Command: {name or 'process'}\n{command_argv!r}\n")
+            process = subprocess.run(
+                command_argv,
+                shell=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                cwd=str(process_cwd),
+                env=self._runner_subprocess_environment(),
+                check=False,
+            )
             self.info(f"run script {name} finished: {process.returncode}")
             self.last_stdout = process.stdout
             self.last_stderr = process.stderr
+            self.last_returncode = process.returncode
             process_log.write(f"Process return code:\n{process.returncode}\n\n")
             process_log.write(f"Process output:\n{process.stdout}\n\n")
             process_log.write(f"Process error:\n{process.stderr}\n\n")
         file_stack = FileStack.from_local_file(
-            f"{name}.log", in_memory=True, is_hashable=True, secure_source=True
+            log_path, in_memory=True, is_hashable=True, secure_source=True
         )
         self.info_files.append(file_stack)
         self.info(f"Subprocess '{name}' log added to info files: {file_stack.name}")
         return process.returncode == 0
 
-    def submit_to_watchdog(self, name: str, command: str) -> bool:
+    def submit_to_watchdog(self, name: str, command: List[str]) -> bool:
         """
         Submit a command to an external watchdog process for execution.
 
@@ -276,38 +286,125 @@ class NodeRunner(SimstackResult):
             - Job logs are automatically added to the info_files collection.
         """
         # we are inside a slurm job, so we need to use the queue dir of the job
-        queue_dir = Path.cwd() / "queue"
+        task_workdir = self._validated_process_cwd("")
+        queue_dir = task_workdir / "queue"
         queue_dir.mkdir(parents=True, exist_ok=True)
-        if name == "":
-            name = "process"
-        from simstack.util.submit_to_watchdog import submit_to_watchdog
+        command_argv = self._validated_command(command)
+        log_path = self._private_process_log(name)
+        from simstack.runner_runtime.watchdog import submit_to_watchdog
 
         try:
-            with open(f"{name}.log", "w") as process_log:
-                process_log.write(f"Command: {name}\n{command}\n")
+            with self._open_private_log(log_path) as process_log:
+                process_log.write(f"Command: {name or 'process'}\n{command_argv!r}\n")
 
                 job_id = str(self.task_id) + "_" + uuid.uuid4().hex
-                result = submit_to_watchdog(command, job_id, queue_dir)
+                result = submit_to_watchdog(
+                    command_argv,
+                    job_id,
+                    queue_dir,
+                    env=self._runner_subprocess_environment(),
+                    cwd=str(task_workdir),
+                )
                 if result.status == "ok":
-                    self.info(f"watchdog {result.exit_code}")
+                    self.info(f"watchdog {result.returncode}")
                 else:
                     err_msg = f"watchdog submission failed: {result.returncode}"
                     self.fail(err_msg)
                 self.last_stdout = result.stdout
                 self.last_stderr = result.stderr
-                process_log.write(f"Process return code:\n{result.exit_code}\n\n")
+                self.last_returncode = result.returncode
+                process_log.write(f"Process return code:\n{result.returncode}\n\n")
                 process_log.write(f"Process output:\n{result.stdout}\n\n")
                 process_log.write(f"Process error:\n{result.stderr}\n\n")
             file_stack = FileStack.from_local_file(
-                f"{name}.log", in_memory=True, is_hashable=True, secure_source=True
+                log_path, in_memory=True, is_hashable=True, secure_source=True
             )
             self.info_files.append(file_stack)
-            self.info(f"Watchdog job '{name}' log added to info files: {file_stack.name}")
+            self.info(
+                f"Watchdog job '{name}' log added to info files: {file_stack.name}"
+            )
             return result.status == "ok" and result.returncode == 0
         except Exception as e:
             err_msg = f"watchdog submission exception: {str(e)}"
             self.fail(err_msg)
         return False
+
+    @staticmethod
+    def _validated_command(command: str | List[str]) -> list[str]:
+        if (
+            isinstance(command, str)
+            or not isinstance(command, list)
+            or not command
+            or not all(isinstance(item, str) and item for item in command)
+        ):
+            raise ValueError("NodeRunner commands must be non-empty argv lists")
+        return list(command)
+
+    def _task_workdir(self) -> Path:
+        from simstack.core.context import context
+
+        current = Path.cwd().resolve()
+        if not context.runner_mode:
+            return current
+        from simstack.runner_runtime.config import runner_task_workdir
+
+        expected = runner_task_workdir(
+            Path(context.config.workdir), str(self.task_id)
+        ).resolve()
+        try:
+            current.relative_to(expected)
+        except ValueError as exc:
+            raise RuntimeError(
+                "NodeRunner process execution escaped its claimed task workdir"
+            ) from exc
+        return expected
+
+    @property
+    def task_workdir(self) -> Path:
+        """Root owned by this task, including its subprocess scratch directories."""
+        return self._task_workdir()
+
+    def _validated_process_cwd(self, cwd: str) -> Path:
+        task_workdir = self._task_workdir()
+        selected = Path(cwd).resolve() if cwd else Path.cwd().resolve()
+        from simstack.core.context import context
+
+        if context.runner_mode:
+            try:
+                selected.relative_to(task_workdir)
+            except ValueError as exc:
+                raise ValueError(
+                    "NodeRunner subprocess cwd must stay in the claimed task workdir"
+                ) from exc
+        return selected
+
+    def _private_process_log(self, name: str) -> Path:
+        if not isinstance(name, str):
+            raise ValueError("NodeRunner process name must be a string")
+        component = hashlib.sha256((name or "process").encode("utf-8")).hexdigest()
+        # Invocations and reclaimed attempts can share the same task workdir.
+        # Keep old logs immutable without treating a repeated command as an error.
+        return self._task_workdir() / f"process-{component}-{uuid.uuid4().hex}.log"
+
+    @staticmethod
+    def _open_private_log(path: Path):
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(path, flags, 0o600)
+        os.fchmod(fd, 0o600)
+        return os.fdopen(fd, "w", encoding="utf-8")
+
+    def _runner_subprocess_environment(self) -> dict[str, str] | None:
+        from simstack.core.context import context
+
+        if not context.runner_mode:
+            return None
+        from simstack.runner_runtime.environment import (
+            sanitized_workflow_subprocess_environment,
+            worker_environment_allowlist_from_environment,
+        )
+
+        allowlist = worker_environment_allowlist_from_environment()
+        return sanitized_workflow_subprocess_environment(allowlist)
 
     def _make_log_file(self):
         """

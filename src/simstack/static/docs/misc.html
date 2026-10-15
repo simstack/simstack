@@ -12,15 +12,15 @@
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -32,7 +32,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -44,17 +44,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -193,10 +193,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -216,8 +216,6 @@
 <li class="toctree-l2"><a class="reference internal" href="tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="database_migrations.html">Database Migrations</a></li>
@@ -228,12 +226,31 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -246,7 +263,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -280,11 +297,17 @@
         <article role="main" id="furo-main-content">
           <section id="miscellaneous">
 <h1>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Link to this heading">¶</a></h1>
-<section id="bugs">
-<h2>BUGS:<a class="headerlink" href="#bugs" title="Link to this heading">¶</a></h2>
-<p>Optional fields in embedded models are not handled correctly</p>
-<p><a class="reference external" href="https://github.com/art049/odmantic/issues/370">https://github.com/art049/odmantic/issues/370</a>
-<a class="reference external" href="https://github.com/art049/odmantic/issues/484">https://github.com/art049/odmantic/issues/484</a></p>
+<section id="persistence-boundary">
+<h2>Persistence Boundary<a class="headerlink" href="#persistence-boundary" title="Link to this heading">¶</a></h2>
+<p>Simstack models are ordinary Pydantic domain objects implemented by
+<a class="reference internal" href="simstack/modules/simstack.models.document.html#module-simstack.models.document" title="simstack.models.document"><code class="xref py py-mod docutils literal notranslate"><span class="pre">simstack.models.document</span></code></a>. Optional and embedded fields follow Pydantic
+semantics. A <code class="docutils literal notranslate"><span class="pre">Reference()</span></code> marks an independently persisted document; an
+<code class="docutils literal notranslate"><span class="pre">EmbeddedModel</span></code> is stored inline with its owner.</p>
+<p>The shared package does not create a MongoDB client. The FastAPI server owns
+repositories and database-driver conversion. Runners receive bootstrap data,
+task documents, and dependency closures from the server and return results
+through claim-scoped APIs. Direct <code class="docutils literal notranslate"><span class="pre">context.db</span></code> access is rejected in runner
+mode.</p>
 </section>
 <section id="references">
 <h2>References<a class="headerlink" href="#references" title="Link to this heading">¶</a></h2>
@@ -311,7 +334,8 @@ data analysis and data visualization using three main mechanisms:</p>
 <p class="admonition-title">Note</p>
 <p>General information about Simstack models</p>
 </div>
-<p>Simstack models are built on top of <cite>odmantic</cite>, which uses <cite>pydantic</cite> for data validation.
+<p>Simstack models are built directly on Pydantic through
+<code class="docutils literal notranslate"><span class="pre">simstack.models.document</span></code> and contain no database client.
 By decorating a class with <cite>&#64;simstack_model</cite>, you enable additional UI-related features.
 You can customize how a model appears in the GUI by implementing <cite>json_schema</cite> and <cite>ui_schema</cite> methods.
 Refer to <a class="reference internal" href="data.html#persisting-data"><span class="std std-ref">Persisting and Visualizing Data</span></a> for more details.</p>
@@ -323,15 +347,17 @@ Refer to <a class="reference internal" href="data.html#persisting-data"><span cl
 <li><p>the workflow can be run from a GUI</p></li>
 <li><p>(workflows can be created from existing components in a GUI)</p></li>
 </ul>
-<p>To address the first points, all data must be serializable. This can be achieved by pickling the inputs/outputs but
-then the data is hidden in the pickled string and not searchable. Here we have chosen odmantic classes to persist the
-data in a database. See: <span class="xref std std-ref">persisting-results-section</span>. This has the charm that routes to access this data can be
-automatically generated.</p>
+<p>To address the first points, all data must be serializable. Pickling arbitrary
+inputs and outputs would hide their structure. Simstack therefore uses typed
+Pydantic document models and explicit model mappings. See
+<span class="xref std std-ref">persisting-results-section</span>. The server can validate and persist these
+documents and expose them through typed routes without putting a database
+driver in workflow or runner code.</p>
 <p>Overall we need four “servers” to run the workflow:</p>
 <ul class="simple">
 <li><p>The “workflow server” that manages and executes workflows</p></li>
 <li><p>The “runners” that execute parts of workflows on remote resources</p></li>
-<li><p>The “database server” provides an API to the database for the GUI</p></li>
+<li><p>The FastAPI server owns persistence and provides APIs to the GUI and runners</p></li>
 <li><p>The webserver that serves the GUI</p></li>
 </ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@node</span><span class="p">(</span><span class="n">parameters</span><span class="o">=</span><span class="n">Parameters</span><span class="p">(</span><span class="n">resource</span><span class="o">=</span><span class="s2">&quot;my_resource&quot;</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="s2">&quot;slurm-queue&quot;</span><span class="p">))</span>
@@ -353,9 +379,9 @@ a directory as workdir/node_name/node_id which is unique to the node.</p></li>
 </div>
 <p><strong>Allowed Arguments</strong></p>
 <ul class="simple">
-<li><p>All <strong>positional</strong> arguments of the wrapped function (my_node) must be
-<strong>registered</strong> odmantic Models. These arguments are automatically persisted
-in the database.</p></li>
+<li><p>All declared arguments of the wrapped function (<code class="docutils literal notranslate"><span class="pre">my_node</span></code>) must be
+registered <a class="reference internal" href="simstack/modules/simstack.models.document.html#simstack.models.document.Model" title="simstack.models.document.Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">simstack.models.document.Model</span></code></a> documents. The server
+persists them and sends the required dependency closure to a remote runner.</p></li>
 <li><p>The my_node function must have **kwargs even if they are not used in the
 function.</p></li>
 <li><p>**kwargs is used to pass information to process the node, but
@@ -378,7 +404,7 @@ results only in post-processing.</p>
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
           <a class="next-page" href="installation.html">
               <div class="page-info">
@@ -395,9 +421,9 @@ results only in post-processing.</p>
                 <div class="context">
                   <span>Previous</span>
                 </div>
-                
+
                 <div class="title">CI Pipeline and Documentation Artifacts</div>
-                
+
               </div>
             </a>
         </div>
@@ -407,20 +433,20 @@ results only in post-processing.</p>
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer">
-      
-      
+
+
       <div class="toc-sticky toc-scroll">
         <div class="toc-title-container">
           <span class="toc-title">
@@ -431,7 +457,7 @@ results only in post-processing.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Miscellaneous</a><ul>
-<li><a class="reference internal" href="#bugs">BUGS:</a></li>
+<li><a class="reference internal" href="#persistence-boundary">Persistence Boundary</a></li>
 <li><a class="reference internal" href="#references">References</a></li>
 <li><a class="reference internal" href="#customizing-simstack-models">Customizing Simstack Models</a></li>
 </ul>
@@ -441,14 +467,14 @@ results only in post-processing.</p>
           </div>
         </div>
       </div>
-      
-      
+
+
     </aside>
   </div>
 </div><script src="_static/documentation_options.js?v=5929fcd5"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

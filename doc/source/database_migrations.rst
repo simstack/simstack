@@ -20,7 +20,10 @@ Add One
 4. Take a backup before running the migration on any real database.
 5. Check ``CONNECTION_STRING`` before running:
 
-   - The current runner requires a MongoDB user with ``admin.root``.
+   - The server-side migration command may require a MongoDB user with
+     ``admin.root``.
+   - ``simstack_runner`` never receives a MongoDB user or connection string;
+     it is not a migration executor.
    - This applies to ``--scope ALL``, ``--scope DATABASES``, and
      ``--scope SERVER``.
 
@@ -43,8 +46,8 @@ Add One
 
    - Touch only the affected collections and fields.
    - Fail fast on unsupported data.
-   - Log migration-specific counts or checkpoints. The runner already logs the
-     target database.
+   - Log migration-specific counts or checkpoints. The migration command must
+     log the target database.
    - If the migration is started again after a partial failure, it must not
      duplicate or corrupt already migrated data.
 

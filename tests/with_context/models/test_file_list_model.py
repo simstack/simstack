@@ -5,6 +5,7 @@ from pathlib import Path
 from simstack.models.files import FileStack
 from simstack.models.file_list import FileList, FileListModel
 from simstack.core.context import context
+from simstack.persistence import eq
 
 
 @pytest.fixture
@@ -189,7 +190,7 @@ class TestFileListModel:
         """Test creating FileListModel with initial data"""
         from simstack.core.context import context
         for fs in sample_file_stacks:
-            await context.db.save(fs)
+            await context.repository.save(fs)
 
         file_list_model = FileListModel()
         file_list_model.extend(sample_file_stacks)
@@ -206,7 +207,7 @@ class TestFileListModel:
         file_list_model = FileListModel()
 
         # Save to database
-        saved_model = await context.db.save(file_list_model)
+        saved_model = await context.repository.save(file_list_model)
 
         assert saved_model.id is not None
         assert len(saved_model) == 0
@@ -220,24 +221,21 @@ class TestFileListModel:
         from simstack.core.context import context
         # MUST save FileStacks first because they are References now
         for fs in sample_file_stacks:
-            await context.db.save(fs)
+            await context.repository.save(fs)
 
         # Create and save FileListModel
         file_list_model = FileListModel()
         for fs in sample_file_stacks:
             file_list_model.append(fs)
-        saved_model = await context.db.save(file_list_model)
+        saved_model = await context.repository.save(file_list_model)
     
-        # Check if the model exists in the collection directly
-        collection = context.db.collection(FileListModel)
-        direct_find = await collection.find_one({"_id": saved_model.id})
-        assert direct_find is not None, f"Model with id {saved_model.id} not found in collection"
-        assert direct_find["elements"] == [fs.id for fs in sample_file_stacks]
-
-        # Load from database
-        loaded_model = await context.db.find_one(FileListModel, FileListModel.id == saved_model.id)
+        # Load through the repository port; shared tests do not inspect storage.
+        loaded_model = await context.repository.find_one(
+            FileListModel, eq("id", saved_model.id)
+        )
         assert loaded_model is not None
         assert loaded_model.id == saved_model.id
+        assert loaded_model.elements == [fs.id for fs in sample_file_stacks]
         assert len(loaded_model) == 3
 
         # Check that file stack properties are preserved
@@ -253,23 +251,25 @@ class TestFileListModel:
     ):
         """Test updating FileListModel in database"""
         from simstack.core.context import context
-        await context.db.save(sample_file_stack)
+        await context.repository.save(sample_file_stack)
 
         # Create and save initial model
         file_list_model = FileListModel()
-        saved_model = await context.db.save(file_list_model)
+        saved_model = await context.repository.save(file_list_model)
         assert len(saved_model) == 0
 
         # Add file and update
         saved_model.append(sample_file_stack)
-        updated_model = await context.db.save(saved_model)
+        updated_model = await context.repository.save(saved_model)
 
         # Verify update
         assert len(updated_model) == 1
         assert updated_model.get(0).name == sample_file_stack.name
 
         # Load from database to confirm persistence
-        loaded_model = await context.db.find_one(FileListModel, FileListModel.id == updated_model.id)
+        loaded_model = await context.repository.find_one(
+            FileListModel, eq("id", updated_model.id)
+        )
         assert loaded_model is not None
 
         assert len(loaded_model) == 1
@@ -281,25 +281,25 @@ class TestFileListModel:
     ):
         """Test deleting FileListModel from database"""
         for fs in sample_file_stacks:
-            await context.db.save(fs)
+            await context.repository.save(fs)
 
         # Create and save model
         file_list_model = FileListModel(elements=[fs.id for fs in sample_file_stacks])
-        saved_model = await context.db.save(file_list_model)
+        saved_model = await context.repository.save(file_list_model)
         saved_id = saved_model.id
 
         # Verify it exists
-        loaded_model = await context.db.find_one(
-            FileListModel, FileListModel.id == saved_id
+        loaded_model = await context.repository.find_one(
+            FileListModel, eq("id", saved_id)
         )
         assert loaded_model is not None
 
         # Delete it
-        await context.db.delete(saved_model)
+        await context.repository.delete(saved_model)
 
         # Verify it's gone
-        deleted_model = await context.db.find_one(
-            FileListModel, FileListModel.id == saved_id
+        deleted_model = await context.repository.find_one(
+            FileListModel, eq("id", saved_id)
         )
         assert deleted_model is None
 
@@ -309,17 +309,17 @@ class TestFileListModel:
     ):
         """Test finding multiple FileListModels in database"""
         for fs in sample_file_stacks:
-            await context.db.save(fs)
+            await context.repository.save(fs)
 
         # Create and save multiple models
         model1 = FileListModel(elements=[sample_file_stacks[0].id])
         model2 = FileListModel(elements=[fs.id for fs in sample_file_stacks[1:]])
 
-        await context.db.save(model1)
-        await context.db.save(model2)
+        await context.repository.save(model1)
+        await context.repository.save(model2)
 
         # Find all FileListModels
-        all_models = await context.db.find(FileListModel)
+        all_models = await context.repository.find(FileListModel)
 
         # Should have at least our 2 models (may have more from other tests)
         assert len(all_models) >= 2
@@ -347,14 +347,14 @@ class TestFileListModel:
                 path=tmp_file_path, is_hashable=True, in_memory=True
             )
             from simstack.core.context import context
-            await context.db.save(file_stack)
+            await context.repository.save(file_stack)
 
             # Create FileListModel and add the file stack
             file_list_model = FileListModel()
             file_list_model.append(file_stack)
 
             # Save to database
-            saved_model = await context.db.save(file_list_model)
+            saved_model = await context.repository.save(file_list_model)
 
             # Verify save
             assert len(saved_model) == 1
@@ -363,7 +363,9 @@ class TestFileListModel:
             assert fs0.in_memory is True
 
             # Load from database
-            loaded_model = await context.db.find_one(FileListModel, FileListModel.id == saved_model.id)
+            loaded_model = await context.repository.find_one(
+                FileListModel, eq("id", saved_model.id)
+            )
             assert loaded_model is not None
             assert len(loaded_model) == 1
             fs0_loaded = loaded_model.get(0)
@@ -396,7 +398,7 @@ class TestFileListModelIntegration:
         # Create and save model
         file_list_model = FileListModel()
         file_list_model.extend(file_stacks)
-        saved_model = await context.db.save(file_list_model)
+        saved_model = await context.repository.save(file_list_model)
 
         # Verify save
         assert len(saved_model) == 50
@@ -411,10 +413,10 @@ class TestFileListModelIntegration:
         assert file_010.name == "file_010.txt"
 
         # Load from database and verify
-        loaded_model = await context.db.find_one(FileListModel, FileListModel.id == saved_model.id)
+        loaded_model = await context.repository.find_one(
+            FileListModel, eq("id", saved_model.id)
+        )
         assert loaded_model is not None
-        # We need to reload elements because they are ObjectIds and might not be loaded in cache
-        await loaded_model.db_find_postprocess(context.db)
 
         assert len(loaded_model) == 50
         assert len(list(loaded_model.find_all(r"file_.*\.txt$"))) == 50

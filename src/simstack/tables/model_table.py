@@ -3,14 +3,12 @@ import json
 import logging
 from pathlib import Path
 
-from odmantic.exceptions import DocumentParsingError
 from pydantic import ValidationError
 
-from simstack.core.context import context
 from simstack.models.models import ModelMapping
+from simstack.models.document import DocumentParsingError
+from simstack.persistence import Repository, eq
 from simstack.models.simstack_model import is_simstack_model
-from simstack.util.db import Database
-from simstack.util.path_manager import path_manager
 from simstack.tables.table_builder import TableBuilderBase
 
 logger = logging.getLogger("ModelTable")
@@ -21,17 +19,13 @@ class CreateModelTable(TableBuilderBase):
     Helper class to build the model table without passing around many parameters.
 
     Usage:
-        creator = CreateModelTable(db)
-        await creator.make_model_table()
+        creator = CreateModelTable(repository)
+        await creator.build()
     """
 
     @property
     def logger(self) -> logging.Logger:
         return logger
-
-    async def build(self, *args, **kwargs) -> None:
-        await super().build(*args, **kwargs)
-        await context.refresh_mappings(models=True, nodes=False)
 
     async def _process_module(self, module, drops: str) -> None:
         await self._create_models_from_module(module, drops)
@@ -41,7 +35,7 @@ class CreateModelTable(TableBuilderBase):
         classes = inspect.getmembers(module, inspect.isclass)
 
         for class_name, new_class in classes:
-            # this is required because of the Odmantic Metaclass Model
+            # This is required by the document-model metaclass.
             # subclass does not work even if applied to the imported classes
             # this is a bug in importlib
             bases = [base.__name__ for base in new_class.__bases__]
@@ -78,8 +72,8 @@ class CreateModelTable(TableBuilderBase):
             # Remove any existing ModelMapping entry for this class
 
             try:
-                existing_entries = await self.db.find(
-                    ModelMapping, ModelMapping.name == class_name
+                existing_entries = await self.repository.find(
+                    ModelMapping, eq("name", class_name)
                 )
             except (ValidationError, NameError, DocumentParsingError) as e:
                 logger.error(
@@ -102,7 +96,7 @@ class CreateModelTable(TableBuilderBase):
                         )
 
                 for entry in existing_entries:
-                    await self.db.delete(entry)
+                    await self.repository.delete(entry)
                     logger.debug(f"Deleted ModelMapping entry for {class_name} ({entry.mapping})")
 
             # EmbeddedModels have no collection by may be simstack_models. They are never saved/retrieved
@@ -143,33 +137,23 @@ class CreateModelTable(TableBuilderBase):
                     name=class_name,
                     mapping=full_mapping,
                     collection_name=collection_name,
+                    json_schema=json.dumps(new_class.model_json_schema()),
                 )
                 logger.debug(
                     f"Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}"
                 )
 
-            await self.db.save(model_entry)
-
-    async def _make_models_for_path(self, path_name: str):
-        """Build model mappings for all Python files under a configured path."""
-        path_info = path_manager.get_path(path_name)
-        path = path_info["path"]
-        drops = path_info.get("drops", "")
-        logger.info(f"Making model_table entries for files in {path}")
-
-        # Process each file in this path
-        for file_path in path_manager.find_python_files(path_name):
-            await self._create_model_models_from_file(file_path, drops)
+            await self.repository.save(model_entry)
 
     async def clear_table(self) -> None:
         self.logger.info("Clearing ModelMapping collection")
-        await self.db.get_collection(ModelMapping).drop()
+        await self.repository.delete_all(ModelMapping)
 
 
 # Public API preserved for existing callers (e.g. tests)
 async def make_model_table(
-    db : Database,
-    dirs: list[str] = None,
+    repository: Repository,
+    dirs: list[str],
     drops: str = "",
     write_schema: bool = False,
     clear: bool = False,
@@ -177,17 +161,15 @@ async def make_model_table(
     ignore_entrypoints: bool = False,
 ):
     """
-    Rebuild the model table using the given database.
+    Rebuild the model table using the given repository.
 
-    This is a thin wrapper around CreateModelTable for backward compatibility.
+    This is the application-service entry point for model-table registration.
     """
-    creator = CreateModelTable(db, write_schema=write_schema, project_root=project_root)
-    await creator.build(dirs=dirs, drops=drops, clear=clear, ignore_entrypoints=ignore_entrypoints)
-
-
-def create_model_table_main():
-    TableBuilderBase.cli_main(CreateModelTable)
-
-
-if __name__ == "__main__":
-    create_model_table_main()
+    creator = CreateModelTable(
+        repository,
+        write_schema=write_schema,
+        project_root=project_root,
+    )
+    await creator.build(
+        dirs=dirs, drops=drops, clear=clear, ignore_entrypoints=ignore_entrypoints
+    )

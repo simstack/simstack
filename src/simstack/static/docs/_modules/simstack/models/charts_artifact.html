@@ -11,15 +11,15 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="../../../_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -31,7 +31,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -43,17 +43,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -192,10 +192,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -215,8 +215,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../database_migrations.html">Database Migrations</a></li>
@@ -227,12 +225,31 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -245,7 +262,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -274,8 +291,9 @@
           <h1>Source code for simstack.models.charts_artifact</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">EmbeddedModel</span><span class="p">,</span> <span class="n">ObjectId</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">EmbeddedModel</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ObjectId</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.artifact_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArtifactModel</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span>
 
 
@@ -304,6 +322,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;AG-Charts line series configuration.&quot;&quot;&quot;</span>
 
     <span class="nb">type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;line&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;line&quot;</span>
+    <span class="n">stroke</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Line stroke color&quot;</span><span class="p">)</span>
     <span class="n">strokeWidth</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Line stroke width&quot;</span><span class="p">)</span>
     <span class="n">strokeOpacity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Line stroke opacity&quot;</span><span class="p">)</span>
     <span class="n">lineDash</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
@@ -324,7 +343,9 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;AG-Charts bar series configuration.&quot;&quot;&quot;</span>
 
     <span class="nb">type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;bar&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;bar&quot;</span>
+    <span class="n">fill</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Bar fill color&quot;</span><span class="p">)</span>
     <span class="n">fillOpacity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Bar fill opacity&quot;</span><span class="p">)</span>
+    <span class="n">stroke</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Bar stroke color&quot;</span><span class="p">)</span>
     <span class="n">strokeWidth</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Bar stroke width&quot;</span><span class="p">)</span>
     <span class="n">cornerRadius</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Bar corner radius&quot;</span><span class="p">)</span>
     <span class="n">tooltip</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
@@ -355,7 +376,9 @@
     <span class="n">showInLegend</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Show in legend&quot;</span><span class="p">)</span>
     <span class="n">title</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Series title&quot;</span><span class="p">)</span>
     <span class="n">data</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Chart data&quot;</span><span class="p">)</span>
+    <span class="n">fill</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Bar fill color&quot;</span><span class="p">)</span>
     <span class="n">fillOpacity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Bar fill opacity&quot;</span><span class="p">)</span>
+    <span class="n">stroke</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Bar stroke color&quot;</span><span class="p">)</span>
     <span class="n">strokeWidth</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Bar stroke width&quot;</span><span class="p">)</span>
     <span class="n">cornerRadius</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Bar corner radius&quot;</span><span class="p">)</span>
     <span class="n">tooltip</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
@@ -370,7 +393,9 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;AG-Charts column series configuration.&quot;&quot;&quot;</span>
 
     <span class="nb">type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;column&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;column&quot;</span>
+    <span class="n">fill</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Column fill color&quot;</span><span class="p">)</span>
     <span class="n">fillOpacity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Column fill opacity&quot;</span><span class="p">)</span>
+    <span class="n">stroke</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Column stroke color&quot;</span><span class="p">)</span>
     <span class="n">strokeWidth</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Column stroke width&quot;</span><span class="p">)</span>
     <span class="n">cornerRadius</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Column corner radius&quot;</span><span class="p">)</span>
     <span class="n">tooltip</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
@@ -385,7 +410,9 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;AG-Charts area series configuration.&quot;&quot;&quot;</span>
 
     <span class="nb">type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;area&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;area&quot;</span>
+    <span class="n">fill</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Area fill color&quot;</span><span class="p">)</span>
     <span class="n">fillOpacity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Area fill opacity&quot;</span><span class="p">)</span>
+    <span class="n">stroke</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Area stroke color&quot;</span><span class="p">)</span>
     <span class="n">strokeWidth</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Area stroke width&quot;</span><span class="p">)</span>
     <span class="n">marker</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Marker configuration&quot;</span>
@@ -402,6 +429,8 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;AG-Charts scatter series configuration.&quot;&quot;&quot;</span>
 
     <span class="nb">type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;scatter&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scatter&quot;</span>
+    <span class="n">fill</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Marker fill color&quot;</span><span class="p">)</span>
+    <span class="n">stroke</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Marker stroke color&quot;</span><span class="p">)</span>
     <span class="n">marker</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Marker configuration&quot;</span>
     <span class="p">)</span>
@@ -462,6 +491,8 @@
     <span class="p">)</span>
     <span class="n">showInLegend</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Show in legend&quot;</span><span class="p">)</span>
     <span class="n">title</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Series title&quot;</span><span class="p">)</span>
+    <span class="n">fills</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Slice fill colors&quot;</span><span class="p">)</span>
+    <span class="n">strokes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Slice stroke colors&quot;</span><span class="p">)</span>
     <span class="n">tooltip</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Tooltip configuration&quot;</span>
     <span class="p">)</span>
@@ -499,9 +530,12 @@
     <span class="p">)</span>
     <span class="n">showInLegend</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Show in legend&quot;</span><span class="p">)</span>
     <span class="n">title</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Series title&quot;</span><span class="p">)</span>
+    <span class="n">fills</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Slice fill colors&quot;</span><span class="p">)</span>
+    <span class="n">strokes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Slice stroke colors&quot;</span><span class="p">)</span>
     <span class="n">tooltip</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Tooltip configuration&quot;</span>
-    <span class="p">)</span></div>
+    <span class="p">)</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Chart data&quot;</span><span class="p">)</span></div>
 
 
 
@@ -687,6 +721,48 @@
         <span class="n">field_prefix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="k">return</span> <span class="p">[{</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;headerName&quot;</span><span class="p">:</span> <span class="s2">&quot;Chart&quot;</span><span class="p">}]</span></div>
+
+
+<div class="viewcode-block" id="ChartArtifactModel.make_table_entries_instance">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.charts_artifact.ChartArtifactModel.make_table_entries_instance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">make_table_entries_instance</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">max_recursion_level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">drop_id</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">current_level</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">visited</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">field_prefix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_table_entries</span><span class="p">(</span>
+            <span class="n">max_recursion_level</span><span class="o">=</span><span class="n">max_recursion_level</span><span class="p">,</span>
+            <span class="n">drop_id</span><span class="o">=</span><span class="n">drop_id</span><span class="p">,</span>
+            <span class="n">current_level</span><span class="o">=</span><span class="n">current_level</span><span class="p">,</span>
+            <span class="n">visited</span><span class="o">=</span><span class="n">visited</span><span class="p">,</span>
+            <span class="n">field_prefix</span><span class="o">=</span><span class="n">field_prefix</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ChartArtifactModel.ui_schema">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.charts_artifact.ChartArtifactModel.ui_schema">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ui_schema</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;ui:table&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;pagination&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;paginationPageSize&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+                <span class="s2">&quot;domLayout&quot;</span><span class="p">:</span> <span class="s2">&quot;autoHeight&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;defaultColDef&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;flex&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;minWidth&quot;</span><span class="p">:</span> <span class="mi">80</span><span class="p">,</span> <span class="s2">&quot;resizable&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+            <span class="p">}</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="ChartArtifactModel.ui_make_title">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.charts_artifact.ChartArtifactModel.ui_make_title">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ui_make_title</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">ui_schema</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;ui:table&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ui_schema</span><span class="p">:</span>
+            <span class="n">ui_schema</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">ui_schema</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">ui_schema</span></div>
 </div>
 
 
@@ -739,10 +815,14 @@
     <span class="n">parent_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChartArtifactModel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a simple bar chart.&quot;&quot;&quot;</span>
-    <span class="n">chart_title</span> <span class="o">=</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">chart_title</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Chart&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
 
     <span class="n">series</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">AGColumnSeriesConfig</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;column&quot;</span><span class="p">,</span> <span class="n">xKey</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">yKey</span><span class="o">=</span><span class="n">y_key</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">y_key</span><span class="o">.</span><span class="n">title</span><span class="p">())</span>
+        <span class="n">AGColumnSeriesConfig</span><span class="p">(</span>
+            <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;column&quot;</span><span class="p">,</span> <span class="n">xKey</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">yKey</span><span class="o">=</span><span class="n">y_key</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">y_key</span><span class="o">.</span><span class="n">title</span><span class="p">(),</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span>
+        <span class="p">)</span>
     <span class="p">]</span>
 
     <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span>
@@ -769,7 +849,9 @@
     <span class="n">parent_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChartArtifactModel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a simple pie chart.&quot;&quot;&quot;</span>
-    <span class="n">chart_title</span> <span class="o">=</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">chart_title</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Chart&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
 
     <span class="n">series</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">AGPieSeriesConfig</span><span class="p">(</span>
@@ -802,7 +884,9 @@
     <span class="n">direction</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;horizontal&quot;</span><span class="p">,</span> <span class="s2">&quot;vertical&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChartArtifactModel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a simple range-bar chart.&quot;&quot;&quot;</span>
-    <span class="n">chart_title</span> <span class="o">=</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">chart_title</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Chart&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
 
     <span class="n">series</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">AGRangeBarSeriesConfig</span><span class="p">(</span>
@@ -841,10 +925,14 @@
     <span class="n">parent_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChartArtifactModel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a simple area chart.&quot;&quot;&quot;</span>
-    <span class="n">chart_title</span> <span class="o">=</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">chart_title</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Chart&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
 
     <span class="n">series</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">AGAreaSeriesConfig</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;area&quot;</span><span class="p">,</span> <span class="n">xKey</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">yKey</span><span class="o">=</span><span class="n">y_key</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">y_key</span><span class="o">.</span><span class="n">title</span><span class="p">())</span>
+        <span class="n">AGAreaSeriesConfig</span><span class="p">(</span>
+            <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;area&quot;</span><span class="p">,</span> <span class="n">xKey</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">yKey</span><span class="o">=</span><span class="n">y_key</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">y_key</span><span class="o">.</span><span class="n">title</span><span class="p">(),</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span>
+        <span class="p">)</span>
     <span class="p">]</span>
 
     <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span>
@@ -868,11 +956,13 @@
     <span class="n">parent_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChartArtifactModel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a simple scatter chart.&quot;&quot;&quot;</span>
-    <span class="n">chart_title</span> <span class="o">=</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">chart_title</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Chart&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
 
     <span class="n">series</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">AGScatterSeriesConfig</span><span class="p">(</span>
-            <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;scatter&quot;</span><span class="p">,</span> <span class="n">xKey</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">yKey</span><span class="o">=</span><span class="n">y_key</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">y_key</span><span class="o">.</span><span class="n">title</span><span class="p">()</span>
+            <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;scatter&quot;</span><span class="p">,</span> <span class="n">xKey</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">yKey</span><span class="o">=</span><span class="n">y_key</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">y_key</span><span class="o">.</span><span class="n">title</span><span class="p">(),</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span>
         <span class="p">)</span>
     <span class="p">]</span>
 
@@ -940,7 +1030,9 @@
     <span class="n">parent_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChartArtifactModel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a simple donut chart.&quot;&quot;&quot;</span>
-    <span class="n">chart_title</span> <span class="o">=</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">chart_title</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Chart&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
 
     <span class="n">series</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">AGDonutSeriesConfig</span><span class="p">(</span>
@@ -952,6 +1044,7 @@
             <span class="n">sectorLabelKey</span><span class="o">=</span><span class="n">sector_label_key</span><span class="p">,</span>
             <span class="n">innerRadiusRatio</span><span class="o">=</span><span class="n">inner_radius_ratio</span><span class="p">,</span>
             <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Distribution&quot;</span><span class="p">,</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="p">]</span>
 
@@ -972,12 +1065,28 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChartArtifactModel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a line chart with multiple y-axis series.&quot;&quot;&quot;</span>
     <span class="n">chart_title</span> <span class="o">=</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">title</span><span class="p">)</span> <span class="k">if</span> <span class="n">title</span> <span class="k">else</span> <span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Chart&quot;</span><span class="p">)</span>
+    <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;#FF6B6B&quot;</span><span class="p">,</span>  <span class="c1"># red</span>
+        <span class="s2">&quot;#4ECDC4&quot;</span><span class="p">,</span>  <span class="c1"># teal</span>
+        <span class="s2">&quot;#45B7D1&quot;</span><span class="p">,</span>  <span class="c1"># light blue</span>
+        <span class="s2">&quot;#96CEB4&quot;</span><span class="p">,</span>  <span class="c1"># sage green</span>
+        <span class="s2">&quot;#FECA57&quot;</span><span class="p">,</span>  <span class="c1"># yellow</span>
+        <span class="s2">&quot;#A29BFE&quot;</span><span class="p">,</span>  <span class="c1"># light purple</span>
+        <span class="s2">&quot;#FF8C94&quot;</span><span class="p">,</span>  <span class="c1"># pink</span>
+        <span class="s2">&quot;#55EFC4&quot;</span><span class="p">,</span>  <span class="c1"># mint</span>
+        <span class="s2">&quot;#81ECEC&quot;</span><span class="p">,</span>  <span class="c1"># cyan</span>
+    <span class="p">]</span>
 
     <span class="n">series</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">y_key</span> <span class="ow">in</span> <span class="n">y_keys</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">y_key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">y_keys</span><span class="p">):</span>
         <span class="n">series</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="n">AGLineSeriesConfig</span><span class="p">(</span>
-                <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;line&quot;</span><span class="p">,</span> <span class="n">xKey</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">yKey</span><span class="o">=</span><span class="n">y_key</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">y_key</span><span class="o">.</span><span class="n">title</span><span class="p">(),</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span>
+                <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;line&quot;</span><span class="p">,</span>
+                <span class="n">xKey</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span>
+                <span class="n">yKey</span><span class="o">=</span><span class="n">y_key</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="n">y_key</span><span class="o">.</span><span class="n">title</span><span class="p">(),</span>
+                <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
+                <span class="n">stroke</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">colors</span><span class="p">)]</span>
             <span class="p">)</span>
         <span class="p">)</span>
 
@@ -994,14 +1103,129 @@
         <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">,</span>
     <span class="p">)</span></div>
 
+
+
+<div class="viewcode-block" id="make_multi_line_chart">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.charts_artifact.make_multi_line_chart">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_multi_line_chart</span><span class="p">(</span>
+    <span class="n">artifact_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ArtifactModel</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChartArtifactModel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create the project-independent legacy multi-series line chart artifact.</span>
+
+<span class="sd">    Each series keeps its original samples; different x-grids need no interpolation.</span>
+<span class="sd">    The merged shared table is retained for compatibility with existing consumers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">task_id</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">chart_title_text</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chart_title&quot;</span><span class="p">,</span> <span class="s2">&quot;Chart&quot;</span><span class="p">)</span>
+    <span class="n">x_axis_title</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;x_axis_title&quot;</span><span class="p">,</span> <span class="s2">&quot;X&quot;</span><span class="p">)</span>
+    <span class="n">y_axis_title</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;y_axis_title&quot;</span><span class="p">,</span> <span class="s2">&quot;Y&quot;</span><span class="p">)</span>
+    <span class="n">x_key</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;x_key&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">y_key</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;y_key&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">x_key</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">y_key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;x_key and y_key must be provided.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">artifact_list</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ChartArtifactModel</span><span class="p">(</span>
+            <span class="n">parent_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span>
+            <span class="n">data</span><span class="o">=</span><span class="p">[],</span>
+            <span class="n">title</span><span class="o">=</span><span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">chart_title_text</span><span class="p">),</span>
+            <span class="n">series</span><span class="o">=</span><span class="p">[],</span>
+            <span class="n">axes</span><span class="o">=</span><span class="p">[</span>
+                <span class="n">AGChartAxisConfig</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;number&quot;</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">x_axis_title</span><span class="p">),</span>
+                <span class="n">AGChartAxisConfig</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;number&quot;</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">y_axis_title</span><span class="p">),</span>
+            <span class="p">],</span>
+            <span class="n">legend</span><span class="o">=</span><span class="n">AGChartLegendConfig</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">,</span> <span class="n">spacing</span><span class="o">=</span><span class="mi">15</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_series_key</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">safe</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="n">ch</span> <span class="k">if</span> <span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">isalnum</span><span class="p">()</span> <span class="ow">or</span> <span class="n">ch</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">))</span> <span class="k">else</span> <span class="s2">&quot;_&quot;</span>
+            <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="p">(</span><span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;series&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">safe</span><span class="si">}</span><span class="s2">__</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;#FF6B6B&quot;</span><span class="p">,</span> <span class="s2">&quot;#4ECDC4&quot;</span><span class="p">,</span> <span class="s2">&quot;#45B7D1&quot;</span><span class="p">,</span> <span class="s2">&quot;#96CEB4&quot;</span><span class="p">,</span> <span class="s2">&quot;#FECA57&quot;</span><span class="p">]</span>
+    <span class="n">combined_rows</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">series_configs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">AGLineSeriesConfig</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">x_min</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+    <span class="n">x_max</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span>
+    <span class="n">y_min</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+    <span class="n">y_max</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">artifact</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">artifact_list</span><span class="p">):</span>
+        <span class="n">plot_data</span> <span class="o">=</span> <span class="n">artifact</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;plot_data&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">if</span> <span class="n">plot_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">this_y_key</span> <span class="o">=</span> <span class="n">_series_key</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">artifact</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;series&quot;</span><span class="p">),</span> <span class="n">idx</span><span class="p">)</span>
+        <span class="n">color</span> <span class="o">=</span> <span class="n">colors</span><span class="p">[</span><span class="n">idx</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">colors</span><span class="p">)]</span>
+        <span class="n">series_points</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">plot_data</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">x_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">point</span> <span class="ow">or</span> <span class="n">y_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">point</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">x_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">point</span><span class="p">[</span><span class="n">x_key</span><span class="p">])</span>
+            <span class="n">y_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">point</span><span class="p">[</span><span class="n">y_key</span><span class="p">])</span>
+            <span class="n">x_min</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">x_min</span><span class="p">,</span> <span class="n">x_val</span><span class="p">)</span>
+            <span class="n">x_max</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">x_max</span><span class="p">,</span> <span class="n">x_val</span><span class="p">)</span>
+            <span class="n">y_min</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">y_min</span><span class="p">,</span> <span class="n">y_val</span><span class="p">)</span>
+            <span class="n">y_max</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">y_max</span><span class="p">,</span> <span class="n">y_val</span><span class="p">)</span>
+            <span class="n">series_points</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="n">x_key</span><span class="p">:</span> <span class="n">x_val</span><span class="p">,</span> <span class="n">this_y_key</span><span class="p">:</span> <span class="n">y_val</span><span class="p">})</span>
+            <span class="n">combined_rows</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">x_val</span><span class="p">,</span> <span class="p">{</span><span class="n">x_key</span><span class="p">:</span> <span class="n">x_val</span><span class="p">})[</span><span class="n">this_y_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">y_val</span>
+
+        <span class="n">series_configs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">AGLineSeriesConfig</span><span class="p">(</span>
+                <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;line&quot;</span><span class="p">,</span>
+                <span class="n">xKey</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span>
+                <span class="n">yKey</span><span class="o">=</span><span class="n">this_y_key</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">artifact</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="n">this_y_key</span><span class="p">),</span>
+                <span class="n">data</span><span class="o">=</span><span class="nb">sorted</span><span class="p">(</span><span class="n">series_points</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">point</span><span class="p">:</span> <span class="n">point</span><span class="p">[</span><span class="n">x_key</span><span class="p">]),</span>
+                <span class="n">stroke</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+                <span class="n">strokeWidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="n">strokeOpacity</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                <span class="n">marker</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;fill&quot;</span><span class="p">:</span> <span class="n">color</span><span class="p">},</span>
+                <span class="n">tooltip</span><span class="o">=</span><span class="p">{},</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ChartArtifactModel</span><span class="p">(</span>
+        <span class="n">parent_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span>
+        <span class="n">data</span><span class="o">=</span><span class="p">[</span><span class="n">combined_rows</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">combined_rows</span><span class="p">)],</span>
+        <span class="n">title</span><span class="o">=</span><span class="n">AGChartTitleConfig</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">chart_title_text</span><span class="p">),</span>
+        <span class="n">series</span><span class="o">=</span><span class="n">series_configs</span><span class="p">,</span>
+        <span class="n">axes</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">AGChartAxisConfig</span><span class="p">(</span>
+                <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;number&quot;</span><span class="p">,</span>
+                <span class="n">position</span><span class="o">=</span><span class="s2">&quot;bottom&quot;</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="n">x_axis_title</span><span class="p">,</span>
+                <span class="nb">min</span><span class="o">=</span><span class="p">(</span><span class="n">x_min</span> <span class="k">if</span> <span class="n">x_min</span> <span class="o">!=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">),</span>
+                <span class="nb">max</span><span class="o">=</span><span class="p">(</span><span class="n">x_max</span> <span class="k">if</span> <span class="n">x_max</span> <span class="o">!=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="n">AGChartAxisConfig</span><span class="p">(</span>
+                <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;number&quot;</span><span class="p">,</span>
+                <span class="n">position</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="n">y_axis_title</span><span class="p">,</span>
+                <span class="nb">min</span><span class="o">=</span><span class="p">(</span><span class="n">y_min</span> <span class="k">if</span> <span class="n">y_min</span> <span class="o">!=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">),</span>
+                <span class="nb">max</span><span class="o">=</span><span class="p">(</span><span class="n">y_max</span> <span class="k">if</span> <span class="n">y_max</span> <span class="o">!=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">),</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">legend</span><span class="o">=</span><span class="n">AGChartLegendConfig</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">,</span> <span class="n">spacing</span><span class="o">=</span><span class="mi">15</span><span class="p">),</span>
+        <span class="n">width</span><span class="o">=</span><span class="mi">900</span><span class="p">,</span>
+        <span class="n">height</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span>
+        <span class="n">padding</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;top&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">:</span> <span class="mi">80</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">,</span> <span class="s2">&quot;left&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">},</span>
+        <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;ag-default&quot;</span><span class="p">,</span>
+        <span class="n">animation</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;duration&quot;</span><span class="p">:</span> <span class="mi">1200</span><span class="p">},</span>
+        <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;zoom&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;enableSelecting&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;enableScrolling&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}},</span>
+    <span class="p">)</span></div>
+
 </pre></div>
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
-          
-          
+
+
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
@@ -1009,27 +1233,27 @@
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer no-toc">
-      
-      
-      
+
+
+
     </aside>
   </div>
 </div><script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

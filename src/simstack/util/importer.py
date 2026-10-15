@@ -1,314 +1,133 @@
+"""Resolve registered model and node mappings without compatibility fallbacks.
+
+Callers either provide a canonical Python path or deliberately use the separate
+name-based entry point. Path lookups never degrade to name lookups, and all
+registry access goes through the explicitly injected repository.
+"""
+
 import importlib
 import logging
-from typing import Any, Callable, Optional, Type, cast
-from odmantic import Model, AIOEngine, ObjectId
+from typing import Any, Callable, Type, cast
 
-from simstack.core.context import context
+from simstack.models.document import Model, ObjectId
 from simstack.models.models import ModelMapping, NodeModel
-from simstack.util.db import Database
+from simstack.persistence import Repository, eq
 
 logger = logging.getLogger("importer")
 
-NODES_SEARCH_BY_NAME_FALLBACK = True
-MODELS_SEARCH_BY_NAME_FALLBACK = True
 
-def _get_initialized_context() -> Any | None:
-    try:
-        from simstack.core.context import context
-
-        if context.initialized:
-            return context
-    except RuntimeError:
-        return None
-    return None
-
-
-def _context_cache_matches_engine(ctx: Any | None, db: Database | None = None) -> bool:
-    if ctx is None:
-        return False
-    if db is None:
-        return True
-    try:
-        return ctx.db is not None and db is ctx.db
-    except RuntimeError:
-        return False
-
-
-def _resolve_engine(ctx: Any | None, engine: AIOEngine | None = None) -> AIOEngine:
-    if engine is not None:
-        return engine
-    if ctx is not None:
-        try:
-            if ctx.db is not None:
-                return cast(AIOEngine, ctx.db.core_engine)
-        except RuntimeError:
-            pass
-    raise RuntimeError(
-        "Could not resolve engine both engine and context have no engine"
-    )
-
-
-def _lookup_node_cache(node_mappings: Any, function_path: str) -> Optional[NodeModel]:
-    if node_mappings is None:
-        return None
-    node_model = node_mappings.get_by_mapping(function_path)
-    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
-        if "." in function_path:
-            _, function_name = function_path.rsplit(".", 1)
-        else:
-            function_name = function_path
-        node_model = node_mappings.get_by_name(function_name)
-    return node_model
-
-
-async def _find_node_model(function_path: str, db: Database) -> Optional[NodeModel]:
-    if context.node_mappings is None:
-        await context.refresh_mappings(models=False, nodes=True)
-
-    node_model = _lookup_node_cache(context.node_mappings, function_path)
-    if node_model is not None:
-        return node_model
-
-    await context.refresh_mappings(models=False, nodes=True)
-    node_model = _lookup_node_cache(context.node_mappings, function_path)
-    if node_model is not None:
-        return node_model
-
-    node_model = await db.find_one(
-        NodeModel, NodeModel.function_mapping == function_path
-    )
-    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
-        if "." in function_path:
-            _, function_name = function_path.rsplit(".", 1)
-        else:
-            function_name = function_path
-        node_model = await db.find_one(NodeModel, NodeModel.name == function_name)
-    return node_model
+async def _find_node_model(
+    function_path: str, repository: Repository
+) -> NodeModel | None:
+    """Return the node registered for exactly ``function_path``."""
+    return await repository.find_one(NodeModel, eq("function_mapping", function_path))
 
 
 async def _find_node_model_by_name(
-    function_name: str, db: Database
-) -> Optional[NodeModel]:
-    if context.node_mappings is None:
-        await context.refresh_mappings(models=False, nodes=True)
-
-    node_model = context.node_mappings.get_by_name(function_name)
-    if node_model is not None:
-        return node_model
-
-    await context.refresh_mappings(models=False, nodes=True)
-    node_model = context.node_mappings.get_by_name(function_name)
-    if node_model is not None:
-        return node_model
-    return await db.find_one(NodeModel, NodeModel.name == function_name)
+    function_name: str, repository: Repository
+) -> NodeModel | None:
+    """Return the node registered for exactly ``function_name``."""
+    return await repository.find_one(NodeModel, eq("name", function_name))
 
 
-def _lookup_model_cache(
-    model_mappings: Any, class_path: str, class_name: str
-) -> Optional[ModelMapping]:
-    if model_mappings is None:
-        return None
-    model_mapping = None
-    if MODELS_SEARCH_BY_NAME_FALLBACK:
-        model_mapping = model_mappings.get_by_name(class_name)
-    if not model_mapping:
-        model_mapping = model_mappings.get_by_mapping(class_path)
-    return model_mapping
+async def _find_model_mapping(
+    model_path: str, repository: Repository
+) -> ModelMapping | None:
+    """Return the model registered for exactly ``model_path``."""
+    return await repository.find_one(ModelMapping, eq("mapping", model_path))
 
 
-async def _find_model_mapping(model_path: str, db: Database) -> Optional[ModelMapping]:
-    _, model_name = model_path.rsplit(".", 1)
-
-    if context.model_mappings is None:
-        await context.refresh_mappings(models=True, nodes=False)
-
-    model_mapping = _lookup_model_cache(context.model_mappings, model_path, model_name)
-    if model_mapping is not None:
-        return model_mapping
-
-    await context.refresh_mappings(models=True, nodes=False)
-    model_mapping = _lookup_model_cache(context.model_mappings, model_path, model_name)
-    if model_mapping is not None:
-        return model_mapping
-
-    model_mapping = None
-    if MODELS_SEARCH_BY_NAME_FALLBACK:
-        model_mapping = await db.find_one(ModelMapping, ModelMapping.name == model_name)
-    if model_mapping is None:
-        model_mapping = await db.find_one(
-            ModelMapping, ModelMapping.mapping == model_path
-        )
-    return model_mapping
-
-
-# TODO engines remove: duplicate of find_class_mapping_by_name
 async def _find_model_mapping_by_name(
-    class_name: str, db: Database
-) -> Optional[ModelMapping]:
-    if context.model_mappings is None:
-        await context.refresh_mappings(models=True, nodes=False)
-
-    model_mapping = context.model_mappings.get_by_name(class_name)
-    if model_mapping is not None:
-        return model_mapping
-
-    await context.refresh_mappings(models=True, nodes=False)
-    model_mapping = context.model_mappings.get_by_name(class_name)
-    if model_mapping is not None:
-        return model_mapping
-
-    return await db.find_one(ModelMapping, ModelMapping.name == class_name)
+    class_name: str, repository: Repository
+) -> ModelMapping | None:
+    """Return the model registered for exactly ``class_name``."""
+    return await repository.find_one(ModelMapping, eq("name", class_name))
 
 
 async def _function_from_model(
     node_model: NodeModel, task_id: ObjectId | None = None
 ) -> Callable[..., Any]:
-    """
-    Get the function from the NodeModel. Here the mapping may already be fixed if the original mapping was wrong
-    Otherwise, it is imported from the function_mapping.
-
-    Args:
-        node_model: NodeModel object
-        task_id: Optional task id
-
-    Returns:
-        The function object
-    """
-
+    """Import the exact canonical function path stored in ``node_model``."""
     function_path = node_model.function_mapping
     try:
         module_path, function_name = function_path.rsplit(".", 1)
         module = importlib.import_module(module_path)
         return cast(Callable[..., Any], getattr(module, function_name))
-    except (ImportError, AttributeError, ValueError) as e:
-        if NODES_SEARCH_BY_NAME_FALLBACK:
-            try:
-                # Try to load by the name field which might contain the correct path
-                # if it was a name-only search that found this model.
-                if "." in node_model.name:
-                    module_path, function_name = node_model.name.rsplit(".", 1)
-                    module = importlib.import_module(module_path)
-                    return cast(Callable[..., Any], getattr(module, function_name))
-            except (ImportError, AttributeError, ValueError):
-                pass
-        if task_id:
-            logger.error(
-                f"task_id: {task_id} Error importing function {function_path}: {e}"
-            )
-        else:
-            logger.error(f"Error importing function {function_path}: {e}")
-        raise e
+    except (ImportError, AttributeError, ValueError) as exc:
+        logger.error(
+            "task_id: %s Error importing function %s: %s",
+            task_id,
+            function_path,
+            exc,
+        )
+        raise
 
 
 async def import_function(
     function_path: str,
-    db: Database,
+    repository: Repository,
     task_id: ObjectId | None = None,
-    tolerate_missing_function: bool = False,
-) -> Optional[Callable[..., Any]]:
+) -> Callable[..., Any]:
+    """Import a function from its exact registered or canonical Python path.
+
+    A missing registry record does not trigger a name lookup. Direct Python
+    import is allowed only for the exact canonical path supplied by the caller.
     """
-    Dynamically import a function from a module using its full path, including a migration mechanism.
-    load the function information using NodeModel
-    load the pickled version if it exists
-    if there is no pickled version, use regular import.
+    node_model = await _find_node_model(function_path, repository)
 
-    Args:
-        function_path: Dot notation path to the function (e.g. 'methods.submodule.function_name')
-        db: Database object
-        task_id: Optional task id
-        tolerate_missing_function: If True, return None if function is not found, otherwise raise exception
-
-    Returns:
-        The imported function object or None if import fails
-    """
-    node_model = await _find_node_model(function_path, db)
-
-    if node_model is None:
-        try:
-            module_path, function_name = function_path.rsplit(".", 1)
-            module = importlib.import_module(module_path)
-            return cast(Callable[..., Any], getattr(module, function_name))
-        except (ImportError, AttributeError, ValueError):
-            raise LookupError(
-                f"task_id: {task_id} Function {function_path} not found in the NodeModel Table"
-            )
+    if node_model is not None:
+        return await _function_from_model(node_model, task_id)
 
     try:
-        return await _function_from_model(node_model, task_id)
-    except Exception as e:
-        if tolerate_missing_function:
-            return None
-        else:
-            raise e
+        module_path, function_name = function_path.rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        return cast(Callable[..., Any], getattr(module, function_name))
+    except (ImportError, AttributeError, ValueError) as exc:
+        raise LookupError(
+            f"task_id: {task_id} Function {function_path} not found in the NodeModel Table"
+        ) from exc
 
 
 async def import_function_by_name(
-    function_name: str, db: Database, task_id: ObjectId
-) -> Optional[Callable[..., Any]]:
-    node_model = await _find_node_model_by_name(function_name, db)
-
+    function_name: str, repository: Repository, task_id: ObjectId | None
+) -> Callable[..., Any]:
+    """Import a function through an explicit exact-name registry lookup."""
+    node_model = await _find_node_model_by_name(function_name, repository)
     if node_model is None:
-        logger.error(f"Could not find function mapping for name: {function_name}")
-        raise ValueError(f"Could not find function mapping for name: {function_name}")
-
+        raise LookupError(f"No function mapping registered for {function_name!r}")
     return await _function_from_model(node_model, task_id)
 
 
-async def import_class(class_path: str, db: Database) -> Type[Model] | None:
-    """
-    Dynamically import a class from a module using its full path.
-    First tries to load the class from the database using ModelMapping
+async def import_class(class_path: str, repository: Repository) -> Type[Model]:
+    """Import a model from its exact registered or canonical Python path.
 
-    A pickled version of the class is used primarily
-    Args:
-
-        :param class_path:   class_path: Dot notation path to the class (e.g. 'models.submodule.ClassName')
-        :param db:    db: Database object
-    Returns:
-        The imported class object or None if import fails
+    A missing registry record does not trigger a class-name lookup. Direct
+    Python import is allowed only for the exact canonical path supplied by the
+    caller.
     """
+    try:
+        module_path, class_name = class_path.rsplit(".", 1)
+    except ValueError as exc:
+        raise LookupError(f"Model path must be canonical: {class_path!r}") from exc
+
+    model_mapping = await _find_model_mapping(class_path, repository)
+    if model_mapping is not None:
+        module_path, class_name = model_mapping.mapping.rsplit(".", 1)
 
     try:
-        # Split the path into module path and class name
-        module_path, class_name = class_path.rsplit(".", 1)
-        model_mapping = await _find_model_mapping(class_path, db)
-
-        # If not found by name, try by mapping
-        if not model_mapping:
-            model_mapping = await db.find_one(
-                ModelMapping, ModelMapping.mapping == class_path
-            )
-        else:  # when searching by name, the path may have changed
-            module_path, class_name = model_mapping.mapping.rsplit(".", 1)
-
-        if model_mapping is None:
-            try:
-                # Import the module
-                module = importlib.import_module(module_path)
-                # Get the class from the module
-                return cast(Type[Model], getattr(module, class_name))
-            except (ImportError, AttributeError):
-                logger.error(f"Error finding ModelMapping for {class_name}")
-                raise LookupError(f"Error finding ModelMapping for {class_name}")
-
-        # Import the module
         module = importlib.import_module(module_path)
-
-        # Get the class from the module
         return cast(Type[Model], getattr(module, class_name))
-    except (ImportError, AttributeError, ValueError) as e:
-        logger.error(f"Error importing class {class_path}: {e}")
-        raise e
+    except (ImportError, AttributeError) as exc:
+        logger.error("Error importing class %s: %s", class_path, exc)
+        raise LookupError(f"No model registered or importable at {class_path!r}") from exc
 
 
-async def import_class_by_name(class_name: str, db: Database) -> Type[Model]:
-    model_mapping = await _find_model_mapping_by_name(class_name, db)
+async def import_class_by_name(
+    class_name: str, repository: Repository
+) -> Type[Model]:
+    """Import a model through an explicit exact-name registry lookup."""
+    model_mapping = await _find_model_mapping_by_name(class_name, repository)
+    if model_mapping is None:
+        raise LookupError(f"No model mapping registered for {class_name!r}")
 
-    if not model_mapping:
-        logger.error(f"Error finding ModelMapping for {class_name}")
-        raise LookupError(f"Error finding ModelMapping for {class_name}")
-
-    model_class = await import_class(model_mapping.mapping, db)
-    if model_class is None:
-        raise LookupError(f"Error importing mapped model class for {class_name}")
-    return model_class
+    return await import_class(model_mapping.mapping, repository)

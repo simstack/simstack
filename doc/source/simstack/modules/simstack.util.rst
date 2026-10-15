@@ -44,30 +44,6 @@ simstack.util.custom\_model\_dump module
    :show-inheritance:
    :undoc-members:
 
-simstack.util.database\_information module
-------------------------------------------
-
-.. automodule:: simstack.util.database_information
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.util.db module
------------------------
-
-.. automodule:: simstack.util.db
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.util.db\_logger module
--------------------------------
-
-.. automodule:: simstack.util.db_logger
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 simstack.util.default\_from\_dict module
 ----------------------------------------
 
@@ -96,14 +72,6 @@ simstack.util.file\_hashing module
 ----------------------------------
 
 .. automodule:: simstack.util.file_hashing
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.util.file\_transfer\_client module
--------------------------------------------
-
-.. automodule:: simstack.util.file_transfer_client
    :members:
    :show-inheritance:
    :undoc-members:
@@ -144,30 +112,6 @@ simstack.util.geometry\_utils module
 ------------------------------------
 
 .. automodule:: simstack.util.geometry_utils
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.util.get\_module\_path module
---------------------------------------
-
-.. automodule:: simstack.util.get_module_path
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.util.git\_pull module
-------------------------------
-
-.. automodule:: simstack.util.git_pull
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.util.git\_repository\_status module
---------------------------------------------
-
-.. automodule:: simstack.util.git_repository_status
    :members:
    :show-inheritance:
    :undoc-members:
@@ -228,10 +172,10 @@ simstack.util.minimal\_route\_finder module
    :show-inheritance:
    :undoc-members:
 
-simstack.util.mock\_db module
------------------------------
+simstack.util.model\_copy module
+--------------------------------
 
-.. automodule:: simstack.util.mock_db
+.. automodule:: simstack.util.model_copy
    :members:
    :show-inheritance:
    :undoc-members:
@@ -268,42 +212,10 @@ simstack.util.project\_root\_finder module
    :show-inheritance:
    :undoc-members:
 
-simstack.util.queue\_watcher module
------------------------------------
-
-.. automodule:: simstack.util.queue_watcher
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 simstack.util.resource\_config module
 -------------------------------------
 
 .. automodule:: simstack.util.resource_config
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.util.route\_finder module
-----------------------------------
-
-.. automodule:: simstack.util.route_finder
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.util.runner\_util module
----------------------------------
-
-.. automodule:: simstack.util.runner_util
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.util.runner\_utils module
-----------------------------------
-
-.. automodule:: simstack.util.runner_utils
    :members:
    :show-inheritance:
    :undoc-members:
@@ -324,6 +236,14 @@ simstack.util.sample\_config module
    :show-inheritance:
    :undoc-members:
 
+simstack.util.sanitized\_output module
+--------------------------------------
+
+.. automodule:: simstack.util.sanitized_output
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.util.sensitive\_content\_filter module
 -----------------------------------------------
 
@@ -336,14 +256,6 @@ simstack.util.setup\_logging module
 -----------------------------------
 
 .. automodule:: simstack.util.setup_logging
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.util.submit\_to\_watchdog module
------------------------------------------
-
-.. automodule:: simstack.util.submit_to_watchdog
    :members:
    :show-inheritance:
    :undoc-members:

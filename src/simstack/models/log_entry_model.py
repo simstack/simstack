@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from odmantic import Model, Field
+from simstack.models.document import Field, Model
 
 from simstack.models import Parameters
 

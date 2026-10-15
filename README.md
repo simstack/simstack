@@ -6,8 +6,8 @@ resources.
 This repo provides the base package for Simstack II development. To use the graphical user interface,
 you need to install the 
 
-- [simstack-server](https://github.com/simstack/simstack-server) project, a python-based
-fastapi app that connects to the Simstack II database. a
+- [simstack-server](https://github.com/simstack/simstack-server) project, a Python
+  FastAPI app that exclusively owns the SimStack database connection.
 - [simstack-ui](https://github.com/simstack/simstack-ui) project, a react-js web frontend. 
 
 You can use the [simstack-example](https://github.com/simstack/simstack-example) project 
@@ -46,6 +46,48 @@ git push origin vX.Y.Z
 
 ## Using SimStack II
 
+### Runner architecture: API only
+
+Runner processes never receive a MongoDB connection string and never import a
+MongoDB driver or ODM. The server is the only database owner. A runner claims,
+loads, renews, completes, and reports tasks through the authenticated execution
+API. There is no database or local fallback.
+
+Issue or rotate a token for the target resource in the server, then start the
+runner from a locked ``--no-dev`` environment with only its server URL and
+token:
+
+```bash
+uv sync --locked --no-dev
+export SIMSTACK_SERVER_URL="https://simstack.example"
+export SIMSTACK_RUNNER_TOKEN="<resource-scoped-runner-token>"
+.venv/bin/simstack_runner \
+  --resource int-nano \
+  --project-root /path/to/secret-free-source-snapshot
+```
+
+Startup fails immediately if either variable is missing, the token resource does
+not match, or bootstrap cannot be loaded. Detached, Docker/Apptainer, and Slurm
+workers inherit only the API and active-claim values; they do not inherit
+database credentials. The execution project root must itself be a secret-free
+snapshot because workflow processes can read that tree. Network isolation is a
+deployment contract: configure and verify a real guard for each local,
+container, Slurm, and watchdog boundary.
+
+The runner never updates its own checkout or environment: it does not run Git,
+change branches, stash files, invoke a dependency manager, or inspect a
+hardcoded lock/extras file. CI or the deployment supervisor must activate a
+validated source snapshot and production environment, then restart the runner.
+
+Runner mode deliberately does not provide a generic HTTP database facade.
+Legacy node or helper code that accesses `context.db` fails immediately and
+must be migrated to declared task inputs/results, nested-task resolution, file
+transfer, or another explicit server endpoint. Registered artifacts are rendered
+and persisted by the server during the claim-bound result commit. A per-commit
+ledger coordinates concurrent retries and preserves ready artifact snapshots;
+parent nodes only consume children linked by the current execution attempt.
+Missing server capabilities never reactivate direct MongoDB access.
+
 ### Setting Up a MongoDB Instance
 
 SimStack II persists user data via MongoDB, so you need to have a running MongoDB instance.
@@ -68,11 +110,11 @@ This command:
 - Maps port 27017 to your localhost
 - Sets up basic authentication with username `admin` and password `yourpassword`
 
-**Important**: Replace `yourpassword` with a secure password and update your `simstack.toml` connection string
-accordingly:
+**Important**: Replace `yourpassword` with a secure password and configure this
+connection string on `simstack-server` only:
 
-```toml
-connection_string = "mongodb://admin:yourpassword@localhost:27017/"
+```dotenv
+CONNECTION_STRING=mongodb://admin:yourpassword@localhost:27017/
 ```
 You can then create databases and collections in the MongoDB instance with the `mongo` CLI.
 
@@ -174,11 +216,13 @@ Just type `tree` in the terminal, if the **installation** succeeds, you should s
 
 ## 2. Configure Simstack II with `simstack.toml` ⚙️
 
-Simstack II reads a single **TOML** file (`simstack.toml`) to learn
+Simstack II reads a **TOML** file (`simstack.toml`) to learn
 
 * which **resources** (local & remote) exist,
-* how to reach your **MongoDB** backend,
 * and where each host should place logs / artifacts.
+
+Database credentials belong to the server environment and must not appear in
+the runner TOML.
 
 > **Where should the file live?**
 > Save it next in the folder simstack-model in both your local and HPC accounts.
@@ -192,9 +236,6 @@ Simstack II reads a single **TOML** file (`simstack.toml`) to learn
 #######################################
 [parameters.common]
 resources        = ["local", "int-nano", "horeka", "justus", "self", "exchange", "uploads"]
-database         = "celso_data"                    # default DB
-test_database    = "celso_test_data"               # used by `simstack selftest`
-connection_string = "mongodb://<user>:<pass>@<host>:27017/"  # ⬚ change!
 
 #######################################
 # Host-specific overrides
@@ -320,16 +361,19 @@ Why **WaNos**?  Workflow Aware Nodes—nodes that tell Simstack exactly what the
 ```python!
 ssh user@int-nano.int.kit.edu           # 1️⃣ log in
 source ~/simstack/set_pythonpath.sh  # 2️⃣ expose src/ to PYTHONPATH
-python src/simstack/core/runner.py --resource int-nano  # 3️⃣ start runner
+SIMSTACK_SERVER_URL=https://simstack.example \
+SIMSTACK_RUNNER_TOKEN='<resource-scoped-token>' \
+.venv/bin/simstack_runner \
+  --resource int-nano --project-root "$PWD"  # 3️⃣ start runner
 ```
 
 You should see something like:
 ```bash!
-2025-04-24 11:26:58 - ConfigReader - INFO - Initializing ConfigReader with resource: local on database celso_data
-2025-04-24 11:26:58 - ConfigReader - INFO - workdir: /home/celso/Desktop/Project/KIT/simstack/Files/simstack_workflows
+Runner API connection to https://simstack.example for resource int-nano
 ```
 
-The runner now listens for jobs assigned to the int-nano resource and inherits the correct PYTHONPATH so your code imports flawlessly.
+The runner now polls the execution API for jobs assigned to the int-nano
+resource and inherits the configured Python paths.
 
 ```bash!
 [Runner‑int‑nano] ⚡️  connected to broker
@@ -349,7 +393,8 @@ add_result      = a + b      # → 15
 multiply_result = add_result * c  # → 30
 print(multiply_result)
 ```
-*Under the hood it uses the FloatData ODM model so the result is automatically stored in MongoDB with an ObjectId.*
+*Under the hood it uses a Pydantic `FloatData` document; the server persists the
+result after the worker commits it through the execution API.*
 
 ### 5.2 Run it 🚀
 
@@ -370,7 +415,7 @@ id=ObjectId('680f3c149f39611649075d6a') value=30.0
 
  **2.** Executed the adder ➜ multiplier chain
 
- **3.** Persisted the final result in your configured MongoDB instance
+ **3.** Committed the final result to the server API
 
 Try changing the numbers in AddMultiplyInput(a, b, c) and re‑running to see different results. Feel free to explore other examples in the same folder or craft your own!
 
@@ -386,7 +431,10 @@ Try changing the numbers in AddMultiplyInput(a, b, c) and re‑running to see di
    # on the int-nano login node
    ssh user@int-nano.int.kit.edu
    source ~/simstack/set_pythonpath.sh     # expose src/ to PYTHONPATH
-   python src/simstack/core/runner.py --resource int-nano
+   SIMSTACK_SERVER_URL=https://simstack.example \
+   SIMSTACK_RUNNER_TOKEN='<resource-scoped-token>' \
+   .venv/bin/simstack_runner \
+     --resource int-nano --project-root "$PWD"
 
 Leave this terminal open—your runner will watch the message broker for tasks targeting int-nano.
 
@@ -403,11 +451,14 @@ python node_example.py
 
 That single command does three things behind the scenes:
 
-1. **Creates a task document** in MongoDB with resource="int-nano", queue="slurm".
+1. **Creates a task through the server**, with resource="int-nano" and
+   queue="slurm". Only the server owns the database document.
 
-2. **Signals the int-nano runner**, which in turn
+2. **Publishes the task through the server**, where the int-nano runner claims it
+   through the execution API and then
 
-* auto-generates an `id_num.err`, `id_num.out`, and `slurm_script.sh` file inside <workdir>/adder/ (see your simstack.toml)
+* generates Slurm output and ``slurm_script.sh`` inside the bounded
+  ``<workdir>/tasks/<task-id>/`` directory
 * submits it with sbatch.
 
 3. **Streams status** back to your local terminal until completion.
@@ -421,7 +472,8 @@ task_id: 680f4ac265bb513834eeb92a created in read_db Task adder with 680f4ac265b
 2025-04-28 11:30:47 - simstack.core.node - INFO - Task adder with task_id: 680f4ac265bb513834eeb92a loaded outputs
 ```
 
-Once you see TaskStatus.COMPLETED, the Slurm job finished on int-nano and the result document was synced back to your MongoDB.
+Once you see TaskStatus.COMPLETED, the Slurm job finished on int-nano and the
+runner committed the result through the server API.
 
 Now you’ve successfully:
 

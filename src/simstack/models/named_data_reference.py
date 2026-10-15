@@ -1,6 +1,6 @@
 from typing import Optional
 
-from odmantic import EmbeddedModel, ObjectId, Model
+from simstack.models.document import EmbeddedModel, Model, ObjectId
 
 import logging
 

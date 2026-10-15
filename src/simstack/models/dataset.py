@@ -1,7 +1,6 @@
 import uuid
 from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List, Optional, Any
-from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
-from simstack.core.asnyc_helper import async_helper
+from simstack.models.document import EmbeddedModel, Field, Model, ObjectId
 from simstack.models import simstack_model
 from simstack.models.dataset_metadata import DataSetMetadata
 from simstack.util.make_table import make_column_defs_instance
@@ -100,9 +99,6 @@ class DataSetSection(EmbeddedModel):
         Generate ag-grid column definitions for all model types in this section.
         """
 
-        from simstack.util.importer import import_class_by_name
-        from simstack.core.context import context
-        engine = context.db
         column_defs = []
         cache = self._get_cache()
         if not cache:
@@ -137,56 +133,11 @@ class DataSetSection(EmbeddedModel):
         return all_data
 
 
-    async def save(self, db):
-        """
-        Save all models in the cache to the database and update data.
-        """
-        cache = self._get_cache()
-        for row_name, row_models in cache.items():
-            for model_key, model in row_models.items():
-                if model is not None:
-                    await db.save_unchecked(model)
-
-        # Sync cache to data before saving
-        self.data = {
-            name: {k: v.id for k, v in row.items()}
-            for name, row in cache.items()
-        }
-
-        self.column_defs = await self.make_column_defs()
-        self.table_entries = await self.make_table_entries()
-
     def get_item(self, name: str) -> Dict[str, Model]:
         cache = self._get_cache()
         if name not in cache:
             raise KeyError(f"Item with name '{name}' not found")
         return cache[name]
-
-    async def db_find_postprocess(self, db: "Database"):
-        await self.load_to_cache(db)
-
-    async def load_to_cache(self, db: "Database") -> None:
-        """
-        Load all items from the database into the cache assuming that data is already loaded.
-        """
-        from simstack.core.context import context
-        if db is None:
-            db = context.db
-        cache = self._get_cache()
-        for name, row in self.data.items():
-            cached_row = {}
-            for key, model_id in row.items():
-                model_type = self.model_types[key]
-                from simstack.util.importer import import_class_by_name
-                model_class = await import_class_by_name(model_type, db)
-                model_instance = await db.find_one(model_class, model_class.id == model_id)
-                if model_instance is None:
-                    raise ValueError(f"Model with id {model_id} of type {model_type} not found")
-                cached_row[key] = model_instance
-
-            # Update cache
-            cache[name] = cached_row
-        self._set_cache(cache)
 
     def __len__(self) -> int:
         return len(self._get_cache())
@@ -281,23 +232,6 @@ class DataSet(Model):
     def dataset_type(self) -> str:
         return self.metadata.dataset_type
 
-    async def save(self, db):
-        structure = self.collect_structure()
-        # metadata.validate_dict currently expects Dict[str, List[str]]
-        # We might need to adjust it or pass something compatible.
-        # For now, let's just pass the keys of model_types as a list.
-        # Wait, DataSetTuple passes List[str] which are the model names in the tuple.
-        # For DataSet, maybe it should be the model names too, but we lose the keys.
-        # Let's see how validate_dict uses it.
-        ok = await self.metadata.validate_dict(structure)
-        if not ok:
-            raise ValueError("Metadata validation failed")
-
-        for key, section in self.sections.items():
-            await section.save(db)
-
-        await db.save_unchecked(self)
-
     def collect_structure(self) -> Dict[str, Dict[str, str]]:
         return {
             section_name: section.model_types
@@ -376,73 +310,6 @@ class DataSetSelection(Model):
     field_name: str = Field(default="dataset_selection")
     dataset_id: ObjectId
     dataset_selection_fields: List[DataSetSelectionField] = Field(default_factory=list)
-
-    async def get_dataset(self):
-        from simstack.core.context import context
-        return await context.db.find_one(DataSet, DataSet.id == self.dataset_id)
-
-    @async_helper
-    async def get_selected_elements(self, section_name: str = None) -> List[Tuple[Model, ...]]:
-        """
-        Retrieve all selected model groups from the dataset.
-
-        :param section_name: Optional section name to filter results. If None, returns all sections.
-        :return: List of tuples of model instances for all selected elements
-        """
-        from simstack.core.context import context
-        db = context.db
-        dataset = await db.find_one(DataSet, DataSet.id == self.dataset_id)
-
-        if dataset is None:
-            raise ValueError(f"Dataset with id {self.dataset_id} not found")
-
-        selected_elements = []
-        for selection_field in self.dataset_selection_fields:
-            if section_name is not None and selection_field.section_name != section_name:
-                continue
-
-            section = dataset.sections.get(selection_field.section_name)
-            if section is None:
-                raise ValueError(f"Section {selection_field.section_name} not found in dataset")
-
-            for index in selection_field.indices:
-                if index >= len(section):
-                    raise IndexError(
-                        f"Index {index} out of range for section {selection_field.section_name} with {len(section)} elements"
-                    )
-                model_group = section.get_model_group(index)
-                selected_elements.append(model_group)
-
-        return selected_elements
-
-    async def __aiter__(self, section_name: str = None):
-        """
-        Async iterator over all selected model groups.
-
-        :param section_name: Optional section name to filter results. If None, returns all sections.
-        :return: Async iterator yielding tuples of model instances
-        """
-        from simstack.core.context import context
-        db = context.db
-        dataset = await db.find_one(DataSet, DataSet.id == self.dataset_id)
-
-        if dataset is None:
-            raise ValueError(f"Dataset with id {self.dataset_id} not found")
-
-        for selection_field in self.dataset_selection_fields:
-            if section_name is not None and selection_field.section_name != section_name:
-                continue
-
-            section = dataset.sections.get(selection_field.section_name)
-            if section is None:
-                raise ValueError(f"Section {selection_field.section_name} not found in dataset")
-
-            for index in selection_field.indices:
-                if index >= len(section):
-                    raise IndexError(
-                        f"Index {index} out of range for section {selection_field.section_name} with {len(section)} elements"
-                    )
-                yield section.get_model_group(index)
 
     @classmethod
     def ui_schema(cls) -> dict:

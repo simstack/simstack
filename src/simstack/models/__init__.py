@@ -1,4 +1,3 @@
-from .fire_and_forget_result import FireAndForgetResult
 from .simstack_model import simstack_model
 from .artifact_models import ArtifactMapping, ArtifactModel
 from .base_types import (
@@ -35,7 +34,6 @@ from .images2d import Image2DArtifactModel
 
 
 __all__ = [
-    "FireAndForgetResult",
     "ModelMapping",
     "NodeModel",
     "IntData",

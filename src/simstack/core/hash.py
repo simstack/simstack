@@ -3,9 +3,10 @@ import inspect
 from collections.abc import Callable, Iterable, Mapping
 from typing import Any, cast
 
-from odmantic import ObjectId
+from pydantic import BaseModel
 
-max_iterable_hash_count = 10000
+from simstack.domain.input_hashing import model_field_values
+from simstack.models.document import Model, ObjectId
 
 hash_exclusions = [
     "pandas",
@@ -58,12 +59,10 @@ def hash_class_def(cls: type[Any]) -> str:
 
 
 def hash_iterable(iterable: Iterable[Any]) -> str:
-    hash_text = ""
-    for count, item in enumerate(iterable):
-        hash_text += str(complex_hash_function(item))
-        if count > max_iterable_hash_count:
-            break
-    return hashlib.sha256(hash_text.encode("utf-8")).hexdigest()
+    digest = hashlib.sha256()
+    for item in iterable:
+        digest.update(str(complex_hash_function(item)).encode("utf-8"))
+    return digest.hexdigest()
 
 
 def hash_function_body(func: Callable[..., Any]) -> str:
@@ -106,21 +105,16 @@ class ComplexHash:
             return "excluded"
         # print("hashing class", cls_obj.__class__.__name__)
         class_hash = hash_class_def(cls_obj.__class__)
-        # TODO is __dict__ better than vars ?
-        # dict_hash = self.hash_dict(vars(cls_obj))
-
-        obj_dict = cls_obj.__dict__.copy()
-        if hasattr(cls_obj, "__class__") and hasattr(cls_obj.__class__, "__bases__"):
-            for base in cls_obj.__class__.__bases__:
-                if base.__name__ == "Model" and "odmantic.model" in str(
-                    base.__module__
-                ):
-                    if "id" in obj_dict:
-                        del obj_dict["id"]
-
+        if isinstance(cls_obj, BaseModel):
+            # Model extras are intentional input data, included exactly once.
+            # Persistence/runtime attributes outside declared fields never
+            # influence either regular or custom complex-hash input paths.
+            obj_dict = model_field_values(
+                cls_obj, exclude_identity=isinstance(cls_obj, Model)
+            )
+        else:
+            obj_dict = cls_obj.__dict__.copy()
         dict_hash = self.hash_dict(obj_dict)
-        if hasattr(cls_obj, "model_extra") and cls_obj.model_extra is not None:
-            dict_hash = dict_hash + self.hash_dict(cls_obj.model_extra)
         combined_hash = class_hash + dict_hash
         return hashlib.sha256(combined_hash.encode("utf-8")).hexdigest()
 
@@ -129,6 +123,13 @@ class ComplexHash:
 
         if isinstance(obj, type):
             return hash_class_def(obj)
+        elif isinstance(obj, (bytes, bytearray)):
+            # Python's hash(bytes) is salted per process. Parent and detached
+            # workers must agree on identical binary input without a fixed seed.
+            digest = hashlib.sha256()
+            digest.update(type(obj).__name__.encode("ascii") + b"\0")
+            digest.update(obj)
+            return digest.hexdigest()
         elif is_primitive_type(obj):
             return hash(obj)
         elif isinstance(obj, ObjectId):
@@ -160,17 +161,10 @@ class ComplexHash:
         elif isinstance(obj, dict):
             return self.hash_dict(obj)
         elif is_iterable(obj):
-            hashed_values: dict[int, HashResult] = {}
-            count = 0
+            digest = hashlib.sha256()
             for i, item in enumerate(obj):
-                hashed_values[i] = self.complex_hash(item)
-                count += 1
-                if count > max_iterable_hash_count:
-                    break
-            combined_hash = "".join(
-                f"{k}:{v}" for k, v in sorted(hashed_values.items())
-            )
-            return hashlib.sha256(combined_hash.encode("utf-8")).hexdigest()
+                digest.update(f"{i}:{self.complex_hash(item)}".encode("utf-8"))
+            return digest.hexdigest()
         else:
             return hash_value(obj)
 

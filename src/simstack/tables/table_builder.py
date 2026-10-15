@@ -1,19 +1,14 @@
-import argparse
-import asyncio
+import fnmatch
 import importlib
 import logging
 import tomllib
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Iterable, Optional, Type
-import fnmatch  # <-- added
+from typing import Iterable, Optional
 
-from simstack.core.context import context
 from simstack.core.find_simstack_modules import find_simstack_modules
-from simstack.util.db import Database
+from simstack.persistence import Repository
 from simstack.util.import_module import import_module_from_file
-from simstack.util.path_manager import path_manager
-
 
 
 class TableBuilderBase(ABC):
@@ -26,8 +21,13 @@ class TableBuilderBase(ABC):
     Subclasses only implement `_process_module(module, drops)`.
     """
 
-    def __init__(self, db: Database, write_schema: bool = False, project_root: Optional[Path] = None):
-        self.db = db
+    def __init__(
+        self,
+        repository: Repository,
+        write_schema: bool = False,
+        project_root: Optional[Path] = None,
+    ):
+        self.repository = repository
         self.write_schema = write_schema
         self._project_root = project_root
         self._processed_modules = set()
@@ -36,9 +36,8 @@ class TableBuilderBase(ABC):
     def project_root(self) -> Path:
         if self._project_root:
             return self._project_root
-        if context.config:
-            return context.config.project_root
         from simstack.util.project_root_finder import find_project_root
+
         return find_project_root()
 
     @property
@@ -49,7 +48,7 @@ class TableBuilderBase(ABC):
     async def build(
         self,
         *,
-        dirs: Optional[list[Path]] = None,
+        dirs: list[Path],
         drops: str = "",
         exclude: Optional[list[str]] = None,
         clear: bool = False,
@@ -71,7 +70,6 @@ class TableBuilderBase(ABC):
           - glob patterns (e.g. "*.generated.py")
           - nested relative paths (e.g. "src/simstack/models")
         """
-        await self._ensure_context_initialized()
         self._processed_modules.clear()
         if clear:
             await self.clear_table()
@@ -81,10 +79,6 @@ class TableBuilderBase(ABC):
 
         scan_dirs = list(dirs) if dirs else self._active_dirs_from_config()
         await self._process_dirs(scan_dirs, drops=drops, exclude=exclude or [])
-
-    async def _ensure_context_initialized(self) -> None:
-        if not context.initialized:
-            await context.initialize()
 
     async def _process_simstack_modules(self, drops: str) -> None:
         all_modules = set(find_simstack_modules())
@@ -103,20 +97,6 @@ class TableBuilderBase(ABC):
             if exc.code in (None, 0):
                 raise SystemExit(1) from None
             raise
-
-    async def _process_configured_paths(self) -> None:
-        for path_name in path_manager.paths.keys():
-            await self._process_path(path_name)
-
-    async def _process_path(self, path_name: str) -> None:
-        path_info = path_manager.get_path(path_name)
-        base_path = path_info["path"]
-        drops = path_info.get("drops", "")
-
-        self.logger.info("Processing configured path %s: %s", path_name, base_path)
-
-        for file_path in path_manager.find_python_files(path_name):
-            await self._process_file(file_path, drops)
 
     def _active_dirs_from_config(self) -> list[Path]:
         config_path = self.project_root / "config.toml"
@@ -153,23 +133,28 @@ class TableBuilderBase(ABC):
             base_dir = Path(base_dir)
 
             # Accept either absolute paths or paths relative to project root.
-            base_dir_path = base_dir if base_dir.is_absolute() else (self.project_root / base_dir)
+            base_dir_path = (
+                base_dir if base_dir.is_absolute() else (self.project_root / base_dir)
+            )
 
-            for py_file in self._iter_python_files_under_dir(base_dir_path, exclude=exclude):
+            for py_file in self._iter_python_files_under_dir(
+                base_dir_path, exclude=exclude
+            ):
                 await self._process_file(py_file, drops)
 
-    def _iter_python_files_under_dir(self, base_dir: Path, *, exclude: list[str]) -> Iterable[Path]:
+    def _iter_python_files_under_dir(
+        self, base_dir: Path, *, exclude: list[str]
+    ) -> Iterable[Path]:
         default_exclude_parts = {
             ".git",
             ".hg",
             ".svn",
             ".venv",
             "venv",
-            "__init__.py"
-            "__pycache__",
+            "__init__.py__pycache__",
             ".mypy_cache",
             ".pytest_cache",
-            ".ipynb_checkpoints"
+            ".ipynb_checkpoints",
         }
 
         def _should_exclude(p: Path) -> bool:
@@ -203,13 +188,16 @@ class TableBuilderBase(ABC):
                 #      --exclude "src/simstack/models"
                 #      --exclude "**/generated/**"
                 #      --exclude "*.generated.py"
-                if fnmatch.fnmatch(rel_posix, ex) or fnmatch.fnmatch(rel_posix, ex.rstrip("/") + "/*"):
+                if fnmatch.fnmatch(rel_posix, ex) or fnmatch.fnmatch(
+                    rel_posix, ex.rstrip("/") + "/*"
+                ):
                     return True
 
                 # 3) Also allow Windows-ish inputs like "a\\b\\c" by normalizing to posix.
                 ex_posix = ex.replace("\\", "/")
                 if ex_posix != ex and (
-                    fnmatch.fnmatch(rel_posix, ex_posix) or fnmatch.fnmatch(rel_posix, ex_posix.rstrip("/") + "/*")
+                    fnmatch.fnmatch(rel_posix, ex_posix)
+                    or fnmatch.fnmatch(rel_posix, ex_posix.rstrip("/") + "/*")
                 ):
                     return True
 
@@ -241,7 +229,11 @@ class TableBuilderBase(ABC):
             self.logger.error("Skipping %s because module import returned None", file_path)
             return
         if module.__name__ in self._processed_modules:
-            self.logger.debug("Skipping %s because module %s was already processed", file_path, module.__name__)
+            self.logger.debug(
+                "Skipping %s because module %s was already processed",
+                file_path,
+                module.__name__,
+            )
             return
         await self._process_module(module, drops)
         self._processed_modules.add(module.__name__)
@@ -252,107 +244,9 @@ class TableBuilderBase(ABC):
         raise NotImplementedError
 
     async def second_stage(self, drops: str) -> None:
-        """ an optional hook to run after all modules have been processed"""
+        """an optional hook to run after all modules have been processed"""
         pass
 
     async def clear_table(self) -> None:
-        """ an optional hook to clear the table before building """
+        """an optional hook to clear the table before building"""
         pass
-
-    @classmethod
-    def cli_main(cls, builder_cls: Type["TableBuilderBase"], write_schema: bool = False) -> None:
-        """
-        Reusable CLI entry point.
-
-        Options:
-          --dir RELPATH   (repeatable) Directories (relative to CWD) to scan for *.py files.
-                         If omitted, entry points are used, plus deprecated
-                         config.toml active_dirs when present. CWD is not scanned.
-          --drops STRING  Drops prefix (string) applied while processing these CLI dirs.
-          -v/--verbose    -v sets INFO (lists each entry point as it is scanned);
-                          -vv sets DEBUG.
-        """
-        parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "-v",
-            "--verbose",
-            action="count",
-            default=0,
-            help="Increase logging verbosity: -v INFO, -vv DEBUG.",
-        )
-        parser.add_argument(
-            "--dir",
-            dest="dirs",
-            action="append",
-            default=[],
-            help=(
-                "Path to scan (repeatable). If omitted, only entry points and "
-                "deprecated config.toml active_dirs are scanned; CWD is not."
-            ),
-        )
-        parser.add_argument(
-            "--exclude",
-            dest="exclude",
-            action="append",
-            default=[],
-            help=(
-                "Exclude a directory/name/glob from scanning (repeatable). "
-          
-                "Examples: --exclude .venv --exclude __pycache__ --exclude src/simstack/models --exclude '*.generated.py'"
-            ),
-        )
-        parser.add_argument(
-            "--drops",
-            dest="drops",
-            default="",
-            help="Drops prefix used when processing CLI dirs (string).",
-        )
-        parser.add_argument(
-            "--write-schema",
-            dest="write_schema",
-            action="store_true",
-            help="Enable schema writing.",
-        )
-        parser.add_argument(
-            "--ignore-entrypoints",
-            dest="ignore_entrypoints",
-            action="store_true",
-            help="Do not scan for modules registered via entrypoints.",
-        )
-        parser.add_argument(
-            "--clear",
-            dest="clear",
-            action="store_true",
-            help="Clear the table before building.",
-        )
-
-        args = parser.parse_args()
-
-        level = logging.WARNING
-        if args.verbose == 1:
-            level = logging.INFO
-        elif args.verbose >= 2:
-            level = logging.DEBUG
-
-        # Resolve --dir arguments relative to the current working directory.
-        # An omitted --dir must not fall back to scanning CWD.
-        dirs = [Path.cwd() / d for d in args.dirs] if args.dirs else []
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        logging.getLogger("pymongo").setLevel(logging.INFO)
-
-        async def _run() -> None:
-            await context.initialize(log_level=level, resource="self")
-            builder = builder_cls(context.db, write_schema=args.write_schema)
-            await builder.build(
-                dirs=dirs,
-                drops=args.drops,
-                exclude=args.exclude,
-                clear=args.clear,
-                ignore_entrypoints=args.ignore_entrypoints,
-            )
-            await builder.second_stage(args.drops)
-        loop.run_until_complete(_run())
-        loop.close()

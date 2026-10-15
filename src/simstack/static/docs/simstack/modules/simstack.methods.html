@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="simstack.models package" href="simstack.models.html"><link rel="prev" title="simstack.core.services package" href="simstack.core.services.html">
+<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="simstack.models package" href="simstack.models.html"><link rel="prev" title="simstack.domain package" href="simstack.domain.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
         <title>simstack.methods package - SimStack II documentation</title>
@@ -12,15 +12,15 @@
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../../_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="../../_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -32,7 +32,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -44,17 +44,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -193,10 +193,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -216,8 +216,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../database_migrations.html">Database Migrations</a></li>
@@ -228,12 +226,31 @@
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 current has-children"><a class="reference internal" href="modules.html">simstack</a><input aria-label="Toggle navigation of simstack" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2 current has-children"><a class="reference internal" href="simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3 current current-page"><a class="current reference internal" href="#">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -246,7 +263,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -283,248 +300,18 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">¶</a></h2>
 </section>
-<section id="module-simstack.methods.archive_files">
-<span id="simstack-methods-archive-files-module"></span><h2>simstack.methods.archive_files module<a class="headerlink" href="#module-simstack.methods.archive_files" title="Link to this heading">¶</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.archive_files.</span></span><span class="sig-name descname"><span class="pre">ArchiveConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">call_paths</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">archive_resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'archive_resource'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_time_window</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_datetime</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_datetime</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_patterns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_patterns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_by_resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ObjectId</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/archive_files.html#ArchiveConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.archive_resource">
-<span class="sig-name descname"><span class="pre">archive_resource</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.archive_resource" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.call_paths">
-<span class="sig-name descname"><span class="pre">call_paths</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.call_paths" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.custom_model_dump">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">custom_model_dump</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.custom_model_dump" title="Link to this definition">¶</a></dt>
-<dd><p>Custom model dump method to handle the conversion of model instances to dictionaries.
-This method recursively traverses dictionaries and lists to convert any nested
-model instances to their dictionary representation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>self</strong> – The model instance</p></li>
-<li><p><strong>kwargs</strong> – Additional keyword arguments</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A dictionary representation of the model instance</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.end_date">
-<span class="sig-name descname"><span class="pre">end_date</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_datetime</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.end_date" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.exclude_patterns">
-<span class="sig-name descname"><span class="pre">exclude_patterns</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.exclude_patterns" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.filter_by_resource">
-<span class="sig-name descname"><span class="pre">filter_by_resource</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.filter_by_resource" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.from_dict">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.from_dict" title="Link to this definition">¶</a></dt>
-<dd><p>Create an instance of the model from a dictionary.
-Handles nested models and enum values.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.from_model">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Model</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Model</span></span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.from_model" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.id">
-<span class="sig-name descname"><span class="pre">id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectId</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.id" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.in_memory">
-<span class="sig-name descname"><span class="pre">in_memory</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.in_memory" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.include_patterns">
-<span class="sig-name descname"><span class="pre">include_patterns</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.include_patterns" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.json_schema">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">json_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.json_schema" title="Link to this definition">¶</a></dt>
-<dd><p>Generates a JSON schema for the given class and its fields, but eliminates
-all fields which are models, embedded models, or references to models.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>cls</strong></p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.min_size">
-<span class="sig-name descname"><span class="pre">min_size</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.min_size" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.model_config">
-<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">False,</span> <span class="pre">'collection':</span> <span class="pre">'archive_config',</span> <span class="pre">'extra':</span> <span class="pre">None,</span> <span class="pre">'indexes':</span> <span class="pre">None,</span> <span class="pre">'json_schema_extra':</span> <span class="pre">None,</span> <span class="pre">'parse_doc_with_default_factories':</span> <span class="pre">False,</span> <span class="pre">'str_strip_whitespace':</span> <span class="pre">False,</span> <span class="pre">'title':</span> <span class="pre">None,</span> <span class="pre">'validate_assignment':</span> <span class="pre">True,</span> <span class="pre">'validate_default':</span> <span class="pre">True}</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.model_config" title="Link to this definition">¶</a></dt>
-<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.start_date">
-<span class="sig-name descname"><span class="pre">start_date</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_datetime</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.start_date" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.ui_make_title">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_make_title</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ui_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.ui_make_title" title="Link to this definition">¶</a></dt>
-<dd><p>Adds a title to the JSON schema.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cls</strong> – The class to which the JSON schema belongs</p></li>
-<li><p><strong>ui_schema</strong> – The original ui_schema schema</p></li>
-<li><p><strong>title</strong> – Title to be added</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Modified JSON schema with title</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.ui_schema">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.ui_schema" title="Link to this definition">¶</a></dt>
-<dd><p>Generates a UI schema that uses GenericForm for fields with ui_schema function.
-Also preserves any existing UI schema configurations from the class.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>cls</strong> – The model class to generate UI schema for</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The generated UI schema</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>dict</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.ArchiveConfig.use_time_window">
-<span class="sig-name descname"><span class="pre">use_time_window</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.archive_files.ArchiveConfig.use_time_window" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.archive_file">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.archive_files.</span></span><span class="sig-name descname"><span class="pre">archive_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_stack</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.files.FileStack" title="simstack.models.files.FileStack"><span class="pre">FileStack</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/archive_files.html#archive_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.archive_files.archive_file" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.archive_files">
-<span class="sig-prename descclassname"><span class="pre">simstack.methods.archive_files.</span></span><span class="sig-name descname"><span class="pre">archive_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.file_list.FileList" title="simstack.models.file_list.FileList"><span class="pre">FileList</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/archive_files.html#archive_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.archive_files.archive_files" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.archive_node">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.archive_files.</span></span><span class="sig-name descname"><span class="pre">archive_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">archive_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig" title="simstack.methods.archive_files.ArchiveConfig"><span class="pre">ArchiveConfig</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/archive_files.html#archive_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.archive_files.archive_node" title="Link to this definition">¶</a></dt>
-<dd><p>Archives FileStacks matching the criteria in archive_config and deletes local instances upon success.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>archive_config</strong> (<a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig" title="simstack.methods.archive_files.ArchiveConfig"><em>ArchiveConfig</em></a>) – Configuration for the archive process.</p></li>
-<li><p><strong>**kwargs</strong> – Additional arguments.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="simstack.methods.archive_files.archive_one_file">
-<span class="sig-prename descclassname"><span class="pre">simstack.methods.archive_files.</span></span><span class="sig-name descname"><span class="pre">archive_one_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_stack</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.files.FileStack" title="simstack.models.files.FileStack"><span class="pre">FileStack</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/archive_files.html#archive_one_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.archive_files.archive_one_file" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</section>
-<section id="module-simstack.methods.fire_and_forget_runner">
-<span id="simstack-methods-fire-and-forget-runner-module"></span><h2>simstack.methods.fire_and_forget_runner module<a class="headerlink" href="#module-simstack.methods.fire_and_forget_runner" title="Link to this heading">¶</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="simstack.methods.fire_and_forget_runner.FireAndForgetRunner">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.fire_and_forget_runner.</span></span><span class="sig-name descname"><span class="pre">FireAndForgetRunner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">node:</span> <span class="pre">~typing.Callable[[...],</span> <span class="pre">~typing.Any],</span> <span class="pre">max_concurrency:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">*,</span> <span class="pre">status:</span> <span class="pre">~simstack.core.definitions.TaskStatus</span> <span class="pre">=</span> <span class="pre">TaskStatus.RETRIEVED,</span> <span class="pre">error_message:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">message:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">files:</span> <span class="pre">~typing.List[~simstack.models.files.FileStack]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">info_files:</span> <span class="pre">~typing.List[~simstack.models.files.FileStack]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">**kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/fire_and_forget_runner.html#FireAndForgetRunner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.fire_and_forget_runner.FireAndForgetRunner" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="simstack.core.html#simstack.core.node_runner.NodeRunner" title="simstack.core.node_runner.NodeRunner"><code class="xref py py-class docutils literal notranslate"><span class="pre">NodeRunner</span></code></a></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.fire_and_forget_runner.FireAndForgetRunner.create_tasks">
-<span class="sig-name descname"><span class="pre">create_tasks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Model</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/fire_and_forget_runner.html#FireAndForgetRunner.create_tasks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.fire_and_forget_runner.FireAndForgetRunner.create_tasks" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.fire_and_forget_runner.FireAndForgetRunner.model_config">
-<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'extra':</span> <span class="pre">'allow'}</span></span><a class="headerlink" href="#simstack.methods.fire_and_forget_runner.FireAndForgetRunner.model_config" title="Link to this definition">¶</a></dt>
-<dd><p>Represents the results from a Simstack operation.</p>
-<p>This class serves to encapsulate the status, messages, and files resulting
-from a Simstack operation. It provides structured attributes for the error
-message, operation message, and categorized files, ensuring clarity in the
-representation of these aspects. It also supports additional fields through
-flexible configuration.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Variables<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>status</strong> – Indicates the status of the task, defaulting to <cite>TaskStatus.COMPLETED</cite>.</p></li>
-<li><p><strong>error_message</strong> – Optionally stores an error message if the task encountered issues.</p></li>
-<li><p><strong>message</strong> – An optional general message providing additional information about the task.</p></li>
-<li><p><strong>files</strong> – A list of <cite>FileStack</cite> objects that represent the primary files involved in
-the operation. Defaults to an empty list.</p></li>
-<li><p><strong>info_files</strong> – A list of <cite>FileStack</cite> objects that provide additional or informational
-files pertaining to the operation. Defaults to an empty list. These files are shown in the results
-but not passed to the calling function</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-</section>
 <section id="module-simstack.methods.generate_test">
 <span id="simstack-methods-generate-test-module"></span><h2>simstack.methods.generate_test module<a class="headerlink" href="#module-simstack.methods.generate_test" title="Link to this heading">¶</a></h2>
 <dl class="py function">
-<dt class="sig sig-object py" id="simstack.methods.generate_test.async_main">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.generate_test.</span></span><span class="sig-name descname"><span class="pre">async_main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/generate_test.html#async_main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.generate_test.async_main" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="simstack.methods.generate_test.generate_test">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.generate_test.</span></span><span class="sig-name descname"><span class="pre">generate_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/generate_test.html#generate_test"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.generate_test.generate_test" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.generate_test.</span></span><span class="sig-name descname"><span class="pre">generate_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">repository</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.persistence.html#simstack.persistence.ports.Repository" title="simstack.persistence.ports.Repository"><span class="pre">Repository</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">workdir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/simstack/methods/generate_test.html#generate_test"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.generate_test.generate_test" title="Link to this definition">¶</a></dt>
 <dd><p>Generate a test case for a given node ID.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="simstack.methods.generate_test.generate_test_main">
-<span class="sig-prename descclassname"><span class="pre">simstack.methods.generate_test.</span></span><span class="sig-name descname"><span class="pre">generate_test_main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/generate_test.html#generate_test_main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.generate_test.generate_test_main" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="simstack.methods.generate_test.load_models">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.generate_test.</span></span><span class="sig-name descname"><span class="pre">load_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">references</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="simstack.models.html#simstack.models.named_data_reference.NamedDataReference" title="simstack.models.named_data_reference.NamedDataReference"><span class="pre">NamedDataReference</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/simstack/methods/generate_test.html#load_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.generate_test.load_models" title="Link to this definition">¶</a></dt>
-<dd><p>Load models from the database based on references.</p>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.generate_test.</span></span><span class="sig-name descname"><span class="pre">load_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">references</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="simstack.models.html#simstack.models.named_data_reference.NamedDataReference" title="simstack.models.named_data_reference.NamedDataReference"><span class="pre">NamedDataReference</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repository</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.persistence.html#simstack.persistence.ports.Repository" title="simstack.persistence.ports.Repository"><span class="pre">Repository</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/simstack/methods/generate_test.html#load_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.generate_test.load_models" title="Link to this definition">¶</a></dt>
+<dd><p>Load models from an explicitly supplied repository.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -532,377 +319,6 @@ but not passed to the calling function</p></li>
 <span class="sig-prename descclassname"><span class="pre">simstack.methods.generate_test.</span></span><span class="sig-name descname"><span class="pre">serialize_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../_modules/simstack/methods/generate_test.html#serialize_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.generate_test.serialize_models" title="Link to this definition">¶</a></dt>
 <dd><p>Serialize models to a JSON string.</p>
 </dd></dl>
-
-</section>
-<section id="module-simstack.methods.get_file">
-<span id="simstack-methods-get-file-module"></span><h2>simstack.methods.get_file module<a class="headerlink" href="#module-simstack.methods.get_file" title="Link to this heading">¶</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="simstack.methods.get_file.get_file">
-<span class="sig-prename descclassname"><span class="pre">simstack.methods.get_file.</span></span><span class="sig-name descname"><span class="pre">get_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_getter_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.files.FileGetterArgs" title="simstack.models.files.FileGetterArgs"><span class="pre">FileGetterArgs</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="simstack.models.html#simstack.models.files.FileStack" title="simstack.models.files.FileStack"><span class="pre">FileStack</span></a></span></span><a class="reference internal" href="../../_modules/simstack/methods/get_file.html#get_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.get_file.get_file" title="Link to this definition">¶</a></dt>
-<dd><p>Retrieves a file from a given source and saves it to the specified target path.</p>
-<p>This function is responsible for handling the retrieval of files from a
-FileStack source and storing them to a local resource’s target location.
-It will update the FileStack</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>file_getter_args</strong> (<a class="reference internal" href="simstack.models.html#simstack.models.files.FileGetterArgs" title="simstack.models.files.FileGetterArgs"><em>FileGetterArgs</em></a>) – The arguments for the file retrieval operation.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The modified FileStack with the local resource.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="simstack.models.html#simstack.models.files.FileStack" title="simstack.models.files.FileStack">FileStack</a></p>
-</dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>NotImplementedError</strong> – If the function is not yet implemented.</p>
-</dd>
-</dl>
-</dd></dl>
-
-</section>
-<section id="module-simstack.methods.mass_runner">
-<span id="simstack-methods-mass-runner-module"></span><h2>simstack.methods.mass_runner module<a class="headerlink" href="#module-simstack.methods.mass_runner" title="Link to this heading">¶</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="simstack.methods.mass_runner.MassRunner">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.mass_runner.</span></span><span class="sig-name descname"><span class="pre">MassRunner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">node:</span> <span class="pre">~typing.Callable[[...],</span> <span class="pre">~typing.Any],</span> <span class="pre">max_concurrency:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">*,</span> <span class="pre">status:</span> <span class="pre">~simstack.core.definitions.TaskStatus</span> <span class="pre">=</span> <span class="pre">TaskStatus.RETRIEVED,</span> <span class="pre">error_message:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">message:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">files:</span> <span class="pre">~typing.List[~simstack.models.files.FileStack]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">info_files:</span> <span class="pre">~typing.List[~simstack.models.files.FileStack]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">**kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/mass_runner.html#MassRunner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.mass_runner.MassRunner" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="simstack.core.html#simstack.core.node_runner.NodeRunner" title="simstack.core.node_runner.NodeRunner"><code class="xref py py-class docutils literal notranslate"><span class="pre">NodeRunner</span></code></a></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.mass_runner.MassRunner.create_tasks">
-<span class="sig-name descname"><span class="pre">create_tasks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Model</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/mass_runner.html#MassRunner.create_tasks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.mass_runner.MassRunner.create_tasks" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.mass_runner.MassRunner.model_config">
-<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'extra':</span> <span class="pre">'allow'}</span></span><a class="headerlink" href="#simstack.methods.mass_runner.MassRunner.model_config" title="Link to this definition">¶</a></dt>
-<dd><p>Represents the results from a Simstack operation.</p>
-<p>This class serves to encapsulate the status, messages, and files resulting
-from a Simstack operation. It provides structured attributes for the error
-message, operation message, and categorized files, ensuring clarity in the
-representation of these aspects. It also supports additional fields through
-flexible configuration.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Variables<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>status</strong> – Indicates the status of the task, defaulting to <cite>TaskStatus.COMPLETED</cite>.</p></li>
-<li><p><strong>error_message</strong> – Optionally stores an error message if the task encountered issues.</p></li>
-<li><p><strong>message</strong> – An optional general message providing additional information about the task.</p></li>
-<li><p><strong>files</strong> – A list of <cite>FileStack</cite> objects that represent the primary files involved in
-the operation. Defaults to an empty list.</p></li>
-<li><p><strong>info_files</strong> – A list of <cite>FileStack</cite> objects that provide additional or informational
-files pertaining to the operation. Defaults to an empty list. These files are shown in the results
-but not passed to the calling function</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.mass_runner.MassRunner.recover_orphaned_datasets">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">recover_orphaned_datasets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/mass_runner.html#MassRunner.recover_orphaned_datasets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.mass_runner.MassRunner.recover_orphaned_datasets" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-</section>
-<section id="module-simstack.methods.multiple_executor">
-<span id="simstack-methods-multiple-executor-module"></span><h2>simstack.methods.multiple_executor module<a class="headerlink" href="#module-simstack.methods.multiple_executor" title="Link to this heading">¶</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.multiple_executor.</span></span><span class="sig-name descname"><span class="pre">MultipleExecutorInput</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">function_mapping:</span> <span class="pre">str,</span> <span class="pre">input_mappings:</span> <span class="pre">list[str],</span> <span class="pre">result_mapping:</span> <span class="pre">str,</span> <span class="pre">timeout:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">600,</span> <span class="pre">inputs_data:</span> <span class="pre">list[list[~odmantic.bson.ObjectId]]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">id:</span> <span class="pre">~odmantic.bson.ObjectId</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#MultipleExecutorInput"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">T</span></code>]</p>
-<p>Represents a MultipleExecutor which handles multiple calculations in parallel and aggregates the results.
-# TODO store the inputs as ids not in memory</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.append">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">append</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">T</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#MultipleExecutorInput.append"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.append" title="Link to this definition">¶</a></dt>
-<dd><p>Add the inputs for a single function call</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.custom_model_dump">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">custom_model_dump</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.custom_model_dump" title="Link to this definition">¶</a></dt>
-<dd><p>Custom model dump method to handle the conversion of model instances to dictionaries.
-This method recursively traverses dictionaries and lists to convert any nested
-model instances to their dictionary representation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>self</strong> – The model instance</p></li>
-<li><p><strong>kwargs</strong> – Additional keyword arguments</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A dictionary representation of the model instance</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.execute">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput" title="simstack.methods.multiple_executor.MultipleExecutorOutput"><span class="pre">MultipleExecutorOutput</span></a></span></span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#MultipleExecutorInput.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.execute" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.from_dict">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.from_dict" title="Link to this definition">¶</a></dt>
-<dd><p>Create an instance of the model from a dictionary.
-Handles nested models and enum values.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.from_function">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">R</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#MultipleExecutorInput.from_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.from_function" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.from_model">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Model</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Model</span></span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.from_model" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.function_mapping">
-<span class="sig-name descname"><span class="pre">function_mapping</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.function_mapping" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.id">
-<span class="sig-name descname"><span class="pre">id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectId</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.id" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.input_generator">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">input_generator</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">AsyncGenerator</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Model</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#MultipleExecutorInput.input_generator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.input_generator" title="Link to this definition">¶</a></dt>
-<dd><p>Deserialize the input models</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.input_mappings">
-<span class="sig-name descname"><span class="pre">input_mappings</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.input_mappings" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.inputs_data">
-<span class="sig-name descname"><span class="pre">inputs_data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">ObjectId</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.inputs_data" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.json_schema">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">json_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.json_schema" title="Link to this definition">¶</a></dt>
-<dd><p>Generates a JSON schema for the given class and its fields, but eliminates
-all fields which are models, embedded models, or references to models.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>cls</strong></p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.model_config">
-<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">False,</span> <span class="pre">'collection':</span> <span class="pre">None,</span> <span class="pre">'extra':</span> <span class="pre">None,</span> <span class="pre">'indexes':</span> <span class="pre">None,</span> <span class="pre">'json_schema_extra':</span> <span class="pre">None,</span> <span class="pre">'parse_doc_with_default_factories':</span> <span class="pre">False,</span> <span class="pre">'str_strip_whitespace':</span> <span class="pre">False,</span> <span class="pre">'title':</span> <span class="pre">None,</span> <span class="pre">'validate_assignment':</span> <span class="pre">True,</span> <span class="pre">'validate_default':</span> <span class="pre">True}</span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.model_config" title="Link to this definition">¶</a></dt>
-<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.result_mapping">
-<span class="sig-name descname"><span class="pre">result_mapping</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.result_mapping" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.timeout">
-<span class="sig-name descname"><span class="pre">timeout</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.timeout" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.ui_base_schema">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_base_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#MultipleExecutorInput.ui_base_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.ui_base_schema" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.ui_make_title">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_make_title</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ui_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.ui_make_title" title="Link to this definition">¶</a></dt>
-<dd><p>Adds a title to the JSON schema.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cls</strong> – The class to which the JSON schema belongs</p></li>
-<li><p><strong>ui_schema</strong> – The original ui_schema schema</p></li>
-<li><p><strong>title</strong> – Title to be added</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Modified JSON schema with title</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorInput.ui_schema">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorInput.ui_schema" title="Link to this definition">¶</a></dt>
-<dd><p>Generates a UI schema that uses GenericForm for fields with ui_schema function.
-Also preserves any existing UI schema configurations from the class.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>cls</strong> – The model class to generate UI schema for</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The generated UI schema</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>dict</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.multiple_executor.</span></span><span class="sig-name descname"><span class="pre">MultipleExecutorOutput</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">executor_input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput" title="simstack.methods.multiple_executor.MultipleExecutorInput"><span class="pre">MultipleExecutorInput</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">result_mapping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">ObjectId</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ObjectId</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#MultipleExecutorOutput"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">T</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">R</span></code>]</p>
-<p>Represents the output of a MultipleExecutor.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.custom_model_dump">
-<span class="sig-name descname"><span class="pre">custom_model_dump</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#MultipleExecutorOutput.custom_model_dump"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.custom_model_dump" title="Link to this definition">¶</a></dt>
-<dd><p>Retrieve all results and return them as a list of dictionaries.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.executor_input">
-<span class="sig-name descname"><span class="pre">executor_input</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput" title="simstack.methods.multiple_executor.MultipleExecutorInput"><span class="pre">MultipleExecutorInput</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.executor_input" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.from_dict">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.from_dict" title="Link to this definition">¶</a></dt>
-<dd><p>Create an instance of the model from a dictionary.
-Handles nested models and enum values.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.from_model">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Model</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Model</span></span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.from_model" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.id">
-<span class="sig-name descname"><span class="pre">id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectId</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.id" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.json_schema">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">json_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#MultipleExecutorOutput.json_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.json_schema" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.make_table">
-<span class="sig-name descname"><span class="pre">make_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#MultipleExecutorOutput.make_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.make_table" title="Link to this definition">¶</a></dt>
-<dd><p>Create a table representation of the results with formatted columns.
-Returns a dictionary with table data and column definitions.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.model_config">
-<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">False,</span> <span class="pre">'collection':</span> <span class="pre">None,</span> <span class="pre">'extra':</span> <span class="pre">None,</span> <span class="pre">'indexes':</span> <span class="pre">None,</span> <span class="pre">'json_schema_extra':</span> <span class="pre">None,</span> <span class="pre">'parse_doc_with_default_factories':</span> <span class="pre">False,</span> <span class="pre">'str_strip_whitespace':</span> <span class="pre">False,</span> <span class="pre">'title':</span> <span class="pre">None,</span> <span class="pre">'validate_assignment':</span> <span class="pre">True,</span> <span class="pre">'validate_default':</span> <span class="pre">True}</span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.model_config" title="Link to this definition">¶</a></dt>
-<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.result_generator">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">result_generator</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">AsyncGenerator</span><span class="p"><span class="pre">[</span></span><span class="pre">R</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#MultipleExecutorOutput.result_generator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.result_generator" title="Link to this definition">¶</a></dt>
-<dd><p>Deserialize the result models</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.result_ids">
-<span class="sig-name descname"><span class="pre">result_ids</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">ObjectId</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.result_ids" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.result_mapping">
-<span class="sig-name descname"><span class="pre">result_mapping</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;odmantic.field.FieldProxy</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.result_mapping" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.ui_make_title">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_make_title</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ui_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.ui_make_title" title="Link to this definition">¶</a></dt>
-<dd><p>Adds a title to the JSON schema.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cls</strong> – The class to which the JSON schema belongs</p></li>
-<li><p><strong>ui_schema</strong> – The original ui_schema schema</p></li>
-<li><p><strong>title</strong> – Title to be added</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Modified JSON schema with title</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.MultipleExecutorOutput.ui_schema">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ui_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.ui_schema" title="Link to this definition">¶</a></dt>
-<dd><p>Generates a UI schema that uses GenericForm for fields with ui_schema function.
-Also preserves any existing UI schema configurations from the class.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>cls</strong> – The model class to generate UI schema for</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The generated UI schema</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>dict</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.PrefixFilter">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.multiple_executor.</span></span><span class="sig-name descname"><span class="pre">PrefixFilter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#PrefixFilter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.PrefixFilter" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Filter</span></code></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.PrefixFilter.filter">
-<span class="sig-name descname"><span class="pre">filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#PrefixFilter.filter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.PrefixFilter.filter" title="Link to this definition">¶</a></dt>
-<dd><p>Determine if the specified record is to be logged.</p>
-<p>Returns True if the record should be logged, or False otherwise.
-If deemed appropriate, the record may be modified in-place.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.async_adder">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.multiple_executor.</span></span><span class="sig-name descname"><span class="pre">async_adder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.base_types.BinaryOperationInput" title="simstack.models.base_types.BinaryOperationInput"><span class="pre">BinaryOperationInput</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="simstack.models.html#simstack.models.base_types.FloatData" title="simstack.models.base_types.FloatData"><span class="pre">FloatData</span></a></span></span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#async_adder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.async_adder" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.get_mappings">
-<span class="sig-prename descclassname"><span class="pre">simstack.methods.multiple_executor.</span></span><span class="sig-name descname"><span class="pre">get_mappings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">Model</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Model</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#get_mappings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.get_mappings" title="Link to this definition">¶</a></dt>
-<dd><p>Decorator to map a function to a model.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.main">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.multiple_executor.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.main" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.multiple_executor">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simstack.methods.multiple_executor.</span></span><span class="sig-name descname"><span class="pre">multiple_executor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">executor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput" title="simstack.methods.multiple_executor.MultipleExecutorInput"><span class="pre">MultipleExecutorInput</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput" title="simstack.methods.multiple_executor.MultipleExecutorOutput"><span class="pre">MultipleExecutorOutput</span></a></span></span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#multiple_executor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.multiple_executor" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="simstack.methods.multiple_executor.multiple_executor_adder">
-<span class="sig-prename descclassname"><span class="pre">simstack.methods.multiple_executor.</span></span><span class="sig-name descname"><span class="pre">multiple_executor_adder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.base_types.BinaryOperationInput" title="simstack.models.base_types.BinaryOperationInput"><span class="pre">BinaryOperationInput</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack.models.html#simstack.models.base_types.BinaryOperationInput" title="simstack.models.base_types.BinaryOperationInput"><span class="pre">BinaryOperationInput</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="simstack.models.html#simstack.models.base_types.BinaryOperationInput" title="simstack.models.base_types.BinaryOperationInput"><span class="pre">BinaryOperationInput</span></a></span></span><a class="reference internal" href="../../_modules/simstack/methods/multiple_executor.html#multiple_executor_adder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.methods.multiple_executor.multiple_executor_adder" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
 
 </section>
 <section id="module-simstack.methods.switch_git">
@@ -959,7 +375,7 @@ the extracted files or the original file if it is not an archive.</p>
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
           <a class="next-page" href="simstack.models.html">
               <div class="page-info">
@@ -970,15 +386,15 @@ the extracted files or the original file if it is not an archive.</p>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="simstack.core.services.html">
+          <a class="prev-page" href="simstack.domain.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
-                
-                <div class="title">simstack.core.services package</div>
-                
+
+                <div class="title">simstack.domain package</div>
+
               </div>
             </a>
         </div>
@@ -988,20 +404,20 @@ the extracted files or the original file if it is not an archive.</p>
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer">
-      
-      
+
+
       <div class="toc-sticky toc-scroll">
         <div class="toc-title-container">
           <span class="toc-title">
@@ -1013,110 +429,10 @@ the extracted files or the original file if it is not an archive.</p>
             <ul>
 <li><a class="reference internal" href="#">simstack.methods package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#module-simstack.methods.archive_files">simstack.methods.archive_files module</a><ul>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig</span></code></a><ul>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.archive_resource"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.archive_resource</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.call_paths"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.call_paths</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.custom_model_dump()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.end_date"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.end_date</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.exclude_patterns"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.exclude_patterns</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.filter_by_resource"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.filter_by_resource</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.from_dict"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.from_dict()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.from_model"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.from_model()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.id"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.id</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.in_memory"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.in_memory</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.include_patterns"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.include_patterns</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.json_schema"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.json_schema()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.min_size"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.min_size</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.model_config"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.model_config</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.start_date"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.start_date</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.ui_make_title"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.ui_make_title()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.ui_schema"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.ui_schema()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.ArchiveConfig.use_time_window"><code class="docutils literal notranslate"><span class="pre">ArchiveConfig.use_time_window</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.archive_file"><code class="docutils literal notranslate"><span class="pre">archive_file()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.archive_files"><code class="docutils literal notranslate"><span class="pre">archive_files()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.archive_node"><code class="docutils literal notranslate"><span class="pre">archive_node()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.archive_files.archive_one_file"><code class="docutils literal notranslate"><span class="pre">archive_one_file()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#module-simstack.methods.fire_and_forget_runner">simstack.methods.fire_and_forget_runner module</a><ul>
-<li><a class="reference internal" href="#simstack.methods.fire_and_forget_runner.FireAndForgetRunner"><code class="docutils literal notranslate"><span class="pre">FireAndForgetRunner</span></code></a><ul>
-<li><a class="reference internal" href="#simstack.methods.fire_and_forget_runner.FireAndForgetRunner.create_tasks"><code class="docutils literal notranslate"><span class="pre">FireAndForgetRunner.create_tasks()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.fire_and_forget_runner.FireAndForgetRunner.model_config"><code class="docutils literal notranslate"><span class="pre">FireAndForgetRunner.model_config</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
 <li><a class="reference internal" href="#module-simstack.methods.generate_test">simstack.methods.generate_test module</a><ul>
-<li><a class="reference internal" href="#simstack.methods.generate_test.async_main"><code class="docutils literal notranslate"><span class="pre">async_main()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.methods.generate_test.generate_test"><code class="docutils literal notranslate"><span class="pre">generate_test()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.generate_test.generate_test_main"><code class="docutils literal notranslate"><span class="pre">generate_test_main()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.methods.generate_test.load_models"><code class="docutils literal notranslate"><span class="pre">load_models()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.methods.generate_test.serialize_models"><code class="docutils literal notranslate"><span class="pre">serialize_models()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#module-simstack.methods.get_file">simstack.methods.get_file module</a><ul>
-<li><a class="reference internal" href="#simstack.methods.get_file.get_file"><code class="docutils literal notranslate"><span class="pre">get_file()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#module-simstack.methods.mass_runner">simstack.methods.mass_runner module</a><ul>
-<li><a class="reference internal" href="#simstack.methods.mass_runner.MassRunner"><code class="docutils literal notranslate"><span class="pre">MassRunner</span></code></a><ul>
-<li><a class="reference internal" href="#simstack.methods.mass_runner.MassRunner.create_tasks"><code class="docutils literal notranslate"><span class="pre">MassRunner.create_tasks()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.mass_runner.MassRunner.model_config"><code class="docutils literal notranslate"><span class="pre">MassRunner.model_config</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.mass_runner.MassRunner.recover_orphaned_datasets"><code class="docutils literal notranslate"><span class="pre">MassRunner.recover_orphaned_datasets()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li><a class="reference internal" href="#module-simstack.methods.multiple_executor">simstack.methods.multiple_executor module</a><ul>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput</span></code></a><ul>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.append"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.append()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.custom_model_dump()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.execute"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.execute()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.from_dict"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.from_dict()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.from_function"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.from_function()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.from_model"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.from_model()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.function_mapping"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.function_mapping</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.id"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.id</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.input_generator"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.input_generator()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.input_mappings"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.input_mappings</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.inputs_data"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.inputs_data</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.json_schema"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.json_schema()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.model_config"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.model_config</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.result_mapping"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.result_mapping</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.timeout"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.timeout</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.ui_base_schema"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.ui_base_schema()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.ui_make_title"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.ui_make_title()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorInput.ui_schema"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorInput.ui_schema()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput</span></code></a><ul>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.custom_model_dump"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.custom_model_dump()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.executor_input"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.executor_input</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.from_dict"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.from_dict()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.from_model"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.from_model()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.id"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.id</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.json_schema"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.json_schema()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.make_table"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.make_table()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.model_config"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.model_config</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.result_generator"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.result_generator()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.result_ids"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.result_ids</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.result_mapping"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.result_mapping</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.ui_make_title"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.ui_make_title()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.MultipleExecutorOutput.ui_schema"><code class="docutils literal notranslate"><span class="pre">MultipleExecutorOutput.ui_schema()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.PrefixFilter"><code class="docutils literal notranslate"><span class="pre">PrefixFilter</span></code></a><ul>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.PrefixFilter.filter"><code class="docutils literal notranslate"><span class="pre">PrefixFilter.filter()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.async_adder"><code class="docutils literal notranslate"><span class="pre">async_adder()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.get_mappings"><code class="docutils literal notranslate"><span class="pre">get_mappings()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.multiple_executor"><code class="docutils literal notranslate"><span class="pre">multiple_executor()</span></code></a></li>
-<li><a class="reference internal" href="#simstack.methods.multiple_executor.multiple_executor_adder"><code class="docutils literal notranslate"><span class="pre">multiple_executor_adder()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-simstack.methods.switch_git">simstack.methods.switch_git module</a><ul>
@@ -1137,14 +453,14 @@ the extracted files or the original file if it is not an archive.</p>
           </div>
         </div>
       </div>
-      
-      
+
+
     </aside>
   </div>
 </div><script src="../../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

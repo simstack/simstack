@@ -9,11 +9,12 @@ class DocstringParser:
 
     All component getters return None when the corresponding section is not present.
     Supported sections:
-      - Args: / Parameters:
-      - Returns:
-      - SimstackResult:
-      - CalledNodes:
-      - Raises:
+
+    - ``Args:`` / ``Parameters:``
+    - ``Returns:``
+    - ``SimstackResult:``
+    - ``CalledNodes:``
+    - ``Raises:``
     """
 
     _SECTION_NAMES = ("Args:", "Parameters:", "Returns:", "SimstackResult:", "CalledNodes:", "Raises:")

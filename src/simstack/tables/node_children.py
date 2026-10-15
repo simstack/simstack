@@ -1,7 +1,6 @@
 import ast
 import importlib
 import inspect
-import os
 from typing import Optional, Callable, List, Dict
 from simstack.models import NodeModel
 from simstack.util.importer import import_function
@@ -176,10 +175,7 @@ async def update_node_children(database, drops: str) -> None:
         nm.called_nodes = sorted(resolved)
 
         
-        await database.get_collection(NodeModel).update_one(
-            {"_id": nm.id},
-            {"$set": {"called_nodes": nm.called_nodes}},
-        )
+        await database.save(nm)
 
     with open("node_models.txt", "w", encoding="utf-8") as outfile:
         for nm in node_models:
@@ -201,10 +197,10 @@ async def update_node_children(database, drops: str) -> None:
                     logger.warning(f"Could not normalize description for {nm.name}: {e}")
             else:
 
-                outfile.write(f"Description: WARNING: Missing description\n")
+                outfile.write("Description: WARNING: Missing description\n")
 
             # Write input_mappings in table format
-            outfile.write(f"\nInput Mappings:\n")
+            outfile.write("\nInput Mappings:\n")
             if hasattr(nm, 'input_mappings') and nm.input_mappings:
                 outfile.write(f"  {'Arg Name':<20} | {'Model':<50} | {'Field':<20}\n")
                 outfile.write(f"  {'-' * 20}-+-{'-' * 50}-+-{'-' * 20}\n")
@@ -214,10 +210,10 @@ async def update_node_children(database, drops: str) -> None:
                     field = getattr(mapping, 'description', 'N/A')
                     outfile.write(f"  {str(arg_name):<20} | {str(model):<50} | {str(field):<20}\n")
             else:
-                outfile.write(f"  (none)\n")
+                outfile.write("  (none)\n")
 
             # Write result_mappings in table format
-            outfile.write(f"\nResult Mappings:\n")
+            outfile.write("\nResult Mappings:\n")
             if hasattr(nm, 'result_mappings') and nm.result_mappings:
                 outfile.write(f"  {'Arg Name':<20} | {'Model':<50} | {'Field':<20}\n")
                 outfile.write(f"  {'-' * 20}-+-{'-' * 50}-+-{'-' * 20}\n")
@@ -227,14 +223,14 @@ async def update_node_children(database, drops: str) -> None:
                     field = getattr(mapping, 'description', 'N/A')
                     outfile.write(f"  {str(arg_name):<20} | {str(model):<50} | {str(field):<20}\n")
             else:
-                outfile.write(f"  (none)\n")
+                outfile.write("  (none)\n")
 
             # Write called_nodes (node children)
-            outfile.write(f"\nCalled Nodes (Children):\n")
+            outfile.write("\nCalled Nodes (Children):\n")
             if hasattr(nm, 'called_nodes') and nm.called_nodes:
                 for called_node in nm.called_nodes:
                     outfile.write(f"  - {called_node}\n")
             else:
-                outfile.write(f"  (none)\n")
+                outfile.write("  (none)\n")
 
             outfile.write(f"{'-' * 80}\n\n")

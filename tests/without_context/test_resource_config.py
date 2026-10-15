@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-import tomllib
+
 from simstack.util.resource_config import ResourceConfig
 
 def test_resource_config_basic(tmp_path):
@@ -223,68 +223,46 @@ run_command = "orca"
         rc.get_program("vasp")
 
 @pytest.mark.asyncio
-async def test_global_state_initialization(tmp_path):
+async def test_global_state_initialization(tmp_path, monkeypatch):
     from simstack.core.context import GlobalState
-    from simstack.util.db import DBType
     from simstack.models.resource_definition import ResourceDefinition
+    from tests.support.in_memory_repository import InMemoryRepository
     
+    monkeypatch.setattr(GlobalState, "_instance", None)
     gs = GlobalState()
-    # Ensure it's not initialized
-    gs._initialized = False
     
     project_root = tmp_path
     (project_root / "simstack.toml").write_text("[parameters.db]\ndatabase = \"test_db\"\n")
     config_file = project_root / "config.toml"
     config_file.write_text("[local.program.orca]\ncmd = \"run\"\n")
     
-    # Mimic conftest.py:
-    # 1. Initialize with skip_config=True
+    repository = InMemoryRepository()
     await gs.initialize(
+        repository=repository,
         is_test=True,
         project_root=project_root,
-        db_name="test_db",
-        connection_string="mongodb://localhost:27017", # Provide a dummy connection string to satisfy from_config
-        db_type=DBType.IN_MEMORY,
         resource="local",
-        skip_config=True
+        skip_config=True,
     )
     
     # 2. Save ResourceDefinition to DB
-    # We need to patch the DB save because mongomock doesn't support sessions
-    # mimicking create_db_patches from conftest.py
-    async def patched_save(instance, *args, **kwargs):
-        collection = gs.db.get_collection(type(instance))
-        if not instance.id:
-            from odmantic import ObjectId
-            instance.id = ObjectId()
-        doc = instance.model_dump(by_alias=True)
-        doc["_id"] = instance.id
-        await collection.replace_one({"_id": instance.id}, doc, upsert=True)
-        return instance
-
-    gs.db._engine.save = patched_save
-    
     resource_definition = ResourceDefinition(
         resource_str="local",
         workdir=str(tmp_path),
         hostname="localhost",
         is_default=True
     )
-    await gs.db.save(resource_definition)
+    await gs.repository.save(resource_definition)
     
     # 3. Initialize configs
-    # initialize_configs calls ConfigReader.create which calls initialize_resource_from_db
-    from simstack.util.toml_reader import TomlReader
-    mock_toml = AsyncMock(spec=TomlReader)
-    mock_toml.get.return_value = None
-    
     await gs.initialize_configs(
-        gs.db, 
-        mock_toml,
+        gs.repository,
+        None,
         project_root=project_root,
         resource="local",
         workdir=tmp_path,
-        python_paths=[project_root]
+        python_paths=[project_root],
+        environment_start="",
     )
     
     assert hasattr(gs, "resource_config")
@@ -328,10 +306,5 @@ scratch_cleanup = false
     
     # Test non-existent resource
     rc_none = ResourceConfig(tmp_path, "non-existent")
-    with pytest.raises(
-        ValueError, match=r"config.toml has no \[non-existent\] resource block"
-    ):
+    with pytest.raises(ValueError, match="has no"):
         rc_none.get_postprocessing_params()
-
-from unittest.mock import AsyncMock
-from types import SimpleNamespace

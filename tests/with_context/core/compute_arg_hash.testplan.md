@@ -19,8 +19,8 @@ TOTAL_CASES: 5
 ID_RULES: AREA=A01...; GROUP=<AREA>.G01...; CASE=<AREA>.C01...
 EQUIVALENCE_CLASSES:
 - Top-level argument shape
-  - ordinary ODMantic model without custom complex_hash
-  - top-level ODMantic model with custom complex_hash
+  - ordinary Pydantic document model without custom complex_hash
+  - top-level Pydantic document model with custom complex_hash
 - Nested value shape
   - nested BaseModel without behavior-changing custom hash
   - nested BaseModel with custom complex_hash that must not be called from node argument hashing
@@ -120,7 +120,7 @@ OUTPUTS:
 - O02 :: shape=different hash for changed nested value | covered_by=A01.C04 | merge_justification=n/a
 - O03 :: shape=parent node result reports 50 completed children | covered_by=A02.C01 | merge_justification=n/a
 AXIS_CLASSES:
-- top_level: ordinary ODMantic model | covered_by=A01.C01 | merge_justification=n/a
+- top_level: ordinary Pydantic document model | covered_by=A01.C01 | merge_justification=n/a
 - top_level: custom complex_hash | covered_by=A01.C02 | merge_justification=n/a
 - nested: custom hash trap | covered_by=A01.C03,A02.C01 | merge_justification=n/a
 - nested: value changed | covered_by=A01.C04 | merge_justification=n/a

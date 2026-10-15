@@ -11,15 +11,15 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="../../../_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -31,7 +31,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -43,17 +43,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -192,10 +192,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -215,8 +215,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../database_migrations.html">Database Migrations</a></li>
@@ -227,12 +225,31 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -245,7 +262,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -275,12 +292,13 @@
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.artifacts</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArtifactArguments</span><span class="p">,</span> <span class="n">create_artifacts</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.definitions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskStatus</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.node</span><span class="w"> </span><span class="kn">import</span> <span class="n">node_from_database</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_protocol.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnerTaskStatus</span> <span class="k">as</span> <span class="n">TaskStatus</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.node_persistence</span><span class="w"> </span><span class="kn">import</span> <span class="n">reconstruct_persisted_node</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">ArtifactModel</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.charts_artifact</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChartArtifactModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.images2d</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image2DArtifactModel</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.table_artifact</span><span class="w"> </span><span class="kn">import</span> <span class="n">TableArtifactModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.persistence</span><span class="w"> </span><span class="kn">import</span> <span class="n">Repository</span><span class="p">,</span> <span class="n">eq</span><span class="p">,</span> <span class="n">in_values</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.importer</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_class</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.importer</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_function</span>
 
@@ -289,7 +307,10 @@
 
 <div class="viewcode-block" id="recompute_artifacts">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.recompute_artifacts.recompute_artifacts">[docs]</a>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">recompute_artifacts</span><span class="p">(</span><span class="n">node_registry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">):</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">recompute_artifacts</span><span class="p">(</span>
+    <span class="n">node_registry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">,</span>
+    <span class="n">repository</span><span class="p">:</span> <span class="n">Repository</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Recomputes artifacts for a node and all its children recursively.</span>
 
@@ -301,50 +322,51 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Create Node from the registry</span>
 
-    <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
-    <span class="n">node</span> <span class="o">=</span> <span class="k">await</span> <span class="n">node_from_database</span><span class="p">(</span><span class="n">node_registry</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">node</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to create node from registry task_id: </span><span class="si">{</span><span class="n">node_registry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span>
+    <span class="n">node</span> <span class="o">=</span> <span class="k">await</span> <span class="n">reconstruct_persisted_node</span><span class="p">(</span><span class="n">node_registry</span><span class="p">,</span> <span class="n">repository</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot recompute artifacts for task_id: </span><span class="si">{</span><span class="n">node_registry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> name: </span><span class="si">{</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> status: </span><span class="si">{</span><span class="n">node</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span>
 
     <span class="c1"># Find all children of this node</span>
-    <span class="n">children</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">NodeRegistry</span><span class="o">.</span><span class="n">parent_ids</span><span class="o">.</span><span class="n">in_</span><span class="p">([</span><span class="n">node_registry</span><span class="o">.</span><span class="n">id</span><span class="p">]))</span>
+    <span class="n">children</span> <span class="o">=</span> <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+        <span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">in_values</span><span class="p">(</span><span class="s2">&quot;parent_ids&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">node_registry</span><span class="o">.</span><span class="n">id</span><span class="p">])</span>
+    <span class="p">)</span>
 
     <span class="c1"># Recursively recompute artifacts for all children first</span>
     <span class="k">for</span> <span class="n">child_registry</span> <span class="ow">in</span> <span class="n">children</span><span class="p">:</span>
-        <span class="k">await</span> <span class="n">recompute_artifacts</span><span class="p">(</span><span class="n">child_registry</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">recompute_artifacts</span><span class="p">(</span><span class="n">child_registry</span><span class="p">,</span> <span class="n">repository</span><span class="p">)</span>
 
     <span class="c1"># Remove current node&#39;s artifacts</span>
-    <span class="n">table_artifacts</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
-        <span class="n">TableArtifactModel</span><span class="p">,</span> <span class="n">TableArtifactModel</span><span class="o">.</span><span class="n">parent_id</span> <span class="o">==</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">id</span>
+    <span class="n">table_artifacts</span> <span class="o">=</span> <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+        <span class="n">TableArtifactModel</span><span class="p">,</span> <span class="n">eq</span><span class="p">(</span><span class="s2">&quot;parent_id&quot;</span><span class="p">,</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
     <span class="p">)</span>
     <span class="k">for</span> <span class="n">table_artifact</span> <span class="ow">in</span> <span class="n">table_artifacts</span><span class="p">:</span>
-        <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">table_artifact</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">table_artifact</span><span class="p">)</span>
 
-    <span class="n">chart_artifacts</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
-        <span class="n">ChartArtifactModel</span><span class="p">,</span> <span class="n">ChartArtifactModel</span><span class="o">.</span><span class="n">parent_id</span> <span class="o">==</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">id</span>
+    <span class="n">chart_artifacts</span> <span class="o">=</span> <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+        <span class="n">ChartArtifactModel</span><span class="p">,</span> <span class="n">eq</span><span class="p">(</span><span class="s2">&quot;parent_id&quot;</span><span class="p">,</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
     <span class="p">)</span>
     <span class="k">for</span> <span class="n">chart_artifact</span> <span class="ow">in</span> <span class="n">chart_artifacts</span><span class="p">:</span>
-        <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">chart_artifact</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">chart_artifact</span><span class="p">)</span>
+
+    <span class="n">image_artifacts</span> <span class="o">=</span> <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+        <span class="n">Image2DArtifactModel</span><span class="p">,</span> <span class="n">eq</span><span class="p">(</span><span class="s2">&quot;parent_id&quot;</span><span class="p">,</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">image_artifact</span> <span class="ow">in</span> <span class="n">image_artifacts</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">image_artifact</span><span class="p">)</span>
+
+    <span class="n">generic_artifacts</span> <span class="o">=</span> <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+        <span class="n">ArtifactModel</span><span class="p">,</span> <span class="n">eq</span><span class="p">(</span><span class="s2">&quot;parent_id&quot;</span><span class="p">,</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">generic_artifact</span> <span class="ow">in</span> <span class="n">generic_artifacts</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">generic_artifact</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">artifact_ids</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Removing </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">node_registry</span><span class="o">.</span><span class="n">artifact_ids</span><span class="p">)</span><span class="si">}</span><span class="s2"> artifacts for node </span><span class="si">{</span><span class="n">node_registry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Delete artifacts from the database</span>
-        <span class="k">for</span> <span class="n">artifact_id</span> <span class="ow">in</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">artifact_ids</span><span class="p">:</span>
-            <span class="n">instance</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
-                <span class="n">ArtifactModel</span><span class="p">,</span> <span class="n">ArtifactModel</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">artifact_id</span>
-            <span class="p">)</span>
-            <span class="k">if</span> <span class="n">instance</span><span class="p">:</span>
-                <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">instance</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">node_registry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> Failed to delete artifact </span><span class="si">{</span><span class="n">artifact_id</span><span class="si">}</span><span class="s2"> from database&quot;</span>
-                <span class="p">)</span>
+        <span class="c1"># Only artifacts owned by this node are deleted above. Propagated child</span>
+        <span class="c1"># IDs must not delete documents owned by a different node.</span>
         <span class="n">node_registry</span><span class="o">.</span><span class="n">artifact_ids</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="c1"># Recompute artifacts for this node</span>
@@ -358,13 +380,15 @@
             <span class="c1"># Reconstruct the function arguments for artifact creation</span>
             <span class="n">args</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="n">node_registry</span><span class="o">.</span><span class="n">input_references</span><span class="p">:</span>
-                <span class="n">model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_class</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">variable_mapping</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="p">)</span>
-                <span class="n">arg</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">ref</span><span class="o">.</span><span class="n">reference</span><span class="p">)</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_class</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">variable_mapping</span><span class="p">,</span> <span class="n">repository</span><span class="p">)</span>
+                <span class="n">arg</span> <span class="o">=</span> <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">eq</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="n">ref</span><span class="o">.</span><span class="n">reference</span><span class="p">))</span>
                 <span class="k">if</span> <span class="n">arg</span><span class="p">:</span>
                     <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
 
             <span class="c1"># Get the function for artifact creation</span>
-            <span class="n">wrapped_func</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_function</span><span class="p">(</span><span class="n">node_registry</span><span class="o">.</span><span class="n">func_mapping</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="p">)</span>
+            <span class="n">wrapped_func</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_function</span><span class="p">(</span>
+                <span class="n">node_registry</span><span class="o">.</span><span class="n">func_mapping</span><span class="p">,</span> <span class="n">repository</span>
+            <span class="p">)</span>
             <span class="n">func</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">wrapped_func</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">wrapped_func</span><span class="p">,</span> <span class="s2">&quot;_inner&quot;</span><span class="p">)</span>
@@ -380,13 +404,19 @@
             <span class="p">}</span>
 
             <span class="n">artifact_arguments</span><span class="o">.</span><span class="n">add_attributes</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">node_kwargs</span><span class="p">)</span>
-            <span class="n">node_registry</span><span class="o">.</span><span class="n">artifact_ids</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_artifacts</span><span class="p">(</span><span class="n">artifact_arguments</span><span class="p">,</span> <span class="n">node_registry</span><span class="p">)</span>
+            <span class="n">node_registry</span><span class="o">.</span><span class="n">artifact_ids</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_artifacts</span><span class="p">(</span>
+                <span class="n">artifact_arguments</span><span class="p">,</span>
+                <span class="n">node_registry</span><span class="p">,</span>
+                <span class="n">repository</span><span class="p">,</span>
+            <span class="p">)</span>
 
             <span class="c1"># Save the updated registry</span>
-            <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">node_registry</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">node_registry</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Recomputed </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">node_registry</span><span class="o">.</span><span class="n">artifact_ids</span><span class="p">)</span><span class="si">}</span><span class="s2"> artifacts for node </span><span class="si">{</span><span class="n">node_registry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">repository</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">node_registry</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Node </span><span class="si">{</span><span class="n">node_registry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> is not completed, cannot recompute artifacts&quot;</span>
@@ -396,10 +426,10 @@
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
-          
-          
+
+
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
@@ -407,27 +437,27 @@
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer no-toc">
-      
-      
-      
+
+
+
     </aside>
   </div>
 </div><script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="MassRunner" href="mass_runner.html"><link rel="prev" title="File Management" href="files.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Creating Docker Containers for SimStack Nodes" href="docker_nodes.html"><link rel="prev" title="File Management" href="files.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
         <title>Program Execution - SimStack II documentation</title>
@@ -12,15 +12,15 @@
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -32,7 +32,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -44,17 +44,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -193,10 +193,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -216,8 +216,6 @@
 <li class="toctree-l2"><a class="reference internal" href="tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="files.html">File Management</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="database_migrations.html">Database Migrations</a></li>
@@ -228,12 +226,31 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -246,7 +263,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -341,6 +358,14 @@ handling temporary directories, file manipulation, and subprocess execution.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="simstack.util.resource_config.ResourceConfig.get_docker_registry">
+<span class="sig-name descname"><span class="pre">get_docker_registry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/simstack/util/resource_config.html#ResourceConfig.get_docker_registry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.util.resource_config.ResourceConfig.get_docker_registry" title="Link to this definition">¶</a></dt>
+<dd><p>Optional registry host for <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">pull</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">167.233.117.31:5000</span></code>).</p>
+<p>Used to rewrite <code class="docutils literal notranslate"><span class="pre">docker.io/library/&lt;image&gt;</span></code> to that registry. Unset
+means skip pull (local builds tagged as Docker Hub library names).</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="simstack.util.resource_config.ResourceConfig.get_postprocessing_params">
 <span class="sig-name descname"><span class="pre">get_postprocessing_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/util/resource_config.html#ResourceConfig.get_postprocessing_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.util.resource_config.ResourceConfig.get_postprocessing_params" title="Link to this definition">¶</a></dt>
 <dd><p>Returns the post-processing dict for the specified resource.
@@ -349,9 +374,18 @@ Expected structure in TOML: [resource_name.post-processing] or [resource_name.po
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.util.resource_config.ResourceConfig.get_program">
-<span class="sig-name descname"><span class="pre">get_program</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">program_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/util/resource_config.html#ResourceConfig.get_program"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.util.resource_config.ResourceConfig.get_program" title="Link to this definition">¶</a></dt>
-<dd><p>Returns the dict from resource.program.name for program with name and the current resource.
+<span class="sig-name descname"><span class="pre">get_program</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">program_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/simstack/util/resource_config.html#ResourceConfig.get_program"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.util.resource_config.ResourceConfig.get_program" title="Link to this definition">¶</a></dt>
+<dd><p>Returns the dict from resource.program.name for program with name.
 Expected structure in TOML: [resource_name.program.program_name]</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">resource</span></code> is omitted, uses the ResourceConfig’s current resource.
+Resources may set <code class="docutils literal notranslate"><span class="pre">same-as</span> <span class="pre">=</span> <span class="pre">&quot;other-resource&quot;</span></code> to reuse that
+resource’s program tables.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If the resource or <code class="docutils literal notranslate"><span class="pre">[resource.program.name]</span></code> block
+    is missing from <code class="docutils literal notranslate"><span class="pre">config.toml</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -365,6 +399,15 @@ Expected structure in TOML: [resource_name.setup]</p>
 <dt class="sig sig-object py" id="simstack.util.resource_config.ResourceConfig.os">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">os</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#simstack.util.resource_config.ResourceConfig.os" title="Link to this definition">¶</a></dt>
 <dd><p>Returns the OS of the current resource, defaults to ‘linux’.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="simstack.util.resource_config.ResourceConfig.reload">
+<span class="sig-name descname"><span class="pre">reload</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/simstack/util/resource_config.html#ResourceConfig.reload"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.util.resource_config.ResourceConfig.reload" title="Link to this definition">¶</a></dt>
+<dd><p>Re-read <code class="docutils literal notranslate"><span class="pre">config.toml</span></code> from disk.</p>
+<p>The runner keeps a long-lived <code class="docutils literal notranslate"><span class="pre">ResourceConfig</span></code>. Git pull (or a local
+edit) can add or change <code class="docutils literal notranslate"><span class="pre">docker_image</span></code> assignments after startup;
+callers that launch containers must reload before looking them up.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -397,7 +440,7 @@ Retrieves parameters from the configuration for the specified program.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simstack.util.resource_config.ResourceConfig.tmp_dir">
-<span class="sig-name descname"><span class="pre">tmp_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ObjectId</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="reference internal" href="_modules/simstack/util/resource_config.html#ResourceConfig.tmp_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.util.resource_config.ResourceConfig.tmp_dir" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">tmp_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="simstack/modules/simstack.models.document.html#simstack.models.document.identity.ObjectId" title="simstack.models.document.identity.ObjectId"><span class="pre">ObjectId</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="reference internal" href="_modules/simstack/util/resource_config.html#ResourceConfig.tmp_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simstack.util.resource_config.ResourceConfig.tmp_dir" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -490,14 +533,14 @@ Retrieves parameters from the configuration for the specified program.</p>
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
-          <a class="next-page" href="mass_runner.html">
+          <a class="next-page" href="docker_nodes.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">MassRunner</div>
+                <div class="title">Creating Docker Containers for SimStack Nodes</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -507,9 +550,9 @@ Retrieves parameters from the configuration for the specified program.</p>
                 <div class="context">
                   <span>Previous</span>
                 </div>
-                
+
                 <div class="title">File Management</div>
-                
+
               </div>
             </a>
         </div>
@@ -519,20 +562,20 @@ Retrieves parameters from the configuration for the specified program.</p>
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer">
-      
-      
+
+
       <div class="toc-sticky toc-scroll">
         <div class="toc-title-container">
           <span class="toc-title">
@@ -547,10 +590,12 @@ Retrieves parameters from the configuration for the specified program.</p>
 <li><a class="reference internal" href="#simstack.util.resource_config.ResourceConfig"><code class="docutils literal notranslate"><span class="pre">ResourceConfig</span></code></a><ul>
 <li><a class="reference internal" href="#simstack.util.resource_config.ResourceConfig._config"><code class="docutils literal notranslate"><span class="pre">ResourceConfig._config</span></code></a></li>
 <li><a class="reference internal" href="#simstack.util.resource_config.ResourceConfig._resource"><code class="docutils literal notranslate"><span class="pre">ResourceConfig._resource</span></code></a></li>
+<li><a class="reference internal" href="#simstack.util.resource_config.ResourceConfig.get_docker_registry"><code class="docutils literal notranslate"><span class="pre">ResourceConfig.get_docker_registry()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.util.resource_config.ResourceConfig.get_postprocessing_params"><code class="docutils literal notranslate"><span class="pre">ResourceConfig.get_postprocessing_params()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.util.resource_config.ResourceConfig.get_program"><code class="docutils literal notranslate"><span class="pre">ResourceConfig.get_program()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.util.resource_config.ResourceConfig.get_setup_params"><code class="docutils literal notranslate"><span class="pre">ResourceConfig.get_setup_params()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.util.resource_config.ResourceConfig.os"><code class="docutils literal notranslate"><span class="pre">ResourceConfig.os</span></code></a></li>
+<li><a class="reference internal" href="#simstack.util.resource_config.ResourceConfig.reload"><code class="docutils literal notranslate"><span class="pre">ResourceConfig.reload()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.util.resource_config.ResourceConfig.run"><code class="docutils literal notranslate"><span class="pre">ResourceConfig.run()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.util.resource_config.ResourceConfig.setup"><code class="docutils literal notranslate"><span class="pre">ResourceConfig.setup()</span></code></a></li>
 <li><a class="reference internal" href="#simstack.util.resource_config.ResourceConfig.tmp_base_dir"><code class="docutils literal notranslate"><span class="pre">ResourceConfig.tmp_base_dir</span></code></a></li>
@@ -577,14 +622,14 @@ Retrieves parameters from the configuration for the specified program.</p>
           </div>
         </div>
       </div>
-      
-      
+
+
     </aside>
   </div>
 </div><script src="_static/documentation_options.js?v=5929fcd5"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

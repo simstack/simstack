@@ -1,67 +1,134 @@
+import asyncio
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from simstack.core.context import context
-from simstack.core.definitions import TaskStatus
-from simstack.models import NodeRegistry
-from simstack.models.parameters import Resource
-from simstack.models.slurm_info import SlurmInfo
-from simstack.util.runner_utils import get_job_info, clean_slurm_info
+from simstack.runner_protocol.constants import RunnerTaskStatus as TaskStatus
 from simstack.core.services.base_service import BaseService
+from simstack.core.runner_execution import node_registry_from_task
+from simstack.models.parameters import Resource
+from simstack.runner_runtime.slurm import get_job_info
+from simstack.runner_protocol import (
+    DEFAULT_RUNNER_LEASE_SECONDS,
+    MAX_RUNNER_LEASE_SECONDS,
+    RunnerTaskStatus,
+)
 
 logger = logging.getLogger("NodeRunner")
 
 
 class SlurmStatusService(BaseService):
-    def __init__(self, resource: Resource, interval: int) -> None:
+    """Reconcile server-owned active tasks with the local Slurm scheduler."""
+
+    def __init__(self, resource: Resource, interval: int, max_concurrent: int) -> None:
+        if isinstance(max_concurrent, bool) or max_concurrent < 1:
+            raise ValueError("Slurm status max_concurrent must be positive")
         super().__init__("SlurmStatus", resource, interval)
         self._resource_name = str(resource)
+        requested_lease = max(interval * 3, DEFAULT_RUNNER_LEASE_SECONDS)
+        if requested_lease > MAX_RUNNER_LEASE_SECONDS:
+            raise ValueError(
+                "Slurm status interval cannot be renewed within the protocol lease bound"
+            )
+        self._lease_seconds = requested_lease
+        self._semaphore = asyncio.Semaphore(max_concurrent)
 
     async def execute(self) -> None:
-        try:
-            # logger.info(f"Running clean_slurm_info for {self._resource} and user {self._username}")
-            await clean_slurm_info(self._resource, user=self._username)
-
-            running_tasks = await context.db.find(
-                NodeRegistry,
-                (NodeRegistry.status == TaskStatus.RUNNING)
-                & (NodeRegistry.parameters.resource == self._resource),
+        active_claims = await context.runner_api.list_active_tasks(
+            statuses=(
+                RunnerTaskStatus.RUNNING,
+                RunnerTaskStatus.SLURM_QUEUED,
+                RunnerTaskStatus.SLURM_RUNNING,
             )
-            queued_tasks = await context.db.find(
-                NodeRegistry,
-                (NodeRegistry.status == TaskStatus.SLURM_QUEUED)
-                & (NodeRegistry.parameters.resource == self._resource),
+        )
+
+        results = await asyncio.gather(
+            *(self._reconcile(active_claim) for active_claim in active_claims),
+            return_exceptions=True,
+        )
+        for result in results:
+            if isinstance(result, BaseException):
+                logger.error(
+                    "Failed to reconcile one active Slurm claim",
+                    exc_info=(type(result), result, result.__traceback__),
+                )
+
+    async def _reconcile(self, active_claim: dict[str, object]) -> None:
+        async with self._semaphore:
+            claim_id = active_claim.get("claim_id")
+            execution_token = active_claim.get("execution_token")
+            execution_token_expires_at = active_claim.get("execution_token_expires_at")
+            attempt = active_claim.get("attempt")
+            task_payload = active_claim.get("task")
+            if (
+                type(attempt) is not int
+                or attempt < 1
+                or not isinstance(claim_id, str)
+                or not claim_id.strip()
+                or not isinstance(execution_token, str)
+                or not execution_token.strip()
+                or not isinstance(execution_token_expires_at, str)
+                or not execution_token_expires_at.strip()
+                or not isinstance(task_payload, dict)
+            ):
+                raise RuntimeError("Runner active task envelope is malformed")
+            execution_api = context.runner_api.execution_client(execution_token)
+
+            task = node_registry_from_task(task_payload)
+            if task.job_id is None:
+                return
+
+            task_id = str(task.id)
+            await execution_api.renew_lease(
+                task_id,
+                claim_id=claim_id,
+                attempt=attempt,
+                lease_seconds=self._lease_seconds,
             )
-            # logger.info(f"Checking Slurm status for {len(running_tasks)} running jobs on resource {self._resource}")
 
-            for task in list(running_tasks) + list(queued_tasks):
-                if task.job_id is not None:
-                    slurm_info = get_job_info(
-                        task.job_id, task.id, Resource(value=self._resource_name)
-                    )
-                    slurm_entry = await context.db.find_one(
-                        SlurmInfo, SlurmInfo.job_id == task.job_id
-                    )
-                    if slurm_info:
-                        if slurm_entry:
-                            slurm_entry.code = slurm_info.code
-                            slurm_entry.time = slurm_info.time
-                            slurm_entry.updated = datetime.now()
-                            await context.db.save(slurm_entry)
-                        else:
-                            await context.db.save(slurm_info)
-                    else:
-                        # Logic for finished/timed out jobs
-                        check_job = await context.db.find_one(
-                            NodeRegistry, NodeRegistry.id == task.id
-                        )
-                        if slurm_entry:
-                            await context.db.delete(slurm_entry)
-                        if check_job.status == TaskStatus.RUNNING:
-                            task.job_id = None
-                            task.status = TaskStatus.TIME_OUT
-                            await context.db.save(task)
+            slurm_info = await asyncio.to_thread(
+                get_job_info,
+                task.job_id,
+                task.id,
+                Resource(value=self._resource_name),
+            )
+            current_status = (
+                task.status.value
+                if isinstance(task.status, TaskStatus)
+                else str(task.status)
+            )
+            if slurm_info is not None:
+                await execution_api.update_task_status(
+                    task_id,
+                    claim_id=claim_id,
+                    attempt=attempt,
+                    expected_status=current_status,
+                    status=current_status,
+                    observed_at=slurm_info.updated.isoformat(),
+                    job_id=task.job_id,
+                    slurm_info={
+                        "job_id": slurm_info.job_id,
+                        "name": slurm_info.name,
+                        "user": slurm_info.user,
+                        "code": slurm_info.code,
+                        "time": slurm_info.time,
+                        "nodes": list(slurm_info.nodes),
+                        "updated": slurm_info.updated.isoformat(),
+                    },
+                )
+                return
 
-        except Exception as e:
-            logger.exception(f"Error checking Slurm status: {e}")
-            raise e
+            if current_status in {
+                RunnerTaskStatus.RUNNING,
+                RunnerTaskStatus.SLURM_QUEUED,
+                RunnerTaskStatus.SLURM_RUNNING,
+            }:
+                await execution_api.update_task_status(
+                    task_id,
+                    claim_id=claim_id,
+                    attempt=attempt,
+                    expected_status=current_status,
+                    status=RunnerTaskStatus.TIMEOUT,
+                    observed_at=datetime.now(UTC).isoformat(),
+                    message="Slurm job is no longer present in squeue",
+                )

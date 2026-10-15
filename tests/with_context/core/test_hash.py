@@ -3,7 +3,7 @@ import shutil
 import uuid
 from pathlib import Path
 
-from odmantic import EmbeddedModel, Model
+from simstack.models.document import EmbeddedModel, Model
 
 from simstack.core.context import context
 from simstack.core.hash import complex_hash_function, hash_value

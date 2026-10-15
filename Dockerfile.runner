@@ -1,0 +1,19 @@
+FROM python:3.12-slim-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends tini \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=ghcr.io/astral-sh/uv:0.11.29 /uv /usr/local/bin/uv
+
+WORKDIR /opt/simstack
+COPY . .
+RUN uv sync --frozen --no-dev --no-editable \
+    && .venv/bin/python -c "from simstack.runner_runtime.environment import assert_database_runtime_unavailable; assert_database_runtime_unavailable()"
+
+RUN useradd --uid 1000 --create-home --shell /bin/bash simstack \
+    && install -d -o simstack -g simstack /var/lib/simstack-runner
+ENV PATH="/opt/simstack/.venv/bin:${PATH}"
+ENV PYTHONUNBUFFERED=1
+USER simstack
+WORKDIR /var/lib/simstack-runner
+ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
+CMD ["simstack_runner", "--project-root", "/var/lib/simstack-runner"]

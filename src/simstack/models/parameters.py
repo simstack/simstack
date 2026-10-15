@@ -1,9 +1,9 @@
-from enum import Enum
 from typing import Optional, List, ClassVar, Dict, Any
-from odmantic import Field, EmbeddedModel
+from simstack.models.document import EmbeddedModel, Field
 from pydantic import field_validator, model_validator
 
 from simstack.core.resources import allowed_resources
+from simstack.runner_protocol.constants import RunnerQueue
 
 
 def _validate_value_on_read(v: str) -> str:
@@ -60,9 +60,7 @@ class Resource(EmbeddedModel):
         return not self.__eq__(other)
 
 
-class Queue(str, Enum):
-    DEFAULT = "default"
-    SLURM_QUEUE = "slurm-queue"
+Queue = RunnerQueue
 
 
 _QUEUE_ALIASES = {
@@ -334,7 +332,7 @@ class Parameters(EmbeddedModel):
         default=False, description="Recompute artifacts for this node"
     )
 
-    slurm_parameters: SlurmParameters = Field(default=None)
+    slurm_parameters: SlurmParameters = Field(default_factory=SlurmParameters)
     # slurm_parameters_data: Dict[str, Any] = Field(default_factory=dict)
 
     model_config = {
@@ -366,10 +364,11 @@ class Parameters(EmbeddedModel):
         data.pop("other_value", None)
         data.pop("docker_image", None)
 
-        queue, legacy_queue_implied_docker = normalize_execution_queue(
-            data.get("queue")
-        )
-        data["queue"] = queue
+        queue, legacy_queue_implied_docker = normalize_execution_queue(data.get("queue"))
+        # Omitted defaults must remain omitted in model_fields_set: nested
+        # self calls inherit the parent's effective execution settings.
+        if "queue" in data:
+            data["queue"] = queue
         if legacy_queue_implied_docker:
             # Docker is an execution flag, not a queue. Preserve an explicit
             # false while recovering the intent of legacy queue-only records.
@@ -379,7 +378,7 @@ class Parameters(EmbeddedModel):
         if "slurm_parameters_data" in data and "slurm_parameters" not in data:
             data["slurm_parameters"] = SlurmParameters(**data["slurm_parameters_data"])
             del data["slurm_parameters_data"]
-        if "slurm_parameters" not in data or data["slurm_parameters"] is None:
+        if "slurm_parameters" in data and data["slurm_parameters"] is None:
             data["slurm_parameters"] = SlurmParameters()
         return data
 

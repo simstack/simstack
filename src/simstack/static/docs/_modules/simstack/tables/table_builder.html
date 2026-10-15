@@ -11,15 +11,15 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/cobalt2-theme.css?v=2d651046" />
     <link rel="stylesheet" type="text/css" href="../../../_static/docs-build-badge.css?v=803faff8" />
-    
-    
+
+
 
 
 <style>
   body {
     --color-code-background: #f2f2f2;
   --color-code-foreground: #1e1e1e;
-  
+
   }
   @media not print {
     body[data-theme="dark"] {
@@ -31,7 +31,7 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
@@ -43,17 +43,17 @@
   --color-foreground-secondary: #bac8d3;
   --color-brand-primary: #22d5ff;
   --color-brand-content: #0088ff;
-  
+
       }
     }
   }
 </style></head>
   <body>
-    
+
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
-    
+
 
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
   <symbol id="svg-toc" viewBox="0 0 24 24">
@@ -192,10 +192,10 @@
   </header>
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
-      
+
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
-  
-  
+
+
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
@@ -215,8 +215,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../tables.html">Tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../files.html">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../resource_config.html">Program Execution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mass_runner.html">MassRunner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../fire_and_forget_runner.html">FireAndForgetRunner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../database_migrations.html">Database Migrations</a></li>
@@ -227,12 +225,31 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Simstack II Setup</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.application.html">simstack.application package</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.runner_execution.html">simstack.core.runner_execution package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.domain.html">simstack.domain package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.persistence.html">simstack.persistence package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_api.html">simstack.runner_api package</a><input aria-label="Toggle navigation of simstack.runner_api package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_api.file_transfer.html">simstack.runner_api.file_transfer package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_protocol.html">simstack.runner_protocol package</a><input aria-label="Toggle navigation of simstack.runner_protocol package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_protocol.dto.html">simstack.runner_protocol.dto package</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a><input aria-label="Toggle navigation of simstack.runner_runtime package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.watchdog.html">simstack.runner_runtime.watchdog package</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -245,7 +262,7 @@
 </div>
 
       </div>
-      
+
     </div>
   </aside>
   <div class="main">
@@ -272,21 +289,17 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for simstack.tables.table_builder</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fnmatch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">importlib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tomllib</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Type</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">fnmatch</span>  <span class="c1"># &lt;-- added</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.find_simstack_modules</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_simstack_modules</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">Database</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.persistence</span><span class="w"> </span><span class="kn">import</span> <span class="n">Repository</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.import_module</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_module_from_file</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.path_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">path_manager</span>
-
 
 
 <div class="viewcode-block" id="TableBuilderBase">
@@ -294,14 +307,20 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">TableBuilderBase</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Shared pipeline for building &quot;tables&quot; by scanning:</span>
-<span class="sd">      1) installed simstack modules (packages)</span>
-<span class="sd">      2) configured project paths (python files)</span>
+<span class="sd">      1) installed simstack.modules entry points (listed at INFO as each is scanned)</span>
+<span class="sd">      2) explicit --dir / dirs arguments</span>
+<span class="sd">      3) deprecated config.toml active_dirs when no dirs were given</span>
 
 <span class="sd">    Subclasses only implement `_process_module(module, drops)`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">Database</span><span class="p">,</span> <span class="n">write_schema</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">project_root</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="n">db</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">repository</span><span class="p">:</span> <span class="n">Repository</span><span class="p">,</span>
+        <span class="n">write_schema</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">project_root</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">repository</span> <span class="o">=</span> <span class="n">repository</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">write_schema</span> <span class="o">=</span> <span class="n">write_schema</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_project_root</span> <span class="o">=</span> <span class="n">project_root</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_processed_modules</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
@@ -310,9 +329,8 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_project_root</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_project_root</span>
-        <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">project_root</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.project_root_finder</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_project_root</span>
+
         <span class="k">return</span> <span class="n">find_project_root</span><span class="p">()</span>
 
     <span class="nd">@property</span>
@@ -325,7 +343,7 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="o">*</span><span class="p">,</span>
-        <span class="n">dirs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dirs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
         <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
         <span class="n">exclude</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">clear</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -334,15 +352,19 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Build the table.</span>
 
-<span class="sd">        - If `dirs` is None: use configured `path_manager` paths (existing behavior).</span>
-<span class="sd">        - If `dirs` is a list: scan those directories for Python files and process them.</span>
+<span class="sd">        - Installed `simstack.modules` entry points are processed unless</span>
+<span class="sd">          `ignore_entrypoints` is true. With -v (INFO), each entry point is</span>
+<span class="sd">          listed as it is scanned.</span>
+<span class="sd">        - If `dirs` is a non-empty list, those directories are scanned.</span>
+<span class="sd">        - If `dirs` is omitted or empty, `active_dirs` from project-root</span>
+<span class="sd">          `config.toml` is scanned and a deprecation warning is emitted.</span>
+<span class="sd">          The current working directory is not scanned.</span>
 
 <span class="sd">        `exclude` entries can match:</span>
 <span class="sd">          - path parts (e.g. &quot;.venv&quot;, &quot;__pycache__&quot;)</span>
 <span class="sd">          - glob patterns (e.g. &quot;*.generated.py&quot;)</span>
 <span class="sd">          - nested relative paths (e.g. &quot;src/simstack/models&quot;)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_context_initialized</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_processed_modules</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">clear</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">clear_table</span><span class="p">()</span>
@@ -350,12 +372,9 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">ignore_entrypoints</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_simstack_modules</span><span class="p">(</span><span class="n">drops</span><span class="o">=</span><span class="n">drops</span><span class="p">)</span>
 
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_dirs</span><span class="p">(</span><span class="n">dirs</span><span class="p">,</span> <span class="n">drops</span><span class="o">=</span><span class="n">drops</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="n">exclude</span> <span class="ow">or</span> <span class="p">[])</span></div>
+        <span class="n">scan_dirs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dirs</span><span class="p">)</span> <span class="k">if</span> <span class="n">dirs</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_dirs_from_config</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_dirs</span><span class="p">(</span><span class="n">scan_dirs</span><span class="p">,</span> <span class="n">drops</span><span class="o">=</span><span class="n">drops</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="n">exclude</span> <span class="ow">or</span> <span class="p">[])</span></div>
 
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_context_initialized</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">context</span><span class="o">.</span><span class="n">initialized</span><span class="p">:</span>
-            <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_process_simstack_modules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">all_modules</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">find_simstack_modules</span><span class="p">())</span>
@@ -364,56 +383,74 @@
                 <span class="k">continue</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Processing module: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">module_name</span><span class="p">)</span>
             <span class="n">module</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_import_package_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">module</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">continue</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_module</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">drops</span><span class="o">=</span><span class="n">drops</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_processed_modules</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">module_name</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_import_package_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed to import module </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">module_name</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
-            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">except</span> <span class="ne">SystemExit</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">exc</span><span class="o">.</span><span class="n">code</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+            <span class="k">raise</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_process_configured_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">path_name</span> <span class="ow">in</span> <span class="n">path_manager</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_path</span><span class="p">(</span><span class="n">path_name</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_active_dirs_from_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+        <span class="n">config_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;config.toml&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">config_file</span><span class="p">:</span>
+            <span class="n">config_data</span> <span class="o">=</span> <span class="n">tomllib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;active_dirs&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config_data</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="n">active_dirs</span> <span class="o">=</span> <span class="n">config_data</span><span class="p">[</span><span class="s2">&quot;active_dirs&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">active_dirs</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;active_dirs in config.toml must be a list of directory paths&quot;</span><span class="p">)</span>
+        <span class="n">resolved</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">directory</span> <span class="ow">in</span> <span class="n">active_dirs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;active_dirs in config.toml must contain only strings, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">resolved</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">directory</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;active_dirs in config.toml is deprecated; use --dir to specify &quot;</span>
+            <span class="s2">&quot;directories to scan. Using </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">active_dirs</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">resolved</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_process_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">path_info</span> <span class="o">=</span> <span class="n">path_manager</span><span class="o">.</span><span class="n">get_path</span><span class="p">(</span><span class="n">path_name</span><span class="p">)</span>
-        <span class="n">base_path</span> <span class="o">=</span> <span class="n">path_info</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">]</span>
-        <span class="n">drops</span> <span class="o">=</span> <span class="n">path_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;drops&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing configured path </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">path_name</span><span class="p">,</span> <span class="n">base_path</span><span class="p">)</span>
-
-        <span class="k">for</span> <span class="n">file_path</span> <span class="ow">in</span> <span class="n">path_manager</span><span class="o">.</span><span class="n">find_python_files</span><span class="p">(</span><span class="n">path_name</span><span class="p">):</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">drops</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_process_dirs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dirs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">exclude</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_process_dirs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dirs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]],</span> <span class="o">*</span><span class="p">,</span> <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">exclude</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">dirs</span><span class="p">:</span>
+            <span class="k">return</span>
         <span class="k">for</span> <span class="n">base_dir</span> <span class="ow">in</span> <span class="n">dirs</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing CLI dir: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">)</span>
 
             <span class="n">base_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">base_dir</span><span class="p">)</span>
 
             <span class="c1"># Accept either absolute paths or paths relative to project root.</span>
-            <span class="n">base_dir_path</span> <span class="o">=</span> <span class="n">base_dir</span> <span class="k">if</span> <span class="n">base_dir</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">()</span> <span class="k">else</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">project_root</span> <span class="o">/</span> <span class="n">base_dir</span><span class="p">)</span>
+            <span class="n">base_dir_path</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">base_dir</span> <span class="k">if</span> <span class="n">base_dir</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">()</span> <span class="k">else</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">project_root</span> <span class="o">/</span> <span class="n">base_dir</span><span class="p">)</span>
+            <span class="p">)</span>
 
-            <span class="k">for</span> <span class="n">py_file</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_python_files_under_dir</span><span class="p">(</span><span class="n">base_dir_path</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="n">exclude</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">py_file</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_python_files_under_dir</span><span class="p">(</span>
+                <span class="n">base_dir_path</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="n">exclude</span>
+            <span class="p">):</span>
                 <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_file</span><span class="p">(</span><span class="n">py_file</span><span class="p">,</span> <span class="n">drops</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_iter_python_files_under_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">exclude</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_iter_python_files_under_dir</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">exclude</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
         <span class="n">default_exclude_parts</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;.git&quot;</span><span class="p">,</span>
             <span class="s2">&quot;.hg&quot;</span><span class="p">,</span>
             <span class="s2">&quot;.svn&quot;</span><span class="p">,</span>
             <span class="s2">&quot;.venv&quot;</span><span class="p">,</span>
             <span class="s2">&quot;venv&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;__init__.py&quot;</span>
-            <span class="s2">&quot;__pycache__&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;__init__.py__pycache__&quot;</span><span class="p">,</span>
             <span class="s2">&quot;.mypy_cache&quot;</span><span class="p">,</span>
             <span class="s2">&quot;.pytest_cache&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;.ipynb_checkpoints&quot;</span>
+            <span class="s2">&quot;.ipynb_checkpoints&quot;</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">_should_exclude</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -447,13 +484,16 @@
                 <span class="c1">#      --exclude &quot;src/simstack/models&quot;</span>
                 <span class="c1">#      --exclude &quot;**/generated/**&quot;</span>
                 <span class="c1">#      --exclude &quot;*.generated.py&quot;</span>
-                <span class="k">if</span> <span class="n">fnmatch</span><span class="o">.</span><span class="n">fnmatch</span><span class="p">(</span><span class="n">rel_posix</span><span class="p">,</span> <span class="n">ex</span><span class="p">)</span> <span class="ow">or</span> <span class="n">fnmatch</span><span class="o">.</span><span class="n">fnmatch</span><span class="p">(</span><span class="n">rel_posix</span><span class="p">,</span> <span class="n">ex</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">fnmatch</span><span class="o">.</span><span class="n">fnmatch</span><span class="p">(</span><span class="n">rel_posix</span><span class="p">,</span> <span class="n">ex</span><span class="p">)</span> <span class="ow">or</span> <span class="n">fnmatch</span><span class="o">.</span><span class="n">fnmatch</span><span class="p">(</span>
+                    <span class="n">rel_posix</span><span class="p">,</span> <span class="n">ex</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span>
+                <span class="p">):</span>
                     <span class="k">return</span> <span class="kc">True</span>
 
                 <span class="c1"># 3) Also allow Windows-ish inputs like &quot;a\\b\\c&quot; by normalizing to posix.</span>
                 <span class="n">ex_posix</span> <span class="o">=</span> <span class="n">ex</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;/&quot;</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">ex_posix</span> <span class="o">!=</span> <span class="n">ex</span> <span class="ow">and</span> <span class="p">(</span>
-                    <span class="n">fnmatch</span><span class="o">.</span><span class="n">fnmatch</span><span class="p">(</span><span class="n">rel_posix</span><span class="p">,</span> <span class="n">ex_posix</span><span class="p">)</span> <span class="ow">or</span> <span class="n">fnmatch</span><span class="o">.</span><span class="n">fnmatch</span><span class="p">(</span><span class="n">rel_posix</span><span class="p">,</span> <span class="n">ex_posix</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
+                    <span class="n">fnmatch</span><span class="o">.</span><span class="n">fnmatch</span><span class="p">(</span><span class="n">rel_posix</span><span class="p">,</span> <span class="n">ex_posix</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">fnmatch</span><span class="o">.</span><span class="n">fnmatch</span><span class="p">(</span><span class="n">rel_posix</span><span class="p">,</span> <span class="n">ex_posix</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/*&quot;</span><span class="p">)</span>
                 <span class="p">):</span>
                     <span class="k">return</span> <span class="kc">True</span>
 
@@ -482,10 +522,14 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Processing file: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
         <span class="n">module</span> <span class="o">=</span> <span class="n">import_module_from_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_root</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">module</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Skipping </span><span class="si">%s</span><span class="s2"> because module import returned None&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Skipping </span><span class="si">%s</span><span class="s2"> because module import returned None&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">module</span><span class="o">.</span><span class="vm">__name__</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_processed_modules</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Skipping </span><span class="si">%s</span><span class="s2"> because module </span><span class="si">%s</span><span class="s2"> was already processed&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">module</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s2">&quot;Skipping </span><span class="si">%s</span><span class="s2"> because module </span><span class="si">%s</span><span class="s2"> was already processed&quot;</span><span class="p">,</span>
+                <span class="n">file_path</span><span class="p">,</span>
+                <span class="n">module</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="k">return</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_module</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">drops</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_processed_modules</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
@@ -498,117 +542,25 @@
 <div class="viewcode-block" id="TableBuilderBase.second_stage">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.table_builder.TableBuilderBase.second_stage">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">second_stage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; an optional hook to run after all modules have been processed&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;an optional hook to run after all modules have been processed&quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
 
 <div class="viewcode-block" id="TableBuilderBase.clear_table">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.table_builder.TableBuilderBase.clear_table">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">clear_table</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; an optional hook to clear the table before building &quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;an optional hook to clear the table before building&quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
-
-
-<div class="viewcode-block" id="TableBuilderBase.cli_main">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.table_builder.TableBuilderBase.cli_main">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">cli_main</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">builder_cls</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="s2">&quot;TableBuilderBase&quot;</span><span class="p">],</span> <span class="n">write_schema</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Reusable CLI entry point.</span>
-
-<span class="sd">        Options:</span>
-<span class="sd">          --dir RELPATH   (repeatable) Directories (relative to CWD) to scan for *.py files.</span>
-<span class="sd">                         If omitted, defaults to scanning the current working directory.</span>
-<span class="sd">          --drops STRING  Drops prefix (string) applied while processing these CLI dirs.</span>
-<span class="sd">          -v/--verbose    Increase logging verbosity.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;-v&quot;</span><span class="p">,</span> <span class="s2">&quot;--verbose&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;count&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-            <span class="s2">&quot;--dir&quot;</span><span class="p">,</span>
-            <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;dirs&quot;</span><span class="p">,</span>
-            <span class="n">action</span><span class="o">=</span><span class="s2">&quot;append&quot;</span><span class="p">,</span>
-            <span class="n">default</span><span class="o">=</span><span class="p">[],</span>
-            <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to scan (repeatable). If omitted, CWD is used.&quot;</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-            <span class="s2">&quot;--exclude&quot;</span><span class="p">,</span>
-            <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;exclude&quot;</span><span class="p">,</span>
-            <span class="n">action</span><span class="o">=</span><span class="s2">&quot;append&quot;</span><span class="p">,</span>
-            <span class="n">default</span><span class="o">=</span><span class="p">[],</span>
-            <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-                <span class="s2">&quot;Exclude a directory/name/glob from scanning (repeatable). &quot;</span>
-          
-                <span class="s2">&quot;Examples: --exclude .venv --exclude __pycache__ --exclude src/simstack/models --exclude &#39;*.generated.py&#39;&quot;</span>
-            <span class="p">),</span>
-        <span class="p">)</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-            <span class="s2">&quot;--drops&quot;</span><span class="p">,</span>
-            <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;drops&quot;</span><span class="p">,</span>
-            <span class="n">default</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-            <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Drops prefix used when processing CLI dirs (string).&quot;</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-            <span class="s2">&quot;--write-schema&quot;</span><span class="p">,</span>
-            <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;write_schema&quot;</span><span class="p">,</span>
-            <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
-            <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Enable schema writing.&quot;</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-            <span class="s2">&quot;--ignore-entrypoints&quot;</span><span class="p">,</span>
-            <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;ignore_entrypoints&quot;</span><span class="p">,</span>
-            <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
-            <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Do not scan for modules registered via entrypoints.&quot;</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-            <span class="s2">&quot;--clear&quot;</span><span class="p">,</span>
-            <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;clear&quot;</span><span class="p">,</span>
-            <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
-            <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Clear the table before building.&quot;</span><span class="p">,</span>
-        <span class="p">)</span>
-
-        <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
-
-        <span class="n">level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="n">level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span>
-        <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="n">level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span>
-
-        <span class="c1"># Resolve dirs relative to the current working directory</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dirs</span><span class="p">:</span>
-            <span class="n">dirs</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span> <span class="o">/</span> <span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">dirs</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">dirs</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()]</span>
-
-        <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">new_event_loop</span><span class="p">()</span>
-        <span class="n">asyncio</span><span class="o">.</span><span class="n">set_event_loop</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
-
-        <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;pymongo&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
-
-        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_run</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">log_level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="s2">&quot;self&quot;</span><span class="p">)</span>
-            <span class="n">builder</span> <span class="o">=</span> <span class="n">builder_cls</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="n">write_schema</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">write_schema</span><span class="p">)</span>
-            <span class="k">await</span> <span class="n">builder</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
-                <span class="n">dirs</span><span class="o">=</span><span class="n">dirs</span><span class="p">,</span>
-                <span class="n">drops</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">drops</span><span class="p">,</span>
-                <span class="n">exclude</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">exclude</span><span class="p">,</span>
-                <span class="n">clear</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">clear</span><span class="p">,</span>
-                <span class="n">ignore_entrypoints</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">ignore_entrypoints</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="k">await</span> <span class="n">builder</span><span class="o">.</span><span class="n">second_stage</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">drops</span><span class="p">)</span>
-        <span class="n">loop</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">_run</span><span class="p">())</span>
-        <span class="n">loop</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 </div>
 
 </pre></div>
         </article>
       </div>
       <footer>
-        
+
         <div class="related-pages">
-          
-          
+
+
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
@@ -616,27 +568,27 @@
                 Copyright &#169; 2026, Wolfgang Wenzel
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+
             <a href="https://github.com/pradyunsg/furo">Furo</a>
-            
+
           </div>
           <div class="right-details">
-            
+
           </div>
         </div>
-        
+
       </footer>
     </div>
     <aside class="toc-drawer no-toc">
-      
-      
-      
+
+
+
     </aside>
   </div>
 </div><script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-10-07 15:56:24 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

@@ -4,7 +4,12 @@ from uuid import uuid4
 
 # Import the required modules
 from simstack.core.context import context
+from simstack.domain.dataset_templates import (
+    freeze_dataset_metadata,
+    reconcile_dataset_metadata,
+)
 from simstack.models.dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
+from simstack.persistence import eq
 
 
 class TestDataSetMetadataBasic:
@@ -293,11 +298,11 @@ class TestDataSetMetadataUtilityMethods:
 
     def test_get_key_type(self, metadata_with_data):
         """Test get_key_type() method."""
-        assert metadata_with_data.get_key_type("name") == str
-        assert metadata_with_data.get_key_type("count") == int
-        assert metadata_with_data.get_key_type("price") == float
-        assert metadata_with_data.get_key_type("active") == bool
-        assert metadata_with_data.get_key_type("created") == datetime
+        assert metadata_with_data.get_key_type("name") is str
+        assert metadata_with_data.get_key_type("count") is int
+        assert metadata_with_data.get_key_type("price") is float
+        assert metadata_with_data.get_key_type("active") is bool
+        assert metadata_with_data.get_key_type("created") is datetime
 
     def test_get_key_type_nonexistent(self, metadata_with_data):
         """Test get_key_type() with nonexistent key."""
@@ -374,16 +379,17 @@ class TestDataSetMetadataStructureValidation:
         metadata = DataSetMetadata(field_name=field_name, data={"label": "first"})
 
         try:
-            assert await metadata.validate_dict(structure) is True
+            template = reconcile_dataset_metadata(metadata, structure, None)
+            await context.repository.save(template)
             assert metadata.structure == structure
-            assert metadata.freeze(structure) is True
+            assert freeze_dataset_metadata(metadata, structure, template) is True
         finally:
-            template = await context.db.find_one(
+            template = await context.repository.find_one(
                 DataSetMetadataTemplate,
-                DataSetMetadataTemplate.dataset_type == field_name,
+                eq("dataset_type", field_name),
             )
             if template is not None:
-                await context.db.delete(template)
+                await context.repository.delete(template)
 
     @pytest.mark.asyncio
     async def test_new_section_preserves_existing_template_structure(
@@ -398,23 +404,25 @@ class TestDataSetMetadataStructureValidation:
         second = DataSetMetadata(field_name=field_name, data={"label": "second"})
 
         try:
-            assert await first.validate_dict(train) is True
-            assert await second.validate_dict(validation) is True
+            template = reconcile_dataset_metadata(first, train, None)
+            await context.repository.save(template)
+            template = reconcile_dataset_metadata(second, validation, template)
+            await context.repository.save(template)
 
-            template = await context.db.find_one(
+            template = await context.repository.find_one(
                 DataSetMetadataTemplate,
-                DataSetMetadataTemplate.dataset_type == field_name,
+                eq("dataset_type", field_name),
             )
             assert template is not None
             assert template.structure == expected
             assert second.structure == expected
         finally:
-            template = await context.db.find_one(
+            template = await context.repository.find_one(
                 DataSetMetadataTemplate,
-                DataSetMetadataTemplate.dataset_type == field_name,
+                eq("dataset_type", field_name),
             )
             if template is not None:
-                await context.db.delete(template)
+                await context.repository.delete(template)
 
     @pytest.mark.asyncio
     async def test_same_structure_different_names_succeed(self):

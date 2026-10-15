@@ -31,7 +31,6 @@ sys.path.insert(0, os.path.abspath('../../src'))
 
 # Mock imports that are optional / not available in the docs env
 autodoc_mock_imports = [
-    "motor",
     "sqlmodel",
 ]
 
