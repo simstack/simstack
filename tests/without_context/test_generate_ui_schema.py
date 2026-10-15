@@ -235,9 +235,70 @@ def test_recursive_models_generate_bounded_ui_without_losing_leaf_components():
 
     schema = resolve_ui_schema(Recursive)
     assert schema["embedded"]["attachment"]["ui:field"] == "FileField"
-    assert "children" not in schema["embedded"]
+    recursive_ui = schema["embedded"]["children"]["items"]
+    assert recursive_ui["ui:field"] == "RecursiveFormField"
+    definition = recursive_ui["ui:options"]["definition"]
+    embedded_schema = schema["ui:definitions"][definition]
+    assert embedded_schema["attachment"]["ui:field"] == "FileField"
+    assert embedded_schema["children"]["items"] == recursive_ui
     assert schema["children"]["items"]["ui:field"] == "GenericFormField"
-    assert len(json.dumps(schema)) < 1000
+    assert len(json.dumps(schema)) < 2000
+
+
+def test_mutually_recursive_embedded_ui_definitions_are_finite_and_root_local():
+    class First(EmbeddedModel):
+        file: FileStack
+        second: "Second | None" = None
+
+    class Second(EmbeddedModel):
+        first: First | None = None
+
+    First.model_rebuild()
+
+    class Parent(Model):
+        first: First
+
+    schema = resolve_ui_schema(Parent)
+    recursive_ui = schema["first"]["second"]["first"]
+    assert recursive_ui["ui:field"] == "RecursiveFormField"
+    assert recursive_ui["ui:fieldReplacesAnyOrOneOf"] is True
+    definition = recursive_ui["ui:options"]["definition"]
+    assert schema["ui:definitions"][definition]["file"]["ui:field"] == "FileField"
+    assert len(json.dumps(schema)) < 3000
+
+    class Unrelated(Model):
+        file: FileStack
+
+    assert "ui:definitions" not in resolve_ui_schema(Unrelated)
+
+
+def test_existing_ui_definitions_and_explicit_recursive_field_override_are_preserved():
+    custom = {"author": {"ui:description": "Preserved definition"}}
+
+    class Embedded(EmbeddedModel):
+        file: FileStack
+        children: list["Embedded"] = []
+
+    class Parent(Model):
+        nested: Embedded
+
+        @classmethod
+        def ui_base_schema(cls):
+            return {"ui:definitions": custom}
+
+    schema = resolve_ui_schema(Parent)
+    assert schema["ui:definitions"]["author"] == custom["author"]
+    assert len(schema["ui:definitions"]) == 2
+    assert custom == {"author": {"ui:description": "Preserved definition"}}
+
+    class Explicit(EmbeddedModel):
+        children: list["Explicit"] = []
+
+        @classmethod
+        def ui_base_schema(cls):
+            return {"children": {"ui:field": "AuthorTreeField"}}
+
+    assert resolve_ui_schema(Explicit) == {"children": {"ui:field": "AuthorTreeField"}}
 
 
 @pytest.mark.parametrize(

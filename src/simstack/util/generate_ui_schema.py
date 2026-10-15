@@ -12,6 +12,9 @@ from pydantic import AliasChoices, BaseModel
 _generating_models: ContextVar[frozenset[type]] = ContextVar(
     "generating_ui_schema_models", default=frozenset()
 )
+_embedded_definitions: ContextVar[dict[str, dict[str, Any] | None] | None] = ContextVar(
+    "generating_embedded_ui_definitions", default=None
+)
 
 
 def resolve_ui_schema(cls: type[BaseModel]) -> dict[str, Any] | None:
@@ -129,9 +132,19 @@ def _field_schema(
 
     is_document = issubclass(annotation, Model)
     if annotation in _generating_models.get():
-        # Persisted models can be rendered lazily using their mapping. Embedded
-        # recursive values retain the JSON schema's own recursive structure.
-        return _model_reference(annotation, accordion=accordion) if is_document else {}
+        if is_document:
+            return _model_reference(annotation, accordion=accordion)
+        # Embedded values have no database mapping. A finite, root-local UI
+        # definition is reused lazily for each actual nested value in the form.
+        definition = f"{annotation.__module__}.{annotation.__qualname__}"
+        definitions = _embedded_definitions.get()
+        if definitions is None:
+            raise RuntimeError("Recursive UI generation has no definition registry")
+        definitions.setdefault(definition, None)
+        return {
+            "ui:field": "RecursiveFormField",
+            "ui:options": {"definition": definition},
+        }
     schema = resolve_ui_schema(annotation)
     if schema is None:
         return {}
@@ -155,6 +168,11 @@ def generate_ui_schema(cls: type[BaseModel]) -> dict[str, Any]:
         raise ValueError("UI base schema must be a JSON object")
     base_schema = deepcopy(base_schema)
 
+    definitions = _embedded_definitions.get()
+    definitions_token = None
+    if definitions is None:
+        definitions = {}
+        definitions_token = _embedded_definitions.set(definitions)
     token = _generating_models.set(_generating_models.get() | {cls})
     try:
         # A custom model-level component owns rendering its complete value.
@@ -188,6 +206,18 @@ def generate_ui_schema(cls: type[BaseModel]) -> dict[str, Any]:
                         base_schema[name] = field_schema
         if "id" in cls.model_fields and "id" not in base_schema:
             base_schema["id"] = {"ui:widget": "hidden"}
+        definition = f"{cls.__module__}.{cls.__qualname__}"
+        if definition in definitions:
+            definitions[definition] = deepcopy(base_schema)
+        if definitions_token is not None and definitions:
+            existing = base_schema.get("ui:definitions", {})
+            if not isinstance(existing, dict):
+                raise ValueError("UI definitions must be a JSON object")
+            if any(schema is None for schema in definitions.values()):
+                raise RuntimeError("A recursive UI definition was not generated")
+            base_schema["ui:definitions"] = {**definitions, **existing}
         return base_schema
     finally:
         _generating_models.reset(token)
+        if definitions_token is not None:
+            _embedded_definitions.reset(definitions_token)

@@ -507,6 +507,7 @@ from simstack.models.files import FileStack
 
 class EmbeddedFiles(EmbeddedModel):
     attachment: FileStack
+    children: list["EmbeddedFiles"] = []
 
 class PlainFiles(Model):
     source: FileStack
@@ -525,6 +526,10 @@ def files(value: PlainFiles, **kwargs) -> PlainFiles:
     schema = json.loads(metadata["ui_schema"])
     assert schema["source"]["ui:field"] == "FileField"
     assert schema["nested"]["attachment"]["ui:field"] == "FileField"
+    recursive_ui = schema["nested"]["children"]["items"]
+    assert recursive_ui["ui:field"] == "RecursiveFormField"
+    definition = recursive_ui["ui:options"]["definition"]
+    assert schema["ui:definitions"][definition]["attachment"]["ui:field"] == "FileField"
     assert schema["optional"]["ui:field"] == "FileField"
     assert schema["by_name"]["additionalProperties"]["items"]["ui:field"] == "FileField"
     assert "simstack.models.files.FileStack" in {
