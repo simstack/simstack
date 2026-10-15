@@ -28,6 +28,7 @@ from simstack.models.document import (
     encode_document_value,
 )
 from simstack.models.document.reference_values import transform_reference_values
+from simstack.util.generate_ui_schema import resolve_ui_schema
 
 from .discovery import (
     discover_workflow,
@@ -600,10 +601,7 @@ def execute_request(request: dict[str, Any]) -> dict[str, Any]:
             raise ValueError(
                 "UI schema model is absent from declared modules and their reference closure"
             )
-        method = getattr(model, "ui_schema", None)
-        schema = method() if callable(method) else None
-        if schema is not None and not isinstance(schema, dict):
-            raise ValueError("UI schema must be a JSON object")
+        schema = resolve_ui_schema(model)
         return {
             "mapping": request["mapping"],
             "json_schema": model.model_json_schema(),

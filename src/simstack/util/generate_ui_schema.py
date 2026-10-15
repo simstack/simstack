@@ -1,80 +1,193 @@
-from typing import Union
+"""Default presentation for domain models, independent of their decorators."""
+
+from collections.abc import Mapping, Sequence
+from contextvars import ContextVar
+from copy import deepcopy
+import json
+from types import UnionType
+from typing import Annotated, Any, Union, get_args, get_origin
+
+from pydantic import AliasChoices, BaseModel
+
+_generating_models: ContextVar[frozenset[type]] = ContextVar(
+    "generating_ui_schema_models", default=frozenset()
+)
 
 
-def generate_ui_schema(cls):
+def resolve_ui_schema(cls: type[BaseModel]) -> dict[str, Any] | None:
+    """Use a model's explicit presentation, or generate the common default.
+
+    Discovery and revision-specific runtime requests use the same rule. Custom
+    hooks remain optional: callers decide whether a hook failure is a warning or
+    a request error. A successful hook must return a JSON object (or ``None``).
     """
-    Generates a UI schema that uses GenericForm for fields with ui_schema function.
-    Also preserves any existing UI schema configurations from the class.
+    method = getattr(cls, "ui_schema", None)
+    schema = method() if callable(method) else generate_ui_schema(cls)
+    if schema is not None:
+        if not isinstance(schema, dict):
+            raise ValueError("UI schema must be a JSON object")
+        json.dumps(schema, allow_nan=False)
+    return schema
 
-    Args:
-        cls: The model class to generate UI schema for
 
-    Returns:
-        dict: The generated UI schema
+def _model_reference(cls: type[BaseModel], *, accordion: bool) -> dict[str, Any]:
+    options = {"model": f"{cls.__module__}.{cls.__name__}"}
+    if accordion:
+        options["accordion"] = "true"
+    return {"ui:field": "GenericFormField", "ui:options": options}
+
+
+def _field_schema(
+    annotation: Any,
+    *,
+    accordion: bool = True,
+    json_schema: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Follow annotation containers to their actual model presentation."""
+    json_schema = json_schema or {}
+    origin, arguments = get_origin(annotation), get_args(annotation)
+    if origin is Annotated:
+        return _field_schema(arguments[0], accordion=accordion, json_schema=json_schema)
+    if origin in (Union, UnionType):
+        choices = [choice for choice in arguments if choice is not type(None)]
+        branches = json_schema.get("anyOf", [])
+        non_null_branches = [
+            branch for branch in branches if branch.get("type") != "null"
+        ]
+        if len(choices) == 1:
+            child_schema = (
+                non_null_branches[0] if len(non_null_branches) == 1 else json_schema
+            )
+            schema = _field_schema(
+                choices[0], accordion=accordion, json_schema=child_schema
+            )
+            if "ui:field" in schema:
+                schema["ui:fieldReplacesAnyOrOneOf"] = True
+            return schema
+        # Pydantic groups a nullable discriminated union as anyOf(oneOf(...),
+        # null), even though typing presents its variants as one flat union.
+        if len(non_null_branches) == 1 and "oneOf" in non_null_branches[0]:
+            child = _field_schema(
+                Union[tuple(choices)],
+                accordion=accordion,
+                json_schema=non_null_branches[0],
+            )
+            return {"anyOf": [child, {}]} if child else {}
+        key = "oneOf" if "oneOf" in json_schema else "anyOf"
+        # Pydantic puts null last, independent of its position in Union's args.
+        ordered = choices + ([type(None)] if len(choices) != len(arguments) else [])
+        options = json_schema.get(key, [])
+        children = [
+            _field_schema(
+                choice,
+                accordion=accordion,
+                json_schema=options[index] if index < len(options) else None,
+            )
+            for index, choice in enumerate(ordered)
+        ]
+        return {key: children} if any(children) else {}
+    if origin in (list, set, frozenset, Sequence):
+        child = (
+            _field_schema(
+                arguments[0], accordion=False, json_schema=json_schema.get("items")
+            )
+            if arguments
+            else {}
+        )
+        return {"items": child} if child else {}
+    if origin is tuple:
+        if len(arguments) == 2 and arguments[1] is Ellipsis:
+            child = _field_schema(
+                arguments[0], accordion=False, json_schema=json_schema.get("items")
+            )
+            return {"items": child} if child else {}
+        items = json_schema.get("prefixItems", [])
+        children = [
+            _field_schema(
+                child,
+                accordion=False,
+                json_schema=items[index] if index < len(items) else None,
+            )
+            for index, child in enumerate(arguments)
+        ]
+        return {"items": children} if any(children) else {}
+    if origin in (dict, Mapping):
+        child = (
+            _field_schema(
+                arguments[1], json_schema=json_schema.get("additionalProperties")
+            )
+            if len(arguments) == 2
+            else {}
+        )
+        return {"additionalProperties": child} if child else {}
+    if not isinstance(annotation, type) or not issubclass(annotation, BaseModel):
+        return {}
+
+    # Model's package imports the decorator, which imports this module. Keep the
+    # dependency lazy so directly importing the public generator remains safe.
+    from simstack.models.document import Model
+
+    is_document = issubclass(annotation, Model)
+    if annotation in _generating_models.get():
+        # Persisted models can be rendered lazily using their mapping. Embedded
+        # recursive values retain the JSON schema's own recursive structure.
+        return _model_reference(annotation, accordion=accordion) if is_document else {}
+    schema = resolve_ui_schema(annotation)
+    if schema is None:
+        return {}
+    if "ui:field" in schema:
+        return deepcopy(schema)
+    if is_document:
+        return _model_reference(annotation, accordion=accordion)
+    # Plain embedded Pydantic values have no independently registered mapping.
+    return schema
+
+
+def generate_ui_schema(cls: type[BaseModel]) -> dict[str, Any]:
+    """Generate UI defaults while preserving model and per-field overrides.
+
+    Nested model components are discovered through their own presentation hooks,
+    not through workflow names or special cases for built-in model classes.
     """
-    # Get base UI schema from the class if it exists
+    base_method = getattr(cls, "ui_base_schema", None)
+    base_schema = base_method() if callable(base_method) else {}
+    if not isinstance(base_schema, dict):
+        raise ValueError("UI base schema must be a JSON object")
+    base_schema = deepcopy(base_schema)
 
-    base_schema = cls.ui_base_schema() if hasattr(cls, "ui_base_schema") else {}
-
-    # Process each field in the model
-    for field_name, field in cls.model_fields.items():
-        field_type = field.annotation
-
-        # Unwrap Optional type to get the underlying type
-        if hasattr(field_type, "__origin__") and field_type.__origin__ is Union:
-            # Optional[X] is implemented as Union[X, None]
-            args = field_type.__args__
-            if len(args) == 2 and args[1] is type(None):
-                field_type = args[0]
-
-        # Handle Lists by checking their inner type
-        is_list = hasattr(field_type, "__origin__") and field_type.__origin__ is list
-        if is_list:
-            field_type = field_type.__args__[0]
-
-            # Check for Optional inside List
-            if hasattr(field_type, "__origin__") and field_type.__origin__ is Union:
-                args = field_type.__args__
-                if len(args) == 2 and args[1] is type(None):
-                    field_type = args[0]
-
-        # Check if field type has ui_schema method (this is true for all simstack_model classes)
-        if hasattr(field_type, "ui_schema"):
-            module_path = field_type.__module__
-            full_path = f"{module_path}.{field_type.__name__}"
-            # if simstack is in the module path, skip all elements after the last simstack occurrence
-            if "simstack" in module_path:
-                full_path = ".".join(
-                    module_path[module_path.rfind("simstack") :].split(".")
-                    + [field_type.__name__]
+    token = _generating_models.set(_generating_models.get() | {cls})
+    try:
+        # A custom model-level component owns rendering its complete value.
+        if "ui:field" not in base_schema:
+            json_schema = cls.model_json_schema()
+            root = json_schema
+            if "$ref" in root and root["$ref"].startswith("#/$defs/"):
+                root = json_schema.get("$defs", {}).get(
+                    root["$ref"].removeprefix("#/$defs/"), {}
                 )
-
-            field_schema = field_type.ui_schema()  # get the field schema for the field
-            # Don't override if there's already a UI configuration for this field
-            if field_name not in base_schema:
-                if "ui:field" in field_schema:
-                    # If the field schema already has a ui:field, use it
-                    if is_list:
-                        base_schema[field_name] = {"items": field_schema}
-                    else:
-                        base_schema[field_name] = field_schema
-                else:
-                    # Check if field type is a list
-                    ui_ref = {
-                        "ui:field": "GenericFormField",
-                        "ui:options": {
-                            "model": full_path,
-                        },
-                    }
-                    # in rjsf the ui_scheme for list element must be in "items" key
-                    if is_list:
-                        base_schema[field_name] = {"items": ui_ref}
-                    else:
-                        ui_ref["ui:options"]["accordion"] = "true"
-                        base_schema[field_name] = ui_ref
-
-    # Always hide the id field if it exists
-    if "id" not in base_schema:
-        base_schema["id"] = {"ui:widget": "hidden"}
-
-    return base_schema
+            properties = root.get("properties", {})
+            for field_name, field in cls.model_fields.items():
+                alias = field.validation_alias
+                if isinstance(alias, AliasChoices):
+                    alias = next(
+                        (
+                            path[0]
+                            for path in alias.convert_to_aliases()
+                            if len(path) == 1 and isinstance(path[0], str)
+                        ),
+                        None,
+                    )
+                name = alias if isinstance(alias, str) else field.alias or field_name
+                if field_name == "id" and field.serialization_alias == "id":
+                    name = "id"
+                if name not in base_schema:
+                    field_schema = _field_schema(
+                        field.annotation, json_schema=properties.get(name)
+                    )
+                    if field_schema:
+                        base_schema[name] = field_schema
+        if "id" in cls.model_fields and "id" not in base_schema:
+            base_schema["id"] = {"ui:widget": "hidden"}
+        return base_schema
+    finally:
+        _generating_models.reset(token)

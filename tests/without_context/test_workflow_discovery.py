@@ -495,6 +495,116 @@ def test_discovery_optional_ui_hook_failure_is_warning_not_upload_gate(
     assert len(plan["nodes"]) == 3
 
 
+def test_plain_uploaded_models_have_matching_generated_discovery_and_runtime_ui(
+    workflow_source,
+):
+    root, package = workflow_source
+    source = root / package / "nodes.py"
+    source.write_text(
+        source.read_text()
+        + """\nfrom simstack.models.document import EmbeddedModel
+from simstack.models.files import FileStack
+
+class EmbeddedFiles(EmbeddedModel):
+    attachment: FileStack
+
+class PlainFiles(Model):
+    source: FileStack
+    nested: EmbeddedFiles
+    optional: FileStack | None = None
+    by_name: dict[str, list[FileStack | None]]
+
+@node
+def files(value: PlainFiles, **kwargs) -> PlainFiles:
+    return value
+"""
+    )
+    plan = discover_workflow(root)
+    mapping = f"{package}.nodes.PlainFiles"
+    metadata = next(item for item in plan["models"] if item["mapping"] == mapping)
+    schema = json.loads(metadata["ui_schema"])
+    assert schema["source"]["ui:field"] == "FileField"
+    assert schema["nested"]["attachment"]["ui:field"] == "FileField"
+    assert schema["optional"]["ui:field"] == "FileField"
+    assert schema["by_name"]["additionalProperties"]["items"]["ui:field"] == "FileField"
+    assert "simstack.models.files.FileStack" in {
+        item["mapping"] for item in plan["models"]
+    }
+    runtime = execute_request(
+        {
+            "operation": "ui_schema",
+            "source_root": str(root),
+            "modules": plan["modules"],
+            "mappings": plan["models"],
+            "mapping": mapping,
+        }
+    )
+    assert runtime["ui_schema"] == schema
+    assert runtime["json_schema"] == json.loads(metadata["json_schema"])
+    assert plan["warnings"] == []
+
+
+@pytest.mark.parametrize("custom", [{}, {"ui:order": ["value", "id"]}, None])
+def test_uploaded_explicit_ui_hooks_match_in_discovery_and_runtime(
+    workflow_source, monkeypatch, custom
+):
+    import importlib
+
+    root, package = workflow_source
+    discover_workflow(root)
+    leaf = importlib.import_module(package + ".nodes").Leaf
+    monkeypatch.setattr(
+        leaf, "ui_schema", classmethod(lambda cls: custom), raising=False
+    )
+    plan = discover_workflow(root)
+    mapping = f"{package}.nodes.Leaf"
+    metadata = next(item for item in plan["models"] if item["mapping"] == mapping)
+    assert (
+        json.loads(metadata["ui_schema"]) if metadata["ui_schema"] is not None else None
+    ) == custom
+    runtime = execute_request(
+        {
+            "operation": "ui_schema",
+            "source_root": str(root),
+            "modules": plan["modules"],
+            "mappings": plan["models"],
+            "mapping": mapping,
+        }
+    )
+    assert runtime["ui_schema"] == custom
+
+
+@pytest.mark.parametrize("custom", [[], {"value": float("nan")}])
+def test_malformed_uploaded_ui_hook_warns_at_discovery_and_is_rejected_at_runtime(
+    workflow_source, monkeypatch, custom
+):
+    import importlib
+
+    root, package = workflow_source
+    discover_workflow(root)
+    leaf = importlib.import_module(package + ".nodes").Leaf
+    monkeypatch.setattr(
+        leaf, "ui_schema", classmethod(lambda cls: custom), raising=False
+    )
+    plan = discover_workflow(root)
+    mapping = f"{package}.nodes.Leaf"
+    metadata = next(item for item in plan["models"] if item["mapping"] == mapping)
+    assert metadata["ui_schema"] is None
+    assert any(
+        "optional UI schema is unavailable" in warning for warning in plan["warnings"]
+    )
+    with pytest.raises(ValueError):
+        execute_request(
+            {
+                "operation": "ui_schema",
+                "source_root": str(root),
+                "modules": plan["modules"],
+                "mappings": plan["models"],
+                "mapping": mapping,
+            }
+        )
+
+
 def test_custom_artifact_subclass_preserves_fields_and_uses_native_collection(
     workflow_source, monkeypatch
 ):

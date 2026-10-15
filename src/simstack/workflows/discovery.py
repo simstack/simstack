@@ -27,6 +27,7 @@ from simstack.models.document import Model, REFERENCE_SCHEMA_KEY
 from simstack.models.document.reference_values import transform_reference_values
 from simstack.models.parameters import Parameters
 from simstack.util.docstring_parser import DocstringParser
+from simstack.util.generate_ui_schema import resolve_ui_schema
 
 from .manifest import NodeOverride, WorkflowManifest, canonical_path, load_manifest
 from .limits import DEFAULT_INSTALLATION_LIMITS
@@ -388,13 +389,8 @@ def discover_workflow(
             (base for base in model.__mro__ if base in ARTIFACT_TYPES), None
         )
         schema = model.model_json_schema()
-        ui_method = getattr(model, "ui_schema", None)
         try:
-            ui_schema = ui_method() if callable(ui_method) else None
-            if ui_schema is not None and not isinstance(ui_schema, dict):
-                raise ValueError("ui_schema did not return a JSON object")
-            if ui_schema is not None:
-                json.dumps(ui_schema, allow_nan=False)
+            ui_schema = resolve_ui_schema(model)
         except Exception as exc:
             ui_schema = None
             warnings.append(
