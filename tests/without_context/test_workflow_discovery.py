@@ -10,6 +10,7 @@ import pytest
 from simstack.workflows.discovery import discover_workflow
 from simstack.workflows.manifest import load_manifest
 from simstack.workflows.runtime import execute_request
+from simstack.util.generate_ui_schema import ui_schema_identity
 
 
 @pytest.fixture
@@ -489,6 +490,7 @@ def test_discovery_optional_ui_hook_failure_is_warning_not_upload_gate(
         item for item in plan["models"] if item["mapping"].endswith(".Leaf")
     )
     assert metadata["ui_schema"] is None
+    assert metadata["ui_schema_version"] is None
     assert any(
         "optional UI schema is unavailable" in warning for warning in plan["warnings"]
     )
@@ -524,6 +526,7 @@ def files(value: PlainFiles, **kwargs) -> PlainFiles:
     mapping = f"{package}.nodes.PlainFiles"
     metadata = next(item for item in plan["models"] if item["mapping"] == mapping)
     schema = json.loads(metadata["ui_schema"])
+    assert metadata["ui_schema_version"] == ui_schema_identity()
     assert schema["source"]["ui:field"] == "FileField"
     assert schema["nested"]["attachment"]["ui:field"] == "FileField"
     recursive_ui = schema["nested"]["children"]["items"]
@@ -567,6 +570,7 @@ def test_uploaded_explicit_ui_hooks_match_in_discovery_and_runtime(
     assert (
         json.loads(metadata["ui_schema"]) if metadata["ui_schema"] is not None else None
     ) == custom
+    assert metadata["ui_schema_version"] == ui_schema_identity()
     runtime = execute_request(
         {
             "operation": "ui_schema",
@@ -595,6 +599,7 @@ def test_malformed_uploaded_ui_hook_warns_at_discovery_and_is_rejected_at_runtim
     mapping = f"{package}.nodes.Leaf"
     metadata = next(item for item in plan["models"] if item["mapping"] == mapping)
     assert metadata["ui_schema"] is None
+    assert metadata["ui_schema_version"] is None
     assert any(
         "optional UI schema is unavailable" in warning for warning in plan["warnings"]
     )

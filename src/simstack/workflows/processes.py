@@ -166,6 +166,17 @@ _local_slots_lock = threading.Lock()
 _local_slots: dict[int, threading.BoundedSemaphore] = {}
 
 
+class _AsyncProcessAdmission:
+    def __init__(self, maximum: int):
+        self.semaphore = asyncio.BoundedSemaphore(maximum)
+        self.users = 0
+
+
+_async_slots: dict[
+    tuple[asyncio.AbstractEventLoop, Path | None, int], _AsyncProcessAdmission
+] = {}
+
+
 def _mount_path(value: str) -> str:
     for encoded, decoded in (("\\040", " "), ("\\011", "\t"), ("\\012", "\n"), ("\\134", "\\")):
         value = value.replace(encoded, decoded)
@@ -383,27 +394,75 @@ def run_process(
 
 
 async def run_process_async(command: Sequence[str], **kwargs) -> subprocess.CompletedProcess[bytes]:
-    """Async facade; cancellation waits until the shared engine kills/reaps the child."""
-    cancelled = threading.Event()
-    work = asyncio.create_task(asyncio.to_thread(run_process, command, _cancelled=cancelled, **kwargs))
+    """Queue without executor threads; cancellation still waits for child cleanup.
+
+    This admission gate complements, not replaces, run_process's interprocess
+    flock. At most the configured number of calls in this event loop can occupy
+    executor threads while competing for the shared kernel-backed slots.
+    """
+    from simstack.workflows.limits import WorkflowInstallationLimits
+
+    limits = kwargs.get("limits") or WorkflowInstallationLimits()
+    timeout = kwargs.get("timeout", 600)
+    if timeout <= 0:
+        raise ValueError("Workflow process timeout must be positive")
+    deadline = time.monotonic() + timeout
+    slot_root = kwargs.get("slot_root")
+    if slot_root is None:
+        slot_root = kwargs.get("storage_root")
+    root = Path(slot_root).resolve(strict=True) if slot_root is not None else None
+    key = (asyncio.get_running_loop(), root, limits.max_parallel_processes)
+    admission = _async_slots.get(key)
+    if admission is None:
+        admission = _async_slots[key] = _AsyncProcessAdmission(limits.max_parallel_processes)
+    admission.users += 1
+    acquired = False
     try:
-        return await asyncio.shield(work)
-    except asyncio.CancelledError:
-        cancelled.set()
-        while not work.done():
-            try:
-                await asyncio.shield(work)
-            except asyncio.CancelledError:
-                # Repeated cancellation must not return while the child lives.
-                continue
-            except Exception:
-                break
-        if not work.cancelled():
-            try:
-                work.result()
-            except Exception:
-                pass
+        try:
+            await asyncio.wait_for(admission.semaphore.acquire(), timeout=timeout)
+        except TimeoutError as exc:
+            raise subprocess.TimeoutExpired(command, timeout) from exc
+        acquired = True
+        cancelled = threading.Event()
+
+        def invoke():
+            _check_interrupt(deadline, cancelled, command)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(command, timeout)
+            return run_process(
+                command, _cancelled=cancelled, **{**kwargs, "timeout": remaining}
+            )
+
+        work = asyncio.create_task(asyncio.to_thread(invoke))
+        try:
+            return await asyncio.shield(work)
+        except asyncio.CancelledError:
+            cancelled.set()
+            while not work.done():
+                try:
+                    await asyncio.shield(work)
+                except asyncio.CancelledError:
+                    # Repeated cancellation must not return while the child lives.
+                    continue
+                except Exception:
+                    break
+            if not work.cancelled():
+                try:
+                    work.result()
+                except Exception:
+                    pass
+            raise
+    except subprocess.TimeoutExpired as exc:
+        # Queueing and execution share the caller's one original timeout budget.
+        exc.timeout = timeout
         raise
+    finally:
+        if acquired:
+            admission.semaphore.release()
+        admission.users -= 1
+        if not admission.users:
+            _async_slots.pop(key, None)
 
 
 def _exec_resource_limits(arguments: list[str]) -> None:

@@ -27,7 +27,7 @@ from simstack.models.document import Model, REFERENCE_SCHEMA_KEY
 from simstack.models.document.reference_values import transform_reference_values
 from simstack.models.parameters import Parameters
 from simstack.util.docstring_parser import DocstringParser
-from simstack.util.generate_ui_schema import resolve_ui_schema
+from simstack.util.generate_ui_schema import resolve_ui_schema, ui_schema_identity
 
 from .manifest import NodeOverride, WorkflowManifest, canonical_path, load_manifest
 from .limits import DEFAULT_INSTALLATION_LIMITS
@@ -389,8 +389,10 @@ def discover_workflow(
             (base for base in model.__mro__ if base in ARTIFACT_TYPES), None
         )
         schema = model.model_json_schema()
+        presentation_version = None
         try:
             ui_schema = resolve_ui_schema(model)
+            presentation_version = ui_schema_identity()
         except Exception as exc:
             ui_schema = None
             warnings.append(
@@ -413,6 +415,7 @@ def discover_workflow(
                 "ui_schema": json.dumps(ui_schema, sort_keys=True)
                 if ui_schema is not None
                 else None,
+                "ui_schema_version": presentation_version,
                 "version": version,
                 "source_kind": "core"
                 if model in trusted_core

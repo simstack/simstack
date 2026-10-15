@@ -3,11 +3,51 @@
 from collections.abc import Mapping, Sequence
 from contextvars import ContextVar
 from copy import deepcopy
+from functools import lru_cache
+import hashlib
+from importlib.metadata import distribution, version as distribution_version, PackageNotFoundError
 import json
+from pathlib import Path
 from types import UnionType
 from typing import Annotated, Any, Union, get_args, get_origin
 
 from pydantic import AliasChoices, BaseModel
+
+UI_SCHEMA_VERSION = 1
+
+
+@lru_cache(maxsize=1)
+def ui_schema_identity() -> str:
+    """Identify presentation rules independently of workflow source identity.
+
+    Published builds bind all Core presentation hooks to their immutable VCS
+    revision. Editable/source checkouts hash Python sources instead, so changing
+    a built-in model's hook also invalidates presentation without a manual bump.
+    """
+    package = Path(__file__).resolve().parents[1]
+    core_revision = None
+    try:
+        installed = distribution("simstack")
+        origin = json.loads(installed.read_text("direct_url.json") or "{}")
+        candidate = origin.get("vcs_info", {}).get("commit_id")
+        if (
+            Path(installed.locate_file("simstack")).resolve() == package
+            and isinstance(candidate, str)
+            and len(candidate) == 40
+            and all(character in "0123456789abcdef" for character in candidate)
+        ):
+            core_revision = candidate
+    except (PackageNotFoundError, TypeError, ValueError, OSError):
+        pass
+    if core_revision is None:
+        source = hashlib.sha256()
+        for path in sorted(package.rglob("*.py")):
+            source.update(path.relative_to(package).as_posix().encode() + b"\0")
+            source.update(path.read_bytes() + b"\0")
+        core_revision = source.hexdigest()
+    generator = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    dependencies = ":".join(distribution_version(name) for name in ("pydantic", "pydantic-core"))
+    return f"{UI_SCHEMA_VERSION}:{hashlib.sha256((core_revision + generator + dependencies).encode()).hexdigest()}"
 
 _generating_models: ContextVar[frozenset[type]] = ContextVar(
     "generating_ui_schema_models", default=frozenset()

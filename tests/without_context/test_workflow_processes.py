@@ -178,6 +178,232 @@ async def test_repeated_async_cancellation_still_waits_for_cleanup(monkeypatch, 
     assert finished.is_set()
 
 
+async def _wait_until(predicate):
+    async with asyncio.timeout(3):
+        while not predicate():
+            await asyncio.sleep(0.005)
+
+
+@pytest.mark.asyncio
+async def test_async_admission_many_requests_do_not_allocate_waiting_threads(monkeypatch, tmp_path):
+    release = threading.Event()
+    lock = threading.Lock()
+    started, thread_submissions = [], []
+    active = peak = 0
+    original_to_thread = processes.asyncio.to_thread
+
+    def helper(command, **kwargs):
+        nonlocal active, peak
+        with lock:
+            started.append(command)
+            active += 1
+            peak = max(peak, active)
+        assert release.wait(5)
+        with lock:
+            active -= 1
+        return subprocess.CompletedProcess(command, 0, b"ok", b"")
+
+    async def counted_to_thread(*args, **kwargs):
+        thread_submissions.append(args)
+        return await original_to_thread(*args, **kwargs)
+
+    monkeypatch.setattr(processes, "run_process", helper)
+    monkeypatch.setattr(processes.asyncio, "to_thread", counted_to_thread)
+    tasks = [asyncio.create_task(processes.run_process_async(
+        [str(index)], storage_root=tmp_path, slot_root=tmp_path,
+        limits=_limits(max_parallel_processes=2), timeout=5,
+    )) for index in range(100)]
+    try:
+        await _wait_until(lambda: len(started) == 2)
+        await asyncio.sleep(0.02)
+        assert len(thread_submissions) == 2
+    finally:
+        release.set()
+        results = await asyncio.gather(*tasks)
+    assert len(results) == len(started) == len(thread_submissions) == 100
+    assert peak == 2
+    assert not processes._async_slots
+
+
+@pytest.mark.asyncio
+async def test_async_cancellation_while_queued_never_submits_a_thread(monkeypatch, tmp_path):
+    release = threading.Event()
+    started = []
+
+    def helper(command, **kwargs):
+        started.append(command)
+        if command == ["first"]:
+            assert release.wait(5)
+        return subprocess.CompletedProcess(command, 0, b"", b"")
+
+    monkeypatch.setattr(processes, "run_process", helper)
+    options = {"slot_root": tmp_path, "limits": _limits(max_parallel_processes=1), "timeout": 5}
+    first = asyncio.create_task(processes.run_process_async(["first"], **options))
+    await _wait_until(lambda: bool(started))
+    cancelled = asyncio.create_task(processes.run_process_async(["cancelled"], **options))
+    last = asyncio.create_task(processes.run_process_async(["last"], **options))
+    try:
+        await asyncio.sleep(0.02)
+        cancelled.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await cancelled
+        assert started == [["first"]]
+    finally:
+        release.set()
+        await asyncio.gather(first, last)
+    assert started == [["first"], ["last"]]
+    assert not processes._async_slots
+
+
+@pytest.mark.asyncio
+async def test_async_admission_held_until_repeated_cancellation_finishes_cleanup(monkeypatch, tmp_path):
+    cleanup_started, finish_cleanup = threading.Event(), threading.Event()
+    started = []
+
+    def helper(command, *, _cancelled, **kwargs):
+        started.append(command)
+        if command == ["first"]:
+            assert _cancelled.wait(5)
+            cleanup_started.set()
+            assert finish_cleanup.wait(5)
+            raise processes._ProcessCancelled
+        return subprocess.CompletedProcess(command, 0, b"", b"")
+
+    monkeypatch.setattr(processes, "run_process", helper)
+    options = {"slot_root": tmp_path, "limits": _limits(max_parallel_processes=1), "timeout": 5}
+    first = asyncio.create_task(processes.run_process_async(["first"], **options))
+    await _wait_until(lambda: bool(started))
+    following = asyncio.create_task(processes.run_process_async(["following"], **options))
+    first.cancel()
+    try:
+        await _wait_until(cleanup_started.is_set)
+        first.cancel()
+        await asyncio.sleep(0.02)
+        assert started == [["first"]]
+        assert not first.done()
+    finally:
+        finish_cleanup.set()
+        with pytest.raises(asyncio.CancelledError):
+            await first
+        await following
+    assert started == [["first"], ["following"]]
+    assert not processes._async_slots
+
+
+@pytest.mark.asyncio
+async def test_async_queue_timeout_never_submits_a_thread_and_releases_admission(monkeypatch, tmp_path):
+    release = threading.Event()
+    started = []
+
+    def helper(command, **kwargs):
+        started.append(command)
+        if command == ["first"]:
+            assert release.wait(5)
+        return subprocess.CompletedProcess(command, 0, b"", b"")
+
+    monkeypatch.setattr(processes, "run_process", helper)
+    options = {"storage_root": tmp_path, "limits": _limits(max_parallel_processes=1)}
+    first = asyncio.create_task(processes.run_process_async(["first"], timeout=5, **options))
+    await _wait_until(lambda: bool(started))
+    try:
+        with pytest.raises(subprocess.TimeoutExpired) as error:
+            await processes.run_process_async(["expired"], timeout=0.03, **options)
+        assert error.value.timeout == 0.03
+        assert started == [["first"]]
+    finally:
+        release.set()
+        await first
+    await processes.run_process_async(["after-timeout"], timeout=5, **options)
+    assert started == [["first"], ["after-timeout"]]
+    assert not processes._async_slots
+
+
+@pytest.mark.asyncio
+async def test_async_execution_receives_remaining_not_reset_timeout(monkeypatch, tmp_path):
+    release = threading.Event()
+    received = {}
+
+    def helper(command, *, timeout, **kwargs):
+        received[command[0]] = timeout
+        if command == ["first"]:
+            assert release.wait(5)
+        return subprocess.CompletedProcess(command, 0, b"", b"")
+
+    monkeypatch.setattr(processes, "run_process", helper)
+    options = {"slot_root": tmp_path, "limits": _limits(max_parallel_processes=1), "timeout": 5}
+    first = asyncio.create_task(processes.run_process_async(["first"], **options))
+    await _wait_until(lambda: bool(received))
+    second = asyncio.create_task(processes.run_process_async(["second"], **options))
+    await asyncio.sleep(0.08)
+    release.set()
+    await asyncio.gather(first, second)
+    assert 0 < received["second"] < 4.95
+    assert not processes._async_slots
+
+
+@pytest.mark.asyncio
+async def test_async_executor_delay_counts_against_original_timeout(monkeypatch):
+    invoked = []
+
+    async def delayed_executor(function, *args, **kwargs):
+        await asyncio.sleep(0.06)
+        return function(*args, **kwargs)
+
+    monkeypatch.setattr(processes.asyncio, "to_thread", delayed_executor)
+    monkeypatch.setattr(processes, "run_process", lambda *a, **kw: invoked.append(a))
+    with pytest.raises(subprocess.TimeoutExpired) as error:
+        await processes.run_process_async(["expired-before-start"], timeout=0.02)
+    assert error.value.timeout == 0.02
+    assert not invoked
+    assert not processes._async_slots
+
+
+@pytest.mark.asyncio
+async def test_async_admission_released_after_execution_error(monkeypatch, tmp_path):
+    def helper(command, **kwargs):
+        if command == ["invalid"]:
+            raise ValueError("Operator helper failed")
+        return subprocess.CompletedProcess(command, 0, b"ok", b"")
+
+    monkeypatch.setattr(processes, "run_process", helper)
+    options = {"slot_root": tmp_path, "limits": _limits(max_parallel_processes=1)}
+    results = await asyncio.gather(
+        processes.run_process_async(["invalid"], **options),
+        processes.run_process_async(["valid"], **options),
+        return_exceptions=True,
+    )
+    assert isinstance(results[0], ValueError)
+    assert results[1].stdout == b"ok"
+    assert not processes._async_slots
+
+
+@pytest.mark.asyncio
+async def test_async_gate_uses_common_slot_root_across_different_storage_roots(monkeypatch, tmp_path):
+    release = threading.Event()
+    started = []
+    roots = [tmp_path / "first", tmp_path / "second"]
+    for root in roots:
+        root.mkdir()
+
+    def helper(command, **kwargs):
+        started.append(command)
+        assert release.wait(5)
+        return subprocess.CompletedProcess(command, 0, b"", b"")
+
+    monkeypatch.setattr(processes, "run_process", helper)
+    options = {"slot_root": tmp_path, "limits": _limits(max_parallel_processes=1), "timeout": 5}
+    tasks = [asyncio.create_task(processes.run_process_async([str(index)], storage_root=root, **options)) for index, root in enumerate(roots)]
+    try:
+        await _wait_until(lambda: bool(started))
+        await asyncio.sleep(0.02)
+        assert len(started) == 1
+    finally:
+        release.set()
+        await asyncio.gather(*tasks)
+    assert len(started) == 2
+    assert not processes._async_slots
+
+
 def test_process_slot_timeout_releases_lock_for_next_invocation(monkeypatch, tmp_path):
     started = threading.Event()
     original = processes.subprocess.Popen

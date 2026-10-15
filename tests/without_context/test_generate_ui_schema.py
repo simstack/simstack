@@ -1,4 +1,6 @@
 import json
+import importlib
+from pathlib import Path
 import subprocess
 import sys
 from typing import Annotated, Literal, Optional, Union
@@ -10,6 +12,63 @@ from simstack.models import simstack_model
 from simstack.models.document import EmbeddedModel, Model
 from simstack.models.files import FileStack
 from simstack.util.generate_ui_schema import generate_ui_schema, resolve_ui_schema
+
+
+def test_presentation_identity_changes_with_published_core_revision(monkeypatch):
+    module = importlib.import_module("simstack.util.generate_ui_schema")
+    package = Path(module.__file__).resolve().parents[1]
+    revision = ["a" * 40]
+
+    class Distribution:
+        def read_text(self, name):
+            return json.dumps({"vcs_info": {"commit_id": revision[0]}})
+
+        def locate_file(self, name):
+            return package
+
+    monkeypatch.setattr(module, "distribution", lambda name: Distribution())
+    try:
+        module.ui_schema_identity.cache_clear()
+        first = module.ui_schema_identity()
+        revision[0] = "b" * 40
+        module.ui_schema_identity.cache_clear()
+        assert module.ui_schema_identity() != first
+    finally:
+        module.ui_schema_identity.cache_clear()
+
+
+def test_editable_presentation_identity_includes_builtin_model_hooks(monkeypatch, tmp_path):
+    module = importlib.import_module("simstack.util.generate_ui_schema")
+    package = tmp_path / "simstack"
+    generator = package / "util" / "generate_ui_schema.py"
+    generator.parent.mkdir(parents=True)
+    generator.write_text("unchanged generator")
+    builtin = package / "models" / "files.py"
+    builtin.parent.mkdir()
+    builtin.write_text("first built-in UI hook")
+    monkeypatch.setattr(module, "__file__", str(generator))
+    try:
+        module.ui_schema_identity.cache_clear()
+        first = module.ui_schema_identity()
+        builtin.write_text("updated built-in UI hook")
+        module.ui_schema_identity.cache_clear()
+        assert module.ui_schema_identity() != first
+    finally:
+        module.ui_schema_identity.cache_clear()
+
+
+def test_presentation_identity_includes_schema_dependency_versions(monkeypatch):
+    module = importlib.import_module("simstack.util.generate_ui_schema")
+    versions = {"pydantic": "2.12.0", "pydantic-core": "2.41.0"}
+    monkeypatch.setattr(module, "distribution_version", versions.__getitem__)
+    try:
+        module.ui_schema_identity.cache_clear()
+        first = module.ui_schema_identity()
+        versions["pydantic"] = "2.13.0"
+        module.ui_schema_identity.cache_clear()
+        assert module.ui_schema_identity() != first
+    finally:
+        module.ui_schema_identity.cache_clear()
 
 
 def test_public_generator_module_can_be_imported_before_the_models_package():
