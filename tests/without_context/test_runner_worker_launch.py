@@ -4,6 +4,7 @@ import asyncio
 import os
 import stat
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -1174,14 +1175,301 @@ def test_runner_pid_path_hashes_malicious_opaque_resource(tmp_path):
 
 
 def test_runner_pid_file_is_written_private(monkeypatch, tmp_path):
-    manager = object.__new__(RunnerManager)
+    manager = _manager(monkeypatch, tmp_path)
     manager._pid = 4321
-    manager._pid_file = runner_pid_file(tmp_path, "resource")
+    try:
+        manager._acquire_runner_lock()
+        assert _locked_pid(manager) == "4321"
+        if os.name != "nt":
+            assert stat.S_IMODE(manager._pid_file.stat().st_mode) == 0o600
+        assert not os.get_inheritable(manager._pid_file_fd)
+    finally:
+        manager._release_runner_lock()
 
-    manager._write_pid_file()
 
-    assert manager._pid_file.read_text(encoding="ascii") == "4321"
-    assert stat.S_IMODE(manager._pid_file.stat().st_mode) == 0o600
+def _manager(monkeypatch, tmp_path):
+    monkeypatch.setattr("simstack.core.services.runner_manager.context", SimpleNamespace(
+        config=SimpleNamespace(workdir=tmp_path, workflow_installations=False),
+    ))
+    return RunnerManager(Resource(value="self"), with_file_transfer=False)
+
+
+def _locked_pid(manager):
+    # Windows byte locks also exclude reads through a different file handle.
+    os.lseek(manager._pid_file_fd, 0, os.SEEK_SET)
+    return os.read(manager._pid_file_fd, 64).decode("ascii")
+
+
+@pytest.mark.parametrize("recorded", ["8", "self", "invalid PID"])
+def test_runner_ignores_stale_or_reused_pid_when_no_kernel_lock_exists(monkeypatch, tmp_path, recorded):
+    manager = _manager(monkeypatch, tmp_path)
+    manager._pid_file.write_text(str(os.getpid()) if recorded == "self" else recorded)
+    monkeypatch.setattr("simstack.core.services.runner_manager.os.kill", MagicMock(side_effect=AssertionError("PID liveness must not determine ownership")))
+    try:
+        manager._acquire_runner_lock()
+        assert _locked_pid(manager) == str(manager._pid)
+    finally:
+        manager._release_runner_lock()
+
+
+def test_runner_does_not_mistake_a_live_native_thread_id_for_another_runner(monkeypatch, tmp_path):
+    manager = _manager(monkeypatch, tmp_path)
+    ready, stop = threading.Event(), threading.Event()
+    native = []
+
+    def worker():
+        native.append(threading.get_native_id())
+        ready.set()
+        stop.wait(5)
+
+    thread = threading.Thread(target=worker)
+    thread.start()
+    try:
+        assert ready.wait(5)
+        manager._pid_file.write_text(str(native[0]))
+        manager._acquire_runner_lock()
+        assert _locked_pid(manager) == str(manager._pid)
+    finally:
+        manager._release_runner_lock()
+        stop.set()
+        thread.join(timeout=5)
+
+
+def test_second_manager_is_blocked_even_with_identical_process_id_and_release_keeps_inode(monkeypatch, tmp_path):
+    first, second = _manager(monkeypatch, tmp_path), _manager(monkeypatch, tmp_path)
+    try:
+        first._acquire_runner_lock()
+        inode = first._pid_file.stat().st_ino
+        with pytest.raises(RuntimeError, match="Another runner"):
+            second._acquire_runner_lock()
+        assert second._pid_file_fd is None
+        assert _locked_pid(first) == str(first._pid)
+        first._release_runner_lock()
+        assert first._pid_file.exists()
+        assert first._pid_file.stat().st_ino == inode
+        second._acquire_runner_lock()
+        assert second._pid_file.stat().st_ino == inode
+    finally:
+        first._release_runner_lock()
+        second._release_runner_lock()
+
+
+_LOCK_PROCESS = """
+import os, sys
+from pathlib import Path
+from simstack.core.services.runner_manager import RunnerManager
+runner = object.__new__(RunnerManager)
+runner._resource = 'resource'
+runner._pid = os.getpid()
+runner._pid_file = Path(sys.argv[1])
+runner._pid_file_fd = None
+try:
+    runner._acquire_runner_lock()
+except RuntimeError:
+    print('BLOCKED', flush=True)
+    sys.exit(2)
+print('ACQUIRED', flush=True)
+os._exit(0)  # Deliberately bypass Python cleanup to exercise kernel lifetime.
+"""
+
+
+def test_runner_lock_blocks_a_second_process_and_is_released_after_process_exit(monkeypatch, tmp_path):
+    manager = _manager(monkeypatch, tmp_path)
+    try:
+        manager._acquire_runner_lock()
+        child = subprocess.run([sys.executable, "-c", _LOCK_PROCESS, str(manager._pid_file)], capture_output=True, text=True, timeout=10)
+        assert child.returncode == 2, child.stderr
+        assert child.stdout.strip() == "BLOCKED"
+        manager._release_runner_lock()
+        child = subprocess.run([sys.executable, "-c", _LOCK_PROCESS, str(manager._pid_file)], capture_output=True, text=True, timeout=10)
+        assert child.returncode == 0, child.stderr
+        assert child.stdout.strip() == "ACQUIRED"
+        manager._acquire_runner_lock()
+    finally:
+        manager._release_runner_lock()
+
+
+@pytest.mark.parametrize("inside", [False, True])
+def test_runner_pid_path_does_not_resolve_or_follow_final_symlink(monkeypatch, tmp_path, inside):
+    manager = _manager(monkeypatch, tmp_path)
+    target = tmp_path / "unrelated.txt" if inside else tmp_path.parent / (tmp_path.name + "-unrelated.txt")
+    target.write_text("unrelated contents")
+    try:
+        manager._pid_file.symlink_to(target)
+        assert runner_pid_file(tmp_path, manager._resource) == manager._pid_file
+        with pytest.raises(RuntimeError, match="symbolic link"):
+            manager._acquire_runner_lock()
+        assert target.read_text() == "unrelated contents"
+        assert manager._pid_file_fd is None
+    finally:
+        target.unlink()
+
+
+def test_runner_rejects_non_regular_pid_file_without_blocking(monkeypatch, tmp_path):
+    manager = _manager(monkeypatch, tmp_path)
+    manager._pid_file.mkdir()
+    with pytest.raises(RuntimeError, match="regular file"):
+        manager._acquire_runner_lock()
+    assert manager._pid_file_fd is None
+
+
+def test_runner_pid_write_failure_releases_its_lock_and_can_retry(monkeypatch, tmp_path):
+    manager = _manager(monkeypatch, tmp_path)
+    original = manager._write_pid_file
+    monkeypatch.setattr(manager, "_write_pid_file", MagicMock(side_effect=OSError("write failed")))
+    with pytest.raises(OSError, match="write failed"):
+        manager._acquire_runner_lock()
+    assert manager._pid_file_fd is None
+    monkeypatch.setattr(manager, "_write_pid_file", original)
+    try:
+        manager._acquire_runner_lock()
+    finally:
+        manager._release_runner_lock()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX-hosted verification of the Windows byte-lock branch")
+def test_windows_runner_uses_nonblocking_byte_lock_at_offset_zero(monkeypatch, tmp_path):
+    import fcntl
+    import importlib
+
+    module = importlib.import_module("simstack.core.services.runner_manager")
+    first, second = _manager(monkeypatch, tmp_path), _manager(monkeypatch, tmp_path)
+    calls = []
+
+    def lock(descriptor, mode, length):
+        assert mode == 1 and length == 1
+        assert os.lseek(descriptor, 0, os.SEEK_CUR) == 0
+        calls.append(descriptor)
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    windows_os = SimpleNamespace(**vars(os))
+    windows_os.name = "nt"
+    monkeypatch.setattr(module, "os", windows_os)
+    monkeypatch.setitem(sys.modules, "msvcrt", SimpleNamespace(LK_NBLCK=1, locking=lock))
+    try:
+        first._acquire_runner_lock()
+        with pytest.raises(RuntimeError, match="Another runner"):
+            second._acquire_runner_lock()
+        first._release_runner_lock()
+        second._acquire_runner_lock()
+        assert len(calls) == 3
+    finally:
+        first._release_runner_lock()
+        second._release_runner_lock()
+
+
+def _stub_manager_services(monkeypatch, *, fail=None, stop_gate=None):
+    state = SimpleNamespace(instances=[], tasks=[], started=asyncio.Event(), stopping=asyncio.Event())
+
+    class Service:
+        def __init__(self, *args, **kwargs):
+            self.index = len(state.instances)
+            if fail == "constructor" and self.index == 1:
+                raise RuntimeError("constructor failed")
+            self.task = None
+            state.instances.append(self)
+
+        def start(self):
+            if fail == "start" and self.index == 1:
+                raise RuntimeError("start failed")
+            self.task = asyncio.create_task(asyncio.Event().wait())
+            state.tasks.append(self.task)
+            state.started.set()
+            return self.task
+
+        async def stop(self):
+            state.stopping.set()
+            if stop_gate is not None:
+                await stop_gate.wait()
+            if self.task is not None:
+                self.task.cancel()
+                await asyncio.gather(self.task, return_exceptions=True)
+
+    for name in ("NodeExecutionService", "RunnerStatusService", "SlurmStatusService", "StopCheckService"):
+        monkeypatch.setattr("simstack.core.services.runner_manager." + name, Service)
+    return state
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["constructor", "start"])
+async def test_runner_startup_failure_releases_lock_and_reaps_started_services(monkeypatch, tmp_path, failure):
+    manager = _manager(monkeypatch, tmp_path)
+    state = _stub_manager_services(monkeypatch, fail=failure)
+    with pytest.raises(RuntimeError, match="failed"):
+        await manager.run_nodes_for_resource()
+    assert manager._pid_file_fd is None
+    assert all(task.done() for task in state.tasks)
+    try:
+        manager._acquire_runner_lock()
+    finally:
+        manager._release_runner_lock()
+
+
+@pytest.mark.asyncio
+async def test_runner_keeps_lock_until_services_stop_despite_repeated_cancellation(monkeypatch, tmp_path):
+    manager = _manager(monkeypatch, tmp_path)
+    gate = asyncio.Event()
+    state = _stub_manager_services(monkeypatch, stop_gate=gate)
+    running = asyncio.create_task(manager.run_nodes_for_resource())
+    await state.started.wait()
+    running.cancel()
+    await state.stopping.wait()
+    other = _manager(monkeypatch, tmp_path)
+    with pytest.raises(RuntimeError, match="Another runner"):
+        other._acquire_runner_lock()
+    running.cancel()
+    await asyncio.sleep(0)
+    assert not running.done()
+    gate.set()
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(running, 1)
+    assert manager._pid_file_fd is None
+    assert all(task.done() for task in state.tasks)
+    try:
+        other._acquire_runner_lock()
+    finally:
+        other._release_runner_lock()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_cleanup_task_terminates_without_leaking_lock_or_service_tasks(monkeypatch, tmp_path):
+    manager = _manager(monkeypatch, tmp_path)
+    state = _stub_manager_services(monkeypatch)
+
+    async def cancelled_cleanup():
+        asyncio.current_task().cancel()
+        await asyncio.sleep(0)
+
+    monkeypatch.setattr(manager, "stop_all_services", cancelled_cleanup)
+    running = asyncio.create_task(manager.run_nodes_for_resource())
+    await state.started.wait()
+    manager._shutdown_event.set()
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(running, 1)
+    assert manager._pid_file_fd is None
+    assert all(task.done() for task in state.tasks)
+    try:
+        manager._acquire_runner_lock()
+    finally:
+        manager._release_runner_lock()
+
+
+@pytest.mark.asyncio
+async def test_runner_cleanup_error_still_reaps_services_and_releases_lock(monkeypatch, tmp_path):
+    manager = _manager(monkeypatch, tmp_path)
+    state = _stub_manager_services(monkeypatch)
+    monkeypatch.setattr(manager, "stop_all_services", AsyncMock(side_effect=RuntimeError("cleanup failed")))
+    running = asyncio.create_task(manager.run_nodes_for_resource())
+    await state.started.wait()
+    manager._shutdown_event.set()
+    with pytest.raises(RuntimeError, match="cleanup failed"):
+        await asyncio.wait_for(running, 1)
+    assert manager._pid_file_fd is None
+    assert all(task.done() for task in state.tasks)
+    try:
+        manager._acquire_runner_lock()
+    finally:
+        manager._release_runner_lock()
 
 
 @pytest.mark.asyncio

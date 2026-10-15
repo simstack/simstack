@@ -1,4 +1,5 @@
 import asyncio
+import os
 import stat
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -15,36 +16,37 @@ def resource():
 
 @pytest.fixture
 def runner_manager(resource):
-    return RunnerManager(resource=resource, with_file_transfer=False)
+    manager = RunnerManager(resource=resource, with_file_transfer=False)
+    yield manager
+    manager._release_runner_lock()
 
 
 @pytest.mark.asyncio
 async def test_runner_manager_pid_file(runner_manager, tmp_path):
     runner_manager._pid_file = runner_pid_file(tmp_path, runner_manager._resource)
 
-    with patch.object(runner_manager, "_is_process_running", return_value=False):
-        runner_manager._check_existing_runner()
-        runner_manager._write_pid_file()
+    runner_manager._acquire_runner_lock()
 
     assert runner_manager._pid_file.exists()
-    assert runner_manager._pid_file.read_text() == str(runner_manager._pid)
+    os.lseek(runner_manager._pid_file_fd, 0, os.SEEK_SET)
+    assert os.read(runner_manager._pid_file_fd, 64).decode("ascii") == str(runner_manager._pid)
     assert stat.S_IMODE(runner_manager._pid_file.stat().st_mode) == 0o600
 
 
 @pytest.mark.asyncio
 async def test_runner_manager_existing_runner_error(runner_manager, tmp_path):
     runner_manager._pid_file = runner_pid_file(tmp_path, runner_manager._resource)
-    existing_pid = 12345
-    runner_manager._pid_file.write_text(str(existing_pid))
-
-    with (
-        patch.object(runner_manager, "_is_process_running", return_value=True),
-        pytest.raises(
+    holder = RunnerManager(resource=runner_manager._resource, with_file_transfer=False)
+    holder._pid_file = runner_manager._pid_file
+    try:
+        holder._acquire_runner_lock()
+        with pytest.raises(
             RuntimeError,
             match="Another runner for resource .* is already running",
-        ),
-    ):
-        runner_manager._check_existing_runner()
+        ):
+            runner_manager._acquire_runner_lock()
+    finally:
+        holder._release_runner_lock()
 
 
 @pytest.mark.asyncio
