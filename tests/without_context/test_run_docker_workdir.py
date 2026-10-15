@@ -27,6 +27,14 @@ from simstack.util.resource_config import ResourceConfig
 _SUCCESS_PROTOCOL = encode_run_node_result(RunNodeResult(True, "bool")).encode()
 
 
+@pytest.fixture(autouse=True)
+def _runner_owner_ids(monkeypatch):
+    monkeypatch.setattr(
+        "simstack.core.run_docker.launcher_owner_ids",
+        lambda: (1000, 1000),
+    )
+
+
 def test_ensure_host_task_workdir_creates_node_and_task_dirs(tmp_path: Path):
     task_dir = ensure_host_task_workdir(tmp_path, "psi4_calculator", "abc123")
 
@@ -193,7 +201,7 @@ async def test_run_docker_reloads_config_before_image_lookup(tmp_path: Path):
         result = await run_docker(registry_entry)
 
     assert result is True
-    cmd = mock_exec.await_args.args
+    cmd = mock_exec.await_args_list[0].args
     assert "molecular-qm-psi4:latest" in cmd
     assert "--cpus" not in cmd
     assert "--memory" not in cmd
@@ -226,7 +234,7 @@ async def test_run_docker_applies_slurm_cpu_and_memory_limits(tmp_path: Path):
         result = await run_docker(registry_entry)
 
     assert result is True
-    cmd = list(mock_exec.await_args.args)
+    cmd = list(mock_exec.await_args_list[0].args)
     image_index = cmd.index("molecular-qm-psi4:latest")
     assert cmd[:image_index][cmd[:image_index].index("--cpus") + 1] == "8"
     assert cmd[:image_index][cmd[:image_index].index("--memory") + 1] == "8g"
@@ -335,7 +343,7 @@ async def test_run_docker_passes_cidfile(tmp_path: Path):
         result = await run_docker(registry_entry)
 
     assert result is True
-    cmd = list(mock_exec.await_args.args)
+    cmd = list(mock_exec.await_args_list[0].args)
     assert "--cidfile" in cmd
     cidfile = Path(cmd[cmd.index("--cidfile") + 1])
     expected = tmp_path / "psi4_calculator" / "abc123" / ".docker_cid"
@@ -590,3 +598,88 @@ async def test_run_docker_redacts_database_uri_from_spawn_exception(
     assert "docker-user" not in caplog.text
     assert "docker-password" not in caplog.text
     assert secret not in (registry_entry.error or "")
+
+
+def _harmonize_aware_exec(*, job_returncode: int):
+    async def _exec(*cmd, **kwargs):
+        cmd_list = list(cmd)
+        if "--network" in cmd_list:
+            proc = AsyncMock()
+            proc.returncode = 0
+            proc.communicate = AsyncMock(return_value=(b"", b""))
+            return proc
+        return await _fake_docker_exec(returncode=job_returncode)(*cmd, **kwargs)
+
+    return _exec
+
+
+def _harmonize_command(mock_exec) -> list[str]:
+    commands = [list(call.args) for call in mock_exec.await_args_list]
+    harmonize = [cmd for cmd in commands if "--network" in cmd]
+    assert len(harmonize) == 1
+    return harmonize[0]
+
+
+@pytest.mark.asyncio
+async def test_run_docker_harmonizes_task_dir_after_success(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(
+        "simstack.core.run_docker.launcher_owner_ids",
+        lambda: (4242, 4243),
+    )
+    resource_config = _psi4_image_config(tmp_path)
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch(
+            "asyncio.create_subprocess_exec",
+            side_effect=_harmonize_aware_exec(job_returncode=0),
+        ) as mock_exec,
+    ):
+        result = await run_docker_with_outcome(registry_entry)
+
+    assert result.success is True
+    command = _harmonize_command(mock_exec)
+    task_dir = tmp_path / "psi4_calculator" / "abc123"
+    assert command[:8] == [
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--entrypoint",
+    ]
+    assert command[8] == "python"
+    assert f"{task_dir.resolve()}:/work" in command
+    assert "molecular-qm-psi4:latest" in command
+    assert command[-3:] == ["4242", "4243", "/work"]
+    assert "0o664" in command[command.index("-c") + 1]
+    assert "0o775" in command[command.index("-c") + 1]
+
+
+@pytest.mark.asyncio
+async def test_run_docker_harmonizes_task_dir_after_nonzero_exit(tmp_path: Path):
+    resource_config = _psi4_image_config(tmp_path)
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch(
+            "asyncio.create_subprocess_exec",
+            side_effect=_harmonize_aware_exec(job_returncode=1),
+        ) as mock_exec,
+        patch("simstack.core.run_docker.inspect_docker_oomkilled", return_value=False),
+    ):
+        result = await run_docker_with_outcome(registry_entry)
+
+    assert result.success is False
+    assert registry_entry.error is not None
+    assert "exit 1" in registry_entry.error
+    command = _harmonize_command(mock_exec)
+    assert command[-3:] == ["1000", "1000", "/work"]
+    assert "--user" in command
+    assert "0:0" in command

@@ -15,6 +15,23 @@ from simstack.util.file_transfer_client import (
 logger = logging.getLogger("NodeRunner")
 
 
+def _report_transfer_failure(
+    client: FileTransferClient,
+    transfer_id: str,
+    *,
+    error_message: str,
+    error_code: str,
+) -> None:
+    try:
+        client.fail_transfer(
+            transfer_id,
+            error_message=error_message,
+            error_code=error_code,
+        )
+    except Exception:
+        logger.exception("Failed to report failed file transfer %s", transfer_id)
+
+
 class FileTransferService(BaseService):
     """Poll the SimStack server for hidden file transfer uploads assigned to this runner."""
 
@@ -104,14 +121,19 @@ class FileTransferService(BaseService):
             return True
         except FileTransferError as exc:
             logger.warning("File transfer upload failed for %s: %s", transfer_id, exc)
-            try:
-                client.fail_transfer(
-                    transfer_id,
-                    error_message=str(exc),
-                    error_code="SOURCE_UPLOAD_FAILED",
-                )
-            except Exception:
-                logger.exception(
-                    "Failed to report failed file transfer %s", transfer_id
-                )
+            _report_transfer_failure(
+                client,
+                transfer_id,
+                error_message=str(exc),
+                error_code="SOURCE_UPLOAD_FAILED",
+            )
+            return False
+        except OSError as exc:
+            logger.warning("File transfer source is not readable for %s: %s", transfer_id, exc)
+            _report_transfer_failure(
+                client,
+                transfer_id,
+                error_message=str(exc),
+                error_code="SOURCE_NOT_READABLE",
+            )
             return False
