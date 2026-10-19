@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from simstack.core.node_runner import NodeRunner
+from simstack.models.parameters import Resource
 from simstack.runner_runtime.execution_adapter import RunnerExecutionAdapterConfig
 
 
@@ -20,6 +21,7 @@ def _runner_context(tmp_path):
         config=SimpleNamespace(
             workdir=tmp_path / "work",
             max_inline_document_bytes=1_000_000,
+            resource=Resource(value="local"),
         ),
         runner_adapter=RunnerExecutionAdapterConfig.from_mapping(
             {
@@ -126,6 +128,50 @@ def test_reclaimed_worker_repeats_real_subprocess_without_overwriting_logs(
     assert replacement.last_stdout.strip() == "next"
     assert len(list(task_dir.glob("process-*.log"))) == 3
     assert original.read_bytes() == original_content
+
+
+def test_large_subprocess_output_stays_on_disk_until_explicit_read(monkeypatch, tmp_path):
+    fake_context = _runner_context(tmp_path)
+    task_dir = fake_context.config.workdir / "tasks" / "task-1"
+    task_dir.mkdir(parents=True)
+    monkeypatch.chdir(task_dir)
+    monkeypatch.setattr("simstack.core.context.context", fake_context)
+    runner = NodeRunner("program", "task-1")
+    count = 2 * 1024 * 1024
+    command = [sys.executable, "-c", f"import sys; sys.stdout.write('x'*{count}); sys.stderr.write('y'*{count})"]
+    assert runner.subprocess("large", command)
+    assert runner._last_stdout_text == runner._last_stderr_text == ""
+    assert runner._last_stdout_slice[2] - runner._last_stdout_slice[1] == count
+    assert runner.info_files[0].in_memory is False
+    assert runner.last_stdout == "x" * count
+    assert runner.last_stderr == "y" * count
+    assert list(task_dir.glob("process-output-*")) == []
+
+
+def test_node_log_tail_is_bounded_and_full_snapshots_are_immutable(monkeypatch, tmp_path):
+    from simstack.runner_api.file_transfer import resolve_instance_path
+
+    fake_context = _runner_context(tmp_path)
+    fake_context.config.resource = Resource(value="local")
+    task_dir = fake_context.config.workdir / "tasks" / "task-1"
+    task_dir.mkdir(parents=True)
+    monkeypatch.chdir(task_dir)
+    monkeypatch.setattr("simstack.core.context.context", fake_context)
+    runner = NodeRunner("program", "task-1")
+    first = "x" * (128 * 1024)
+    runner.log(first)
+    runner.log("last")
+    assert len(runner.log_string) <= 64 * 1024
+    assert runner.log_string.endswith("last\n")
+    assert runner.log_truncated is True
+    runner._make_log_file()
+    snapshot = resolve_instance_path(runner.info_files[-1].locations[0].path, fake_context.config.workdir)
+    assert snapshot.read_text() == first + "\nlast\n"
+    assert snapshot.is_relative_to(task_dir)
+    runner._make_log_file()
+    assert len(runner.info_files) == 1
+    runner.log("new data")
+    assert snapshot.read_text() == first + "\nlast\n"
 
 
 def test_watchdog_repeated_names_keep_unique_logs_and_jobs(monkeypatch, tmp_path):

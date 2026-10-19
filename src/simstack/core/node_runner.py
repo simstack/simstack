@@ -3,9 +3,12 @@ import hashlib
 import logging
 import os
 import subprocess
+import shutil
+import tempfile
 import uuid
 from pathlib import Path
 from typing import List, Set
+from pydantic import PrivateAttr
 
 from simstack.models.document import ObjectId
 
@@ -15,6 +18,7 @@ from simstack.models.files import FileStack
 
 
 local_logger = logging.getLogger("NodeRunner")
+_LOG_TAIL_CHARS = 64 * 1024
 
 
 class NodeRunner(SimstackResult):
@@ -35,6 +39,39 @@ class NodeRunner(SimstackResult):
         log_string (str): Cumulative log of messages recorded via the `log` method.
         info_file_patterns (Set[str]): Set of file patterns (e.g., "*.log") used to collect information files.
     """
+
+    _last_stdout_text: str = PrivateAttr(default="")
+    _last_stderr_text: str = PrivateAttr(default="")
+    _last_stdout_slice: tuple[Path, int, int] | None = PrivateAttr(default=None)
+    _last_stderr_slice: tuple[Path, int, int] | None = PrivateAttr(default=None)
+    _node_log_path: Path | None = PrivateAttr(default=None)
+    _node_log_snapshot_size: int = PrivateAttr(default=-1)
+
+    @staticmethod
+    def _read_output_slice(value: tuple[Path, int, int]) -> str:
+        path, start, end = value
+        with path.open("rb") as source:
+            source.seek(start)
+            return source.read(end - start).decode("utf-8", errors="replace")
+
+    @property
+    def last_stdout(self) -> str:
+        """Full output remains available on demand; subprocess capture stays on disk."""
+        return self._read_output_slice(self._last_stdout_slice) if self._last_stdout_slice else self._last_stdout_text
+
+    @last_stdout.setter
+    def last_stdout(self, value: str) -> None:
+        self._last_stdout_slice = None
+        self._last_stdout_text = value
+
+    @property
+    def last_stderr(self) -> str:
+        return self._read_output_slice(self._last_stderr_slice) if self._last_stderr_slice else self._last_stderr_text
+
+    @last_stderr.setter
+    def last_stderr(self, value: str) -> None:
+        self._last_stderr_slice = None
+        self._last_stderr_text = value
 
     def __init__(
         self,
@@ -60,6 +97,7 @@ class NodeRunner(SimstackResult):
         self.last_stderr = ""
         self.last_returncode: int | None = None
         self.log_string = ""
+        self.log_truncated = False
         self.info_file_patterns = {"*.in", "*.out", "*.err", "*.log"}
         self.custom_name = None
         self.info(f"NodeRunner '{self.name}' initialized for task_id: {self.task_id}")
@@ -173,9 +211,22 @@ class NodeRunner(SimstackResult):
         Args:
             msg (str): Message to log.
         """
-        self.log_string += f"{msg}\n"
+        if self._node_log_path is None:
+            from simstack.core.context import context
+
+            root = self._task_workdir() if context.initialized else Path.cwd()
+            self._node_log_path = root / f"node-{uuid.uuid4().hex}.log"
+            with self._open_private_log(self._node_log_path):
+                pass
+        fd = os.open(self._node_log_path, os.O_WRONLY | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0))
+        with os.fdopen(fd, "a", encoding="utf-8") as archive:
+            archive.write(msg)
+            archive.write("\n")
+        tail = self.log_string + msg[-_LOG_TAIL_CHARS:] + "\n"
+        self.log_truncated = self.log_truncated or len(msg) + len(self.log_string) + 1 > _LOG_TAIL_CHARS
+        self.log_string = tail[-_LOG_TAIL_CHARS:]
         self.logger.debug(
-            f"Task {self.name}: {msg} for task_id: {self.task_id}",
+            f"Task {self.name}: {msg[-_LOG_TAIL_CHARS:]} for task_id: {self.task_id}",
             stacklevel=2,
         )
 
@@ -240,27 +291,32 @@ class NodeRunner(SimstackResult):
         process_cwd = self._validated_process_cwd(cwd)
         log_path = self._private_process_log(name)
 
-        with self._open_private_log(log_path) as process_log:
-            process_log.write(f"Command: {name or 'process'}\n{command_argv!r}\n")
-            process = subprocess.run(
-                command_argv,
-                shell=False,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                cwd=str(process_cwd),
-                env=self._runner_subprocess_environment(),
-                check=False,
-            )
+        with tempfile.TemporaryDirectory(prefix="process-output-", dir=self._task_workdir()) as capture:
+            stdout_path, stderr_path = Path(capture) / "stdout", Path(capture) / "stderr"
+            with self._open_private_log(stdout_path) as stdout, self._open_private_log(stderr_path) as stderr:
+                process = subprocess.run(
+                    command_argv, shell=False, stdout=stdout, stderr=stderr,
+                    cwd=str(process_cwd), env=self._runner_subprocess_environment(), check=False,
+                )
             self.info(f"run script {name} finished: {process.returncode}")
-            self.last_stdout = process.stdout
-            self.last_stderr = process.stderr
             self.last_returncode = process.returncode
-            process_log.write(f"Process return code:\n{process.returncode}\n\n")
-            process_log.write(f"Process output:\n{process.stdout}\n\n")
-            process_log.write(f"Process error:\n{process.stderr}\n\n")
+            with self._open_private_log(log_path) as process_log:
+                process_log.write(f"Command: {name or 'process'}\n{command_argv!r}\n")
+                process_log.write(f"Process return code:\n{process.returncode}\n\n")
+                process_log.write("Process output:\n")
+                start = process_log.tell()
+                with stdout_path.open(encoding="utf-8", errors="replace") as source:
+                    shutil.copyfileobj(source, process_log, length=64 * 1024)
+                self._last_stdout_slice = (log_path, start, process_log.tell())
+                process_log.write("\n\nProcess error:\n")
+                start = process_log.tell()
+                with stderr_path.open(encoding="utf-8", errors="replace") as source:
+                    shutil.copyfileobj(source, process_log, length=64 * 1024)
+                self._last_stderr_slice = (log_path, start, process_log.tell())
+                self._last_stdout_text = self._last_stderr_text = ""
+                process_log.write("\n\n")
         file_stack = FileStack.from_local_file(
-            log_path, in_memory=True, is_hashable=True, secure_source=True
+            log_path, in_memory=False, is_hashable=True, secure_source=True
         )
         self.info_files.append(file_stack)
         self.info(f"Subprocess '{name}' log added to info files: {file_stack.name}")
@@ -414,7 +470,20 @@ class NodeRunner(SimstackResult):
         it creates a `FileStack` from the string and appends it to the `info_files` list,
         making it available as part of the task's results.
         """
-        if len(self.log_string) > 0:
+        if self._node_log_path is not None:
+            size = self._node_log_path.stat().st_size
+            if size == self._node_log_snapshot_size:
+                return
+            snapshot = self._private_process_log("node-log-snapshot")
+            with self._node_log_path.open(encoding="utf-8") as source, self._open_private_log(snapshot) as target:
+                shutil.copyfileobj(source, target, length=64 * 1024)
+            log_file = FileStack.from_local_file(snapshot, in_memory=False,
+                                                is_hashable=True, secure_source=True)
+            log_file.name = "log.txt"
+            self.info_files.append(log_file)
+            self._node_log_snapshot_size = size
+            self.info(f"Log archive saved to info files as: {log_file.name}")
+        elif len(self.log_string) > 0:
             log_file = FileStack.from_string(self.log_string, file_name="log.txt")
             self.info_files.append(log_file)
             self.info(f"Log string saved to info files as: {log_file.name}")

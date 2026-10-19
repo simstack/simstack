@@ -106,9 +106,8 @@ class TestNodeRunner:
         mock_subprocess.assert_called_once_with(
             ["echo", "hello"],
             shell=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
+            stdout=ANY,
+            stderr=ANY,
             cwd=ANY,
             env=None,
             check=False,
@@ -117,7 +116,7 @@ class TestNodeRunner:
         log_path = mock_file_stack.call_args.args[0]
         assert log_path.is_file()
         mock_file_stack.assert_called_once_with(
-            log_path, in_memory=True, is_hashable=True, secure_source=True
+            log_path, in_memory=False, is_hashable=True, secure_source=True
         )
         assert mock_file_stack_instance in node_runner.info_files
 
@@ -160,7 +159,7 @@ class TestNodeRunner:
         assert log_path.name.startswith(f"process-{hashlib.sha256(b'process').hexdigest()}-")
         assert log_path.suffix == ".log"
         mock_file_stack.assert_called_once_with(
-            log_path, in_memory=True, is_hashable=True, secure_source=True
+            log_path, in_memory=False, is_hashable=True, secure_source=True
         )
 
     def test_fail_method(self, node_runner, mock_logger):

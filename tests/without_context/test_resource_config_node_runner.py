@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 from simstack.core.node_runner import NodeRunner
+from simstack.models.parameters import Resource
 from simstack.util.resource_config import ResourceConfig
 
 
@@ -24,7 +25,8 @@ def task_runner(monkeypatch, tmp_path):
         SimpleNamespace(
             initialized=True,
             runner_mode=True,
-            config=SimpleNamespace(workdir=workdir, max_inline_document_bytes=1_000_000),
+            config=SimpleNamespace(workdir=workdir, max_inline_document_bytes=1_000_000,
+                                   resource=Resource(value="local")),
         ),
     )
     return NodeRunner("program", "task-1")
