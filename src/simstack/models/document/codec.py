@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import enum
+import re
 from collections.abc import Mapping
 from datetime import date, datetime
 from decimal import Decimal
@@ -53,6 +54,32 @@ def decode_document_value(value: Any) -> Any:
     """Reverse :func:`encode_document_value`, including nested binary data."""
 
     if isinstance(value, Mapping):
+        numeric = set(value) & {"$numberLong", "$numberDouble", "$numberDecimal"}
+        if numeric:
+            if len(numeric) != 1 or len(value) != 1:
+                raise DocumentParsingError("Numeric envelope must contain exactly one typed value")
+            tag = next(iter(numeric))
+            encoded = value[tag]
+            if not isinstance(encoded, str):
+                raise DocumentParsingError("Numeric envelope value must be a string")
+            if tag == "$numberLong":
+                if re.fullmatch(r"-?(?:0|[1-9][0-9]*)", encoded) is None or len(encoded) > 20:
+                    raise DocumentParsingError("Invalid canonical numberLong value")
+                number = int(encoded)
+                if not -(2**63) <= number < 2**63:
+                    raise DocumentParsingError("numberLong is outside signed 64-bit range")
+                return number
+            if tag == "$numberDouble":
+                if encoded not in {"NaN", "Infinity", "-Infinity"}:
+                    raise DocumentParsingError("Unsupported nonfinite numberDouble value")
+                return float(encoded)
+            try:
+                number = Decimal(encoded)
+            except Exception as exc:
+                raise DocumentParsingError("Invalid numberDecimal value") from exc
+            if not number.is_finite() or not -6176 <= number.adjusted() <= 6144:
+                raise DocumentParsingError("Unsupported numberDecimal value")
+            return number
         if "$binary" in value:
             if set(value) != {"$binary"}:
                 raise DocumentParsingError(

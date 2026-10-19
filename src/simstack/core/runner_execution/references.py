@@ -121,5 +121,12 @@ def walk_runtime_values(roots: Sequence[Any]):
             children.extend(value)
         get_cache = getattr(value, "_get_cache", None)
         if callable(get_cache):
-            children.extend(get_cache())
+            fields = object.__getattribute__(value, "__dict__")
+            cached = fields.get("_cache")
+            if getattr(value, "storage", None) is None or cached is not None:
+                cached = get_cache()
+                if isinstance(cached, Mapping):
+                    children.extend(cached.values())
+                else:
+                    children.extend(cached)
         pending.extend(reversed(children))

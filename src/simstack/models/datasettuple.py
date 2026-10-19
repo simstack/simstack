@@ -1,4 +1,5 @@
-from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List
+from typing import ClassVar, Literal, Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List
+from pydantic import model_validator
 
 from simstack.models.document import EmbeddedModel, Field, Model, ObjectId
 from simstack.models import simstack_model
@@ -6,10 +7,13 @@ from simstack.models.dataset_metadata import DataSetMetadata
 
 from simstack.util.make_table import make_column_defs_instance
 from simstack.util.make_table import make_table_entries_helper
+from simstack.models.dataset_storage import (DatasetRootMixin, DatasetSectionMixin, SharedDatasetSectionStorage,
+    SharedDatasetSelectionStorage, SharedDatasetSelectionChange, section_cache, section_data, set_section_data,
+    section_row_ids)
 
 
 @simstack_model
-class DataSetTupleSection(EmbeddedModel):
+class DataSetTupleSection(DatasetSectionMixin, EmbeddedModel):
     """
     Represents a section of a dataset containing tuples of models.
 
@@ -26,20 +30,31 @@ class DataSetTupleSection(EmbeddedModel):
     model_types: List[str] = Field(
         default_factory=list
     )  # Class names of models in each tuple
-    data: List[List[ObjectId]] = Field(
-        default_factory=list
+    __dataset_kind__: ClassVar[str] = "tuple"
+    inline_data: List[List[ObjectId]] = Field(
+        default_factory=list, alias="data", serialization_alias="data"
     )  # List of tuples (as lists of ObjectIds)
 
     column_defs: List[Dict] = Field(default_factory=list)
 
     table_entries: List[List[Dict]] = Field(default_factory=list)
+    storage: SharedDatasetSectionStorage | None = None
 
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "forbid", "serialize_by_alias": True}
+
+    @property
+    def data(self):
+        return section_data(self)
+
+    @data.setter
+    def data(self, value):
+        set_section_data(self, value)
 
     def _set_cache(self, cache: List[Tuple[Model, ...]]) -> None:
         object.__getattribute__(self, "__dict__")["_cache"] = cache
 
     def _get_cache(self) -> List[Tuple[Model, ...]]:
+        section_cache(self)
         values = object.__getattribute__(self, "__dict__").get("_cache")
         if values is None:
             values = []
@@ -67,6 +82,7 @@ class DataSetTupleSection(EmbeddedModel):
                     f"Model types {model_names} don't match section's expected types {self.model_types}"
                 )
 
+        section_row_ids(self).append(self._take_row_identity(models))
         self.data.append([model.id for model in models])
         self._get_cache().append(tuple(models))
 
@@ -129,6 +145,8 @@ class DataSetTupleSection(EmbeddedModel):
     # List-like behavior methods
     def __len__(self) -> int:
         """Return the number of model groups in this section."""
+        if self.storage is not None and object.__getattribute__(self, "__dict__").get("_cache") is None:
+            return self.storage.row_count
         return len(self.data)
 
     def __getitem__(
@@ -182,6 +200,7 @@ class DataSetTupleSection(EmbeddedModel):
             raise IndexError(
                 f"Index {index} out of range for section with {len(self.data)} model groups"
             )
+        del section_row_ids(self)[index]
         del self.data[index]
         cache = self._get_cache()
         if index < len(cache):
@@ -215,6 +234,7 @@ class DataSetTupleSection(EmbeddedModel):
                     f"Model types {model_names} don't match section's expected types {self.model_types}"
                 )
 
+        section_row_ids(self).insert(index, self._take_row_identity(models))
         self.data.insert(index, model_ids)
         self._get_cache().insert(index, tuple(models))
 
@@ -241,9 +261,20 @@ class DataSetTupleSection(EmbeddedModel):
 
         # Get the models first before removing
         models = await self.get_model_group(index)
+        identity = section_row_ids(self).pop(index)
+        values = object.__getattribute__(self, "__dict__")
+        values.setdefault("_dataset_removed_rows", []).append((models, identity))
         del self.data[index]
         del self._get_cache()[index]
         return models
+
+    def _take_row_identity(self, models):
+        removed = object.__getattribute__(self, "__dict__").get("_dataset_removed_rows", [])
+        for index, (previous, identity) in enumerate(removed):
+            if previous is models:
+                removed.pop(index)
+                return identity
+        return str(ObjectId())
 
     async def remove(self, models: Tuple[Model, ...]) -> None:
         """
@@ -257,6 +288,7 @@ class DataSetTupleSection(EmbeddedModel):
             index = self.data.index(model_ids)
         except ValueError:
             raise ValueError(f"Tuple {models} not found in DataSetSection")
+        del section_row_ids(self)[index]
         del self.data[index]
         cache = self._get_cache()
         if index < len(cache):
@@ -267,6 +299,7 @@ class DataSetTupleSection(EmbeddedModel):
         self.data.clear()
         self.model_types.clear()
         self._set_cache([])
+        object.__getattribute__(self, "__dict__")["_dataset_row_ids"] = []
 
     async def index(
         self, models: Tuple[Model, ...], start: int = 0, stop: int = None
@@ -302,6 +335,7 @@ class DataSetTupleSection(EmbeddedModel):
 
     def reverse(self) -> None:
         """Reverse the order of model groups in the section."""
+        section_row_ids(self).reverse()
         self.data.reverse()
         self._get_cache().reverse()
 
@@ -336,7 +370,9 @@ class DataSetTupleSection(EmbeddedModel):
 
 
 @simstack_model
-class DataSetTuple(Model):
+class DataSetTuple(DatasetRootMixin, Model):
+    __dataset_kind__: ClassVar[str] = "tuple"
+    revision: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     field_name: str = Field(default="dataset")
     metadata: DataSetMetadata
     sections: Dict[str, DataSetTupleSection] = Field(default_factory=dict)
@@ -394,6 +430,8 @@ class DataSetTuple(Model):
                     column_defs=[col_def.copy() for col_def in section.column_defs],
                     table_entries=[[entry.copy() for entry in row] for row in section.table_entries]
                 )
+                cloned_section._set_cache(list(section._get_cache()))
+                object.__setattr__(cloned_section, "_dataset_row_ids", list(section_row_ids(section)))
                 cloned_dataset.sections[section_name] = cloned_section
 
         return cloned_dataset
@@ -461,6 +499,7 @@ class DataSetTuple(Model):
     def ui_schema(cls) -> dict:
         return {
             "ui:field": "DataSetField",
+            "ui:options": {"datasetKind": "tuple"},
             "metadata": {"ui:widget": "hidden"},
             "sections": {"ui:widget": "hidden"},
         }
@@ -469,15 +508,31 @@ class DataSetTuple(Model):
 class DataSetTupleSelectionField(EmbeddedModel):
     section_name: str = Field(default="default")
     indices: List[int] = Field(default_factory=list)
+    section_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{24}$")
+    revision: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    row_ids: List[str] = Field(default_factory=list)
+    selected_count: int = Field(default=0, ge=0)
 
 @simstack_model
 class DataSetTupleSelection(Model):
+    __dataset_selection_kind__: ClassVar[str] = "tuple"
+    kind: Literal["tuple"] = "tuple"
+    source_revision: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    storage: SharedDatasetSelectionStorage | None = None
+    selection_changes: List[SharedDatasetSelectionChange] = Field(default_factory=list)
     field_name: str = Field(default="dataset_selection")
     dataset_id: ObjectId
     dataset_selection_fields: List[DataSetTupleSelectionField] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def reject_normalized_indices(self):
+        if (self.source_revision is not None or self.storage is not None) and any(field.indices for field in self.dataset_selection_fields):
+            raise ValueError("Normalized dataset selections require stable row IDs, not positional indices")
+        return self
 
     @classmethod
     def ui_schema(cls) -> dict:
         return {
             "ui:field": "DataSetSelectionField",
+            "ui:options": {"datasetKind": "tuple"},
         }

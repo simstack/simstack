@@ -39,7 +39,7 @@ A ``DataSetSection`` represents a collection of rows within a dataset. Each row 
 
 Key features:
 *   **Type consistency**: All rows in a section must have the same model types for the same keys.
-*   **Lazy loading**: Models are cached and only loaded from the database when needed.
+*   **Paged reading**: Stored sections load typed model pages through Server; ordinary section access materializes the section cache.
 *   **Table representation**: It can automatically generate column definitions and table entries for UI components (like ag-grid).
 
 To add data to a section, you can use the ``add_row`` method:
@@ -47,6 +47,41 @@ To add data to a section, you can use the ``add_row`` method:
 .. code-block:: python
 
     section.add_row({"model_a": instance_a, "model_b": instance_b})
+
+Reading large sections in workflows
+----------------------------------
+
+Use the same typed iterator for ``DataSetSection`` and ``DataSetTupleSection``:
+
+.. code-block:: python
+
+    for page in dataset["results"].iter_model_pages(limit=100):
+        for row in page:
+            model = row.models["result"]  # a dict section
+            process(model)
+
+``iter_models(limit=100)`` yields individual rows from successive pages. Each row
+has ``row_id``, ``position``, ``name`` and ``models``. For tuple sections,
+``row.models`` is a tuple and ``row.name`` is ``None``. Follow the iterator rather
+than collecting its results into a list. The page limit is between 1 and 100.
+
+Unloaded stored sections use their pinned snapshot and a scoped Runner/provider;
+iteration does not populate the full section cache. New sections and materialized
+working buffers read already hydrated models in bounded pages without a remote
+provider. Working-buffer pages have ``revision=None`` until publication. Do not
+change section membership during iteration. Raw legacy references require
+repository hydration before typed iteration.
+
+The returned models are detached read views. To transform a dataset, create new
+models with new IDs for changed values and add them to a new output section;
+changing an iterator result does not update the input section. This also keeps
+upstream source versions immutable. Building a new output section or a complete
+plot can still consume memory proportional to the output size.
+
+``section.items()``, ``values()``, normal iteration, indexing, ``get_item()``,
+``get_all_model_groups()`` and ``section.data`` retain their full-section behavior.
+Reading ``dataset.sections`` or ``dataset.items()`` only enumerates sections;
+``len(section)`` reads the stored row count without loading its models.
 
 DataSetSelection
 ----------------

@@ -21,6 +21,8 @@ class RunnerRoute(StrEnum):
     TASK_CACHE = "/tasks/{task_id}/cache/resolve"
     TASK_FAIL = "/tasks/{task_id}/fail"
     TASK_FILE_CONTENT = "/tasks/{task_id}/files/{file_stack_id}/content"
+    DATASET_SNAPSHOT = "/tasks/{task_id}/datasets/{dataset_id}/sections/{section_key:path}/snapshot"
+    DATASET_ROWS = "/tasks/{task_id}/datasets/{dataset_id}/sections/{section_key:path}/rows"
     HEARTBEAT = "/heartbeat"
     LOG_BATCH = "/logs/batch"
     WORKFLOW_PENDING = "/workflow-installations/pending"
@@ -75,6 +77,19 @@ TASK_COMMIT_ROUTE = RunnerRoute.TASK_COMMIT
 TASK_CACHE_ROUTE = RunnerRoute.TASK_CACHE
 TASK_FAIL_ROUTE = RunnerRoute.TASK_FAIL
 TASK_FILE_CONTENT_ROUTE = RunnerRoute.TASK_FILE_CONTENT
+DATASET_SNAPSHOT_ROUTE = RunnerRoute.DATASET_SNAPSHOT
+DATASET_ROWS_ROUTE = RunnerRoute.DATASET_ROWS
+
+
+def dataset_section_path(task_id: str, dataset_id: str, section_key: str, *, action: str,
+                         claim_id: str, attempt: int, kind: str, **query) -> str:
+    if action not in {"snapshot", "rows"} or kind not in {"dict", "tuple"}:
+        raise RunnerProtocolError("Invalid dataset section operation")
+    route = RunnerRoute.DATASET_SNAPSHOT if action == "snapshot" else RunnerRoute.DATASET_ROWS
+    path = str(route).replace("{section_key:path}", "{section_key}").format(task_id=_path_segment(task_id, field="task_id"),
+                        dataset_id=_path_segment(dataset_id, field="dataset_id"),
+                        section_key=_path_segment(section_key, field="section_key"))
+    return f"{path}?{_claim_query(claim_id=claim_id, attempt=attempt)}&{urlencode({'kind': kind, **query})}"
 HEARTBEAT_ROUTE = RunnerRoute.HEARTBEAT
 LOG_BATCH_ROUTE = RunnerRoute.LOG_BATCH
 FILE_TRANSFER_COLLECTION_ROUTE = FileTransferRoute.COLLECTION

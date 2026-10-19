@@ -24,6 +24,7 @@ class RunnerCapabilitiesV1(StrictRunnerDto):
     max_inline_document_bytes: int = Field(gt=0)
     workflow_installations: bool = False
     object_storage: bool = False
+    dataset_storage: bool = False
 
 class RunnerDataMappingV1(StrictRunnerDto):
     name: CanonicalString

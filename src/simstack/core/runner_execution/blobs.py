@@ -20,6 +20,9 @@ def publish_runtime_blobs(roots: Sequence[Any]) -> None:
     """Upload before commit/child resolution; failures prevent durable success."""
     if not context.initialized:
         return
+    from .datasets import publish_runtime_datasets
+
+    publish_runtime_datasets(roots)
     if not getattr(context.config, "object_storage", False):
         return
     from simstack.models.payloads import prepare_payloads

@@ -29,6 +29,7 @@ from .datasettuple import (
     DataSetTupleSelectionField,
 )
 from .dataset import DataSet, DataSetSection, DataSetSelection, DataSetSelectionField
+from .dataset_storage import DatasetModelPage, DatasetModelRow
 from .dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
 from .images2d import Image2DArtifactModel
 from .payloads import TablePayload
@@ -59,6 +60,8 @@ __all__ = [
     "simstack_model",
     "DataSet",
     "DataSetSection",
+    "DatasetModelPage",
+    "DatasetModelRow",
     "DataSetSelection",
     "DataSetTuple",
     "DataSetTupleSection",

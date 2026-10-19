@@ -163,6 +163,8 @@ def _hydrate_entries(entries: Any, *, kind: str) -> list[tuple[str, Model]]:
             instance_id = value.id
             if not isinstance(instance_id, str) or not instance_id or instance_id != instance_id.strip():
                 raise RunnerTaskPayloadError(f"Runner task {kind} contains a FileInstance without canonical persisted id")
+    from simstack.models.dataset_storage import bind_dataset_sections
+    bind_dataset_sections([model for _, model in hydrated_entries])
     return hydrated_entries
 
 

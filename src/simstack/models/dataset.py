@@ -1,14 +1,18 @@
 import uuid
-from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List, Optional, Any
+from pydantic import model_validator
+from typing import ClassVar, Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List, Optional, Any, Literal
 from simstack.models.document import EmbeddedModel, Field, Model, ObjectId
 from simstack.models import simstack_model
 from simstack.models.dataset_metadata import DataSetMetadata
 from simstack.util.make_table import make_column_defs_instance
 from simstack.util.make_table import make_table_entries_helper
+from simstack.models.dataset_storage import (DatasetRootMixin, DatasetSectionMixin, SharedDatasetSectionStorage,
+    SharedDatasetSelectionStorage, SharedDatasetSelectionChange, section_cache, section_data, set_section_data,
+    section_row_ids)
 
 
 @simstack_model
-class DataSetSection(EmbeddedModel):
+class DataSetSection(DatasetSectionMixin, EmbeddedModel):
     """
     Represents a section of a dataset containing dictionaries of models.
 
@@ -22,18 +26,29 @@ class DataSetSection(EmbeddedModel):
 
     model_types: Dict[str, str] = Field(default_factory=dict)
 
-    data: Dict[str, Dict[str, ObjectId]] = Field(default_factory=dict)
+    __dataset_kind__: ClassVar[str] = "dict"
+    inline_data: Dict[str, Dict[str, ObjectId]] = Field(default_factory=dict, alias="data", serialization_alias="data")
+    storage: SharedDatasetSectionStorage | None = None
 
     column_defs: List[Dict] = Field(default_factory=list)
     table_entries: List[List[Dict]] = Field(default_factory=list)
 
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "forbid", "serialize_by_alias": True}
+
+    @property
+    def data(self):
+        return section_data(self)
+
+    @data.setter
+    def data(self, value):
+        set_section_data(self, value)
 
     def _set_cache(self, cache: Dict[str, Dict[str, Model]]):
         object.__getattribute__(self, "__dict__")["_cache"] = cache
         return cache
 
     def _get_cache(self) -> Dict[str, Dict[str, Model]]:
+        section_cache(self)
         self_dict = object.__getattribute__(self, "__dict__")
         cache = self_dict.get("_cache", None)
         if cache is None:
@@ -93,6 +108,9 @@ class DataSetSection(EmbeddedModel):
             cached_items[key] = model
 
         cache[name] = cached_items
+        ids = section_row_ids(self)
+        removed = object.__getattribute__(self, "__dict__").get("_dataset_removed_ids", {})
+        ids[name] = removed.pop(id(item), ids[name])
 
     async def make_column_defs(self):
         """
@@ -140,6 +158,8 @@ class DataSetSection(EmbeddedModel):
         return cache[name]
 
     def __len__(self) -> int:
+        if self.storage is not None and object.__getattribute__(self, "__dict__").get("_cache") is None:
+            return self.storage.row_count
         return len(self._get_cache())
 
     def __iter__(self):
@@ -154,16 +174,19 @@ class DataSetSection(EmbeddedModel):
 
     def __setitem__(self, name: str, value: Dict[str, Optional[Model]]) -> None:
         cache = self._get_cache()
+        identity = section_row_ids(self).get(name)
         if name in cache:
              self.pop(name, None)
         
         self.add_row(value, name=name)
+        if identity is not None:
+            section_row_ids(self)[name] = identity
 
     def __delitem__(self, name: str) -> None:
         cache = self._get_cache()
         if name not in cache:
             raise KeyError(f"Item with name '{name}' not found")
-        del cache[name]
+        self.pop(name)
 
     def __contains__(self, name: str) -> bool:
         return name in self._get_cache()
@@ -185,6 +208,7 @@ class DataSetSection(EmbeddedModel):
 
     def clear(self) -> None:
         self._set_cache({})
+        object.__getattribute__(self, "__dict__")["_dataset_row_ids"] = {}
 
     def pop(self, name: str, default: Any = ...) -> Any:
         cache = self._get_cache()
@@ -193,13 +217,19 @@ class DataSetSection(EmbeddedModel):
                 raise KeyError(f"Item with name '{name}' not found")
             return default
         
-        return cache.pop(name)
+        row = cache.pop(name)
+        ids = section_row_ids(self)
+        identity = ids.pop(name, None)
+        if identity:
+            object.__getattribute__(self, "__dict__").setdefault("_dataset_removed_ids", {})[id(row)] = identity
+        return row
 
     def popitem(self) -> Tuple[str, Dict[str, Model]]:
         cache = self._get_cache()
         if not cache:
             raise KeyError("popitem(): dictionary is empty")
-        return cache.popitem()
+        name = next(reversed(cache))
+        return name, self.pop(name)
 
     def update(self, other: Union[Dict[str, Dict[str, Optional[Model]]], "DataSetSection"]) -> None:
         if isinstance(other, DataSetSection):
@@ -221,7 +251,9 @@ class DataSetSection(EmbeddedModel):
 
 
 @simstack_model
-class DataSet(Model):
+class DataSet(DatasetRootMixin, Model):
+    __dataset_kind__: ClassVar[str] = "dict"
+    revision: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     field_name: str = Field(default="dataset")
     metadata: DataSetMetadata
     sections: Dict[str, DataSetSection] = Field(default_factory=dict)
@@ -236,7 +268,7 @@ class DataSet(Model):
         return {
             section_name: section.model_types
             for section_name, section in self.sections.items()
-            if section.data or len(section) > 0
+            if (section.storage.row_count if section.storage is not None else bool(section.inline_data) or len(section) > 0)
         }
 
     def __getitem__(self, key: str) -> DataSetSection:
@@ -296,6 +328,7 @@ class DataSet(Model):
     def ui_schema(cls) -> dict:
         return {
             "ui:field": "DataSetField",
+            "ui:options": {"datasetKind": "dict"},
             "metadata": {"ui:widget": "hidden"},
             "sections": {"ui:widget": "hidden"},
         }
@@ -304,15 +337,31 @@ class DataSet(Model):
 class DataSetSelectionField(EmbeddedModel):
     section_name: str = Field(default="default")
     indices: List[int] = Field(default_factory=list)
+    section_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{24}$")
+    revision: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    row_ids: List[str] = Field(default_factory=list)
+    selected_count: int = Field(default=0, ge=0)
 
 @simstack_model
 class DataSetSelection(Model):
+    __dataset_selection_kind__: ClassVar[str] = "dict"
+    kind: Literal["dict"] = "dict"
+    source_revision: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    storage: SharedDatasetSelectionStorage | None = None
+    selection_changes: List[SharedDatasetSelectionChange] = Field(default_factory=list)
     field_name: str = Field(default="dataset_selection")
     dataset_id: ObjectId
     dataset_selection_fields: List[DataSetSelectionField] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def reject_normalized_indices(self):
+        if (self.source_revision is not None or self.storage is not None) and any(field.indices for field in self.dataset_selection_fields):
+            raise ValueError("Normalized dataset selections require stable row IDs, not positional indices")
+        return self
 
     @classmethod
     def ui_schema(cls) -> dict:
         return {
             "ui:field": "DataSetSelectionField",
+            "ui:options": {"datasetKind": "dict"},
         }

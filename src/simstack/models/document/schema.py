@@ -91,6 +91,13 @@ def annotate_document_schema(
 ) -> dict[str, Any]:
     """Describe actual reference targets independently from decorative titles."""
 
+    dataset_kind = getattr(model_class, "__dataset_kind__", None)
+    if dataset_kind and "sections" in model_class.model_fields:
+        schema["x-simstack-dataset"] = {"version": 1, "kind": dataset_kind}
+    selection_kind = getattr(model_class, "__dataset_selection_kind__", None)
+    if selection_kind:
+        schema["x-simstack-dataset-selection"] = {"version": 1, "kind": selection_kind}
+
     payload_fields = getattr(model_class, "__payload_fields__", ())
     if payload_fields:
         schema[PAYLOAD_SCHEMA_KEY] = {

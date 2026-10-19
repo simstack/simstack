@@ -839,3 +839,46 @@ def collect(arguments):
     assert document["payload"]["logical_hash"] == table_logical_hash(rows)
     repeated = execute_request(request)
     assert repeated["artifacts"][0]["document"]["payload"]["file"] == document["payload"]["file"]
+
+
+def test_isolated_artifact_reads_normalized_dataset_pages_without_runner_or_database(workflow_source, tmp_path):
+    from simstack.models import DataSet, DataSetMetadata, IntData
+    from simstack.models.dataset_storage import dataset_section_revision, dataset_source_hash
+    from simstack.workflows.runtime import _wire_document
+    root, package = workflow_source
+    source = root / package / "nodes.py"
+    source.write_text(source.read_text() + """
+from simstack.models import DataSet, IntData
+from simstack.models.table_artifact import TableArtifactModel
+def collect(arguments):
+    return TableArtifactModel(row_data=[{'value': row['value'].value} for _, row in arguments.result['numbers'].items()])
+""")
+    member = IntData(value=42)
+    document = _wire_document(member)
+    mapping = f"{IntData.__module__}.{IntData.__name__}"
+    row = {"row_id": "1" * 24, "position": 0, "row_name": "one",
+           "refs": [{"slot": "value", "variable_mapping": mapping, "reference": str(member.id),
+                     "source_hash": dataset_source_hash(document)}],
+           "entries": [{"value": 42}], "documents": [{"variable_mapping": mapping, "value": document, "dependencies": []}]}
+    revision = dataset_section_revision({"value": "IntData"}, [row])
+    dataset = DataSet(id="0" * 24, metadata=DataSetMetadata(field_name="numbers"), sections={"numbers": {
+        "model_types": {"value": "IntData"}, "storage": {"dataset_id": "0" * 24, "section_id": "a" * 24,
+        "revision": revision, "row_count": 1}}})
+    request = _graph(workflow_source)
+    dataset_mapping = f"{DataSet.__module__}.{DataSet.__name__}"
+    identity = {"mapping": dataset_mapping, "id": str(dataset.id)}
+    request.update(mappings=[{"mapping": dataset_mapping, "collection_name": DataSet.__collection__}],
+                   documents=[{**identity, "document": _wire_document(dataset)}], roots=[identity])
+    files = tmp_path / "render"
+    (files / "inputs").mkdir(parents=True)
+    (files / "outputs").mkdir()
+    (files / "datasets").mkdir()
+    page = {"version": 1, "revision": revision, "row_count": 1, "offset": 0, "rows": [row], "next_offset": None}
+    (files / "datasets" / "page.json").write_text(json.dumps(page))
+    request.update(operation="artifact", function_mapping=package + ".nodes.collect",
+                   arguments={"result": identity, "inputs": {}}, files_root=str(files),
+                   file_io={"resource": "server", "max_inline_document_bytes": 1024, "files": [], "object_storage": False},
+                   dataset_io={"sections": [{"dataset_id": "0" * 24, "section_id": "a" * 24, "revision": revision,
+                       "section_key": "numbers", "kind": "dict", "pages": [{"offset": 0, "row_count": 1, "path": "datasets/page.json"}]}]})
+    reply = execute_request(request)
+    assert reply["artifacts"][0]["document"]["row_data"] == [{"value": 42}]

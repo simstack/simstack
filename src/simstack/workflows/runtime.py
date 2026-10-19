@@ -427,11 +427,22 @@ def _artifact_preview(value, active=None):
 
 
 async def _artifact(request):
+    if request.get("dataset_io") is not None:
+        from simstack.models.dataset_storage import dataset_io_scope
+        from simstack.workflows.dataset_io import PreparedDatasetIO
+        with dataset_io_scope(PreparedDatasetIO(request)):
+            return await _artifact_with_dataset_io(request)
+    return await _artifact_with_dataset_io(request)
+
+
+async def _artifact_with_dataset_io(request):
     from simstack.core.artifacts import ARTIFACT_TYPES, ArtifactArguments
     from simstack.core.simstack_result import SimstackResult
     from simstack.runner_protocol.constants import RunnerTaskStatus
 
     _, graph, modules, manifest = _validate_graph(request)
+    from simstack.models.dataset_storage import bind_dataset_sections
+    bind_dataset_sections(list(graph.values()))
     values = request["arguments"]
 
     def resolve(identity):
