@@ -535,6 +535,27 @@ async def test_execute_claimed_root_is_api_only(monkeypatch, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_durable_output_publication_failure_prevents_terminal_commit(monkeypatch, tmp_path):
+    from simstack.runner_api.file_transfer import FileTransferError
+
+    fake_context = _api_context(tmp_path, node_functions=[api_root_node])
+    _patch_runner_context(monkeypatch, fake_context)
+    task, registry = _task(api_root_node, BinaryInput(payload=b"input"))
+
+    def unavailable(roots):
+        assert roots[0].payload == b"input-done"
+        raise FileTransferError("Durable output storage is unavailable")
+
+    monkeypatch.setattr("simstack.core.runner_execution.blobs.publish_runtime_blobs", unavailable)
+    succeeded = await execute_claimed_task(task, claim_id="claim-storage", attempt=2)
+    assert succeeded is False
+    fake_context.runner_api.commit_task.assert_not_awaited()
+    failure = fake_context.runner_api.fail_task.await_args
+    assert failure.args == (str(registry.id),)
+    assert "Durable output storage is unavailable" in failure.kwargs["message"]
+
+
+@pytest.mark.asyncio
 async def test_ordinary_increment_signature_executes_without_metadata_kwargs(
     monkeypatch, tmp_path
 ):

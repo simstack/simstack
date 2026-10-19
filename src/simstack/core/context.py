@@ -212,6 +212,8 @@ class GlobalState:
                 )
             if worker_binding:
                 required_scopes = set(RUNNER_EXECUTION_SCOPES)
+                if not bootstrap.get("capabilities", {}).get("object_storage", False):
+                    required_scopes.discard(FILE_UPLOAD_SCOPE)
                 if not kwargs.get("with_file_transfer", True):
                     required_scopes.difference_update(
                         {

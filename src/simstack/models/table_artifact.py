@@ -1,9 +1,10 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, ClassVar
 
 from simstack.models.document import EmbeddedModel, Field, Model, ObjectId
 
 
 from simstack.models.simstack_model import simstack_model
+from simstack.models.payloads import TablePayload, TableRowsMixin
 
 
 class AGGridColumnDef(EmbeddedModel):
@@ -59,14 +60,30 @@ class AGGridColumnDef(EmbeddedModel):
 
 
 @simstack_model
-class TableArtifactModel(Model):
+class TableArtifactModel(TableRowsMixin, Model):
+    model_config = {"serialize_by_alias": True}
+    __payload_source__: ClassVar[str] = "row_data"
+    __payload_fields__: ClassVar[tuple[dict, ...]] = ({
+        "source": "row_data", "target": "payload", "codec": "parquet-rows", "codec_version": 1,
+    },)
     parent_id: Optional[ObjectId] = Field(default=None, description="ID of the node registry")
     columns_defs: List[AGGridColumnDef] = Field(
         default_factory=list, description="AG-Grid column definitions"
     )
-    row_data: List[Dict[str, Any]] = Field(
-        default_factory=list, description="List of row objects"
+    inline_rows: List[Dict[str, Any]] = Field(
+        default_factory=list, alias="row_data", serialization_alias="row_data", description="Legacy inline row objects"
     )
+    payload: TablePayload | None = None
+    preview_rows: List[Dict[str, Any]] = Field(default_factory=list)
+    preview_truncated: bool = False
+
+    @property
+    def row_data(self) -> List[Dict[str, Any]]:
+        return self._get_rows()
+
+    @row_data.setter
+    def row_data(self, value: List[Dict[str, Any]]) -> None:
+        self._set_rows(value)
 
     # Master-Detail configuration
     master_detail: Optional[bool] = Field(
@@ -89,7 +106,7 @@ class TableArtifactModel(Model):
     ):
         return {
             "columns": len(self.columns_defs),
-            "rows": len(self.row_data),
+            "rows": self.payload.row_count if self.payload is not None else len(self.inline_rows),
         }
 
     def make_column_defs_instance(

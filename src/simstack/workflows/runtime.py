@@ -547,6 +547,11 @@ async def _artifact(request):
     for value in artifacts:
         if not isinstance(value, ARTIFACT_TYPES):
             raise ValueError("Artifact collector returned a non-native artifact model")
+    if provider is not None and request["file_io"].get("object_storage", False):
+        from simstack.models.payloads import prepare_payloads
+
+        with file_io_scope(provider):
+            prepare_payloads(artifacts, publication_namespace=request["file_io"].get("publication_namespace"))
     files = []
     for value, document in _artifact_files(artifacts):
         entry = {"document": document}

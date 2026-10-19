@@ -1,10 +1,10 @@
 import json
 import io
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional
 
 import numpy as np
 import pandas as pd
-from simstack.models.document import Model
+from simstack.models.document import Model, Reference
 
 from simstack.models import simstack_model
 from simstack.models.files import FileStack
@@ -47,11 +47,28 @@ def _format_datetime_columns(df):
 
 @simstack_model
 class PandasModel(Model):
+    __payload_fields__: ClassVar[tuple[dict, ...]] = ({
+        "source": "content_", "target": "file_stack", "codec": "parquet-dataframe", "codec_version": 1,
+    },)
     model_config = {"indexes": [("field_name", {"unique": True})]}
 
     field_name: str = "pandas_model"
     content_: bytes = b""
-    file_stack: Optional[FileStack] = None
+    file_stack: Optional[FileStack] = Reference(None)
+    payload_format: Optional[str] = None
+
+    def prepare_blob_payload(self) -> None:
+        """Convert the explicit legacy DataFrame payload to portable Parquet."""
+        if self.file_stack is not None and self.payload_format == "parquet":
+            return
+        output = io.BytesIO()
+        try:
+            self.table.to_parquet(output, engine="pyarrow", index=True)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("PandasModel contains values unsupported by Parquet") from exc
+        self.file_stack = FileStack.from_bytes(output.getvalue(), "table.parquet")
+        self.payload_format = "parquet"
+        self.content_ = b""
 
     @classmethod
     def from_data_frame(cls, df):
@@ -61,6 +78,12 @@ class PandasModel(Model):
 
     @property
     def table(self):
+        if self.payload_format is not None:
+            if self.payload_format != "parquet":
+                raise ValueError("Unsupported PandasModel payload format")
+            if self.file_stack is None:
+                raise ValueError("PandasModel Parquet payload reference is missing")
+            return pd.read_parquet(io.BytesIO(self.file_stack.read_bytes()), engine="pyarrow")
         if not self.content_:
             return pd.DataFrame()
 
@@ -83,6 +106,8 @@ class PandasModel(Model):
 
         # Get the binary content from the buffer
         self.content_ = buffer.getvalue()
+        self.file_stack = None
+        self.payload_format = None
 
     def to_react_json(self, orient="records"):
         """
@@ -168,7 +193,7 @@ class PandasModel(Model):
         return dumped_data
 
     def __repr__(self):
-        if not self.content_:
+        if not self.content_ and self.file_stack is None:
             return "PandasModel(empty table)"
 
         df = self.table
@@ -176,7 +201,7 @@ class PandasModel(Model):
         return f"PandasModel({rows} rows × {cols} columns)"
 
     def __str__(self):
-        if not self.content_:
+        if not self.content_ and self.file_stack is None:
             return "Empty pandas table"
 
         df = self.table

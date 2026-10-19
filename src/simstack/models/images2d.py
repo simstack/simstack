@@ -1,12 +1,16 @@
-from typing import Optional, Literal, Dict, Any
+from typing import Optional, Literal, Dict, Any, ClassVar
 import base64
 import os
-from simstack.models.document import Field, Model, ObjectId
+from simstack.models.document import Field, Model, ObjectId, Reference
+from simstack.models.files import FileStack
 from simstack.models.simstack_model import simstack_model
 
 @simstack_model
 class Image2DArtifactModel(Model):
     """Document model for a serialized 2D image artifact."""
+    __payload_fields__: ClassVar[tuple[dict, ...]] = ({
+        "source": "data", "target": "payload_file", "codec": "image", "codec_version": 1,
+    },)
 
     parent_id: Optional[ObjectId] = None
     name: str = Field(..., description="Name of the image artifact")
@@ -14,14 +18,34 @@ class Image2DArtifactModel(Model):
     format: Literal["png", "jpg", "jpeg", "svg", "gif", "bmp", "webp"] = Field(
         ..., description="Image format"
     )
-    data: bytes = Field(..., description="Binary image data")
+    inline_data: bytes = Field(default=b"", alias="data", serialization_alias="data",
+                               description="Legacy inline binary image data")
+    payload_file: Optional[FileStack] = Reference(None)
     width: Optional[int] = Field(None, description="Image width in pixels")
     height: Optional[int] = Field(None, description="Image height in pixels")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
+    def prepare_blob_payload(self) -> None:
+        if self.payload_file is None:
+            self.payload_file = FileStack.from_bytes(self.inline_data, f"image.{self.format}")
+            self.inline_data = b""
+
+    @property
+    def data(self) -> bytes:
+        """Preserve image.data reads while persisted documents carry references."""
+        return self.get_bytes()
+
+    @data.setter
+    def data(self, value: bytes) -> None:
+        self.inline_data = value
+        self.payload_file = None
+
+    def get_bytes(self) -> bytes:
+        return self.payload_file.read_bytes() if self.payload_file is not None else self.inline_data
+
     def to_base64(self) -> str:
         """Convert binary data to base64 string."""
-        return base64.b64encode(self.data).decode("utf-8")
+        return base64.b64encode(self.get_bytes()).decode("utf-8")
 
     def get_data_uri(self) -> str:
         """Get data URI for the image."""
@@ -78,6 +102,10 @@ class Image2DArtifactModel(Model):
     @classmethod
     def ui_schema(cls) -> Dict[str, Any]:
         return {
+            "payload_file": {
+                "ui:field": "FileField",
+                "ui:options": {"isInput": False},
+            },
             "ui:table": {
                 "pagination": True,
                 "paginationPageSize": 20,

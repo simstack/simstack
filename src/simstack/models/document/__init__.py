@@ -12,6 +12,7 @@ from .codec import (
     encode_document_value,
 )
 from .fields import (
+    PAYLOAD_SCHEMA_KEY,
     REFERENCE_COLLECTION_SCHEMA_KEY,
     REFERENCE_MODEL_SCHEMA_KEY,
     REFERENCE_SCHEMA_KEY,
@@ -28,6 +29,7 @@ __all__ = [
     "Field",
     "Model",
     "ObjectId",
+    "PAYLOAD_SCHEMA_KEY",
     "REFERENCE_COLLECTION_SCHEMA_KEY",
     "REFERENCE_MODEL_SCHEMA_KEY",
     "REFERENCE_SCHEMA_KEY",

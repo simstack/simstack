@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from threading import Event
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from simstack.runner_protocol import API_ROOT
 
@@ -185,7 +185,8 @@ class FileTransferTransport:
 
     def _put_upload(self, path: str, source_path: Path, *, offset: int, length: int,
                     total_size: int, checksum: str, include_content_range: bool,
-                    stop_event: Event | None = None) -> dict[str, Any]:
+                    stop_event: Event | None = None,
+                    extra_headers: Mapping[str, str] | None = None) -> dict[str, Any]:
         self._check_upload_stop(stop_event)
         connection = self._connection()
         try:
@@ -196,6 +197,8 @@ class FileTransferTransport:
             connection.putheader("Content-Length", str(length))
             connection.putheader("X-File-Size", str(total_size))
             connection.putheader("X-Checksum-SHA256", checksum)
+            for key, value in (extra_headers or {}).items():
+                connection.putheader(key, value)
             if include_content_range:
                 connection.putheader("Content-Range", f"bytes {offset}-{offset + length - 1}/{total_size}")
             connection.endheaders()
@@ -212,6 +215,35 @@ class FileTransferTransport:
             return self._parse_response(connection.getresponse())
         finally:
             connection.close()
+
+    def upload_blob(self, path: str, source_path: Path, *, file_name: str,
+                    is_hashable: bool) -> dict[str, Any]:
+        """Publish raw file bytes through Server; retries preserve logical identity."""
+        source_path = Path(source_path)
+        if not source_path.is_file():
+            raise FileTransferError("Blob source file does not exist")
+        digest = hashlib.sha256()
+        size = 0
+        with source_path.open("rb") as source:
+            while chunk := source.read(self.chunk_size):
+                digest.update(chunk)
+                size += len(chunk)
+        for attempt_index in range(self.retry_attempts + 1):
+            try:
+                return self._put_upload(
+                    path, source_path, offset=0, length=size, total_size=size,
+                    checksum=digest.hexdigest(), include_content_range=False,
+                    extra_headers={"X-File-Name": quote(file_name, safe=""),
+                                   "X-File-Is-Hashable": str(is_hashable).lower()},
+                )
+            except (OSError, http.client.HTTPException, FileTransferError) as exc:
+                retryable = not isinstance(exc, FileTransferError) or (
+                    exc.status_code is not None and (exc.status_code >= 500 or exc.status_code == 423)
+                )
+                if not retryable or attempt_index >= self.retry_attempts:
+                    raise
+                time.sleep(self.retry_backoff_seconds * (attempt_index + 1))
+        raise AssertionError("unreachable")
 
     def download_file(self, path: str, target_path: Path) -> DownloadResult:
         for attempt_index in range(self.retry_attempts + 1):

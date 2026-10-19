@@ -415,6 +415,45 @@ def collect(arguments):
     assert Path(entry["document"]["locations"][0]["path"]).parts[0] == "outputs"
 
 
+@pytest.mark.parametrize("object_storage", [False, True])
+def test_generated_native_image_file_uses_explicit_object_storage_capability(
+    workflow_source, tmp_path, object_storage
+):
+    root, package = workflow_source
+    source = root / package / "nodes.py"
+    source.write_text(source.read_text() + """\nfrom simstack.models.images2d import Image2DArtifactModel
+def collect(arguments):
+    return Image2DArtifactModel(name='figure', format='png', data=b'p' * 4096)
+""")
+    request = _graph(workflow_source)
+    files_root = tmp_path / "render"
+    (files_root / "inputs").mkdir(parents=True)
+    (files_root / "outputs").mkdir()
+    request.update(
+        operation="artifact", function_mapping=package + ".nodes.collect",
+        arguments={"result": request["roots"][0], "inputs": {}},
+        files_root=str(files_root),
+        file_io={"resource": "server", "max_inline_document_bytes": 256,
+                 "files": [], "object_storage": object_storage,
+                 "publication_namespace": "a" * 64},
+    )
+    reply = execute_request(request)
+    document = reply["artifacts"][0]["document"]
+    if object_storage:
+        assert len(reply["files"]) == 1
+        entry = reply["files"][0]
+        assert document["payload_file"] == entry["document"]["id"]
+        assert document["data"] == {"$binary": {"base64": "", "subType": "00"}}
+        assert (files_root / entry["path"]).read_bytes() == b"p" * 4096
+        assert entry["path"].startswith("outputs/")
+        repeated = execute_request(request)
+        assert repeated["files"][0]["document"]["id"] == entry["document"]["id"]
+        assert repeated["artifacts"][0]["document"]["payload_file"] == document["payload_file"]
+    else:
+        assert reply["files"] == []
+        assert document["payload_file"] is None
+
+
 def test_same_package_child_artifact_keeps_typed_file_references(workflow_source):
     from simstack.models.files import FileStack
     from simstack.workflows.runtime import _wire_document
@@ -769,3 +808,34 @@ def test_runtime_stdio_has_exact_success_and_error_envelopes(workflow_source):
     reply = json.loads(failure.stdout)
     assert reply["ok"] is False
     assert reply["error"]["type"] == "ValueError"
+
+
+def test_isolated_table_artifact_uses_common_payload_contract_and_deterministic_retry(workflow_source, tmp_path):
+    from simstack.models.payloads import read_table_rows, table_logical_hash
+    root, package = workflow_source
+    source = root / package / "nodes.py"
+    source.write_text(source.read_text() + """
+from simstack.models.table_artifact import TableArtifactModel
+class ScientificTable(TableArtifactModel):
+    label: str = 'scientific'
+def collect(arguments):
+    return ScientificTable(row_data=[{'x': i, 'y': i / 2} for i in range(45)])
+""")
+    request = _graph(workflow_source)
+    files = tmp_path / "render"
+    (files / "inputs").mkdir(parents=True)
+    (files / "outputs").mkdir()
+    request.update(operation="artifact", function_mapping=package + ".nodes.collect",
+                   arguments={"result": request["roots"][0], "inputs": {}}, files_root=str(files),
+                   file_io={"resource": "server", "max_inline_document_bytes": 256, "files": [],
+                            "object_storage": True, "publication_namespace": "b" * 64})
+    reply = execute_request(request)
+    document = reply["artifacts"][0]["document"]
+    assert document["row_data"] == [] and document["payload"]["row_count"] == 45
+    assert document["label"] == "scientific" and document["preview_truncated"]
+    file = reply["files"][0]
+    assert document["payload"]["file"] == file["document"]["id"]
+    rows = read_table_rows(files / file["path"])
+    assert document["payload"]["logical_hash"] == table_logical_hash(rows)
+    repeated = execute_request(request)
+    assert repeated["artifacts"][0]["document"]["payload"]["file"] == document["payload"]["file"]

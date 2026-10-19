@@ -6,14 +6,17 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
+from pydantic import BaseModel
+
 from simstack.core.simstack_result import SimstackResult
-from simstack.models.document import Model, encode_document_value
+from simstack.models.document import REFERENCE_SCHEMA_KEY, Model, encode_document_value
+from simstack.models.document.reference_values import transform_reference_values
+from simstack.util.object_list_mixin import ObjectListMixin
 from simstack.runner_protocol.constants import RunnerTaskStatus as TaskStatus
 
 from .errors import RunnerTaskExecutionError
 from .hydration import _hydrate_entries
 from .mappings import _mapping_for_model, _model_class
-from .references import walk_runtime_values
 from .state import RunnerCommitPayload
 
 _INTERNAL_RESULT_PREFIX = "__simstack_dependency_"
@@ -113,15 +116,48 @@ def _declared_result_models(
 
 
 def _dependent_models(model: Model) -> list[Model]:
+    """Collect documents behind declared reference edges, traversing embeddings.
+
+    A nested Model is an embedded value unless its owning field is Reference.
+    Embedded models still contain their own references (for example a table's
+    payload FileStack), which must be included in the dependency closure.
+    """
     dependencies: list[Model] = []
     seen: set[tuple[type[Model], str]] = {(type(model), str(model.id))}
-    for value in walk_runtime_values([model]):
-        if not isinstance(value, Model):
+    traversed: set[int] = set()
+    pending: list[tuple[Any, bool]] = [(model, False)]
+    while pending:
+        value, referenced = pending.pop()
+        if referenced and isinstance(value, Model):
+            key = (type(value), str(value.id))
+            if key not in seen:
+                seen.add(key)
+                dependencies.append(value)
+        if id(value) in traversed:
             continue
-        key = (type(value), str(value.id))
-        if key not in seen:
-            seen.add(key)
-            dependencies.append(value)
+        traversed.add(id(value))
+        children: list[tuple[Any, bool]] = []
+        if isinstance(value, BaseModel):
+            values = object.__getattribute__(value, "__dict__")
+            for name, field in type(value).model_fields.items():
+                item = values[name]
+                if (field.json_schema_extra or {}).get(REFERENCE_SCHEMA_KEY):
+                    def collect(child, _target, _path):
+                        children.append((child, True))
+                        return child
+                    transform_reference_values(item, field.annotation, collect, path=name)
+                else:
+                    children.append((item, False))
+            children.extend((item, False) for item in (value.model_extra or {}).values())
+            if isinstance(value, ObjectListMixin):
+                identifiers = {str(identifier) for identifier in value.elements}
+                children.extend((item, True) for item in value._get_cache()
+                                if isinstance(item, Model) and str(item.id) in identifiers)
+        elif isinstance(value, Mapping):
+            children.extend((item, False) for item in value.values())
+        elif isinstance(value, (list, tuple, set, frozenset)):
+            children.extend((item, False) for item in value)
+        pending.extend(reversed(children))
     return dependencies
 
 

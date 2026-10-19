@@ -1,10 +1,11 @@
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, ClassVar, Dict, List
 
 from simstack.models.document import Field, Model
 from pydantic import field_validator
 
 from simstack.models import simstack_model
+from simstack.models.payloads import TablePayload, TableRowsMixin
 
 
 class SimpleTableColumnType(str, Enum):
@@ -42,15 +43,33 @@ SIMPLE_TABLE_COLUMN_TYPE_LEGACY_ALIASES = {
 
 
 @simstack_model
-class SimpleTable(Model):
+class SimpleTable(TableRowsMixin, Model):
     """
     A simple table model to display tabular data using ag-grid
     """
 
+    model_config = {"serialize_by_alias": True}
+
+    __payload_source__: ClassVar[str] = "row"
+    __payload_fields__: ClassVar[tuple[dict, ...]] = ({
+        "source": "row", "target": "payload", "codec": "parquet-rows", "codec_version": 1,
+    },)
+
     name: str = Field(default="SimpleTable")
     heading: List[str] = Field(default_factory=list)
-    row: List[Dict[str, Any]] = Field(default_factory=list)
+    inline_rows: List[Dict[str, Any]] = Field(default_factory=list, alias="row", serialization_alias="row")
     type: List[SimpleTableColumnType] = Field(default_factory=list)
+    payload: TablePayload | None = None
+    preview_rows: List[Dict[str, Any]] = Field(default_factory=list)
+    preview_truncated: bool = False
+
+    @property
+    def row(self) -> List[Dict[str, Any]]:
+        return self._get_rows()
+
+    @row.setter
+    def row(self, value: List[Dict[str, Any]]) -> None:
+        self._set_rows(value)
 
     @field_validator("type", mode="before")
     @classmethod

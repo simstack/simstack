@@ -225,6 +225,10 @@ async def execute_claimed_task(
                     result = await asyncio.to_thread(
                         function, *input_args, **node_kwargs
                     )
+                from .blobs import publish_runtime_blobs
+
+                await asyncio.to_thread(node_runner._make_log_file)
+                await asyncio.to_thread(publish_runtime_blobs, [result, *node_runner.info_files])
                 commit = serialize_runner_result(
                     result,
                     runner_info_files=node_runner.info_files,

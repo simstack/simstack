@@ -15,7 +15,7 @@ from .models import (
     ModelMapping,
     NodeModel,
 )
-from .files import FileStack
+from .files import BlobReference, FileStack
 from .parameters import Parameters
 from .node_registry import NodeRegistry
 from .named_data_reference import NamedDataReference
@@ -31,6 +31,7 @@ from .datasettuple import (
 from .dataset import DataSet, DataSetSection, DataSetSelection, DataSetSelectionField
 from .dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
 from .images2d import Image2DArtifactModel
+from .payloads import TablePayload
 
 
 __all__ = [
@@ -50,6 +51,7 @@ __all__ = [
     "NodeRegistry",
     "NamedDataReference",
     "FileStack",
+    "BlobReference",
     "Project",
     "Tag",
     "ResourceAssignmentRule",
@@ -67,6 +69,7 @@ __all__ = [
     "FileList",
     "DataSetMetadataTemplate",
     "Image2DArtifactModel",
+    "TablePayload",
     "StringDataList",
     "StringList",
 ]

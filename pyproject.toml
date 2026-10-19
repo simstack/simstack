@@ -27,6 +27,7 @@ dependencies = [
     "nest-asyncio>=1.6.0,<2",
     "numpy>=2.3.0",
     "pandas==2.3.2", # lock this for int-nano
+    "pyarrow>=19,<24",
     "docutils>=0.22",
     "pandas-stubs~=2.3.3",
     "types-docutils~=0.22.3",

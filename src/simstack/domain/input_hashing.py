@@ -21,6 +21,12 @@ def hashable_value(value: Any) -> Any:
 
 def model_field_values(model: BaseModel, *, exclude_identity: bool = True) -> dict[str, Any]:
     """Return declared values and intentional extras without runtime internals."""
+    semantic_inputs = getattr(model, "__simstack_hash_inputs__", None)
+    if callable(semantic_inputs):
+        fields = dict(semantic_inputs())
+        if not exclude_identity and "id" in type(model).model_fields:
+            fields["id"] = model.id
+        return fields
     fields = {
         name: getattr(model, name)
         for name in type(model).model_fields

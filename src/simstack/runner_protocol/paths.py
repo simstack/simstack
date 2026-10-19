@@ -20,6 +20,7 @@ class RunnerRoute(StrEnum):
     TASK_COMMIT = "/tasks/{task_id}/commit"
     TASK_CACHE = "/tasks/{task_id}/cache/resolve"
     TASK_FAIL = "/tasks/{task_id}/fail"
+    TASK_FILE_CONTENT = "/tasks/{task_id}/files/{file_stack_id}/content"
     HEARTBEAT = "/heartbeat"
     LOG_BATCH = "/logs/batch"
     WORKFLOW_PENDING = "/workflow-installations/pending"
@@ -33,6 +34,14 @@ def workflow_installation_path(installation_id: str, action: str) -> str:
     if action not in routes:
         raise RunnerProtocolError("Unknown workflow installation action")
     return routes[action].format(installation_id=_path_segment(installation_id, field="installation_id"))
+
+
+def task_file_content_path(task_id: str, file_stack_id: str, *, claim_id: str, attempt: int) -> str:
+    path = RunnerRoute.TASK_FILE_CONTENT.format(
+        task_id=_path_segment(task_id, field="task_id"),
+        file_stack_id=_path_segment(file_stack_id, field="file_stack_id"),
+    )
+    return f"{path}?{_claim_query(claim_id=claim_id, attempt=attempt)}"
 
 
 def workflow_archive_path(installation_id: str, *, claim_id: str, attempt: int, task_id: str | None = None) -> str:
@@ -65,6 +74,7 @@ TASK_STATUS_ROUTE = RunnerRoute.TASK_STATUS
 TASK_COMMIT_ROUTE = RunnerRoute.TASK_COMMIT
 TASK_CACHE_ROUTE = RunnerRoute.TASK_CACHE
 TASK_FAIL_ROUTE = RunnerRoute.TASK_FAIL
+TASK_FILE_CONTENT_ROUTE = RunnerRoute.TASK_FILE_CONTENT
 HEARTBEAT_ROUTE = RunnerRoute.HEARTBEAT
 LOG_BATCH_ROUTE = RunnerRoute.LOG_BATCH
 FILE_TRANSFER_COLLECTION_ROUTE = FileTransferRoute.COLLECTION

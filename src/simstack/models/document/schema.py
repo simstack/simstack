@@ -7,6 +7,7 @@ from types import UnionType
 from typing import Any, Union, get_args, get_origin
 
 from .fields import (
+    PAYLOAD_SCHEMA_KEY,
     REFERENCE_COLLECTION_SCHEMA_KEY,
     REFERENCE_MODEL_SCHEMA_KEY,
     REFERENCE_SCHEMA_KEY,
@@ -89,6 +90,13 @@ def annotate_document_schema(
     schema: dict[str, Any],
 ) -> dict[str, Any]:
     """Describe actual reference targets independently from decorative titles."""
+
+    payload_fields = getattr(model_class, "__payload_fields__", ())
+    if payload_fields:
+        schema[PAYLOAD_SCHEMA_KEY] = {
+            "version": 1,
+            "fields": [dict(field) for field in payload_fields],
+        }
 
     properties = schema.get("properties")
     if isinstance(properties, dict):

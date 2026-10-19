@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import List, Optional, Union, Dict, Any
 
-from simstack.models.document import Field, Model, ObjectId, encode_document_value
+from simstack.models.document import EmbeddedModel, Field, Model, ObjectId, encode_document_value
 
 from simstack.models import simstack_model
 from simstack.models.file_instance import FileInstance
@@ -111,6 +111,14 @@ def _runner_inline_document_limit() -> int | None:
 
 # TODO: its a mystery to me why we should have files with no name or unknown size, both values are actually used in __str__
 
+class BlobReference(EmbeddedModel):
+    """Opaque, immutable payload identity; storage topology belongs to Server."""
+
+    id: str = Field(min_length=1, max_length=500)
+    size_bytes: int = Field(ge=0)
+    checksum_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 @simstack_model
 class FileStack(Model):
     name: Optional[builtins.str] = Field(description="Name of the file", default=None)
@@ -131,6 +139,7 @@ class FileStack(Model):
     content: Optional[bytes] = Field(
         description="Compressed file content", default=None
     )
+    blob: Optional[BlobReference] = Field(default=None, description="Server-owned durable payload")
 
     locations: List[FileInstance] = Field(
         default_factory=list, description="List of file locations"
@@ -155,6 +164,55 @@ class FileStack(Model):
                 "model": f"{cls.__module__}.{cls.__name__}",
             },
         }
+
+    @classmethod
+    def from_bytes(cls, data: bytes, file_name: str) -> FileStack:
+        """Build a logical file from bytes, preserving normal runner spill policy."""
+        import hashlib
+
+        file_name = _strict_file_name(file_name)
+        result = cls(name=file_name, size=len(data), in_memory=True,
+                     content=zlib.compress(data), is_hashable=True,
+                     hash=hashlib.sha256(data).hexdigest())
+        limit = _runner_inline_document_limit()
+        if limit is not None and _inline_wire_size(result) > limit:
+            from simstack.core.file_io import current_file_io
+            from simstack.core.context import context
+            from simstack.core.runner_execution import current_runner_claim
+            from simstack.runner_runtime.config import runner_task_workdir
+
+            provider = current_file_io()
+            task_dir = provider.staging_dir if provider is not None else runner_task_workdir(
+                Path(context.config.workdir), current_runner_claim().task_id
+            )
+            task_dir.mkdir(parents=True, exist_ok=True)
+            source = Path(tempfile.mkdtemp(prefix="file-", dir=task_dir)) / file_name
+            source.write_bytes(data)
+            return cls.from_local_file(source, in_memory=False, secure_source=True)
+        return result
+
+    def read_bytes(self) -> bytes:
+        """Read a payload through the same scoped access boundary as ``get``."""
+        if self.deleted_at is not None:
+            raise ValueError("FileStack content has been deleted")
+        if self.in_memory and self.content is not None and self.blob is None:
+            decoder = zlib.decompressobj()
+            data = decoder.decompress(self.content) + decoder.flush()
+            if not decoder.eof or decoder.unused_data:
+                raise ValueError("FileStack has incomplete or trailing compressed content")
+            return data
+        from simstack.core.context import context
+        from simstack.core.file_io import current_file_io
+        from simstack.core.runner_execution import current_runner_claim
+        from simstack.runner_runtime.config import runner_task_workdir
+
+        provider = current_file_io()
+        if provider is not None:
+            return self.get().read_bytes()
+        root = runner_task_workdir(Path(context.config.workdir), current_runner_claim().task_id)
+        root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="read-", dir=root) as directory:
+            return self.get(local_dir=Path(directory)).read_bytes()
 
     @classmethod
     def from_string(cls, data_string: str, file_name: str) -> FileStack:
@@ -400,6 +458,9 @@ class FileStack(Model):
                 ) from exc
             local_dir = resolved_local_dir
 
+        if self.blob is not None:
+            return self._get_blob(local_dir)
+
         if self.in_memory:
             return self.materialize_inline(local_dir)
 
@@ -443,6 +504,26 @@ class FileStack(Model):
         return self._get_via_server_transfer(
             remote_instance, local_transfer_resource, local_dir
         )
+
+    def _get_blob(self, local_dir: Path) -> Path:
+        """Materialize a durable blob with a claim-bound Server HTTP request."""
+        from simstack.core.runner_execution import current_runner_claim
+
+        claim = current_runner_claim()
+        local_dir.mkdir(parents=True, exist_ok=True)
+        target = local_dir / _strict_file_name(self.name)
+        if target.is_symlink():
+            raise FileTransferError("Blob cache path must not be a symbolic link")
+        if target.exists():
+            if not target.is_file() or target.stat().st_size != self.blob.size_bytes or hash_file(target) != self.blob.checksum_sha256:
+                raise FileTransferError("Blob cache no longer matches immutable metadata")
+            return target
+        downloaded = ExecutionFileTransferClient.from_context().download_blob(
+            task_id=claim.task_id, claim_id=claim.claim_id, attempt=claim.attempt,
+            file_stack_id=str(self.id), target_path=target,
+            expected_size=self.blob.size_bytes, expected_checksum=self.blob.checksum_sha256,
+        )
+        return downloaded.path
 
     def materialize_inline(self, local_dir: Path) -> Path:
         """Publish compressed inline content atomically, without a runtime context."""

@@ -62,6 +62,7 @@ class RunnerConfig:
     max_runner_payload_bytes: int | None = None
     max_inline_document_bytes: int = 0
     workflow_installations: bool = False
+    object_storage: bool = False
 
     @classmethod
     def from_bootstrap(
@@ -98,6 +99,7 @@ class RunnerConfig:
             max_runner_payload_bytes=max_runner_payload_bytes,
             max_inline_document_bytes=max_inline_document_bytes,
             workflow_installations=bool(payload.get("capabilities", {}).get("workflow_installations", False)),
+            object_storage=bool(payload.get("capabilities", {}).get("object_storage", False)),
         )
 
     @property

@@ -28,6 +28,8 @@ from simstack.runner_protocol import (
     FileTransferStatus,
     FileTransferStatusResponseV1,
     FileTransferUploadResponseV1,
+    RUNNER_API_PREFIX,
+    task_file_content_path,
     file_transfer_complete_path,
     file_transfer_download_path,
     file_transfer_fail_path,
@@ -223,6 +225,43 @@ class ExecutionFileTransferClient(_BaseFileTransferClient):
             transfer_timeout_seconds=settings.transfer_timeout_seconds,
             poll_seconds=settings.poll_seconds,
         )
+
+    def publish_blob(self, *, task_id: str, claim_id: str, attempt: int,
+                     file_stack: Any, source_path: Path):
+        from simstack.models.files import FileStack
+        from simstack.util.file_hashing import hash_file
+
+        path = RUNNER_API_PREFIX + task_file_content_path(
+            task_id, str(file_stack.id), claim_id=claim_id, attempt=attempt,
+        )
+        response = self._transport.upload_blob(
+            path, source_path, file_name=file_stack.name,
+            is_hashable=file_stack.is_hashable,
+        )
+        canonical = FileStack.model_validate_doc(response)
+        if (canonical.id != file_stack.id or canonical.blob is None
+                or canonical.blob.id != str(file_stack.id)
+                or canonical.name != file_stack.name
+                or canonical.blob.size_bytes != source_path.stat().st_size
+                or canonical.blob.checksum_sha256 != hash_file(source_path)
+                or canonical.is_hashable != file_stack.is_hashable
+                or canonical.in_memory or canonical.content is not None or canonical.locations):
+            raise FileTransferError("Published blob response does not match source identity/content")
+        if canonical.is_hashable and canonical.hash != canonical.blob.checksum_sha256:
+            raise FileTransferError("Published blob hash does not match immutable content")
+        return canonical
+
+    def download_blob(self, *, task_id: str, claim_id: str, attempt: int,
+                      file_stack_id: str, target_path: Path,
+                      expected_size: int, expected_checksum: str) -> DownloadResult:
+        path = RUNNER_API_PREFIX + task_file_content_path(
+            task_id, file_stack_id, claim_id=claim_id, attempt=attempt,
+        )
+        result = self._transport.download_file(path, target_path)
+        if result.size_bytes != expected_size or result.checksum_sha256 != expected_checksum:
+            result.path.unlink(missing_ok=True)
+            raise FileTransferError("Downloaded blob does not match its reference")
+        return result
 
     def create_transfer(
         self,

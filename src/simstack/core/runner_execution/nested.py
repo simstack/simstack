@@ -157,6 +157,10 @@ async def execute_runner_nested_node(
     # Import lazily to avoid a module cycle: node.py calls this helper from its wrappers.
     from simstack.core.node import compute_arg_hash
 
+    from .blobs import publish_runtime_blobs
+
+    await asyncio.to_thread(publish_runtime_blobs, [value for _, value in input_values])
+
     arg_hash = compute_arg_hash([value for _, value in input_values])
     function_hash = node_code_version(
         function, workflow_revision=getattr(node_model, "workflow_revision", None)

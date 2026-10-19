@@ -12,6 +12,7 @@ from pydantic.fields import FieldInfo
 REFERENCE_SCHEMA_KEY = "x-simstack-reference"
 REFERENCE_MODEL_SCHEMA_KEY = "x-simstack-reference-model"
 REFERENCE_COLLECTION_SCHEMA_KEY = "x-simstack-reference-collection"
+PAYLOAD_SCHEMA_KEY = "x-simstack-payload"
 
 
 def _merge_schema_extra(
@@ -45,6 +46,7 @@ def Reference(  # noqa: N802 - public model declaration API
 
 __all__ = [
     "Field",
+    "PAYLOAD_SCHEMA_KEY",
     "REFERENCE_COLLECTION_SCHEMA_KEY",
     "REFERENCE_MODEL_SCHEMA_KEY",
     "REFERENCE_SCHEMA_KEY",
