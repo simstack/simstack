@@ -726,6 +726,16 @@ def bind_dataset_sections(roots):
 
 
 class DatasetRootMixin:
+    def writer(self):
+        """Stream new output sections through the scoped dataset write provider.
+
+        Only new roots with no sections are writable. Successful context exit
+        attaches compact snapshots; exceptions leave the root unattached.
+        """
+        from simstack.models.dataset_writer import DatasetWriter
+
+        return DatasetWriter(self)
+
     def __simstack_hash_inputs__(self):
         return {
             name: getattr(self, name)

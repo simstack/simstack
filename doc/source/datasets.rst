@@ -83,6 +83,51 @@ plot can still consume memory proportional to the output size.
 Reading ``dataset.sections`` or ``dataset.items()`` only enumerates sections;
 ``len(section)`` reads the stored row count without loading its models.
 
+Writing large output datasets
+-----------------------------
+
+Use a writer on a new, empty ``DataSet`` or ``DataSetTuple`` root. Rows are
+serialized immediately into a temporary disk spool; the writer retains no row
+models. Successful exit streams the spool through Server and attaches compact
+section descriptors. Returning the dataset then commits its ordinary parent
+reference through the Runner protocol.
+
+.. code-block:: python
+
+    output = DataSet(metadata=DataSetMetadata(field_name="computed-results"))
+    with output.writer() as writer:
+        results = writer.section("results", model_types={"energy": FloatData})
+        for row in inputs["structures"].iter_models():
+            energy = calculate(row.models["molecule"])
+            results.add_row({"energy": FloatData(value=energy)}, name=row.name)
+    return output
+
+``writer.section(name)`` infers and freezes dict model types from the first
+nonempty row, and tuple model types from the first group. Declare ``model_types``
+explicitly when early rows may omit optional dict slots.
+Later sparse rows may omit declared slots; new slots and changed types are
+rejected. ``column_defs`` can be supplied when opening a section. Dict sinks use
+``add_row(models, name=...)``. Tuple sinks use synchronous ``append((model_a,
+model_b))``; this sink operation does not require ``await``.
+
+The writer requires the Runner's ``dataset_storage`` capability and an active
+claim, or an explicit ``dataset_write_scope`` provider for tests and local
+services. All Runner storage access remains mediated by Server. Native payloads
+and nested datasets are published before their row references. Each encoded row
+is capped at 4 MiB. Duplicate names and row IDs are checked using a disk index;
+no section-wide name set or model cache is retained.
+
+A writer cannot edit an existing root or attach a partially written result.
+Exceptions abort the writer and remove its local spool, including when a row
+error is caught inside the context. Storage failures remain errors. Exact HTTP
+retries replay the same row identities and bytes. Staged snapshots remain private
+to the claim until the parent result is committed; the same active claim can read
+them in pages for a second processing pass.
+
+Budget temporary disk space proportional to the output size. Dataset writer RAM
+is bounded by one encoded row and section metadata; other outputs such as a
+``MoleculeList``, arrays or complete plots still follow their own memory contract.
+
 DataSetSelection
 ----------------
 

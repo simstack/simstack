@@ -30,6 +30,7 @@ from .datasettuple import (
 )
 from .dataset import DataSet, DataSetSection, DataSetSelection, DataSetSelectionField
 from .dataset_storage import DatasetModelPage, DatasetModelRow
+from .dataset_writer import DatasetWriter, DatasetDictWriter, DatasetTupleWriter, DatasetWriteProvider, dataset_write_scope
 from .dataset_metadata import DataSetMetadata, DataSetMetadataTemplate
 from .images2d import Image2DArtifactModel
 from .payloads import TablePayload
@@ -62,6 +63,11 @@ __all__ = [
     "DataSetSection",
     "DatasetModelPage",
     "DatasetModelRow",
+    "DatasetWriter",
+    "DatasetDictWriter",
+    "DatasetTupleWriter",
+    "DatasetWriteProvider",
+    "dataset_write_scope",
     "DataSetSelection",
     "DataSetTuple",
     "DataSetTupleSection",
