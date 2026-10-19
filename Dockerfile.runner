@@ -9,7 +9,10 @@ COPY . .
 RUN uv sync --frozen --no-dev --no-editable \
     && .venv/bin/python -c "from simstack.runner_runtime.environment import assert_database_runtime_unavailable; assert_database_runtime_unavailable()"
 
-RUN useradd --uid 1000 --create-home --shell /bin/bash simstack \
+ARG APP_UID=1000
+ARG APP_GID=1000
+RUN groupadd --gid "$APP_GID" simstack \
+    && useradd --uid "$APP_UID" --gid "$APP_GID" --create-home --shell /bin/bash simstack \
     && install -d -o simstack -g simstack /var/lib/simstack-runner
 ENV PATH="/opt/simstack/.venv/bin:${PATH}"
 ENV PYTHONUNBUFFERED=1

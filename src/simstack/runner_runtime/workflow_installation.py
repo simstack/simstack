@@ -75,11 +75,17 @@ def _installation_lock(root: Path, *, name: str = ".installation.lock", blocking
         raise RuntimeError(
             "Workflow installation requires supported POSIX file locking"
         ) from exc
-    descriptor = os.open(
-        root / name,
-        os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0),
-        0o600,
-    )
+    directory = os.open(root, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        flags = os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(name, flags | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=directory)
+        except FileExistsError:
+            # A separate open avoids macOS openat(O_CREAT | O_NOFOLLOW)
+            # spuriously returning ENOENT when another preparer creates it.
+            descriptor = os.open(name, flags, dir_fd=directory)
+    finally:
+        os.close(directory)
     try:
         try:
             fcntl.flock(descriptor, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
@@ -229,6 +235,9 @@ def prepare_package(
 ) -> Path:
     """Build only a private environment; package imports occur behind its guard."""
     _validate_guard(base_python, guard)
+    if root.is_symlink():
+        raise ValueError("Workflow installation root must not be a symbolic link")
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
     with _installation_lock(root):
         return _prepare_package_locked(
             root,
@@ -449,6 +458,7 @@ async def install_package(
     profile: WorkflowInstallationAdapter,
     claim_id: str,
     attempt: int,
+    task_id: str | None = None,
 ) -> Path:
     from simstack.runner_protocol import RunnerWorkflowPackageV1
 
@@ -462,7 +472,10 @@ async def install_package(
     guard = profile.boundary.network_guard_command
     _validate_guard(base_python, guard)
     root = installation_root(workdir, package.installation_id, package.revision)
+    if root.is_symlink():
+        raise ValueError("Workflow installation root must not be a symbolic link")
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    root.resolve().relative_to(Path(workdir).resolve())
     archive = root / "archive.zip"
     from simstack.workflows.processes import check_storage_budget, WorkflowProcessLimitError
     with _installation_lock(root.parent.parent, name=".storage.lock", blocking=False):
@@ -481,6 +494,7 @@ async def install_package(
             claim_id=claim_id,
             attempt=attempt,
             max_bytes=profile.limits.max_archive_bytes,
+            **({"task_id": task_id} if task_id is not None else {}),
         )
     return await asyncio.to_thread(
         prepare_package,
@@ -530,6 +544,18 @@ async def ensure_claimed_package_runtime(
         root = installation_root(workdir, package.installation_id, package.revision)
         preparations.append((package, profile, root))
     for package, profile, root in preparations:
+        if not (root / "archive.zip").exists():
+            cold_preparation = asyncio.create_task(install_package(
+                client, package.model_dump(mode="json"), workdir=workdir,
+                profile=profile, claim_id=claim_id, attempt=attempt,
+                task_id=str(registry.id),
+            ))
+            try:
+                await asyncio.shield(cold_preparation)
+            except asyncio.CancelledError:
+                await asyncio.gather(cold_preparation, return_exceptions=True)
+                raise
+            continue
         preparation = asyncio.create_task(asyncio.to_thread(
             prepare_package, root, revision=package.revision, manifest=package.manifest,
             base_python=profile.base_python, guard=profile.boundary.network_guard_command,

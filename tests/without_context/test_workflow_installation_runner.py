@@ -139,6 +139,51 @@ async def test_claimed_dispatch_checks_valid_cache_without_running_dependency_in
 
 
 @pytest.mark.asyncio
+async def test_claimed_dispatch_recovers_cold_cache_via_exact_claim_archive(monkeypatch, tmp_path):
+    data = _archive()
+    revision = archive_digest(data)
+    root = installation.installation_root(tmp_path, "installation-1", revision)
+    assert not root.exists()
+    commands = _fake_prepare_subprocess(monkeypatch)
+
+    async def download(installation_id, destination, **kwargs):
+        assert installation_id == "installation-1"
+        assert destination == root / "archive.zip"
+        assert destination.parent.is_dir()
+        assert kwargs == {"revision": revision, "claim_id": "task-claim", "attempt": 2,
+                          "task_id": "507f1f77bcf86cd799439011",
+                          "max_bytes": DEFAULT_INSTALLATION_LIMITS.max_archive_bytes}
+        destination.write_bytes(data)
+
+    client = SimpleNamespace(
+        task_bootstrap=AsyncMock(return_value={"workflow_packages": [_descriptor(revision)]}),
+        download_workflow_archive=AsyncMock(side_effect=download),
+    )
+    adapter = SimpleNamespace(workflow_installer=lambda _: _profile())
+    await installation.ensure_claimed_package_runtime(
+        client, _claimed_registry(revision), claim_id="task-claim", attempt=2,
+        workdir=tmp_path, adapter=adapter,
+    )
+    installation._ready_runtime(root, revision=revision, manifest=_manifest())
+    client.download_workflow_archive.assert_awaited_once()
+    assert sum("venv" in command for command, _ in commands) == 1
+
+
+def test_preparation_rejects_symlink_root_before_lock_or_helpers(monkeypatch, tmp_path):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    root = tmp_path / "package"
+    root.symlink_to(outside, target_is_directory=True)
+    run = MagicMock()
+    monkeypatch.setattr(installation, "_run", run)
+    with pytest.raises(ValueError, match="symbolic link"):
+        installation.prepare_package(root, revision="a" * 64, manifest=_manifest(),
+                                     base_python="/operator/python", guard=("guard",))
+    assert not (outside / ".installation.lock").exists()
+    run.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_claimed_dispatch_repairs_old_cache_only_from_approved_api_manifest(monkeypatch, tmp_path):
     root, revision, old_python = _cached_package(tmp_path)
     ready = json.loads((root / "ready.json").read_text())

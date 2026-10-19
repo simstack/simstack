@@ -15,7 +15,7 @@ import re
 import sys
 import textwrap
 from pathlib import Path
-from types import ModuleType, UnionType
+from types import FunctionType, ModuleType, UnionType
 from typing import Annotated, Any, Union, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel
@@ -55,7 +55,7 @@ def exported_function(modules: list[ModuleType], mapping: str) -> Any:
         value
         for module in modules
         for value in vars(module).values()
-        if inspect.isfunction(value) and object_mapping(value) == mapping
+        if type(value) is FunctionType and object_mapping(value) == mapping
     }
     if len(matches) != 1:
         raise ValueError("Function is not a unique canonical exported function")
@@ -198,11 +198,11 @@ def _result_class(
     if mapping in available:
         return available[mapping]
     value = vars(module).get(mapping)
-    if inspect.isclass(value) and issubclass(value, Model):
+    if issubclass(type(value), type) and issubclass(value, Model):
         return value
     for value in vars(module).values():
         if (
-            inspect.isclass(value)
+            issubclass(type(value), type)
             and issubclass(value, Model)
             and object_mapping(value) == mapping
         ):
@@ -297,7 +297,9 @@ def discover_workflow(
     for module in modules:
         for value in vars(module).values():
             if (
-                inspect.isclass(value)
+                # isinstance/inspect can read proxy.__class__. Discovery must
+                # not initialize imported runtime context objects to inspect it.
+                issubclass(type(value), type)
                 and issubclass(value, Model)
                 and value is not Model
             ):
@@ -305,7 +307,7 @@ def discover_workflow(
                 if _belongs_to_source(value, import_root.resolve()):
                     seeds.append(value)
             elif (
-                inspect.isfunction(value)
+                type(value) is FunctionType
                 and getattr(value, "_is_node", False)
                 and _belongs_to_source(value, import_root.resolve())
             ):

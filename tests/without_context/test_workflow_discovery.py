@@ -154,6 +154,18 @@ def test_runtime_uses_custom_python_validator_not_only_json_schema(workflow_sour
         execute_request(request)
 
 
+def test_workflow_imported_runtime_context_stays_uninitialized_during_reflection(workflow_source):
+    from simstack.core.context import context
+    initial_state = context.initialized
+    root, package = workflow_source
+    module = root / package / "nodes.py"
+    module.write_text(module.read_text() + "\nfrom simstack.core.context import context\nfrom simstack.core.runner_execution import current_runner_claim\n")
+    request = _graph(workflow_source)
+    result = execute_request(request)
+    assert len(result["documents"]) == 2
+    assert context.initialized is initial_state
+
+
 @pytest.mark.parametrize(
     "mutation", ["missing", "duplicate", "wrong_id", "unknown_field", "schema"]
 )

@@ -15,7 +15,7 @@ import json
 import sys
 from collections.abc import Mapping
 from pathlib import Path
-from types import UnionType
+from types import FunctionType, UnionType
 from typing import Annotated, Any, Union, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel
@@ -171,11 +171,11 @@ def _runtime_classes(request):
         value
         for module in loaded
         for value in vars(module).values()
-        if inspect.isclass(value) and issubclass(value, Model) and value is not Model
+        if issubclass(type(value), type) and issubclass(value, Model) and value is not Model
     ]
     for module in loaded:
         for value in vars(module).values():
-            if inspect.isfunction(value) and getattr(value, "_is_node", False):
+            if type(value) is FunctionType and getattr(value, "_is_node", False):
                 for annotation in get_type_hints(value, include_extras=True).values():
                     from .discovery import _model_types
 
