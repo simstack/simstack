@@ -43,36 +43,48 @@ async def recompute_artifacts(node_registry: NodeRegistry):
     for child_registry in children:
         await recompute_artifacts(child_registry)
 
+    # Charts, tables and images can also be persisted node outputs. Load them
+    # before cleanup and keep their documents: artifact mappings cannot
+    # regenerate the outputs of the node function.
+    result = await node.load_results()
+    output_ids = {ref.reference for ref in node_registry.results_references}
+
     # Remove current node's artifacts
     table_artifacts = await db.find(
         TableArtifactModel, TableArtifactModel.parent_id == node_registry.id
     )
     for table_artifact in table_artifacts:
-        await db.delete(table_artifact)
+        if table_artifact.id not in output_ids:
+            await db.delete(table_artifact)
 
     chart_artifacts = await db.find(
         ChartArtifactModel, ChartArtifactModel.parent_id == node_registry.id
     )
     for chart_artifact in chart_artifacts:
-        await db.delete(chart_artifact)
+        if chart_artifact.id not in output_ids:
+            await db.delete(chart_artifact)
 
     image_artifacts = await db.find(
         Image2DArtifactModel, Image2DArtifactModel.parent_id == node_registry.id
     )
     for image_artifact in image_artifacts:
-        await db.delete(image_artifact)
+        if image_artifact.id not in output_ids:
+            await db.delete(image_artifact)
 
     generic_artifacts = await db.find(
         ArtifactModel, ArtifactModel.parent_id == node_registry.id
     )
     for generic_artifact in generic_artifacts:
-        await db.delete(generic_artifact)
+        if generic_artifact.id not in output_ids:
+            await db.delete(generic_artifact)
 
     if node_registry.artifact_ids:
         logger.info(f"Removing {len(node_registry.artifact_ids)} artifacts for node {node_registry.id}")
 
         # Delete artifacts from the database
         for artifact_id in node_registry.artifact_ids:
+            if artifact_id in output_ids:
+                continue
             instance = await db.find_one(
                 ArtifactModel, ArtifactModel.id == artifact_id
             )
@@ -88,8 +100,7 @@ async def recompute_artifacts(node_registry: NodeRegistry):
     if node_registry.status == TaskStatus.COMPLETED:
         logger.info(f"Recomputing artifacts for node {node_registry.id} {node_registry.name}")
 
-        # Load the result to create new artifacts
-        result = await node.load_results()
+        # Use the outputs loaded before artifact cleanup.
         if result is not None:
             artifact_arguments = ArtifactArguments(result, node_registry.id)
             # Reconstruct the function arguments for artifact creation
