@@ -174,6 +174,7 @@ class ResourceConfig:
         input_files: Optional[List[Union[str, "FileStack"]]] = None,
         output_files: Optional[List[Union[str, "FileStack"]]] = None,
         node_runner: Optional[Any] = None,
+        env: Optional[Dict[str, str]] = None,
     ):
         """
         Executes the run command with optional temporary directory usage and file handling.
@@ -184,8 +185,10 @@ class ResourceConfig:
             input_files: List of input files (str or FileStack). Overrides TOML input_files if provided.
             output_files: List of output files (str or FileStack). Overrides TOML output_files if provided.
             node_runner: Optional NodeRunner instance for execution.
+            env: Environment overrides for this subprocess only.
         """
 
+        env_kwargs = {"env": env} if env is not None else {}
         params = self.get_program(program_name)
         run_command = params.get("run_command", "")
         
@@ -222,9 +225,12 @@ class ResourceConfig:
 
             # Execute run_command
             if node_runner and hasattr(node_runner, "subprocess"):
-                node_runner.subprocess("run", run_command, cwd=str(exec_dir))
+                node_runner.subprocess("run", run_command, cwd=str(exec_dir), **env_kwargs)
             else:
-                subprocess.run(run_command, shell=True, check=True, cwd=exec_dir)
+                subprocess.run(
+                    run_command, shell=True, check=True, cwd=exec_dir,
+                    **({"env": {**os.environ, **env}} if env is not None else {}),
+                )
 
 
             # Copy output files back to cwd
