@@ -332,6 +332,7 @@ class NodeRunner(SimstackResult):
         program_name: str,
         command: str = "run_command",
         name: Optional[str] = None,
+        env: Optional[dict[str, str]] = None,
     ) -> bool:
         """Run a named command for ``program_name`` from ResourceConfig.
 
@@ -342,6 +343,7 @@ class NodeRunner(SimstackResult):
             program_name: Program key under ``[<resource>.program.<name>]``.
             command: Key in that program table whose string is executed.
                 Defaults to ``run_command``.
+            env: Environment overrides for this subprocess only.
             name: Subprocess log name. Defaults to ``program_name``.
 
         Returns:
@@ -372,7 +374,10 @@ class NodeRunner(SimstackResult):
         self._program_name = program_name
         cwd = str(self.scratch_dir) if self.scratch_dir is not None else ""
         subprocess_name = program_name if name is None else name
-        return self.subprocess(subprocess_name, run_command, cwd=cwd)
+        return self.subprocess(
+            subprocess_name, run_command, cwd=cwd,
+            **({"env": env} if env is not None else {}),
+        )
 
     def retrieve(
         self,
@@ -613,7 +618,10 @@ class NodeRunner(SimstackResult):
             exc_info=True,
         )
 
-    def subprocess(self, name: str, command: str | List[str], cwd: str = "") -> bool:
+    def subprocess(
+        self, name: str, command: str | List[str], cwd: str = "",
+        env: Optional[dict[str, str]] = None,
+    ) -> bool:
         """
         Execute a shell command as a subprocess and capture its output.
 
@@ -623,6 +631,7 @@ class NodeRunner(SimstackResult):
         Args:
             name (str): Name identifier for the subprocess (used for log file naming)
             command (str): Shell command to execute
+            env: Environment overrides; the parent environment is preserved.
             cwd (str, optional): Working directory for command execution. Defaults to current directory.
 
         Returns:
@@ -661,6 +670,8 @@ class NodeRunner(SimstackResult):
             }
             if os.name == "nt":
                 run_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+            if env is not None:
+                run_kwargs["env"] = {**os.environ, **env}
             process = subprocess.run(command, **run_kwargs)
             self.info(f"run script {name} finished: {process.returncode}")
             self.last_stdout = process.stdout
