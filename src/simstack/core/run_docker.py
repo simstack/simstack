@@ -730,7 +730,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             await context.db.save(registry_entry)
         outcome = DockerRunResult(False, "exception", registry_entry.error)
 
-    if process_started and docker_cmd == "docker":
+    if process_started and docker_cmd == "docker" and platform.system() != "Windows":
         try:
             owner_uid, owner_gid = launcher_owner_ids()
             await _harmonize_docker_task_dir(image, task_dir, owner_uid, owner_gid)
