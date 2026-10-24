@@ -256,7 +256,7 @@ async def test_run_docker_apptainer_omits_cpu_and_memory_flags(tmp_path: Path):
         slurm_parameters=SimpleNamespace(cpus_per_task=4, tasks=2, mem="8G")
     )
 
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 0
     proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
 
