@@ -712,7 +712,7 @@ async def test_run_docker_redacts_database_uri_from_spawn_exception(
 def _harmonize_aware_exec(*, job_returncode: int):
     async def _exec(*cmd, **kwargs):
         cmd_list = list(cmd)
-        if "--network" in cmd_list:
+        if "--user" in cmd_list and "0:0" in cmd_list:
             proc = AsyncMock()
             proc.returncode = 0
             proc.communicate = AsyncMock(return_value=(b"", b""))
@@ -724,7 +724,7 @@ def _harmonize_aware_exec(*, job_returncode: int):
 
 def _harmonize_command(mock_exec) -> list[str]:
     commands = [list(call.args) for call in mock_exec.await_args_list]
-    harmonize = [cmd for cmd in commands if "--network" in cmd]
+    harmonize = [cmd for cmd in commands if "--user" in cmd and "0:0" in cmd]
     assert len(harmonize) == 1
     return harmonize[0]
 
@@ -741,6 +741,7 @@ async def test_run_docker_harmonizes_task_dir_after_success(tmp_path: Path, monk
 
     with (
         patch("simstack.core.run_docker.context", mock_context),
+        patch("simstack.core.run_docker.platform.system", return_value="Linux"),
         patch(
             "asyncio.create_subprocess_exec",
             side_effect=_harmonize_aware_exec(job_returncode=0),
@@ -777,6 +778,7 @@ async def test_run_docker_harmonizes_task_dir_after_nonzero_exit(tmp_path: Path)
 
     with (
         patch("simstack.core.run_docker.context", mock_context),
+        patch("simstack.core.run_docker.platform.system", return_value="Linux"),
         patch(
             "asyncio.create_subprocess_exec",
             side_effect=_harmonize_aware_exec(job_returncode=1),
@@ -792,3 +794,25 @@ async def test_run_docker_harmonizes_task_dir_after_nonzero_exit(tmp_path: Path)
     assert command[-3:] == ["1000", "1000", "/work"]
     assert "--user" in command
     assert "0:0" in command
+
+
+@pytest.mark.asyncio
+async def test_run_docker_skips_harmonize_on_windows(tmp_path: Path):
+    resource_config = _psi4_image_config(tmp_path)
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch("simstack.core.run_docker.platform.system", return_value="Windows"),
+        patch("simstack.core.run_docker.launcher_owner_ids", side_effect=AssertionError("should not be called")),
+        patch(
+            "asyncio.create_subprocess_exec",
+            side_effect=_fake_docker_exec(returncode=0),
+        ) as mock_exec,
+    ):
+        result = await run_docker_with_outcome(registry_entry)
+
+    assert result.success is True
+    commands = [list(call.args) for call in mock_exec.await_args_list]
+    assert not any("--network" in cmd for cmd in commands)
