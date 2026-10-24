@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import platform
 import re
 import shlex
@@ -12,6 +13,7 @@ from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.run_node_protocol import RESULT_PREFIX, parse_run_node_result
 from simstack.models import NodeRegistry
+from simstack.util.output_permissions import docker_harmonize_command
 from simstack.util.sanitized_output import (
     redact_connection_string,
     sanitized_command,
@@ -70,6 +72,42 @@ async def _persist_post_launch_failure(
         )
         return
     await context.db.save(registry_entry)
+
+
+def launcher_owner_ids() -> tuple[int, int]:
+    """Uid and gid of the process that launches the container."""
+    getuid = getattr(os, "getuid", None)
+    getgid = getattr(os, "getgid", None)
+    if not callable(getuid) or not callable(getgid):
+        raise ValueError("launcher uid and gid are required to harmonize task output")
+    uid = getuid()
+    gid = getgid()
+    if uid is None or gid is None:
+        raise ValueError("launcher uid and gid are required to harmonize task output")
+    return int(uid), int(gid)
+
+
+async def _harmonize_docker_task_dir(image: str, task_dir: Path, uid: int, gid: int) -> None:
+    command = docker_harmonize_command(
+        image=image, task_dir=task_dir, uid=uid, gid=gid
+    )
+    logger.info(
+        "harmonizing task directory %s to %s:%s",
+        task_dir,
+        uid,
+        gid,
+    )
+    process = await asyncio.create_subprocess_exec(
+        *command,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout_b, stderr_b = await process.communicate()
+    if process.returncode != 0:
+        detail = (stderr_b or stdout_b or b"").decode("utf-8", errors="replace").strip()
+        raise RuntimeError(
+            f"harmonize task directory {task_dir} failed rc={process.returncode}: {detail}"
+        )
 
 
 def _positive_int(value: object) -> int | None:
@@ -564,6 +602,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
 
     process_started = False
+    outcome: DockerRunResult | None = None
     try:
         process = await asyncio.create_subprocess_exec(
             *cmd,
@@ -630,13 +669,12 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             await _persist_post_launch_failure(
                 registry_entry, registry_entry.error
             )
-            return DockerRunResult(
+            outcome = DockerRunResult(
                 False,
                 child_outcome.return_kind if child_outcome is not None else "exception",
                 registry_entry.error,
             )
-
-        if child_outcome is None or not child_outcome.success:
+        elif child_outcome is None or not child_outcome.success:
             base_error = (
                 child_outcome.error
                 if child_outcome is not None and child_outcome.error
@@ -653,22 +691,22 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             await _persist_post_launch_failure(
                 registry_entry, registry_entry.error
             )
-            return DockerRunResult(
+            outcome = DockerRunResult(
                 False,
                 child_outcome.return_kind if child_outcome is not None else "none",
                 registry_entry.error,
             )
-
-        if stdout:
-            # For `docker run` without -d, stdout is the actual output of the command
-            logger.info("Docker container output for task_id=%s: %s", registry_entry.id, stdout)
         else:
-            logger.info("Docker container spawned for task_id=%s", registry_entry.id)
-        if stderr:
-            # Some Docker setups warn on stderr even on success
-            logger.warning("docker run stderr for task_id=%s: %s", registry_entry.id, stderr)
+            if stdout:
+                # For `docker run` without -d, stdout is the actual output of the command
+                logger.info("Docker container output for task_id=%s: %s", registry_entry.id, stdout)
+            else:
+                logger.info("Docker container spawned for task_id=%s", registry_entry.id)
+            if stderr:
+                # Some Docker setups warn on stderr even on success
+                logger.warning("docker run stderr for task_id=%s: %s", registry_entry.id, stderr)
 
-        return DockerRunResult(True, child_outcome.return_kind)
+            outcome = DockerRunResult(True, child_outcome.return_kind)
     except Exception as e:
         if process_started:
             registry_entry = await _reload_registry_after_container(registry_entry)
@@ -690,7 +728,28 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         else:
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
-        return DockerRunResult(False, "exception", registry_entry.error)
+        outcome = DockerRunResult(False, "exception", registry_entry.error)
+
+    if process_started and docker_cmd == "docker" and platform.system() != "Windows":
+        try:
+            owner_uid, owner_gid = launcher_owner_ids()
+            await _harmonize_docker_task_dir(image, task_dir, owner_uid, owner_gid)
+        except Exception as exc:
+            clean_error = redact_connection_string(
+                sanitized_tail(str(exc), configured_connection_string),
+                connection_string,
+            )
+            logger.error(
+                "task_id=%s failed to harmonize %s: %s",
+                registry_entry.id,
+                task_dir,
+                clean_error,
+            )
+            if outcome.success:
+                message = f"Failed to harmonize task directory ownership: {clean_error}"
+                await _persist_post_launch_failure(registry_entry, message)
+                outcome = DockerRunResult(False, "exception", message)
+    return outcome
 
 
 async def run_docker(registry_entry: NodeRegistry) -> bool:
