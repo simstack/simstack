@@ -152,12 +152,22 @@ Create a ``simstack.toml`` file (placeholders shown below):
    connection_string = "mongodb://<USER>:<PASSWORD>@<HOST>:27017/"
    mongodump_path = "<PATH_TO_MONGODUMP_EXE>"
 
+   [parameters.server]
+   url = "https://simstack.int.kit.edu"
+   token = "<TOKEN_FOR_THIS_RESOURCE>"
+
 Where:
 
 * ``<PATH_TO_SIMSTACK_DATA_DIR>`` is the path to the data directory created above (e.g. ``$HOME/simstack``)
 * ``<NAME>`` is your database name (often your first name in lower case)
 * ``<PASSWORD>`` is the database password
 * ``<PATH_TO_MONGODUMP_EXE>`` is the path to the ``mongodump`` executable (required for database backups)
+* ``url`` is the SimStack server address used for file transfers. Do not add ``/api``.
+* ``<TOKEN_FOR_THIS_RESOURCE>`` is the runner access token from that server's UI:
+  open **Profile → Resources**, select this resource, then **Generate token → Copy token**.
+
+Each resource uses its own token. Runners transferring files between each other
+must connect to the same server. Restart them after changing these settings.
 
 
 Initialize the system

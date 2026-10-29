@@ -1,32 +1,28 @@
-# Pull requests and release notes
+# Contributing
 
-Feature and fix PRs normally target `develop`. Release and hotfix PRs target
-`main` and use `.github/PULL_REQUEST_TEMPLATE/release.md`, selected with
-`?template=release.md` in the PR creation URL.
+## Branching
 
-Use a clear PR title that describes the user-visible changes. For a mixed PR,
-mention both the main features and important fixes in its title and summary.
-Special commit-message prefixes are not required for GitHub-generated notes.
+We use [Gitflow](https://nvie.com/posts/a-successful-git-branching-model/).
+`develop` collects the next release; `main` contains production releases.
 
-Before requesting review, add one or more release-note labels:
+| Work                | Branch                | Start from | Merge into             |
+| ------------------- | --------------------- | ---------- | ---------------------- |
+| Feature or fix      | `feature-*` / `fix-*` | `develop`  | `develop`              |
+| Release preparation | `release-X.Y.Z`       | `develop`  | `main`, then `develop` |
+| Production fix      | `hotfix-X.Y.Z`        | `main`     | `main`, then `develop` |
 
-- `breaking-change`: incompatible API, data, or behavior changes.
-- `enhancement`: new features or improvements.
-- `bug`: bug fixes.
-- `documentation`: documentation changes.
-- `dependencies`: dependency updates.
-- `maintenance`: internal maintenance, refactoring, or build changes.
+Tag each release or hotfix merge on `main` with an annotated `vX.Y.Z` tag.
 
-Multiple labels are allowed, including existing priority and review-state labels.
-Use `skip-changelog` only when the PR should be omitted from release notes; do not
-combine it with the six release-note category labels above.
+## Versioning
 
-`Release-note labels` checks this policy when a PR is opened, updated, relabeled,
-or becomes ready for review. It checks metadata only and does not run PR code.
-The workflow must be present on the PR's base branch to run. Making its result a
-merge requirement also needs an enforced GitHub required-status-check rule.
+Use [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`.
 
-Generated release notes list merged PRs rather than every individual change.
-Preview the notes using the intended previous and new release tags, and edit the
-summary to explain important features, fixes, compatibility, and migration steps.
-Tagging, publication, deployment, and production verification happen after merge.
+- **MAJOR:** incompatible public API changes.
+- **MINOR:** backward-compatible features.
+- **PATCH:** backward-compatible bug fixes.
+
+## Pull requests
+
+Complete the [PR template](pull_request_template.md) or
+[release template](PULL_REQUEST_TEMPLATE/release.md). See the
+[README](../README.md) for local setup and project conventions.
