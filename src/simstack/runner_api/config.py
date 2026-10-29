@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import os
+import json
 import math
+import os
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -33,28 +34,53 @@ class RunnerConnectionSettings:
     resource: str
 
     @classmethod
-    def from_file(cls, config_path: str | os.PathLike[str]) -> "RunnerConnectionSettings":
-        try:
-            with Path(config_path).open("rb") as configuration_file:
-                configuration = tomllib.load(configuration_file)
-        except OSError:
-            raise RunnerApiConfigurationError(
-                "Runner connection configuration cannot be read"
-            ) from None
-        except tomllib.TOMLDecodeError:
-            # Do not echo file contents: an operator may have supplied an old
-            # secret-bearing file instead of the downloaded connection config.
-            raise RunnerApiConfigurationError(
-                "Runner connection configuration is not valid TOML"
-            ) from None
+    def from_file(
+        cls, config_path: str | os.PathLike[str]
+    ) -> "RunnerConnectionSettings":
+        return cls.from_mapping(_load_runner_configuration(config_path))
+
+    @classmethod
+    def from_execution_file(
+        cls, config_path: str | os.PathLike[str]
+    ) -> "RunnerConnectionSettings | None":
+        """Read unified connection settings, or retain an explicit legacy adapter.
+
+        Files without a runner table contain only operator execution settings;
+        their API credentials continue to come from the environment. A supplied
+        runner table is authoritative and is never silently ignored.
+        """
+        configuration = _load_runner_configuration(config_path)
+        if "runner" not in configuration:
+            return None
+        # A legacy execution-only file may name its resource "runner".
+        raw_runner = configuration["runner"]
+        legacy_keys = {"program", "setup", "workflow_profiles"}
+        if (
+            isinstance(raw_runner, Mapping)
+            and raw_runner
+            and set(raw_runner).issubset(legacy_keys)
+        ):
+            return None
         return cls.from_mapping(configuration)
 
     @classmethod
-    def from_mapping(cls, configuration: Mapping[str, object]) -> "RunnerConnectionSettings":
-        if not isinstance(configuration, Mapping) or set(configuration) != {"runner"}:
+    def from_mapping(
+        cls, configuration: Mapping[str, object]
+    ) -> "RunnerConnectionSettings":
+        if (
+            not isinstance(configuration, Mapping)
+            or "runner" not in configuration
+            or not set(configuration).issubset({"runner", "execution"})
+        ):
             raise RunnerApiConfigurationError(
-                "Runner connection configuration must contain only a [runner] table; "
+                "Runner configuration may contain only [runner] and [execution] tables; "
                 "legacy database configuration is not supported"
+            )
+        if "execution" in configuration and not isinstance(
+            configuration["execution"], Mapping
+        ):
+            raise RunnerApiConfigurationError(
+                "Runner execution configuration must be a table"
             )
         runner = configuration["runner"]
         if not isinstance(runner, Mapping) or set(runner) != {"server_url", "resource"}:
@@ -65,7 +91,11 @@ class RunnerConnectionSettings:
         values = {}
         for name in ("server_url", "resource"):
             value = runner[name]
-            if not isinstance(value, str) or not value.strip() or value != value.strip():
+            if (
+                not isinstance(value, str)
+                or not value.strip()
+                or value != value.strip()
+            ):
                 raise RunnerApiConfigurationError(
                     f"Runner connection {name} must be a non-empty, trimmed string"
                 )
@@ -82,7 +112,10 @@ class RunnerConnectionSettings:
                 and not parsed.params
                 and not parsed.query
                 and not parsed.fragment
-                and not any(character.isspace() or ord(character) < 32 for character in server_url)
+                and not any(
+                    character.isspace() or ord(character) < 32
+                    for character in server_url
+                )
             )
         except ValueError:
             valid_url = False
@@ -92,6 +125,58 @@ class RunnerConnectionSettings:
                 "without credentials, parameters, query, or fragment"
             )
         return cls(server_url=server_url, resource=values["resource"])
+
+
+def _load_runner_configuration(config_path: str | os.PathLike[str]) -> dict:
+    try:
+        path = Path(config_path)
+        if path.is_dir():
+            path = path / "config.toml"
+        with path.open("rb") as configuration_file:
+            return tomllib.load(configuration_file)
+    except OSError:
+        raise RunnerApiConfigurationError(
+            "Runner configuration cannot be read"
+        ) from None
+    except tomllib.TOMLDecodeError:
+        # Do not include the source: a mistakenly supplied old file may contain secrets.
+        raise RunnerApiConfigurationError(
+            "Runner configuration is not valid TOML"
+        ) from None
+
+
+def render_runner_config(server_url: str, resource: str) -> str:
+    """Return one secret-free config with portable basic local Python defaults.
+
+    The defaults run under the current user's API-only interpreter. They do not
+    add an OS network sandbox; operators may strengthen the worker boundary or
+    add explicit cluster/container profiles without changing the connection.
+    """
+    connection = RunnerConnectionSettings.from_mapping(
+        {"runner": {"server_url": server_url, "resource": resource}}
+    )
+    return "\n".join(
+        (
+            "# SimStack API Runner configuration. Keep SIMSTACK_RUNNER_TOKEN in the environment.",
+            "# Basic local Python execution under the current user; no OS network sandbox is added.",
+            "# Customize execution settings here for cluster/container resources.",
+            "[runner]",
+            f"server_url = {json.dumps(connection.server_url, ensure_ascii=False)}",
+            f"resource = {json.dumps(connection.resource, ensure_ascii=False)}",
+            "",
+            "[execution.program.python]",
+            'local_worker_command = ["{runner_python}", "-m", "simstack.core.run_node"]',
+            'worker_network_guard_command = ["/usr/bin/env"]',
+            "worker_environment_allowlist = []",
+            "",
+            "[execution.workflow_profiles.python]",
+            'installer_python = "{runner_python}"',
+            'local_worker_command = ["{python}", "-m", "simstack.core.run_node"]',
+            'worker_network_guard_command = ["/usr/bin/env"]',
+            "worker_environment_allowlist = []",
+            "",
+        )
+    )
 
 
 @dataclass(frozen=True)

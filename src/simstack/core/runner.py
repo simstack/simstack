@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import logging
 import os
+from pathlib import Path
 
 from simstack.core.context import context
 from simstack.core.services.runner_manager import RunnerManager
@@ -19,22 +20,40 @@ async def async_main(args: argparse.Namespace) -> None:
     """Start an API-only runner. Missing API credentials abort startup."""
     connection_kwargs = {}
     resource = args.resource
+    config_path = getattr(args, "config", None)
+    if config_path is None:
+        default_config = (
+            Path(getattr(args, "project_root", None) or Path.cwd()) / "config.toml"
+        )
+        if default_config.is_file():
+            config_path = str(default_config)
+    unified_connection = (
+        RunnerConnectionSettings.from_execution_file(config_path)
+        if config_path is not None
+        else None
+    )
+    connection = unified_connection
     if connection_path := getattr(args, "connection_config", None):
         connection = RunnerConnectionSettings.from_file(connection_path)
+        if unified_connection is not None and unified_connection != connection:
+            raise RunnerApiConfigurationError(
+                "Connection settings conflict with the unified config"
+            )
+    if connection is not None:
         if resource is not None and resource != connection.resource:
             raise RunnerApiConfigurationError(
-                "--resource does not match the runner connection configuration"
+                "--resource does not match the Runner configuration"
             )
         resource = connection.resource
-        # An explicitly selected file is authoritative; no fallback to another
-        # server or legacy configuration if its bootstrap fails.
+        # A selected configuration is authoritative; bootstrap failure cannot
+        # fall back to another API URL, environment or database configuration.
         connection_kwargs["server_url"] = connection.server_url
     sanitize_runner_process_environment(
         allowed_environment_names=tuple(args.allow_environment)
     )
     await context.initialize_runner(
         resource=resource,
-        config_file=args.config,
+        config_file=config_path,
         project_root=args.project_root,
         workdir_override=args.workdir,
         with_file_transfer=args.with_file_transfer,
@@ -60,16 +79,16 @@ def runner_main() -> None:
         "--connection-config",
         type=str,
         help=(
-            "Path to secret-free runner.toml downloaded from the UI; "
-            "the resource token still comes from SIMSTACK_RUNNER_TOKEN"
+            "Optional legacy separate connection file; prefer one --config config.toml. "
+            "The token comes from SIMSTACK_RUNNER_TOKEN"
         ),
     )
     parser.add_argument(
         "--config",
         type=str,
         help=(
-            "Path to operator-owned execution-adapter config.toml "
-            "(defaults to <project-root>/config.toml); not the connection file"
+            "Path to config.toml containing Runner connection and execution settings "
+            "(defaults to <project-root>/config.toml)"
         ),
     )
 
@@ -113,7 +132,7 @@ def runner_main() -> None:
 
     parser.add_argument(
         "--with-file-transfer",
-        type=lambda x: (str(x).lower() not in ["false", "0", "no"]),
+        type=lambda x: str(x).lower() not in ["false", "0", "no"],
         default=True,
         help="If true (default), start the FileTransferService. Set to 'false' to skip.",
     )

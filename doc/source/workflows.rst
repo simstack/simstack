@@ -353,44 +353,57 @@ Remote Execution
 
 Nodes scheduled for remote execution require ``simstack_runner`` on that
 resource. In the UI, save the resource under **Profile → Resources**, use
-**Generate token**, and then **Download runner.toml**. The download contains a
-``[runner]`` section with ``server_url`` from the UI's configured API URL and
-``resource``. It contains no token or database configuration. The API URL must
-be reachable from the resource; change a local-only address when connecting a
-remote machine.
+**Generate token**, and **Download config.toml**. One file contains the Server
+API URL and expected resource in ``[runner]``, plus basic local Python execution
+settings in ``[execution]``. It contains no token or database configuration.
+The API URL must be reachable from the execution machine.
 
-Install the coordinated new Core version in a separate Runner environment
-without MongoDB drivers. The local, uncommitted version is not supplied by an
-older published package. The resource operator must also supply an execution
-``config.toml`` with worker launch commands, network isolation, environment
-allowlists, and the approved ``workflow_profiles``. The downloaded connection
-file does not generate this deployment-specific execution configuration.
+Install the coordinated Core release in a Runner environment without MongoDB
+drivers. Start it using the downloaded file:
 
 .. code-block:: bash
 
     export SIMSTACK_RUNNER_TOKEN="<resource Runner token>"
     simstack_runner \
-      --connection-config /absolute/path/runner.toml \
       --config /absolute/path/config.toml \
       --project-root /absolute/path/execution-root
 
-``SIMSTACK_RUNNER_TOKEN`` is mandatory and is not read from either TOML file.
-``--connection-config`` supplies the API URL and expected resource. When
-``--resource`` is also passed, it must match the connection file and the
-token-bound resource. Without a connection file, ``SIMSTACK_SERVER_URL`` is
-required; an explicit connection file is authoritative when provided. The
-server bootstrap supplies resource, model-mapping, and node-mapping metadata.
-Local ``config.toml`` contains execution settings only. Database URLs, drivers,
-and old ``simstack.toml`` database settings are not part of Runner bootstrap,
-and there is no database fallback.
+The generated config provides the ``python`` workflow runtime profile. Its
+``{runner_python}`` placeholder resolves to the running Runner interpreter,
+without a machine-specific installation path. ``{python}`` in a packaged
+worker command refers to that workflow revision's prepared environment.
+Defaults execute basic Python work as the current user with an empty extra
+environment allowlist. They do not add an operating-system network sandbox.
+Operators can strengthen the guard or add cluster/container profiles in the
+same file; existing explicit execution contracts are not replaced.
+
+``SIMSTACK_RUNNER_TOKEN`` remains mandatory and is supplied through the
+environment. The unified config's URL is authoritative. Its resource must match
+both an explicitly supplied ``--resource`` and the token-bound Server bootstrap;
+there is no fallback to another server or to a database when it fails.
+
+Existing resource-keyed execution files with API URL/token environment variables
+remain usable. ``--connection-config`` also remains available for older split
+connection files, but is not needed for a new downloaded config. The sample
+configuration generator writes the complete single ``config.toml`` by default:
+
+.. code-block:: bash
+
+    simstack_write_sample_config \
+      --server-url https://example.org/api \
+      --resource my-resource
+
+The generator refuses to overwrite an existing file. Server bootstrap still
+supplies resource, model-mapping and node-mapping metadata; local configuration
+never supplies MongoDB credentials or replaces Server-owned control-plane data.
 
 The execution ``--project-root`` must be a secret-free source snapshot because
 workflow processes can read it, including through read-only container mounts.
-Each local, container, Slurm, and watchdog launch contract must also provide a
-real, deployment-verified ``worker_network_guard_command``. A non-empty argv is
-required by the framework, but the operating environment is responsible for
-ensuring that the selected guard actually blocks database and other forbidden
-network access.
+Each local, container, Slurm, and watchdog launch contract must provide an
+explicit ``worker_network_guard_command``. Deployments requiring network-level
+isolation must replace the basic local pass-through guard with a verified
+isolation command. The environment is responsible for enforcing its network
+policy; a non-empty command alone does not establish isolation.
 
 Deploy the Runner/Core installation through the deployment system. The package
 installer separately delivers immutable workflow archives through the API and

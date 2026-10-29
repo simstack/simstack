@@ -1,20 +1,23 @@
 """Typed, operator-owned process adapters for the API-only runner.
 
-This module is the only runner component that knows the layout of local
-``config.toml``.  Control-plane state still comes exclusively from the server
-API; this file contains only argv, environment allowlists and local filesystem
-locations needed to execute work on a particular resource.
+This module validates local execution policy in the unified ``config.toml``
+and existing resource-keyed execution files. The unified file also names the
+API connection; control-plane resource/model state still comes exclusively
+from the Server. Execution tables contain argv, environment allowlists and
+filesystem locations needed to execute work on this machine.
 """
 
 from __future__ import annotations
 
 import os
+import sys
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path, PurePosixPath
 
+from simstack.runner_api.config import RunnerConnectionSettings
 from simstack.runner_runtime.environment import (
     validate_worker_environment_allowlist,
 )
@@ -152,11 +155,25 @@ class RunnerExecutionAdapterConfig:
             raise RuntimeError("Runner execution-adapter config must be a table")
         if not isinstance(resource, str) or not resource:
             raise RuntimeError("Runner execution-adapter resource must be non-empty")
-        if resource not in configuration:
-            raise RuntimeError(
-                f"Runner execution-adapter resource {resource!r} is not configured"
-            )
-        raw_resource = configuration[resource]
+        raw_connection = configuration.get("runner")
+        unified = isinstance(raw_connection, Mapping) and bool(
+            {"server_url", "resource"}.intersection(raw_connection)
+        )
+        if unified:
+            connection = RunnerConnectionSettings.from_mapping(configuration)
+            if connection.resource != resource:
+                raise RuntimeError(
+                    "Runner configuration resource does not match the API resource"
+                )
+            if "execution" not in configuration:
+                raise RuntimeError("Unified Runner config requires an execution table")
+            raw_resource = configuration["execution"]
+        else:
+            if resource not in configuration:
+                raise RuntimeError(
+                    f"Runner execution-adapter resource {resource!r} is not configured"
+                )
+            raw_resource = configuration[resource]
         resource_table = _table(
             raw_resource,
             contract=f"resource {resource!r}",
@@ -297,13 +314,17 @@ class RunnerExecutionAdapterConfig:
     def workflow_installer(self, profile_name: str) -> WorkflowInstallationAdapter:
         profile = self.workflow_profile(profile_name)
         return WorkflowInstallationAdapter(
-            base_python=_required_string(
-                profile.get("installer_python"),
-                name="installer_python",
-                contract="Workflow installation",
+            base_python=_runner_python(
+                _required_string(
+                    profile.get("installer_python"),
+                    name="installer_python",
+                    contract="Workflow installation",
+                )
             ),
             boundary=self._worker_boundary(profile, guard_source=profile),
-            limits=WorkflowInstallationLimits.from_mapping(profile.get("installation_limits")),
+            limits=WorkflowInstallationLimits.from_mapping(
+                profile.get("installation_limits")
+            ),
         )
 
     def _program(
@@ -374,7 +395,11 @@ def _command(value: object, *, name: str, contract: str) -> tuple[str, ...]:
         or not all(isinstance(item, str) and item for item in value)
     ):
         raise RuntimeError(f"{contract} launch contract requires non-empty {name} argv")
-    return tuple(value)
+    return tuple(_runner_python(item) for item in value)
+
+
+def _runner_python(value: str) -> str:
+    return sys.executable if value == "{runner_python}" else value
 
 
 def _required_string(value: object, *, name: str, contract: str) -> str:
