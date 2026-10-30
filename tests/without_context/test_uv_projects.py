@@ -355,3 +355,33 @@ def test_conflicting_backend_versions_are_prefetched_as_separate_build_groups(tm
         "setuptools==75.0.0" in group and "setuptools==80.9.0" in group
         for group in groups
     )
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        '[tool.uv.sources]\nscience={git="https://github.com/example/science.git"}\n',
+        '[tool.uv.workspace]\nmembers=["packages/*"]\n',
+        "[tool.uv]\npackage=true\n",
+        "[tool.uv]\n",
+    ],
+)
+def test_explicit_uv_project_cannot_silently_fall_back_without_lock(tmp_path, settings):
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname="science"\nversion="1"\n' + settings
+    )
+    with pytest.raises(ValueError, match="uv.lock is required"):
+        load_uv_project(tmp_path)
+
+
+def test_plain_legacy_pyproject_without_uv_settings_keeps_manifest_compatibility(
+    tmp_path,
+):
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname="science"\nversion="1"\ndependencies=["numpy>=2"]\n'
+    )
+    (tmp_path / "simstack-workflow.toml").write_text(
+        '[workflow]\nid="legacy"\nversion="1"\nmodules=["example"]\nruntime_profile="python"\n'
+    )
+    assert load_uv_project(tmp_path) is None
+    assert load_manifest(tmp_path).workflow.dependencies == ["numpy>=2"]

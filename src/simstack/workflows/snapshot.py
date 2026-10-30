@@ -18,6 +18,7 @@ import subprocess
 import tempfile
 import tomllib
 import zipfile
+from email.parser import BytesParser
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
@@ -360,7 +361,43 @@ def _rewrite_requirements(values, versions):
     return result
 
 
-def _write_relocated_project(path, sources, versions):
+def _scm_build_versions(paths, locked_versions):
+    """Preserve uv's locked VCS versions using the backend's standard interface.
+
+    Git metadata is intentionally absent from archives. hatch-vcs and
+    setuptools-scm honor this per-package build variable during uv metadata
+    extraction and later isolated wheel builds; dependency resolution stays uv's.
+    """
+    result = {}
+    for path in paths:
+        value = _toml(path)
+        project = value.get("project", {})
+        if "version" not in project.get("dynamic", []):
+            continue
+        build = value.get("build-system", {})
+        requirements = {
+            canonicalize_name(Requirement(item).name)
+            for item in build.get("requires", [])
+        }
+        tool = value.get("tool", {})
+        vcs_backend = (
+            bool(requirements & {"hatch-vcs", "setuptools-scm"})
+            or "setuptools_scm" in tool
+            or tool.get("hatch", {}).get("version", {}).get("source") == "vcs"
+        )
+        if not vcs_backend:
+            continue
+        name = canonicalize_name(project.get("name", ""))
+        version = locked_versions.get(name)
+        if not isinstance(version, str) or not version:
+            raise ValueError(
+                "Dynamic VCS sources require their exact original uv.lock version"
+            )
+        result[name] = version
+    return result
+
+
+def _write_relocated_project(path, sources, versions, scm_versions=None):
     import tomli_w
 
     value = _toml(path)
@@ -381,6 +418,16 @@ def _write_relocated_project(path, sources, versions):
     for field in ("override-dependencies", "constraint-dependencies"):
         if field in uv:
             uv[field] = _rewrite_requirements(uv[field], versions)
+    if scm_versions:
+        variables = uv.setdefault("extra-build-variables", {})
+        for name, version in scm_versions.items():
+            aliases = [key for key in variables if canonicalize_name(key) == name]
+            if len(aliases) > 1:
+                raise ValueError(
+                    "Conflicting per-package uv build variable declarations"
+                )
+            package = variables.setdefault(aliases[0] if aliases else name, {})
+            package["SETUPTOOLS_SCM_PRETEND_VERSION"] = version
     mappings = uv.setdefault("sources", {})
     for key in list(mappings):
         if canonicalize_name(key) in sources:
@@ -392,9 +439,17 @@ def _write_relocated_project(path, sources, versions):
     path.write_text(tomli_w.dumps(value), encoding="utf-8")
 
 
-def _graph(lock):
+def _graph(lock, source_versions=None):
     def package_key(package):
         source = package.get("source", {})
+        version = package.get("version")
+        if version is None and any(
+            key in source for key in ("directory", "editable", "virtual")
+        ):
+            # uv deliberately omits dynamic local versions. These versions are
+            # pinned by original lock/backend metadata and standard uv build
+            # variables, then checked against installed source distributions.
+            version = (source_versions or {}).get(canonicalize_name(package["name"]))
         immutable = (
             {
                 "source": source,
@@ -406,7 +461,7 @@ def _graph(lock):
         )
         return (
             canonicalize_name(package["name"]),
-            package["version"],
+            version,
             tuple(sorted(package.get("resolution-markers", []))),
             json.dumps(immutable, sort_keys=True),
         )
@@ -442,6 +497,30 @@ def _graph(lock):
         sorted(lock.get("resolution-markers", [])),
         packages,
     )
+
+
+def _project_wheel_version(source, output, uv_prefix, python_option, project_name):
+    """Capture an unversioned editable root through standard uv/PEP 517 metadata."""
+    output.mkdir(parents=True)
+    _run(
+        [*uv_prefix, "build", "--wheel", "--out-dir", str(output), *python_option],
+        cwd=source,
+    )
+    wheels = list(output.glob("*.whl"))
+    if len(wheels) != 1:
+        raise ValueError("uv did not produce one project wheel for version capture")
+    with zipfile.ZipFile(wheels[0]) as wheel:
+        metadata = [
+            name for name in wheel.namelist() if name.endswith(".dist-info/METADATA")
+        ]
+        if len(metadata) != 1:
+            raise ValueError("Project wheel has ambiguous version metadata")
+        value = BytesParser().parsebytes(wheel.read(metadata[0]))
+    if canonicalize_name(value.get("Name", "")) != project_name or not value.get(
+        "Version"
+    ):
+        raise ValueError("Project wheel does not match its declared source identity")
+    return value["Version"]
 
 
 def build_snapshot(
@@ -511,23 +590,62 @@ def build_snapshot(
                     f"Unsupported uv source for {name}; package index, Git, and local sources are supported"
                 )
             relocated[name] = root / relative
-            versions[name] = package["version"]
+            captured_source_version = None
+            if not isinstance(package.get("version"), str):
+                captured_source_version = _project_wheel_version(
+                    path,
+                    scratch / f"source-version-{index}",
+                    uv_prefix,
+                    python_option,
+                    name,
+                )
+            versions[name] = package.get("version") or captured_source_version
             entries.append(
                 {
                     "name": name,
-                    "version": package["version"],
+                    "version": versions[name],
+                    **(
+                        {"version_origin": "original-source-uv-wheel-metadata"}
+                        if captured_source_version is not None
+                        else {}
+                    ),
                     "path": relative.as_posix(),
                     "source": origin,
                 }
             )
-        for path in [
+        project_paths = [
             root / "pyproject.toml",
             *(directory / "pyproject.toml" for directory in relocated.values()),
-        ]:
-            _write_relocated_project(path, relocated, versions)
+        ]
+        locked_versions = {
+            canonicalize_name(package["name"]): package["version"]
+            for package in lock.get("package", [])
+            if canonicalize_name(package["name"]) in {project_name, *versions}
+            and isinstance(package.get("version"), str)
+        }
+        locked_versions.update(versions)
+        captured_project_version = None
+        if (
+            "version" in project.get("project", {}).get("dynamic", [])
+            and project_name not in locked_versions
+        ):
+            # uv deliberately omits editable root versions from some locks.
+            # Capture real backend metadata before discarding Git, rather than
+            # inventing a root version or rewriting the dependency resolver.
+            captured_project_version = _project_wheel_version(
+                source,
+                scratch / "project-version",
+                uv_prefix,
+                python_option,
+                project_name,
+            )
+            locked_versions[project_name] = captured_project_version
+        scm_versions = _scm_build_versions(project_paths, locked_versions)
+        for path in project_paths:
+            _write_relocated_project(path, relocated, versions, scm_versions)
         _run([*uv_prefix, "lock", *python_option], cwd=root)
         prepared_lock = _toml(root / "uv.lock")
-        if _graph(prepared_lock) != _graph(lock):
+        if _graph(prepared_lock, locked_versions) != _graph(lock, locked_versions):
             raise ValueError(
                 "Relocating sources changed the uv dependency graph; update the original lock explicitly first"
             )
@@ -535,6 +653,17 @@ def build_snapshot(
             "version": 1,
             "sources": entries,
             "submodules": submodules,
+            **(
+                {
+                    "project_version": {
+                        "name": project_name,
+                        "version": captured_project_version,
+                        "origin": "original-source-uv-wheel-metadata",
+                    }
+                }
+                if captured_project_version is not None
+                else {}
+            ),
             "original_project_sha256": hashlib.sha256(
                 original_project.read_bytes()
             ).hexdigest(),

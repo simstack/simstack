@@ -37,11 +37,16 @@ class UvProject:
     build_requirement_groups: tuple[tuple[str, ...], ...] = ()
 
 
-def _metadata(path: Path) -> tuple[bytes, dict]:
+def _metadata(
+    path: Path, *, max_bytes: int = MAX_PROJECT_METADATA_BYTES
+) -> tuple[bytes, dict]:
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"uv project metadata must be a regular file: {path.name}")
-    data = path.read_bytes()
-    if len(data) > MAX_PROJECT_METADATA_BYTES:
+    with path.open("rb") as stream:
+        data = stream.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        if path.name == "pyproject.toml":
+            raise ValueError("Workflow metadata exceeds configured manifest size")
         raise ValueError("uv project metadata exceeds its size budget")
     return data, tomllib.loads(data.decode("utf-8"))
 
@@ -80,7 +85,9 @@ def _selected(package: dict) -> bool:
     return not markers or any(Marker(value).evaluate() for value in markers)
 
 
-def load_uv_project(source: str | Path) -> UvProject | None:
+def load_uv_project(
+    source: str | Path, *, max_project_bytes: int = MAX_PROJECT_METADATA_BYTES
+) -> UvProject | None:
     """Read the authoritative uv graph; legacy manifest-only archives return None.
 
     Every non-Core VCS/path package must have been materialized into the source
@@ -89,8 +96,19 @@ def load_uv_project(source: str | Path) -> UvProject | None:
     """
     root = Path(source).resolve(strict=True)
     if not (root / "uv.lock").exists():
+        if (root / "pyproject.toml").exists():
+            _, declaration = _metadata(
+                root / "pyproject.toml", max_bytes=max_project_bytes
+            )
+            tool = declaration.get("tool", {})
+            if isinstance(tool, dict) and "uv" in tool:
+                raise ValueError(
+                    "uv.lock is required for a project declaring tool.uv settings; no dependency fallback is allowed"
+                )
         return None
-    project_bytes, project = _metadata(root / "pyproject.toml")
+    project_bytes, project = _metadata(
+        root / "pyproject.toml", max_bytes=max_project_bytes
+    )
     lock_bytes, lock = _metadata(root / "uv.lock")
     if lock.get("version") != 1 or not isinstance(lock.get("package"), list):
         raise ValueError("Unsupported or incomplete uv.lock")

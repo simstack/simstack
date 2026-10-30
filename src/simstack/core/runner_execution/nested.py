@@ -13,11 +13,11 @@ from pydantic import BaseModel
 
 from simstack.core.context import context
 from simstack.core.node_code_version import node_code_version
-from simstack.models.document import Model, encode_document_value
-from simstack.models.parameters import Parameters
 from simstack.domain.execution_parameters import (
     inherit_parent_slurm_parameters_for_self,
 )
+from simstack.models.document import Model, encode_document_value
+from simstack.models.parameters import Parameters
 from simstack.runner_protocol import (
     RUNNER_CHILD_PENDING_STATUSES,
     RUNNER_TERMINAL_SUCCESS_STATUS,
@@ -25,7 +25,7 @@ from simstack.runner_protocol import (
 
 from .config import child_poll_seconds
 from .errors import RunnerTaskExecutionError, RunnerTaskPayloadError
-from .mappings import _mapping_for_model
+from .mappings import _effective_node_version, _mapping_for_model
 from .serialization import _result_entry, hydrate_task_results
 from .state import current_runner_claim
 
@@ -166,6 +166,13 @@ async def execute_runner_nested_node(
         function, workflow_revision=getattr(node_model, "workflow_revision", None)
     )
     function_mapping = str(node_model.function_mapping)
+    pinned_version = _effective_node_version(function, node_model)
+    if getattr(node_model, "workflow_revision", None) is not None:
+        if version is not None and version != pinned_version:
+            raise RunnerTaskPayloadError("Nested node decorator version differs from its pinned workflow snapshot")
+        requested_version = pinned_version
+    else:
+        requested_version = version or getattr(node_model, "version", None)
     call_path = str(kwargs.get("call_path") or f".{function.__name__}")
     parameters = kwargs.get("parameters")
     if not isinstance(parameters, BaseModel):
@@ -200,7 +207,7 @@ async def execute_runner_nested_node(
         "custom_name": kwargs.get("custom_name"),
         "category": getattr(node_model, "category", None),
         "description": getattr(node_model, "description", None),
-        "version": version or getattr(node_model, "version", None),
+        "version": requested_version,
         "is_async": asyncio.iscoroutinefunction(function),
     }
     inputs = [

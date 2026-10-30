@@ -299,8 +299,9 @@ def test_snapshot_materializes_recursive_submodules_at_gitlink_commits(tmp_path)
         )
 
 
+@pytest.mark.parametrize("dynamic_local_version", [False, True])
 def test_uv_discovery_reports_active_installed_versions_and_source_identity(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, dynamic_local_version
 ):
     root, source, package_name, _, dependency_distribution = _discovery_fixture(
         tmp_path, monkeypatch
@@ -333,6 +334,14 @@ source={{registry="https://pypi.org/simple"}}
 resolution-markers=[{other_marker}]
 ''')
 
+    if dynamic_local_version:
+        lock_path = root / "uv.lock"
+        lock_path.write_text(
+            lock_path.read_text().replace(
+                f'name="{package_name}"\nversion="1.2.3"', f'name="{package_name}"', 1
+            )
+        )
+
     class IndexDistribution:
         metadata: ClassVar[dict] = {"Name": "marker-package"}
         version = "1.0"
@@ -348,6 +357,162 @@ resolution-markers=[{other_marker}]
     plan = discover_workflow(root)
     assert plan["dependency_mode"] == "uv"
     assert "marker-package==1.0" in plan["resolved_dependencies"]
+    assert f"{package_name.replace('_', '-')}==1.2.3" in plan["resolved_dependencies"]
     assert "marker-package==2.0" not in plan["resolved_dependencies"]
     assert len(plan["project_identity"]["lock_sha256"]) == 64
     assert plan["source_dependencies"][0]["source"]["git"].endswith("a" * 40)
+
+
+def _dynamic_vcs_project(tmp_path, *, fallback):
+    library = tmp_path / "dynamic-library"
+    library.mkdir()
+    (library / "dynamic_lib").mkdir()
+    (library / "dynamic_lib" / "__init__.py").write_text(
+        "from ._version import __version__\n"
+    )
+    (library / ".gitignore").write_text("dynamic_lib/_version.py\n__pycache__/\n")
+    metadata = """[project]
+name="snapshot-dynamic-library"
+dynamic=["version"]
+requires-python=">=3.12"
+dependencies=[]
+[build-system]
+requires=["hatchling","hatch-vcs"]
+build-backend="hatchling.build"
+[tool.hatch.version]
+source="vcs"
+[tool.hatch.build.hooks.vcs]
+version-file="dynamic_lib/_version.py"
+[tool.hatch.build.targets.wheel]
+packages=["dynamic_lib"]
+"""
+    if fallback:
+        metadata += '\n[tool.hatch.version.raw-options]\nfallback_version="0.1"\n'
+    (library / "pyproject.toml").write_text(metadata)
+    _git(["init", "--quiet"], library)
+    _git(["add", "."], library)
+    _git(["commit", "--quiet", "-m", "Initial dynamic library"], library)
+    _git(["tag", "v4.2.0"], library)
+    (library / "asset.txt").write_text("locked development revision\n")
+    _git(["add", "."], library)
+    _git(["commit", "--quiet", "-m", "Development library revision"], library)
+    commit = _git(["rev-parse", "HEAD"], library)
+    root = tmp_path / "dynamic-project"
+    root.mkdir()
+    (root / "dynamic_main").mkdir()
+    (root / "dynamic_main" / "__init__.py").write_text(
+        "from ._version import __version__\n"
+    )
+    (
+        root / "dynamic_main" / "nodes.py"
+    ).write_text("""from simstack.core.node import node
+from simstack.models.document import Model
+from dynamic_main import __version__
+from dynamic_lib import __version__ as library_version
+class VersionResult(Model):
+    root: str
+    library: str
+@node
+def versions() -> VersionResult:
+    return VersionResult(root=__version__, library=library_version)
+""")
+    (root / ".gitignore").write_text("dynamic_main/_version.py\n__pycache__/\n")
+    (root / "pyproject.toml").write_text(f'''[project]
+name="snapshot-dynamic-main"
+dynamic=["version"]
+requires-python=">=3.12"
+dependencies=["snapshot-dynamic-library"]
+[build-system]
+requires=["hatchling","hatch-vcs"]
+build-backend="hatchling.build"
+[tool.hatch.version]
+source="vcs"
+[tool.hatch.build.hooks.vcs]
+version-file="dynamic_main/_version.py"
+[tool.hatch.build.targets.wheel]
+packages=["dynamic_main"]
+[tool.uv.sources]
+snapshot-dynamic-library={{git="{library.as_uri()}",rev="{commit}"}}
+[tool.uv.extra-build-variables.snapshot_dynamic_library]
+KEEP_AUTHOR_FLAG="yes"
+''')
+    (root / "simstack-workflow.toml").write_text(
+        '[workflow]\nid="test.dynamic-vcs"\nversion="1"\nmodules=["dynamic_main.nodes"]\nruntime_profile="python"\n'
+    )
+    _git(["init", "--quiet"], root)
+    _git(["add", "."], root)
+    _git(["commit", "--quiet", "-m", "Initial dynamic project"], root)
+    _git(["tag", "v7.1.0"], root)
+    _run(["uv", "lock", "--python", sys.executable], root)
+    _git(["add", "uv.lock"], root)
+    _git(["commit", "--quiet", "-m", "Lock dynamic project"], root)
+    _git(["tag", "--force", "v7.1.0"], root)
+    return root
+
+
+@pytest.mark.skipif(
+    shutil.which("uv") is None or shutil.which("git") is None,
+    reason="uv and Git integration tools required",
+)
+@pytest.mark.parametrize("fallback", [False, True])
+def test_vcs_versions_survive_git_removal_and_offline_native_build(tmp_path, fallback):
+    from simstack.workflows.archive import extract_archive
+    from simstack.workflows.uv_project import load_uv_project, uv_preparation_commands
+
+    root = _dynamic_vcs_project(tmp_path, fallback=fallback)
+    original_project = (root / "pyproject.toml").read_bytes()
+    original_lock = (root / "uv.lock").read_bytes()
+    locked = tomllib.loads(original_lock.decode())
+    versions = {p["name"]: p["version"] for p in locked["package"] if "version" in p}
+    versions.setdefault("snapshot-dynamic-main", "7.1.0")
+    assert versions["snapshot-dynamic-library"] != "0.1"
+    archive = tmp_path / "dynamic-workflow.zip"
+    build_snapshot(root, archive, python=sys.executable)
+    prepared = tmp_path / "prepared"
+    extract_archive(archive, prepared)
+    assert (
+        prepared / ".simstack/original/pyproject.toml"
+    ).read_bytes() == original_project
+    assert (prepared / ".simstack/original/uv.lock").read_bytes() == original_lock
+    declaration = tomllib.loads((prepared / "pyproject.toml").read_text())
+    variables = declaration["tool"]["uv"]["extra-build-variables"]
+    assert variables["snapshot_dynamic_library"]["KEEP_AUTHOR_FLAG"] == "yes"
+    assert (
+        variables["snapshot_dynamic_library"]["SETUPTOOLS_SCM_PRETEND_VERSION"]
+        == versions["snapshot-dynamic-library"]
+    )
+    assert (
+        variables["snapshot-dynamic-main"]["SETUPTOOLS_SCM_PRETEND_VERSION"]
+        == versions["snapshot-dynamic-main"]
+    )
+    assert not list(prepared.rglob(".git"))
+    assert not list(prepared.rglob("_version.py"))
+    before = tree_digest(prepared)
+    environment = tmp_path / "environment"
+    _run([sys.executable, "-m", "venv", str(environment)], tmp_path)
+    build_source = tmp_path / "build-source"
+    shutil.copytree(prepared, build_source)
+    commands = uv_preparation_commands(
+        load_uv_project(build_source), environment, sys.executable
+    )
+    for phase in ("prefetch", "build_dependencies", "sync"):
+        if commands[phase] is not None:
+            _run(commands[phase], tmp_path)
+    result = json.loads(
+        _run(
+            [
+                str(environment / "bin/python"),
+                "-I",
+                "-c",
+                "import json,dynamic_main,dynamic_lib; print(json.dumps({'root':dynamic_main.__version__,'library':dynamic_lib.__version__}))",
+            ],
+            tmp_path,
+        )
+    )
+    assert result == {
+        "root": versions["snapshot-dynamic-main"],
+        "library": versions["snapshot-dynamic-library"],
+    }
+    assert (root / "pyproject.toml").read_bytes() == original_project
+    assert (root / "uv.lock").read_bytes() == original_lock
+    assert tree_digest(prepared) == before

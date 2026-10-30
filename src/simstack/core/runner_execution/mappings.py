@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, cast
 
 from simstack.core.context import context
@@ -12,6 +13,28 @@ from simstack.models.document import Model
 from simstack.models.node_registry import NodeRegistry
 
 from .errors import RunnerTaskPayloadError
+
+
+def _effective_node_version(function, binding):
+    """Resolve the version from the task's exact installed source snapshot."""
+    declared = getattr(function, "_node_version", None)
+    if declared is not None:
+        return declared
+    revision = getattr(binding, "workflow_revision", None)
+    if revision is None:
+        return None
+    from simstack.runner_runtime.workflow_installation import installation_root
+    from simstack.workflows.discovery import effective_node_version
+
+    try:
+        root = installation_root(
+            Path(context.config.workdir),
+            getattr(binding, "workflow_installation_id", None),
+            revision,
+        )
+        return effective_node_version(function, root / "source")
+    except (OSError, TypeError, ValueError) as exc:
+        raise RunnerTaskPayloadError("Cannot resolve the node version from its pinned workflow snapshot") from exc
 
 
 def _import_path(path: str) -> Any:
@@ -96,12 +119,12 @@ def _function_for_registry(
     if getattr(node_model, "workflow_revision", None) != registry.workflow_revision:
         raise RunnerTaskPayloadError("Task workflow revision does not match its pinned bootstrap catalogue")
     actual_hash = node_code_version(function, workflow_revision=registry.workflow_revision)
-    declared_version = getattr(function, "_node_version", None)
     if registry.function_hash not in ("", "NOT INITIALIZED", actual_hash):
         raise RunnerTaskPayloadError(
             f"Node code version mismatch for {registry.name}: "
             f"submitted {registry.function_hash}, worker {actual_hash}"
         )
+    declared_version = _effective_node_version(function, registry)
     if registry.version is not None and registry.version != declared_version:
         raise RunnerTaskPayloadError(
             f"Declared node version mismatch for {registry.name}: "

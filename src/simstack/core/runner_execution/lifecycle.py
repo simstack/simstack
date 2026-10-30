@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import inspect
+import logging
 import os
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, datetime
@@ -12,15 +12,15 @@ from pathlib import Path
 from typing import Any
 
 from simstack.core.context import context
-from simstack.runner_protocol.constants import RunnerTaskStatus as TaskStatus
-from simstack.core.node_runner import NodeRunner
 from simstack.core.node import compute_arg_hash
 from simstack.core.node_code_version import node_code_version
+from simstack.core.node_runner import NodeRunner
 from simstack.core.task_id import clear_task_id, set_task_id
 from simstack.models.document import ObjectId
-from simstack.runner_runtime.logging import flush_runner_api_logs
+from simstack.runner_protocol.constants import RunnerTaskStatus as TaskStatus
 from simstack.runner_runtime.config import runner_task_workdir
 from simstack.runner_runtime.event_loop import prepare_embedded_runner_loop
+from simstack.runner_runtime.logging import flush_runner_api_logs
 
 from .config import lease_seconds
 from .errors import RunnerTaskExecutionError, RunnerTaskPayloadError
@@ -136,7 +136,8 @@ async def execute_claimed_task(
             function, workflow_revision=registry.workflow_revision
         )
         registry.arg_hash = actual_arg_hash
-        registry.version = getattr(function, "_node_version", None)
+        from .mappings import _effective_node_version
+        registry.version = _effective_node_version(function, registry)
         registry.is_async = inspect.iscoroutinefunction(function)
         expected_status = (
             registry.status.value

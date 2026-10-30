@@ -114,6 +114,28 @@ def _dependency_owner(value, dependencies):
     return owners[0] if owners else None
 
 
+def effective_node_version(function, source_root, *, manifest=None, dependencies=None):
+    """Use one version contract for catalogue discovery and task execution.
+
+    A decorated version is explicit scientific API metadata. Otherwise bundled
+    packages retain their own locked distribution versions. Only uv project's
+    root nodes default to the manifest version; legacy archives keep None.
+    """
+    declared = getattr(function, "_node_version", None)
+    if declared is not None:
+        return declared
+    root = Path(source_root).resolve(strict=True)
+    manifest = manifest if manifest is not None else load_manifest(root)
+    import_root = (root / manifest.workflow.source_root).resolve(strict=True)
+    dependencies = dependencies if dependencies is not None else _dependency_exports(import_root)
+    owner = _dependency_owner(function, dependencies)
+    if owner is not None:
+        return owner["version"]
+    if (root / "uv.lock").is_file() and _belongs_to_source(function, import_root):
+        return manifest.workflow.version
+    return None
+
+
 def load_modules(source_root: str | Path, names: list[str]) -> list[ModuleType]:
     """Load root exports and entry points of exact bundled distributions only."""
     root = Path(source_root).resolve(strict=True)
@@ -436,7 +458,7 @@ def discover_workflow(
                 "name": mapping,
                 "function_mapping": mapping,
                 "function_hash": function_hash,
-                "version": getattr(function, "_node_version", None) or (_dependency_owner(function, dependencies) or {}).get("version"),
+                "version": effective_node_version(function, root, manifest=manifest, dependencies=dependencies),
                 "input_mappings": inputs,
                 "result_mappings": outputs,
                 "called_nodes": sorted(children),
@@ -525,11 +547,16 @@ def discover_workflow(
     if project is not None:
         from .snapshot import read_snapshot
         lock = tomllib.loads((root / "uv.lock").read_text())
-        resolved = sorted({f"{package['name']}=={package['version']}" for package in lock.get("package", [])
-                           if _selected(package)
-                           and canonicalize_name(package["name"]) not in {project.name, "simstack"}
-                           and distributions.get(canonicalize_name(package["name"])) == package["version"]})
         snapshot = read_snapshot(root)
+        source_versions = {entry["name"]: entry["version"] for entry in snapshot["sources"]} if snapshot else {}
+        resolved = set()
+        for package in lock.get("package", []):
+            name = canonicalize_name(package["name"])
+            version = package.get("version") or source_versions.get(name)
+            if (_selected(package) and name not in {project.name, "simstack"}
+                    and version is not None and distributions.get(name) == version):
+                resolved.add(f"{name}=={version}")
+        resolved = sorted(resolved)
         project_metadata = {"dependency_mode": "uv", "project_identity": project.identity,
                             "source_dependencies": list(snapshot["sources"]) if snapshot is not None else []}
     return {

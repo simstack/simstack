@@ -392,3 +392,110 @@ async def test_invocation_wrapper_reaps_orphaned_native_subgroups(tmp_path):
         from simstack.core.programs import _stop_process
 
         await _stop_process(invocation)
+
+
+@pytest.mark.asyncio
+async def test_real_cached_filestack_is_staged_under_logical_input_name(
+    monkeypatch, tmp_path
+):
+    import simstack.core.context as context_module
+    import simstack.core.runner_execution.blobs as blobs_module
+    from simstack.core.runner_execution.state import (
+        RunnerClaimContext,
+        activate_runner_claim,
+        reset_runner_claim,
+    )
+    from simstack.models.parameters import Resource
+
+    cache = tmp_path / "files" / "instance-cached"
+    cache.mkdir(parents=True)
+    original = cache / "probe-input.txt"
+    original.write_text("cached-input-42")
+    resource = Resource(value="r")
+    value = FileStack.from_local_file(
+        original,
+        in_memory=False,
+        secure_source=True,
+        workdir=tmp_path,
+        resource=resource,
+    )
+
+    class Api:
+        async def get_program_plan(self, task_id, *, claim_id, attempt, program):
+            return RunnerProgramPlanResponseV1(
+                task_id=task_id,
+                claim_id=claim_id,
+                attempt=attempt,
+                program=program,
+                policy_revision="d" * 64,
+                plan=NamedProgramPlanV1(
+                    command=[
+                        sys.executable,
+                        "-c",
+                        "from pathlib import Path; Path('answer.txt').write_text(Path('probe-input.txt').read_text())",
+                    ]
+                ),
+            )
+
+    fake = SimpleNamespace(
+        runner_api=Api(),
+        runner_mode=True,
+        initialized=True,
+        worker_mode=True,
+        config=SimpleNamespace(
+            workdir=tmp_path, resource=resource, max_inline_document_bytes=1024
+        ),
+    )
+    monkeypatch.setattr(context_module, "context", fake)
+    monkeypatch.setattr(blobs_module, "publish_runtime_blobs", lambda values: None)
+    token = activate_runner_claim(RunnerClaimContext("d" * 24, "claim", 1))
+    try:
+        # Demonstrate the real existing FileStack contract before invoking the SDK.
+        requested = tmp_path / "tasks" / ("d" * 24) / "requested"
+        requested.mkdir(parents=True)
+        assert value.get(requested) == original
+        result = await run_program(
+            "cached", input_files=[value], output_names=["answer.txt"]
+        )
+    finally:
+        reset_runner_claim(token)
+    assert result.output_files[0].size == len("cached-input-42")
+    staged = next(
+        (tmp_path / "tasks" / ("d" * 24) / "programs").glob("*/probe-input.txt")
+    )
+    assert staged.read_text() == original.read_text() == "cached-input-42"
+    assert staged != original
+
+
+def test_input_staging_rejects_corruption_without_publishing(monkeypatch, tmp_path):
+    from simstack.core.programs import _stage_program_input
+
+    original = tmp_path / "original.txt"
+    original.write_text("good")
+    value = FileStack.from_local_file(original, in_memory=True)
+    original.write_text("evil")
+    destination = tmp_path / "invocation"
+    destination.mkdir()
+    with pytest.raises(ValueError, match="checksum"):
+        _stage_program_input(value, original, destination)
+    assert list(destination.iterdir()) == []
+
+
+def test_input_staging_never_overwrites_an_existing_target(tmp_path):
+    from simstack.core.programs import _stage_program_input
+
+    original = tmp_path / "original.txt"
+    original.write_text("good")
+    value = FileStack.from_local_file(original, in_memory=True)
+    destination = tmp_path / "invocation"
+    destination.mkdir()
+    (destination / value.name).write_text("keep")
+    with pytest.raises(FileExistsError):
+        _stage_program_input(value, original, destination)
+    assert (destination / value.name).read_text() == "keep"
+
+
+@pytest.mark.parametrize("arguments", ["one-argument", b"one-argument"])
+def test_invocation_rejects_a_bare_argument_string(arguments):
+    with pytest.raises(TypeError, match="sequence"):
+        invocation_argv(NamedProgramPlanV1(command=["echo"]), arguments)

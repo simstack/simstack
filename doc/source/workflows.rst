@@ -726,3 +726,11 @@ acceptance tests on their configured resource.
 Each named invocation uses a trusted Linux child-subreaper wrapper. Descendants
 that create their own process group are cleaned on timeout or normal parent exit
 without terminating another invocation in the same task allocation.
+
+VCS-derived source-package versions are preserved with uv's per-package build
+variables, including hatch-vcs/setuptools-scm packages after ``.git`` is omitted.
+The original project lock and source provenance remain in the snapshot. A dynamic
+local root without a lock version is captured through standard uv wheel metadata;
+that temporary wheel is not included in the source ZIP. Root exports must still
+be importable from the immutable source tree: include required generated Python
+modules through the normal project build before packaging.

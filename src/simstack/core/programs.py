@@ -8,11 +8,14 @@ allocation, never on a supervisor host as a side effect of an HTTP request.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import re
 import shlex
+import stat
 import sys
 import tempfile
+from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
@@ -46,9 +49,9 @@ class ProgramExecutionError(RuntimeError):
 
 def invocation_argv(plan: NamedProgramPlanV1, arguments: Sequence[str]) -> list[str]:
     """Keep caller arguments out of shell source, including after setup scripts."""
-    if isinstance(arguments, (str, bytes)) or any(
-        not isinstance(item, str) or "\x00" in item for item in arguments
-    ):
+    if isinstance(arguments, (str, bytes)):
+        raise TypeError("arguments must be a sequence of strings, not str/bytes")
+    if any(not isinstance(item, str) or "\x00" in item for item in arguments):
         raise ValueError("Program arguments must be a sequence of strings without NUL")
     if len(arguments) > 1024 or sum(len(item) for item in arguments) > 256 * 1024:
         raise ValueError("Program arguments exceed the invocation budget")
@@ -98,6 +101,77 @@ async def _stop_process(process) -> None:
     await terminate_worker_tree(process)
 
 
+def _stage_program_input(value: FileStack, source: Path, workdir: Path) -> Path:
+    """Copy a verified FileStack materialization into the invocation directory.
+
+    FileStack.get may return its existing resource cache instead of the requested
+    directory. The named native command must still find its input by logical
+    basename in its fresh cwd. Never overwrite another invocation entry.
+    """
+    source = Path(source)
+    target = workdir / _strict_file_name(value.name)
+    if source.is_symlink() or target.is_symlink():
+        raise ValueError("Program input must be a regular materialized file")
+    same_target = source.resolve() == target.resolve()
+    if target.exists() and not same_target:
+        raise FileExistsError(f"Program input target already exists: {value.name}")
+    expected_size = value.blob.size_bytes if value.blob is not None else value.size
+    expected_hash = (
+        value.blob.checksum_sha256
+        if value.blob is not None
+        else value.hash
+        if value.is_hashable
+        else None
+    )
+    temporary = None
+    try:
+        with ExitStack() as files:
+            descriptor = os.open(source, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+            incoming = files.enter_context(os.fdopen(descriptor, "rb"))
+            before = os.fstat(incoming.fileno())
+            if not stat.S_ISREG(before.st_mode):
+                raise ValueError("Program input is not a regular file")
+            output = None
+            if not same_target:
+                output_descriptor, path = tempfile.mkstemp(
+                    prefix=".input-", dir=workdir
+                )
+                temporary = Path(path)
+                output = files.enter_context(os.fdopen(output_descriptor, "wb"))
+            digest, copied = hashlib.sha256(), 0
+            while chunk := incoming.read(1024 * 1024):
+                copied += len(chunk)
+                if expected_size is not None and copied > expected_size:
+                    raise ValueError("Program input exceeds immutable FileStack size")
+                digest.update(chunk)
+                if output is not None:
+                    output.write(chunk)
+            after = os.fstat(incoming.fileno())
+            if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+                after.st_dev,
+                after.st_ino,
+                after.st_size,
+                after.st_mtime_ns,
+            ):
+                raise ValueError("Program input changed during staging")
+            if expected_size is not None and copied != expected_size:
+                raise ValueError("Program input differs from immutable FileStack size")
+            if (
+                expected_hash is not None
+                and digest.hexdigest() != expected_hash.lower()
+            ):
+                raise ValueError(
+                    "Program input differs from immutable FileStack checksum"
+                )
+        if temporary is not None:
+            # Atomic no-clobber publication on the invocation filesystem.
+            os.link(temporary, target)
+        return target
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
 async def run_program(
     program: str,
     *,
@@ -125,6 +199,10 @@ async def run_program(
         )
     if isinstance(output_names, (str, bytes)):
         raise TypeError("output_names must be a sequence of basenames")
+    if isinstance(input_files, (str, bytes)):
+        raise TypeError("input_files must be a sequence of FileStack objects")
+    if isinstance(arguments, (str, bytes)):
+        raise TypeError("arguments must be a sequence of strings, not str/bytes")
     response = await context.runner_api.get_program_plan(
         claim.task_id,
         claim_id=claim.claim_id,
@@ -156,7 +234,8 @@ async def run_program(
         tempfile.mkdtemp(prefix=f"attempt-{claim.attempt}-", dir=programs_root)
     )
     for value in inputs:
-        await asyncio.to_thread(value.get, workdir)
+        source = await asyncio.to_thread(value.get, workdir)
+        await asyncio.to_thread(_stage_program_input, value, source, workdir)
     argv = invocation_argv(plan, arguments)
     lifecycle_wrapper = (
         Path(__file__).parents[1] / "runner_runtime" / "program_process.py"
