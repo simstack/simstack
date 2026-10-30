@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -153,6 +154,19 @@ class GlobalState:
         project_root = Path(project_root)
         kwargs["project_root"] = project_root
 
+        api_url = kwargs.get("server_url") or os.environ.get("SIMSTACK_SERVER_URL")
+        api_token = kwargs.get("server_token") or os.environ.get("SIMSTACK_RUNNER_TOKEN") or os.environ.get("SIMSTACK_SERVER_TOKEN")
+        config_path = project_root / "simstack.toml"
+        if config_path.is_file() and not api_token:
+            import tomllib
+            with config_path.open("rb") as source:
+                server_config = tomllib.load(source).get("parameters", {}).get("server", {})
+            api_url = api_url or server_config.get("url")
+            api_token = server_config.get("token")
+        if (kwargs.get("api_only") or (api_token and api_url and not kwargs.get("connection_string"))) and not is_test:
+            await self._initialize_runner(project_root, api_url, api_token, **{k: v for k, v in kwargs.items() if k not in {"project_root", "server_url", "server_token"}})
+            return
+
         db_name: str | None = kwargs.get("db_name", None)
         connection_string: str | None = kwargs.get("connection_string", None)
         db_type: DBType | None = kwargs.get("db_type", None)
@@ -187,6 +201,43 @@ class GlobalState:
         await self.refresh_mappings()
 
         self._initialized = True
+
+    async def _initialize_runner(self, project_root, server_url, server_token, **kwargs):
+        from simstack.models.resource_definition import ResourceDefinition
+        from simstack.core.resources import allowed_resources
+        from simstack.runner_api.transport import RunnerAPIClient, runner_environment
+        from simstack.runner_api.logging import setup_runner_logging
+        from simstack.util.config_reader import ConfigReader
+        from simstack.util.db import Database
+        from simstack.util.resource_config import ResourceConfig
+
+        if kwargs.get("connection_string") or kwargs.get("db_name"):
+            raise ValueError("API runners cannot receive database credentials")
+        api = RunnerAPIClient(server_url, server_token)
+        bootstrap = await api.json("GET", "/runner/bootstrap")
+        resource_name = bootstrap["resource"]
+        requested = kwargs.get("resource", "self")
+        if requested not in {"self", "local", resource_name}:
+            raise ValueError("Runner token is bound to a different resource")
+        allowed_resources.set_resources(list(dict.fromkeys([*bootstrap["resources"], "self"])))
+        for key in set(os.environ) - set(runner_environment()):
+            os.environ.pop(key, None)
+        os.environ["SIMSTACK_SERVER_URL"] = server_url
+        os.environ["SIMSTACK_RUNNER_TOKEN"] = server_token
+        resource = ResourceDefinition.model_validate(bootstrap["resource_definition"])
+        from simstack.util.transform_file_name import transform_file_name
+        workdir = kwargs.get("workdir") or os.environ.get("SIMSTACK_RUNNER_WORKDIR") or resource.workdir or project_root / "work"
+        resolved_workdir = transform_file_name(workdir, project_root, require_exists=False).expanduser().resolve()
+        resolved_workdir.mkdir(parents=True, exist_ok=True)
+        resource.workdir = str(resolved_workdir)
+        os.environ["SIMSTACK_RUNNER_WORKDIR"] = str(resolved_workdir)
+        info = DatabaseInformation(None, None, DBType.API, server_url, server_token)
+        self._db = Database.from_db_info(info)
+        self._config = ConfigReader(info, resource, project_root=project_root, git_list=[])
+        config_file = kwargs.get("config_file") or project_root / "config.toml"
+        self._resource_config = ResourceConfig(Path(config_file), resource_name)
+        self._log_handler = setup_runner_logging(api, kwargs.get("log_level", "INFO"))
+        await self.refresh_mappings()
 
     async def initialize_configs(self, db, toml_reader, **kwargs):
         project_root = kwargs["project_root"]

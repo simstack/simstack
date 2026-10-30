@@ -1,3 +1,4 @@
+from tests.object_storage_fakes import stored_file
 import pytest
 import tempfile
 import os
@@ -10,7 +11,7 @@ from simstack.core.context import context
 @pytest.fixture
 def sample_file_stack():
     """Create a sample FileStack for testing"""
-    return FileStack(
+    return stored_file(
         name="test_file.txt",
         size=100,
         is_hashable=True,
@@ -23,15 +24,15 @@ def sample_file_stack():
 def sample_file_stacks():
     """Create multiple sample FileStacks for testing"""
     return [
-        FileStack(
+        stored_file(
             name="file1.txt",
             size=50,
             is_hashable=True,
             in_memory=True,
             content=b"content1",
         ),
-        FileStack(name="file2.py", size=75, is_hashable=False, in_memory=False),
-        FileStack(
+        stored_file(name="file2.py", size=75, is_hashable=False, content=b"python fixture"),
+        stored_file(
             name="test_data.csv",
             size=200,
             is_hashable=True,
@@ -360,7 +361,9 @@ class TestFileListModel:
             assert len(saved_model) == 1
             fs0 = saved_model.get(0)
             assert fs0.name == Path(tmp_file_path).name
-            assert fs0.in_memory is True
+            assert fs0.in_memory is False
+            assert fs0.content is None
+            assert any(location.location_type == "s3" for location in fs0.locations)
 
             # Load from database
             loaded_model = await context.db.find_one(FileListModel, FileListModel.id == saved_model.id)
@@ -385,7 +388,7 @@ class TestFileListModelIntegration:
         file_stacks = []
         from simstack.core.context import context
         for i in range(50):
-            file_stack = FileStack(
+            file_stack = stored_file(
                 name=f"file_{i:03d}.txt",
                 size=i * 10,
                 is_hashable=i % 2 == 0,  # Every other file is hashable
@@ -425,7 +428,7 @@ def create_test_file_stack(
     name: str, size: int = 100, in_memory: bool = True
 ) -> FileStack:
     """Utility function to create test FileStack objects"""
-    return FileStack(
+    return stored_file(
         name=name,
         size=size,
         is_hashable=True,

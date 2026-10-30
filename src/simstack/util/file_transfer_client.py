@@ -49,7 +49,7 @@ class FileTransferClient:
         timeout_seconds: int = 60,
     ) -> None:
         self.server_url = server_url.rstrip("/")
-        self.runner_token = runner_token
+        self._runner_token = runner_token
         self.timeout_seconds = timeout_seconds
         parsed = urlparse(self.server_url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -293,56 +293,16 @@ class FileTransferClient:
             conn.close()
 
     def download_file(self, transfer_id: str, target_path: Path) -> DownloadResult:
-        target_path = Path(target_path)
-        target_path.parent.mkdir(parents=True, exist_ok=True)
+        from simstack.util.object_transfer import download_object
 
-        conn = self._connection()
-        temp_name = None
-        try:
-            conn.request(
-                "GET",
-                self._path(f"/api/file-transfers/{transfer_id}/download"),
-                headers=self._auth_headers(),
-            )
-            response = conn.getresponse()
-            if response.status >= 400:
-                self._raise_response(response)
-
-            import hashlib
-
-            sha256 = hashlib.sha256()
-            size_bytes = 0
-            with tempfile.NamedTemporaryFile(
-                mode="wb",
-                dir=str(target_path.parent),
-                prefix=f".{target_path.name}.",
-                delete=False,
-            ) as temp_file:
-                temp_name = temp_file.name
-                while True:
-                    chunk = response.read(self.chunk_size)
-                    if not chunk:
-                        break
-                    temp_file.write(chunk)
-                    sha256.update(chunk)
-                    size_bytes += len(chunk)
-
-            temp_path = Path(temp_name)
-            temp_path.replace(target_path)
-            return DownloadResult(
-                path=target_path,
-                size_bytes=size_bytes,
-                checksum_sha256=sha256.hexdigest(),
-            )
-        except Exception:
-            if temp_name:
-                try:
-                    Path(temp_name).unlink(missing_ok=True)
-                except Exception:
-                    logger.warning("Failed to clean temporary download %s", temp_name)
-            raise
-        finally:
-            conn.close()
+        for attempt in range(2):
+            metadata = self._json_request("GET", f"/api/file-transfers/{transfer_id}/download-url")
+            try:
+                return download_object(metadata, target_path, self.timeout_seconds)
+            except FileTransferError as exc:
+                if attempt or "HTTP 403" not in str(exc):
+                    raise
+        raise FileTransferError("Object download URL could not be refreshed")
 
     def complete_transfer(
         self,
@@ -371,12 +331,21 @@ class FileTransferClient:
         headers = self._auth_headers()
         if body is not None:
             headers["Content-Type"] = "application/json"
-        conn = self._connection()
-        try:
-            conn.request(method, self._path(path), body=body, headers=headers)
-            return self._parse_response(conn.getresponse())
-        finally:
-            conn.close()
+        for attempt in range(2):
+            conn = self._connection()
+            try:
+                conn.request(method, self._path(path), body=body, headers=headers)
+                response = conn.getresponse()
+                if response.status == 401 and not attempt:
+                    from simstack.runner_api.credentials import refreshed_token
+                    replacement = refreshed_token(self.server_url, headers["Authorization"][7:])
+                    if replacement is not None:
+                        response.read()
+                        headers["Authorization"] = "Bearer " + replacement
+                        continue
+                return self._parse_response(response)
+            finally:
+                conn.close()
 
     def _connection(self) -> http.client.HTTPConnection:
         connection_cls = (
@@ -394,6 +363,11 @@ class FileTransferClient:
         if not path.startswith("/"):
             path = f"/{path}"
         return f"{base_path}{path}" if base_path else path
+
+    @property
+    def runner_token(self):
+        from simstack.runner_api.credentials import current_token
+        return current_token(self.server_url, self._runner_token)
 
     def _auth_headers(self) -> Dict[str, str]:
         return {"Authorization": f"Bearer {self.runner_token}"}

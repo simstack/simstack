@@ -16,6 +16,7 @@ class TaskStatus(str, Enum):
 
 # TODO: eliminate
 class DBType(str, Enum):
+    API = "api"
     SQLITE = "sqlite"
     MONGODB = "mongodb"
     POSTGRES = "postgres"

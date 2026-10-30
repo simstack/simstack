@@ -10,6 +10,8 @@ def _validate_value_on_read(v: str) -> str:
     """
     Validate the value against allowed resources when it is read.
     """
+    if v in {"__s3__", "__pending__"}:
+        return v  # File location markers are not execution resources.
     if not allowed_resources.has_resource(v):
         allowed_str = ", ".join(repr(val) for val in allowed_resources.get_resources())
         raise ValueError(f"Invalid resource value: {v!r}. Allowed values are: {allowed_str}")

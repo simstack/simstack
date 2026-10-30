@@ -60,6 +60,8 @@ class FileInstance(EmbeddedModel):
         description="Whether this instance is a reusable local cache copy",
     )
     status: str = Field(default="available", description="Instance lifecycle status")
+    bucket: Optional[str] = Field(default=None, description="S3 bucket, for object locations")
+    object_key: Optional[str] = Field(default=None, description="S3 object key, for object locations")
 
     @model_validator(mode="before")
     def migration(cls, values: Any) -> Any:

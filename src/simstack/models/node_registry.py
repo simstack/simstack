@@ -62,6 +62,8 @@ class NodeRegistry(Model):
     status: TaskStatus
     custom_name: Optional[str] = None
     version: Optional[str] = None
+    repository_revision: Optional[str] = None
+    repository_version: Optional[int] = None
     # Keep this as Optional[ObjectId] instead of Reference(Project):
     # in the ODMantic version used here, nullable references are not supported
     # as Optional[Project] + Reference() field definitions.

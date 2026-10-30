@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
 
 from odmantic import Model, Field, ObjectId, Reference
+from pydantic import model_validator
 
 from simstack.models import simstack_model
 from simstack.models.file_instance import FileInstance
@@ -48,6 +49,12 @@ class FileStack(Model):
         default_factory=list, description="List of file locations"
     )
 
+    @model_validator(mode="after")
+    def require_external_file_content(self):
+        if self.content is not None or self.in_memory:
+            raise ValueError("FileStack bytes must be stored in S3; use from_string or from_local_file")
+        return self
+
     def __str__(self) -> str:
         return f"FileStack(name={self.name}, size={self.size}, is_hashable={self.is_hashable}, in_memory={self.in_memory}, locations={self.locations})"
 
@@ -71,27 +78,25 @@ class FileStack(Model):
 
     @classmethod
     def from_string(cls, data_string: str, file_name: str) -> FileStack:
-        content = zlib.compress(data_string.encode("utf-8"))
-        file_hash = hash_string(data_string)
-        size = len(content)
+        import tempfile
 
-        if len(content) > MONGODB_MAX_DOCUMENT_SIZE:
-            logger.error(
-                f"Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {file_name}"
-            )
-            raise ValueError(
-                f"Compressed content size {len(content)} bytes exceeds MongoDB document size limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes"
-            )
-
-        file_stack = cls(
-            name=file_name,
-            in_memory=True,
-            content=content,
-            is_hashable=True,
-            size=size,
-            hash=file_hash,
-        )
-        return file_stack
+        # A pure constructor: import-time/default values need no initialized
+        # context or credentials. File bytes are staged on disk until saved.
+        try:
+            from simstack.core.context import context
+            parent = Path(context.config.workdir) / "file-staging"
+            parent.mkdir(parents=True, exist_ok=True)
+        except (RuntimeError, AttributeError):
+            parent = None
+        directory = tempfile.mkdtemp(prefix="simstack-file-", dir=parent)
+        import atexit, shutil
+        atexit.register(shutil.rmtree, directory, ignore_errors=True)
+        path = Path(directory) / (Path(file_name).name or "file")
+        path.write_text(data_string, encoding="utf-8")
+        value = cls.from_local_file(path, is_hashable=True, secure_source=True)
+        value.name = file_name
+        object.__setattr__(value, "_staging_directory", directory)
+        return value
 
     @classmethod
     def from_local_file(
@@ -113,7 +118,7 @@ class FileStack(Model):
         :type path: Union[Path, str]
         :param is_hashable: A flag indicating whether the file hash needs to be calculated.
         :type is_hashable: bool
-        :param in_memory: Whether to store the compressed file content in memory. Defaults to True.
+        :param in_memory: Retained for workflow compatibility; bytes are always stored in S3.
         :type in_memory: bool
 
         :return: A FileStack object containing FileInstances for the file.
@@ -137,66 +142,60 @@ class FileStack(Model):
             logger.error(f"No read permission for file: {path}")
             raise ValueError(f"No read permission for file: {path}")
 
-        content = None
-        file_hash = hash_file(source_path) if is_hashable else None
-        name = source_path.name
-        size = source_path.stat().st_size if source_path.exists() else None
-
-        if in_memory:
-            try:
-                # Read the file content
-                with open(source_path, "rb") as f:
-                    file_content = f.read()
-                # Compress the content using zlib
-                content = zlib.compress(file_content)
-                if task_id == "":
-                    logger.debug(
-                        f"Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes"
-                    )
-                else:
-                    logger.debug(
-                        f"task_id: {task_id} Compressed file {source_path} from {len(file_content)} bytes to {len(content)} bytes"
-                    )
-                # Check if compressed content exceeds MongoDB document size limit
-                if len(content) > 0.9 * MONGODB_MAX_DOCUMENT_SIZE:
-                    if task_id == "":
-                        logger.error(
-                            f"Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}"
-                        )
-                        logger.error(
-                            f"Setting in_memory to False for file {source_path} and clear content"
-                        )
-                    else:
-                        logger.error(
-                            f"task_id: {task_id} Compressed content size {len(content)} bytes exceeds MongoDB limit of {MONGODB_MAX_DOCUMENT_SIZE} bytes for file {source_path}"
-                        )
-                        logger.error(
-                            f"task_id: {task_id} Setting in_memory to False for file {source_path} and clear content"
-                        )
-                    in_memory = False
-                    content = None
-            except Exception as e:
-                logger.warning(f"Failed to compress file {source_path}: {e}")
-                raise
-
         file_stack = cls(
-            name=name,
-            in_memory=in_memory,
-            content=content,
+            name=source_path.name,
+            in_memory=False,
+            content=None,
             is_hashable=is_hashable,
-            size=size,
-            hash=file_hash,
+            size=source_path.stat().st_size,
+            hash=hash_file(source_path) if is_hashable else None,
         )
-
-        if not in_memory:
+        try:
+            from simstack.core.context import context
+            config = context.config
+        except (RuntimeError, AttributeError):
+            config = None
+        if config is not None and getattr(config, "workdir", None) is not None:
             location = FileInstance.from_local_file(
-                path=path,
-                file_stack_id=file_stack.id,
-                make_copy=not secure_source and not in_memory,
-            )
-            file_stack.locations.append(location)
-
+                path=source_path, file_stack_id=file_stack.id,
+                make_copy=not secure_source)
+        else:
+            location = FileInstance(
+                path=str(source_path.resolve()), resource="__pending__",
+                created_at=datetime.now(), size_bytes=file_stack.size,
+                checksum_sha256=hash_file(source_path))
+        file_stack.locations.append(location)
         return file_stack
+
+    def ensure_uploaded(self):
+        """Publish staged bytes before persistence; constructors remain local."""
+        if any(location.location_type == "s3" and location.status == "available"
+               for location in self.locations):
+            return
+        from simstack.core.context import context
+        from simstack.util.object_transfer import ObjectFileClient
+        resource = Resource(value=transfer_resource_name(context.config.resource))
+        for location in self.locations:
+            if location.location_type != "local_path":
+                continue
+            path = Path(location.path)
+            if not path.is_absolute():
+                path = Path(context.config.workdir) / path
+            if not path.is_file():
+                continue
+            if transfer_resource_name(location.resource) == "__pending__":
+                location.resource = resource
+            # API metadata + direct S3 transfer; no content enters a DB write.
+            uploaded = ObjectFileClient.from_context(required=True).publish(self, path)
+            self.locations.append(FileInstance.model_validate(uploaded))
+            staged = getattr(self, "_staging_directory", None)
+            if staged:
+                import shutil
+                shutil.rmtree(staged, ignore_errors=True)
+                self.locations = [value for value in self.locations if value.location_type == "s3"]
+                object.__setattr__(self, "_staging_directory", None)
+            return
+        raise FileNotFoundError(f"No local source exists to publish FileStack {self.id}")
 
     def complex_hash(self) -> str:
         if self.is_hashable:
@@ -233,8 +232,11 @@ class FileStack(Model):
         :param local_dir: The local directory to copy the file stack to.
         :type local_dir: Path
         """
+        pending = any(transfer_resource_name(value.resource) == "__pending__"
+            for value in self.locations)
+        if pending:
+            return self.get_raw(Resource(value="__pending__"), local_dir)
         from simstack.core.context import context
-
         return self.get_raw(context.config.resource, local_dir)
 
     def get_raw(self, local_resource: Resource, local_dir: Path | None = None) -> Path:
@@ -252,55 +254,39 @@ class FileStack(Model):
         if local_dir is None:
             local_dir = Path.cwd()
 
-        if self.in_memory:
+        pending = next((value for value in self.locations
+            if transfer_resource_name(value.resource) == "__pending__"
+            and Path(value.path).is_file()), None)
+        if pending is not None:
             local_dir.mkdir(parents=True, exist_ok=True)
-            try:
-                if self.content is None:
-                    raise ValueError("FileStack is in-memory but content is missing.")
-                file_name = self.name or "file"
-                # Decompress the content
-                decompressed_content = zlib.decompress(self.content)
-                # Write the decompressed content to the local directory
-                target_path = local_dir / file_name
-                if target_path.exists(): # the user must make sure that the file does not exist, otherwise the file will be overwritten
-                    raise FileExistsError(f"File {target_path} already exists.")
-                with open(target_path, "wb") as f:
-                    f.write(decompressed_content)
-                return target_path
-            except Exception as e:
-                logger.error(f"Failed to decompress and write file {self.name}: {e}")
-                raise ValueError(
-                    f"Failed to decompress and write file {self.name}: {e}"
-                )
+            target = local_dir / (Path(self.name).name if self.name else Path(pending.path).name)
+            if target.exists():
+                raise FileExistsError(f"File {target} already exists.")
+            import shutil
+            shutil.copyfile(pending.path, target)
+            return target
 
         local_resource_name = transfer_resource_name(local_resource)
         local_transfer_resource = Resource(value=local_resource_name)
 
         # If in-memory instance not found or decompression failed, try finding instance on same resource
-        same_resource_instance = next(
-            (
-                f
-                for f in self.locations
-                if transfer_resource_name(f.resource) == local_resource_name
-                and getattr(f, "status", "available") == "available"
-            ),
-            None,
-        )
-
-        if same_resource_instance is not None:
-            same_resource_instance.last_accessed_at = datetime.now()
-            # Return the absolute path by joining with the resource's workdir if it's relative
-            path = Path(same_resource_instance.path)
+        for instance in self.locations:
+            if (instance.location_type != "local_path"
+                    or transfer_resource_name(instance.resource) != local_resource_name
+                    or instance.status != "available"):
+                continue
+            from simstack.core.context import context
+            path = Path(instance.path)
             if not path.is_absolute():
-                from simstack.core.context import context
+                path = Path(context.config.workdir) / path
+            if path.is_file():
+                instance.last_accessed_at = datetime.now()
+                return path
 
-                return Path(context.config.workdir) / path
-            logger.info(f"Using existing instance {path} for {self.name}")
-            return path
-
-        remote_instance = first_available_remote_location(
-            self.locations, local_transfer_resource
-        )
+        remote_instance = next((location for location in self.locations
+            if location.location_type == "s3" and location.status == "available"), None)
+        if remote_instance is None:
+            remote_instance = first_available_remote_location(self.locations, local_transfer_resource)
         if remote_instance is None:
             logger.error("No suitable file instance found for copying.")
             raise ValueError(
@@ -355,7 +341,14 @@ class FileStack(Model):
         target_path = local_dir / (self.name or Path(str(remote_instance.path)).name)
         if target_path.exists():
             raise FileExistsError(f"File {target_path} already exists.")
-        downloaded = client.download_file(transfer_id, target_path)
+        try:
+            downloaded = client.download_file(transfer_id, target_path)
+        except Exception as exc:
+            try:
+                client.fail_transfer(transfer_id, error_message=str(exc), error_code="TARGET_DOWNLOAD_FAILED")
+            except Exception:
+                logger.warning("Failed to report download failure for transfer %s", transfer_id)
+            raise
         instance_path = path_for_file_instance(downloaded.path, context.config.workdir)
         completed = client.complete_transfer(
             transfer_id=transfer_id,

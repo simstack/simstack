@@ -99,18 +99,23 @@ class BaseService(ABC):
                 await self.execute()
                 self._consecutive_failures = 0
             except Exception as e:
-                self._consecutive_failures += 1
-                msg = f"Error in service {self._name} (failure {self._consecutive_failures}/3): {e}"
-                if self._log_traceback_on_failure:
-                    logger.exception(msg)
+                from simstack.runner_api.transport import RunnerAPIError
+                if isinstance(e, RunnerAPIError):
+                    # The persistent control agent survives server/network outages.
+                    self._consecutive_failures = 0
+                    logger.warning("Service %s is waiting for the server API", self._name)
                 else:
-                    logger.error(msg)
-
-                if self._consecutive_failures >= 3:
-                    logger.error(f"Service {self._name} failed 3 times in a row. Shutting down.")
-                    self._stop_event.set()
-                    if self._shutdown_event:
-                        self._shutdown_event.set()
+                    self._consecutive_failures += 1
+                    msg = f"Error in service {self._name} (failure {self._consecutive_failures}/3): {e}"
+                    if self._log_traceback_on_failure:
+                        logger.exception(msg)
+                    else:
+                        logger.error(msg)
+                    if self._consecutive_failures >= 3:
+                        logger.error(f"Service {self._name} failed 3 times in a row. Shutting down.")
+                        self._stop_event.set()
+                        if self._shutdown_event:
+                            self._shutdown_event.set()
 
             # Calculate wait time to maintain interval regardless of execution duration
             elapsed = asyncio.get_event_loop().time() - start_time
@@ -152,6 +157,10 @@ class RestartService(BaseService, ABC):
 
     async def trigger_restart(self):
         """Spawns an independent process to kill current PID and start new one"""
+        from simstack.runner_api.runtime import is_api_runner
+        if is_api_runner(context):
+            os.execv(sys.executable, [sys.executable, "-m", "simstack.core.runner", *sys.argv[1:]])
+            return
         current_pid = os.getpid()
 
         # Write current PID to file so the restarter knows who to kill

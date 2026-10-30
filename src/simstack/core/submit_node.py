@@ -1,6 +1,7 @@
 import os
 import re
 import stat
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -72,7 +73,9 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
     try:
         logger.info(f"Submitting task_id: {task_id} to SLURM queue")
         # Implement SLURM submission logic here
-        base_path = context.config.project_root
+        from simstack.runner_api.runtime import task_project_root, task_resource_config, task_environment, is_api_runner
+        base_path = task_project_root(registry_entry, context.config.project_root)
+        resource_config = task_resource_config(registry_entry, context)
 
         python_path = os.pathsep.join(
             dict.fromkeys(
@@ -124,9 +127,9 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
         selected_resource = (
             str(context.config.resource) if task_resource == "self" else task_resource
         )
-        if context.resource_config is not None:
+        if resource_config is not None:
             try:
-                program_config = context.resource_config.get_program(
+                program_config = resource_config.get_program(
                     registry_entry.name, resource=selected_resource
                 ) or {}
             except ValueError:
@@ -168,7 +171,7 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
             else program_config.get("use_temp", False)
         )
         if use_tmp:
-            tmp_dir = context.resource_config.tmp_dir(registry_entry.id)
+            tmp_dir = resource_config.tmp_dir(registry_entry.id)
 
             if not tmp_dir.exists() or not tmp_dir.is_dir():
                 logger.error(
@@ -185,10 +188,12 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
 
         # ``run_node`` applies the task's independent ``in_docker`` flag inside
         # the Slurm allocation, using the selected resource's program config.
-        slurm_parameters.startup_commands.append(
-            f"uv run --directory {base_path} run_node --node-id {registry_entry.id} "
-            f"--resource {selected_resource} --project-root {base_path} &"
-        )
+        if is_api_runner(context) and getattr(registry_entry, "repository_revision", None):
+            interpreter = base_path / ".venv/bin/python"
+            node_command = shlex.join([str(interpreter), "-m", "simstack.core.run_node", "--node-id", str(registry_entry.id), "--resource", selected_resource, "--project-root", str(base_path)])
+        else:
+            node_command = f"uv run --directory {base_path} run_node --node-id {registry_entry.id} --resource {selected_resource} --project-root {base_path}"
+        slurm_parameters.startup_commands.append(node_command + " &")
         slurm_parameters.startup_commands.append("wait")
         slurm_parameters.signal = "B:SIGUSR1@60"
 
@@ -204,7 +209,7 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
         # submit the script to the slurm queue
         connection_string = getattr(context.config, "connection_string", None)
         db_name = getattr(context.config, "db_name", None)
-        database_env = {
+        database_env = task_environment(registry_entry) if is_api_runner(context) else {
             **(
                 {"SIMSTACK_DB_CONNECTION_STRING": str(connection_string)}
                 if connection_string is not None
@@ -241,7 +246,7 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
                 capture_output=True,
                 text=True,
                 timeout=30,  # Add timeout to prevent hanging
-                env={**os.environ, **database_env},
+                env=database_env if is_api_runner(context) else {**os.environ, **database_env},
             )
 
         stdout = sanitized_tail(result.stdout, connection_string)

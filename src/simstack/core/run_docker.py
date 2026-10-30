@@ -479,17 +479,18 @@ def _reload_resource_config() -> None:
     logger.info("Reloaded resource config from %s", resource_config._config_path)
 
 
-def _docker_program_config(registry_entry: NodeRegistry) -> tuple[dict, str]:
+def _docker_program_config(registry_entry: NodeRegistry, resource_config=None) -> tuple[dict, str]:
     """Look up ``[resource.program.<node>]`` after config.toml has been reloaded.
 
     ``self`` means the resource on which this runner is currently executing.
     """
+    resource_config = resource_config if resource_config is not None else context.resource_config
     task_resource = str(registry_entry.parameters.resource)
     lookup_resource = (
         str(context.config.resource) if task_resource == "self" else task_resource
     )
     try:
-        program_config = context.resource_config.get_program(
+        program_config = resource_config.get_program(
             registry_entry.name, resource=lookup_resource
         )
     except ValueError:
@@ -498,8 +499,13 @@ def _docker_program_config(registry_entry: NodeRegistry) -> tuple[dict, str]:
 
 
 async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResult:
+    from simstack.runner_api.runtime import is_api_runner, task_project_root, task_resource_config, task_environment
     _reload_resource_config()
-    program_config, lookup_resource = _docker_program_config(registry_entry)
+    resource_config = task_resource_config(registry_entry, context) if is_api_runner(context) else context.resource_config
+    if is_api_runner(context):
+        program_config, lookup_resource = _docker_program_config(registry_entry, resource_config)
+    else:
+        program_config, lookup_resource = _docker_program_config(registry_entry)
 
     image = program_config.get("docker_image", None)
     if image is None:
@@ -521,7 +527,26 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
     cidfile: Path | None = None
     if docker_cmd == "docker":
         cidfile = prepare_docker_cidfile(task_dir)
-    project_file_mounts = host_project_file_mounts(context.config.project_root)
+    project_file_mounts = host_project_file_mounts(task_project_root(registry_entry, context.config.project_root))
+    container_project_root = "/app"
+    container_environment = task_environment(registry_entry) if is_api_runner(context) else None
+    container_auth_args = []
+    if is_api_runner(context) and getattr(registry_entry, "repository_revision", None):
+        from pathlib import Path as RuntimePath
+        core_root = RuntimePath(__file__).resolve().parents[1]
+        project_file_mounts.extend([(task_project_root(registry_entry, context.config.project_root), "/simstack-source:ro"), (core_root, "/simstack-core/simstack:ro")])
+        container_project_root = "/simstack-source"
+        container_environment["SIMSTACK_REPOSITORY_ROOT"] = container_project_root
+        container_environment["PYTHONPATH"] = "/simstack-core:/simstack-source/src:/simstack-source"
+    if is_api_runner(context) and container_environment.get("SIMSTACK_RUNNER_CREDENTIALS"):
+        if docker_cmd == "docker":
+            from simstack.runner_api.credentials import CONTAINER_CREDENTIAL_PATH, CONTAINER_CREDENTIAL_TMPFS
+            container_environment["SIMSTACK_RUNNER_CREDENTIALS"] = CONTAINER_CREDENTIAL_PATH
+            container_auth_args = ["--tmpfs", CONTAINER_CREDENTIAL_TMPFS]
+        else:
+            credentials_path = Path(container_environment["SIMSTACK_RUNNER_CREDENTIALS"])
+            project_file_mounts.append((credentials_path, "/simstack-runner-credentials.json:ro"))
+            container_environment["SIMSTACK_RUNNER_CREDENTIALS"] = "/simstack-runner-credentials.json"
     configured_connection_string = context.config.connection_string
     connection_string = configured_connection_string
     docker_net_args: list[str] = []
@@ -551,8 +576,8 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
     container_resource = lookup_resource
     if docker_cmd == "docker":
         docker_registry = None
-        if context.resource_config is not None:
-            docker_registry = context.resource_config.get_docker_registry(lookup_resource)
+        if resource_config is not None:
+            docker_registry = resource_config.get_docker_registry(lookup_resource)
         await pull_docker_image(image, docker_registry)
         if cidfile is None:
             raise RuntimeError("docker cidfile was not prepared")
@@ -563,17 +588,19 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             "docker", "run",
             "--cidfile", str(cidfile),
             *docker_net_args,
+            *container_auth_args,
             *resource_args,
-            "-e", f"SIMSTACK_DB_DATABASE={context.config.db_name}",
-            "-e", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}",
-            "-e", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}",
+            *(
+                [item for key in ("SIMSTACK_SERVER_URL", "SIMSTACK_RUNNER_TOKEN", "SIMSTACK_RUNNER_CREDENTIALS", "SIMSTACK_REPOSITORY_REVISION", "SIMSTACK_REPOSITORY_ROOT", "PYTHONPATH") if key in container_environment for item in ("-e", key)]
+                if is_api_runner(context) else ["-e", f"SIMSTACK_DB_DATABASE={context.config.db_name}", "-e", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}", "-e", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}"]
+            ),
             "-v", f"{workdir}:{CONTAINER_WORKDIR}",
             "-v", f"{workdir}:{LEGACY_CONTAINER_WORKDIR}",
             *project_mount_args,
             image,
             "--node-id", str(registry_entry.id),
             "--resource", container_resource,
-            "--project-root", "/app",
+            "--project-root", container_project_root,
             "--in-docker",
         ]
     elif docker_cmd == "apptainer":
@@ -596,14 +623,12 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         cmd = [
             "apptainer", "run",
             *resource_args,
-            "--env", f"SIMSTACK_DB_DATABASE={context.config.db_name}",
-            "--env", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}",
-            "--env", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}",
+            *([] if is_api_runner(context) else ["--env", f"SIMSTACK_DB_DATABASE={context.config.db_name}", "--env", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}", "--env", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}"]),
             *bind_args,
             image,
             "--node-id", str(registry_entry.id),
             "--resource", container_resource,
-            "--project-root", "/app",
+            "--project-root", container_project_root,
             "--in-docker",
         ]
     else:
@@ -622,6 +647,11 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         TaskStatus.SLURM_QUEUED,
     )
 
+    if is_api_runner(context) and docker_cmd == "apptainer":
+        for key in ("SIMSTACK_SERVER_URL", "SIMSTACK_RUNNER_TOKEN", "SIMSTACK_RUNNER_CREDENTIALS", "SIMSTACK_REPOSITORY_REVISION", "SIMSTACK_REPOSITORY_ROOT", "PYTHONPATH"):
+            if key in container_environment:
+                container_environment["APPTAINERENV_" + key] = container_environment[key]
+
     sanitized_cmd = sanitized_command(cmd, configured_connection_string)
     sanitized_cmd = sanitized_command(sanitized_cmd, connection_string)
 
@@ -634,7 +664,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
     # DETACHED_PROCESS opens a console on Windows. CREATE_NO_WINDOW hides it.
     creationflags = 0
     if platform.system() == "Windows":
-        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | getattr(
+        creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(
             subprocess, "CREATE_NO_WINDOW", 0x08000000
         )
 
@@ -646,7 +676,8 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             creationflags=creationflags,
-            start_new_session=True if platform.system() != "Windows" else False
+            start_new_session=True if platform.system() != "Windows" else False,
+            **({"env": container_environment} if is_api_runner(context) else {}),
         )
         process_started = True
         from simstack.core.services.task_termination import record_process_id

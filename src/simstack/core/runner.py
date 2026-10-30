@@ -2,6 +2,9 @@ import argparse
 import asyncio
 import logging
 import os
+import json
+import sys
+from pathlib import Path
 
 from simstack.core.definitions import DBType
 
@@ -44,38 +47,39 @@ async def initialize_default_resource() -> ResourceDefinition | None:
 
 async def async_main(args: argparse.Namespace) -> None:
     """Async entry point"""
-    if args.connection_string == "none" or args.db_name == "none":
-        await context.initialize(resource=args.resource, config_file=args.config)
-    else:
-        await context.initialize(
-            resource=args.resource,
-            db_name=args.db_name,
-            connection_string=args.connection_string,
-            db_type=DBType.MONGODB,
-            config_file=args.config,
-        )
-
-    # Initialize tables if this is the default resource
-    resource_def = await initialize_default_resource()
-    is_default_resource = bool(resource_def and resource_def.is_default)
-
-    if args.resource:
-        logger.info(f"Setting resource for runner to {args.resource}")
-        runner_manager = RunnerManager(
-            context.config.resource,
-            detach=args.detach,
-            no_pull=not args.pull,
-            is_default=is_default_resource,
-            with_file_transfer=args.file_transfer,
-            with_jobs=args.jobs,
-        )
-        await runner_manager.run_nodes_for_resource(
-            args.polling_interval, 10, timeout=args.timeout
-        )
+    if args.connection_string not in (None, "none") or args.db_name not in (None, "none"):
+        raise ValueError("Runner database credentials are no longer supported; use --server and --token")
+    if getattr(args, "credentials", None):
+        from simstack.runner_api.credentials import read_credentials
+        source = Path(getattr(args, "credentials", None)).expanduser().resolve()
+        credentials = read_credentials(source)
+        os.environ["SIMSTACK_RUNNER_CREDENTIALS"] = str(source)
+        os.environ["SIMSTACK_SERVER_URL"] = credentials["server_url"]
+        os.environ["SIMSTACK_RUNNER_TOKEN"] = credentials["token"]
+    if (getattr(args, "server", None) or getattr(args, "token", None)) and not getattr(args, "credentials", None):
+        os.environ.pop("SIMSTACK_RUNNER_CREDENTIALS", None)
+    if getattr(args, "server", None):
+        os.environ["SIMSTACK_SERVER_URL"] = getattr(args, "server", None)
+    if getattr(args, "token", None):
+        os.environ["SIMSTACK_RUNNER_TOKEN"] = getattr(args, "token", None)
+    project_root = Path(getattr(args, "project_root", None) or Path.home() / ".local/share/simstack/runner/runtime").expanduser().resolve()
+    project_root.mkdir(parents=True, exist_ok=True)
+    await context.initialize(resource=args.resource, config_file=args.config, project_root=project_root, api_only=True)
+    resource = context.config.resource
+    runner_manager = RunnerManager(
+        resource, detach=args.detach, no_pull=True, is_default=False,
+        with_file_transfer=args.file_transfer, with_jobs=args.jobs,
+    )
+    await runner_manager.run_nodes_for_resource(args.polling_interval, 10, timeout=args.timeout)
+    return bool(getattr(runner_manager, "_restart_requested", False))
 
 
 def runner_main() -> None:
-    parser = argparse.ArgumentParser(description="Run nodes for a specific resource")
+    parser = argparse.ArgumentParser(description="Run nodes through the SimStack server API")
+    parser.add_argument("--server", help="Server API URL, for example https://simstack.site/api")
+    parser.add_argument("--token", help="Resource runner API token")
+    parser.add_argument("--credentials", help="Path to a private JSON credentials file")
+    parser.add_argument("--project-root", help="Local runner runtime directory")
     parser.add_argument(
         "--config",
         type=str,
@@ -151,7 +155,10 @@ def runner_main() -> None:
 
     args = parser.parse_args()
     # Run the async main function
-    asyncio.run(async_main(args))
+    restart_requested = asyncio.run(async_main(args))
+    if restart_requested:
+        logging.shutdown()
+        os.execv(sys.executable, [sys.executable, "-m", "simstack.core.runner", *sys.argv[1:]])
     pid = os.getpid()
     logger.info(f"runner with pid {pid} shutting down normally")
 

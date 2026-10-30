@@ -230,7 +230,9 @@ def test_file_stack_document_without_location_id_migrates():
 async def test_custom_model_dump(file_stack):
     """Test the custom_model_dump method"""
     # Add content to ensure it's excluded
-    file_stack.content = b"test content"
+    with pytest.raises(ValueError, match="S3"):
+        file_stack.content = b"test content"
+    file_stack.content = None
 
     result = await file_stack.custom_model_dump()
 
@@ -264,8 +266,10 @@ def test_from_local_file_in_memory(test_file, setup_test_env):
 
         assert stack.name == temp_file.name
         assert stack.is_hashable is True
-        assert stack.in_memory is True
-        assert stack.content is not None  # Compressed content should exist
+        assert stack.in_memory is False
+        assert stack.content is None
+        stack.ensure_uploaded()
+        assert any(location.location_type == "s3" for location in stack.locations)
 
     finally:
         # Clean up temporary files
@@ -324,9 +328,9 @@ def test_get_in_memory(file_stack, setup_test_env):
     context = setup_test_env
     # Setup
     file_stack.name = "test.txt"
-    file_stack.in_memory = True
     original_content = b"Test content"
-    file_stack.content = zlib.compress(original_content)
+    file_stack = FileStack.from_string(original_content.decode(), "test.txt")
+    file_stack.ensure_uploaded()
 
     # Mock context config
     with patch("getpass.getuser", return_value="testuser"):
@@ -351,6 +355,9 @@ def test_get_same_resource(file_stack, file_instance, setup_test_env):
     file_stack.in_memory = False
     file_instance.resource = context.config.resource
     file_stack.locations.append(file_instance)
+    present = Path(context.config.workdir) / file_instance.path
+    present.parent.mkdir(parents=True, exist_ok=True)
+    present.write_bytes(b"locally present")
 
     # Test
 

@@ -310,12 +310,14 @@ async def _find_reusable_task(
     name: str,
     arg_hash: str,
     execution_parameters: Parameters,
+    repository_revision: str | None = None,
 ) -> Optional[NodeRegistry]:
     """Select a completed result or an existing task on the same route."""
     candidates = await db.find(
         NodeRegistry,
         (NodeRegistry.name == name)
-        & (NodeRegistry.arg_hash == arg_hash),
+        & (NodeRegistry.arg_hash == arg_hash)
+        & (NodeRegistry.repository_revision == repository_revision),
     )
     for candidate in candidates:
         if candidate.status == TaskStatus.COMPLETED:
@@ -642,6 +644,12 @@ class Node:
             project_id = parent_registry_entry.project
             delayed_message = f"using parent project: {project_id} "
 
+        repository_revision = getattr(function_mapping, "repository_revision", None)
+        repository_version = getattr(function_mapping, "repository_version", None)
+        if self.parent_id is not None:
+            repository_revision = parent_registry_entry.repository_revision
+            repository_version = parent_registry_entry.repository_version
+
         self.registry_entry = NodeRegistry(
             name=self.name,
             input_references=input_references,
@@ -649,6 +657,8 @@ class Node:
             status=TaskStatus.SUBMITTED,
             custom_name=self.custom_name,
             version=getattr(self._func, "_node_version", None),
+            repository_revision=repository_revision,
+            repository_version=repository_version,
             function_hash=function_hash,
             arg_hash=arg_hash,
             project=project_id,
@@ -687,6 +697,13 @@ class Node:
         )
         return registry_entry
 
+    async def _repository_revision(self) -> str | None:
+        if self.parent_id is not None:
+            parent = await context.db.load_task_by_id(self.parent_id)
+            return parent.repository_revision
+        mapping = context.node_mappings.get_by_name(self.name)
+        return getattr(mapping, "repository_revision", None)
+
     async def get_node_registry(self) -> TaskStatus:
         """
         Reads or initializes the task registry entry in the database.
@@ -720,6 +737,7 @@ class Node:
                 name=self.name,
                 arg_hash=arg_hash,
                 execution_parameters=self.parameters,
+                repository_revision=await self._repository_revision(),
             )
 
         if self.registry_entry is None:
@@ -1612,6 +1630,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 NodeRegistry,
                 (NodeRegistry.name == registry_entry.name)
                 & (NodeRegistry.arg_hash == registry_entry.arg_hash)
+                & (NodeRegistry.repository_revision == registry_entry.repository_revision)
                 & (NodeRegistry.status == TaskStatus.COMPLETED)
                 & (NodeRegistry.id != registry_entry.id),
             )

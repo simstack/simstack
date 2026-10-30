@@ -1,3 +1,4 @@
+from tests.object_storage_fakes import stored_file
 import pytest
 import pytest_asyncio
 import logging
@@ -413,7 +414,7 @@ async def test_node_from_database_ignores_active_duplicate(
 async def test_node_from_database_hydrates_embedded_filestack(
     initialized_context, setup_helper_node_model
 ):
-    canonical = FileStack(
+    canonical = stored_file(
         name="D3_unexpected.xyz",
         size=5557,
         is_hashable=False,
@@ -466,7 +467,7 @@ async def test_node_from_database_hydrates_embedded_filestack(
         hydrated = reconstructed_node._args[0].file_stack
         assert hydrated is not None
         assert hydrated.id == canonical.id
-        assert hydrated.in_memory is True
+        assert hydrated.in_memory is False
         assert hydrated.content == canonical.content
         assert hydrated.locations == canonical.locations
 
@@ -482,9 +483,12 @@ async def test_node_from_database_hydrates_embedded_filestack(
 
 @pytest.mark.asyncio
 async def test_node_from_database_keeps_complete_embedded_filestack(
-    initialized_context, setup_helper_node_model
+    initialized_context, setup_helper_node_model, tmp_path
 ):
     embedded_id = ObjectId()
+    embedded_file = stored_file(name="embedded.xyz", size=7, content=b"content")
+    embedded_doc = embedded_file.model_dump()
+    embedded_doc["id"] = str(embedded_id)
     input_id = ObjectId()
     collection = context.db.raw_database[PandasModel.__collection__]
     await collection.insert_one(
@@ -492,16 +496,7 @@ async def test_node_from_database_keeps_complete_embedded_filestack(
             "_id": input_id,
             "field_name": f"complete_embedded_filestack_{input_id}",
             "content_": b"",
-            "file_stack": {
-                "name": "embedded.xyz",
-                "size": 7,
-                "is_hashable": False,
-                "hash": None,
-                "in_memory": True,
-                "content": b"content",
-                "locations": [],
-                "id": str(embedded_id),
-            },
+            "file_stack": embedded_doc,
         }
     )
 
@@ -529,7 +524,8 @@ async def test_node_from_database_keeps_complete_embedded_filestack(
         embedded = reconstructed_node._args[0].file_stack
         assert embedded is not None
         assert embedded.id == embedded_id
-        assert embedded.content == b"content"
+        assert embedded.content is None
+        assert embedded.get(tmp_path / "embedded").read_bytes() == b"content"
     finally:
         await context.db.delete(registry_entry)
         await collection.delete_one({"_id": input_id})

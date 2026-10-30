@@ -4,7 +4,7 @@ from typing import Optional
 
 from simstack.util.project_root_finder import find_project_root
 
-def transform_file_name(path_str: str | Path, project_root: Path | None = None) -> Path:
+def transform_file_name(path_str: str | Path, project_root: Path | None = None, *, require_exists: bool = True) -> Path:
     """
     Transform a string path by substituting environment variables.
 
@@ -36,6 +36,6 @@ def transform_file_name(path_str: str | Path, project_root: Path | None = None) 
         path_str = path_str.replace(var, value)
 
     path = Path(path_str)
-    if not path.exists():
+    if require_exists and not path.exists():
         raise FileNotFoundError(f"Path does not exist: {path}")
     return path

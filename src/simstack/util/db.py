@@ -67,6 +67,11 @@ class Database:
 
     @classmethod
     def from_db_info(cls, db_info: DatabaseInformation) -> "Database":
+        if db_info.db_type == DBType.API:
+            from simstack.runner_api.persistence import HTTPMotorClient
+            from simstack.runner_api.transport import RunnerAPIClient
+            client = HTTPMotorClient(RunnerAPIClient(db_info.server_url, db_info.server_token))
+            return cls(engine=AIOEngine(client=client, database="runner"), db_type=DBType.API, server_url=db_info.server_url, server_token=db_info.server_token)
         if db_info.db_type == DBType.IN_MEMORY:
             # For tests, use in-memory MongoDB (mongomock)
             from mongomock_motor import AsyncMongoMockClient
@@ -350,6 +355,8 @@ class Database:
         return result
 
     async def save_unchecked(self, *args: Any, **kwargs: Any) -> Any:
+        if args:
+            self._prepare_file_storage(args[0])
         return await self._engine.save(*args, **kwargs)
 
     async def delete(self, *args: Any, **kwargs: Any) -> Any:
@@ -383,7 +390,29 @@ class Database:
     async def stats(self) -> Any:
         return await self.database.command("dbStats")
 
+    @staticmethod
+    def _prepare_file_storage(root):
+        from simstack.models.files import FileStack
+        seen = set()
+        def prepare(value):
+            if id(value) in seen:
+                return
+            seen.add(id(value))
+            if isinstance(value, FileStack):
+                value.ensure_uploaded()
+            if isinstance(value, (Model, EmbeddedModel)):
+                for child in vars(value).values():
+                    prepare(child)
+            elif isinstance(value, dict):
+                for child in value.values():
+                    prepare(child)
+            elif isinstance(value, (list, tuple, set)):
+                for child in value:
+                    prepare(child)
+        prepare(root)
+
     async def _save_one(self, model: Any, *args: Any, **kwargs: Any) -> Any:
+        self._prepare_file_storage(model)
         # Avoid recursion if custom save is called
         if getattr(model, "_currently_saving", False):
             result = await self._engine.save(model, *args, **kwargs)
@@ -564,6 +593,8 @@ class Database:
         """
         Reset the database by dropping all collections and recreating them
         """
+        if self._db_type == DBType.API:
+            raise RuntimeError("Database reset is a server administration operation")
         db = self.client[self.database_name]
         collections = await db.list_collection_names()
 

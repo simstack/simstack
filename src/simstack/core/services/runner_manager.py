@@ -45,6 +45,8 @@ class RunnerManager:
         self._pid = os.getpid()
         self._services: list[BaseService] = []
         self._shutdown_event: asyncio.Event = asyncio.Event()
+        self._claiming_paused = asyncio.Event()
+        self._restart_requested = False
         self._pid_file: Path = Path(context.config.workdir) / f"runner_{resource}.pid"
         self._is_default = is_default
         self._with_file_transfer = with_file_transfer
@@ -131,8 +133,17 @@ class RunnerManager:
                     self._shutdown_event,
                     detach=self._detach,
                     is_default=self._is_default,
+                    claiming_paused=self._claiming_paused,
                 )
             )
+        from simstack.core.definitions import DBType
+        if context.db.databae_type == DBType.API:
+            from simstack.core.services.runner_control_service import RunnerControlService
+            control_service = RunnerControlService(self)
+            await control_service.execute()
+            if self._restart_requested:
+                return
+            self._services.append(control_service)
         self._services.extend(
             [
                 RunnerStatusService(self._resource, interval=60),

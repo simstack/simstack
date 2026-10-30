@@ -29,8 +29,8 @@ class DatabaseInformation:
 
     def __init__(
         self,
-        db_name: str,
-        connection_string: str,
+        db_name: str | None,
+        connection_string: str | None,
         db_type: DBType = DBType.MONGODB,
         server_url: str | None = None,
         server_token: str | None = None,
@@ -58,6 +58,11 @@ class DatabaseInformation:
         Docker runners set SIMSTACK_DB_CONNECTION_STRING so containers do not
         keep using a loopback URI from a bind-mounted host toml.
         """
+        server_params = config.get("parameters", {}).get("server", {})
+        server_url = kwargs.get("server_url") or os.environ.get("SIMSTACK_SERVER_URL") or server_params.get("url")
+        server_token = kwargs.get("server_token") or os.environ.get("SIMSTACK_RUNNER_TOKEN") or os.environ.get("SIMSTACK_SERVER_TOKEN") or server_params.get("token")
+        if server_url and server_token and not kwargs.get("connection_string") and not kwargs.get("is_test", False):
+            return cls(None, None, DBType.API, server_url, server_token)
         common_params = config.get("parameters", {}).get("db", {})
         is_test = kwargs.get("is_test", False)
 

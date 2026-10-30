@@ -1,3 +1,4 @@
+from tests.object_storage_fakes import stored_file
 import pytest
 from typing import Optional
 from odmantic import Model, Field
@@ -18,14 +19,14 @@ class SampleFileModel(Model):
 def sample_file_stacks():
     """Create multiple sample FileStacks for testing"""
     return [
-        FileStack(
+        stored_file(
             name="file1.txt",
             size=50,
             is_hashable=True,
             in_memory=True,
             content=b"content1",
         ),
-        FileStack(
+        stored_file(
             name="file2.txt", 
             size=75, 
             is_hashable=True, 
@@ -35,7 +36,7 @@ def sample_file_stacks():
     ]
 
 @pytest.mark.asyncio
-async def test_test_file_model_save_and_retrieve(initialized_context, sample_file_stacks):
+async def test_test_file_model_save_and_retrieve(initialized_context, sample_file_stacks, tmp_path):
     """Test saving and retrieving SampleFileModel with embedded FileList"""
     # 1. Save FileStacks first (as they are referenced by FileList via ObjectIds)
     for fs in sample_file_stacks:
@@ -64,8 +65,10 @@ async def test_test_file_model_save_and_retrieve(initialized_context, sample_fil
     assert len(retrieved_files) == 2
     assert retrieved_files[0].name == "file1.txt"
     assert retrieved_files[1].name == "file2.txt"
-    assert retrieved_files[0].content == b"content1"
-    assert retrieved_files[1].content == b"content2"
+    assert retrieved_files[0].content is None
+    assert retrieved_files[0].get(tmp_path / "first").read_bytes() == b"content1"
+    assert retrieved_files[1].content is None
+    assert retrieved_files[1].get(tmp_path / "second").read_bytes() == b"content2"
 
 @pytest.mark.asyncio
 async def test_test_file_model_empty_list(initialized_context):

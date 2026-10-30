@@ -137,6 +137,7 @@ class NodeExecutionService(BaseService):
         shutdown_event: asyncio.Event | None,
         detach: bool = True,
         is_default: bool = False,
+        claiming_paused: asyncio.Event | None = None,
     ) -> None:
         super().__init__(
             "JobPolling", resource, interval, shutdown_event=shutdown_event
@@ -147,12 +148,15 @@ class NodeExecutionService(BaseService):
         self._started = False
         self._detach = detach
         self._is_default = is_default
+        self._claiming_paused = claiming_paused
 
     async def run_node(self, registry_entry: NodeRegistry) -> bool:
         """Run a single node by its ID from the database"""
 
         await self.write_node_event(RunnerEventEnum.NODE_STARTED, registry_entry.id)
         try:
+            from simstack.runner_api.runtime import prepare_task
+            await prepare_task(registry_entry, context)
 
             queue = (
                 registry_entry.parameters.queue
@@ -176,12 +180,14 @@ class NodeExecutionService(BaseService):
                 return await run_docker(registry_entry)
 
             if queue == "default":
-                if self._detach:
+                from simstack.runner_api.runtime import is_api_runner
+                if self._detach or (is_api_runner(context) and getattr(registry_entry, "repository_revision", None)):
                     # Spawn independent process that survives when the runner dies.
                     # On Windows, DETACHED_PROCESS makes a console program allocate a
                     # visible console, and CREATE_NO_WINDOW is ignored beside it.
                     # pythonw is not a console program, so the node process has no window.
-                    project_root = str(context.config.project_root)
+                    from simstack.runner_api.runtime import task_project_root, task_environment, is_api_runner
+                    project_root = str(task_project_root(registry_entry, context.config.project_root))
                     interpreter = (
                         "pythonw" if platform.system() == "Windows" else "run_node"
                     )
@@ -202,6 +208,11 @@ class NodeExecutionService(BaseService):
                             str(self._resource_name),
                         ]
                     )
+
+                    if is_api_runner(context) and getattr(registry_entry, "repository_revision", None):
+                        from pathlib import Path
+                        interpreter_path = Path(project_root) / ".venv" / ("Scripts/python.exe" if platform.system() == "Windows" else "bin/python")
+                        cmd = [str(interpreter_path), "-m", "simstack.core.run_node", "--project-root", project_root, "--node-id", str(registry_entry.id), "--resource", str(self._resource_name)]
 
                     creationflags = 0
                     if platform.system() == "Windows":
@@ -234,30 +245,11 @@ class NodeExecutionService(BaseService):
                             if platform.system() != "Windows"
                             else False,
                             env={
-                                **os.environ,
+                                **(task_environment(registry_entry) if is_api_runner(context) else os.environ),
                                 "PYTHONPATH": child_python_path,
                                 **(
-                                    {
-                                        "SIMSTACK_DB_CONNECTION_STRING": str(
-                                            context.config.connection_string
-                                        )
-                                    }
-                                    if getattr(
-                                        context.config,
-                                        "connection_string",
-                                        None,
-                                    )
-                                    is not None
-                                    else {}
-                                ),
-                                **(
-                                    {
-                                        "SIMSTACK_DB_DATABASE": str(
-                                            context.config.db_name
-                                        )
-                                    }
-                                    if getattr(context.config, "db_name", None)
-                                    is not None
+                                    {"SIMSTACK_DB_CONNECTION_STRING": str(context.config.connection_string), "SIMSTACK_DB_DATABASE": str(context.config.db_name)}
+                                    if not is_api_runner(context) and getattr(context.config, "connection_string", None) is not None
                                     else {}
                                 ),
                             },
@@ -287,6 +279,10 @@ class NodeExecutionService(BaseService):
                         f"Spawned detached process for task_id: {registry_entry.id} with PID: {process.pid}"
                     )
                     await record_process_id(registry_entry, process.pid, context.db)
+                    if not self._detach:
+                        await process.wait()
+                        completed = await context.db.load_task_by_id(registry_entry.id)
+                        return completed is not None and completed.status == TaskStatus.COMPLETED
                     return True
                 else:
                     return await run_node_from_registry(registry_entry)
@@ -332,6 +328,9 @@ class NodeExecutionService(BaseService):
         )
         for entry in terminating_tasks:
             await terminate_task(entry, runner_pid=self._pid)
+
+        if self._claiming_paused is not None and self._claiming_paused.is_set():
+            return
 
         # Load tasks
         registry_entry_list = await context.db.load_waiting_tasks_for_resource(self._resource_name)

@@ -7,6 +7,25 @@ from simstack.core.node_runner import NodeRunner
 from simstack.util.resource_config import ResourceConfig
 
 
+@pytest.fixture(autouse=True)
+def external_file_storage(tmp_path, monkeypatch):
+    # These tests exercise process environments; log-file publication uses the
+    # new storage boundary without making a network request.
+    from datetime import datetime
+    from simstack.models.file_instance import FileInstance
+    from simstack.models.parameters import Resource
+    from simstack.util.object_transfer import ObjectFileClient
+
+    monkeypatch.setattr("simstack.core.context.context",
+        SimpleNamespace(config=SimpleNamespace(workdir=tmp_path, resource=Resource(value="test"))))
+    class Storage:
+        def publish(self, value, path):
+            return FileInstance(path="logs/" + str(value.id), resource="__s3__",
+                location_type="s3", bucket="test", object_key="logs/" + str(value.id),
+                created_at=datetime.now(), size_bytes=path.stat().st_size).model_dump()
+    monkeypatch.setattr(ObjectFileClient, "from_context", lambda **kwargs: Storage())
+
+
 @pytest.mark.parametrize("scratch", [False, True])
 @pytest.mark.parametrize("real_runner", [False, True])
 def test_run_env_forwarding(tmp_path, monkeypatch, scratch, real_runner):

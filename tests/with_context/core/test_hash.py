@@ -154,7 +154,8 @@ def test_filestack_hash_different_content_same_name():
         assert filestack1.is_hashable == filestack2.is_hashable
 
         # But content should be different
-        assert filestack1.content != filestack2.content
+        assert filestack1.content is None and filestack2.content is None
+        assert filestack1.hash != filestack2.hash
 
         # Hash both FileStack objects
         hash1 = complex_hash_function(filestack1)

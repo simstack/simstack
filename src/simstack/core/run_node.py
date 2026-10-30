@@ -44,6 +44,7 @@ async def run_node_from_id(
     logger.info(f"Initializing node run: node_id={node_id}, resource={resource_str}, project_root={project_root}, in_docker={in_docker}")
     try:
         init_kwargs = {
+            "api_only": True,
             "resource": resource_str,
             "project_root": project_root,
             "in_docker": bool(in_docker),
@@ -62,6 +63,14 @@ async def run_node_from_id(
         if not registry_entry:
             logger.error(f"Node with ID {node_id} not found in the database")
             return RunNodeResult(False, "none", f"Node {node_id} not found")
+        from simstack.runner_api.runtime import prepare_task
+        repository_root = await prepare_task(registry_entry, context)
+        if repository_root is not None:
+            from simstack.util.resource_config import ResourceConfig
+            context.config._project_root = repository_root
+            context._resource_config = ResourceConfig(repository_root / "config.toml", str(context.config.resource))
+            os.environ["SIMSTACK_REPOSITORY_REVISION"] = str(registry_entry.repository_revision)
+            await context.refresh_mappings()
         if registry_entry.status == TaskStatus.TERMINATING:
             return RunNodeResult(
                 False,

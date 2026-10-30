@@ -21,6 +21,8 @@ class ModelMapping(Model):
     name: str = Field(unique=True)
     mapping: str = Field(unique=True)
     version: Optional[str] = None
+    repository_revision: Optional[str] = None
+    repository_version: Optional[int] = None
     collection_name: str
     json_schema: Optional[str] = None
     ui_schema: Optional[str] = None
@@ -37,6 +39,8 @@ class NodeModel(Model):
     name: str = Field(unique=True)
     function_mapping: str = Field(unique=True)
     version: Optional[str] = None
+    repository_revision: Optional[str] = None
+    repository_version: Optional[int] = None
     input_mappings: List[DataMapping]
     result_mappings: List[DataMapping] = Field(default_factory=list)
     called_nodes: List[str] = Field(default_factory=list)
