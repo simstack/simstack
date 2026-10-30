@@ -6,8 +6,14 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.29 /uv /usr/local/bin/uv
 
 WORKDIR /opt/simstack
 COPY . .
-RUN uv sync --frozen --no-dev --no-editable \
-    && .venv/bin/python -c "from simstack.runner_runtime.environment import assert_database_runtime_unavailable; assert_database_runtime_unavailable()"
+# Release contexts omit .git. The operator supplies the exact source identity;
+# never fabricate a fallback Core version that could satisfy the wrong lock.
+ARG SIMSTACK_CORE_COMMIT
+ARG SIMSTACK_CORE_VERSION
+RUN python -c 'import re,sys; assert re.fullmatch(r"[0-9a-f]{40}",sys.argv[1]), "Set SIMSTACK_CORE_COMMIT to the immutable source commit"; assert sys.argv[2], "Set SIMSTACK_CORE_VERSION to that source version"' "$SIMSTACK_CORE_COMMIT" "$SIMSTACK_CORE_VERSION"
+RUN SETUPTOOLS_SCM_PRETEND_VERSION="$SIMSTACK_CORE_VERSION" uv sync --frozen --no-dev --no-editable \
+    && .venv/bin/python -c "from simstack.runner_runtime.environment import assert_database_runtime_unavailable; assert_database_runtime_unavailable()" \
+    && .venv/bin/python -c 'import importlib.metadata,json,sys; from pathlib import Path; Path(sys.prefix,"simstack-core-origin.json").write_text(json.dumps({"version":importlib.metadata.version("simstack"),"commit_id":sys.argv[1]})+"\n")' "$SIMSTACK_CORE_COMMIT"
 
 ARG APP_UID=1000
 ARG APP_GID=1000

@@ -3,25 +3,48 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import contextmanager
 import hashlib
 import io
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
 import zipfile
+from contextlib import contextmanager
+from pathlib import Path
 
 from simstack.runner_runtime.environment import sanitized_trusted_helper_environment
 from simstack.runner_runtime.execution_adapter import WorkflowInstallationAdapter
-from simstack.workflows.archive import archive_digest, extract_archive, validate_archive, expanded_entry_count
-from simstack.workflows.manifest import executable_paths, load_manifest, WorkflowManifest
-from simstack.workflows.dependencies import validate_dependency_environment, WorkflowDependencyError, interpreter_digest, bootstrap_digests
-from simstack.workflows.limits import WorkflowInstallationLimits, DEFAULT_INSTALLATION_LIMITS
+from simstack.workflows.archive import (
+    archive_digest,
+    expanded_entry_count,
+    extract_archive,
+    validate_archive,
+)
+from simstack.workflows.dependencies import (
+    WorkflowDependencyError,
+    bootstrap_digests,
+    interpreter_digest,
+    validate_dependency_environment,
+)
+from simstack.workflows.limits import (
+    DEFAULT_INSTALLATION_LIMITS,
+    WorkflowInstallationLimits,
+)
+from simstack.workflows.manifest import (
+    WorkflowManifest,
+    executable_paths,
+    load_manifest,
+)
 from simstack.workflows.processes import run_process
+from simstack.workflows.uv_project import (
+    CORE_INFO_SCRIPT,
+    load_uv_project,
+    uv_preparation_commands,
+    validate_platform_core,
+)
 
 
 def installation_root(workdir: Path, installation_id: str, revision: str) -> Path:
@@ -221,6 +244,9 @@ def _ready_runtime(root: Path, *, revision: str, manifest: dict | None = None, l
     if archive_digest(data) != revision:
         raise ValueError("Installed workflow archive checksum mismatch")
     _verify_source_snapshot(data, root / "source", limits=limits)
+    project = load_uv_project(root / "source")
+    if project is not None and ready.get("project_identity") != project.identity:
+        raise WorkflowDependencyError("Cached workflow runtime does not match its uv project lock; prepare it again")
     return ready
 
 
@@ -276,7 +302,10 @@ def _prepare_package_locked(
                 raise
             shutil.rmtree(source)
     if not source.exists():
-        from simstack.workflows.processes import check_storage_budget, WorkflowProcessLimitError
+        from simstack.workflows.processes import (
+            WorkflowProcessLimitError,
+            check_storage_budget,
+        )
         storage_root = root.parents[1] if root.parent.parent.name == "workflow-packages" else root
         with _installation_lock(storage_root, name=".storage.lock", blocking=False):
             staging_source = root / ".source-pending"
@@ -301,6 +330,7 @@ def _prepare_package_locked(
                     shutil.rmtree(staging_source)
     _verify_source_snapshot(data, source, limits=limits)
     actual = load_manifest(source, max_bytes=limits.max_manifest_bytes)
+    uv_project = load_uv_project(source)
     for field in ("id", "version", "source_root", "modules", "runtime_profile", "executables"):
         if getattr(actual.workflow, field) != getattr(desired.workflow, field):
             raise ValueError(f"Workflow source disagrees with its registered {field}")
@@ -344,7 +374,10 @@ def _prepare_package_locked(
         python = staging / "bin" / "python"
         python_sha256 = interpreter_digest(python)
         bootstrap = bootstrap_digests(staging)
-        if desired.workflow.dependencies:
+        if uv_project is not None:
+            platform = json.loads(_run([base_python, "-I", "-c", CORE_INFO_SCRIPT], **process_options).stdout)
+            validate_platform_core(uv_project, platform)
+        elif desired.workflow.dependencies:
             _run(
                 [
                     str(python),
@@ -393,6 +426,27 @@ def _prepare_package_locked(
             "\n".join(dict.fromkeys(base_paths)) + "\n"
         )
         validate_dependency_environment(staging, trusted_sites=base_paths, operator_pth="simstack-core-runtime.pth", expected_python_sha256=python_sha256, expected_bootstrap=bootstrap)
+        if uv_project is not None:
+            build_source = root / ".uv-build-source"
+            if build_source.exists() or build_source.is_symlink():
+                if build_source.is_symlink() or not build_source.is_dir():
+                    raise ValueError("uv workflow build directory is invalid")
+                shutil.rmtree(build_source)
+            shutil.copytree(source, build_source)
+            try:
+                build_project = load_uv_project(build_source)
+                commands = uv_preparation_commands(build_project, staging, base_python, cache_dir=root / ".uv-cache")
+                _run(commands["prefetch"], **process_options)
+                validate_dependency_environment(staging, trusted_sites=base_paths, operator_pth="simstack-core-runtime.pth", expected_python_sha256=python_sha256, expected_bootstrap=bootstrap)
+                if commands["build_dependencies"] is not None:
+                    _run(commands["build_dependencies"], **process_options)
+                    validate_dependency_environment(staging, trusted_sites=base_paths, operator_pth="simstack-core-runtime.pth", expected_python_sha256=python_sha256, expected_bootstrap=bootstrap)
+                # Source build backends execute only behind the operator's
+                # installation boundary, with cached dependencies and no fetch.
+                _run([*guard, *commands["sync"]], **process_options)
+                validate_dependency_environment(staging, trusted_sites=base_paths, operator_pth="simstack-core-runtime.pth", expected_python_sha256=python_sha256, expected_bootstrap=bootstrap)
+            finally:
+                shutil.rmtree(build_source)
         request = {
             "operation": "discover",
             "source_root": str(source),
@@ -432,6 +486,7 @@ def _prepare_package_locked(
                     "python_sha256": python_sha256,
                     "bootstrap": bootstrap,
                     "installation_limits": limits.to_dict(),
+                    **({"project_identity": uv_project.identity} if uv_project is not None else {}),
                 },
                 stream,
                 sort_keys=True,
@@ -477,7 +532,10 @@ async def install_package(
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     root.resolve().relative_to(Path(workdir).resolve())
     archive = root / "archive.zip"
-    from simstack.workflows.processes import check_storage_budget, WorkflowProcessLimitError
+    from simstack.workflows.processes import (
+        WorkflowProcessLimitError,
+        check_storage_budget,
+    )
     with _installation_lock(root.parent.parent, name=".storage.lock", blocking=False):
         reserved = 0 if archive.exists() else profile.limits.max_archive_bytes
         if reserved >= profile.limits.max_storage_bytes:

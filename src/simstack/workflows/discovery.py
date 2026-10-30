@@ -14,23 +14,24 @@ import json
 import re
 import sys
 import textwrap
+import tomllib
 from pathlib import Path
 from types import FunctionType, ModuleType, UnionType
 from typing import Annotated, Any, Union, get_args, get_origin, get_type_hints
 
-from pydantic import BaseModel
 from packaging.utils import canonicalize_name
+from pydantic import BaseModel
 
 from simstack.core.node_code_version import node_code_version
 from simstack.core.simstack_result import SimstackResult
-from simstack.models.document import Model, REFERENCE_SCHEMA_KEY
+from simstack.models.document import REFERENCE_SCHEMA_KEY, Model
 from simstack.models.document.reference_values import transform_reference_values
 from simstack.models.parameters import Parameters
 from simstack.util.docstring_parser import DocstringParser
 from simstack.util.generate_ui_schema import resolve_ui_schema, ui_schema_identity
 
-from .manifest import NodeOverride, WorkflowManifest, canonical_path, load_manifest
 from .limits import DEFAULT_INSTALLATION_LIMITS
+from .manifest import NodeOverride, WorkflowManifest, canonical_path, load_manifest
 
 
 def object_mapping(value: Any) -> str:
@@ -62,8 +63,59 @@ def exported_function(modules: list[ModuleType], mapping: str) -> Any:
     return matches.pop()
 
 
+def _source_snapshot_root(import_root: Path) -> Path:
+    # source_root can be src/ or another contained package directory.
+    for candidate in (import_root, *import_root.parents):
+        if (candidate / "simstack-workflow.toml").is_file():
+            return candidate
+    return import_root
+
+
+def _dependency_exports(import_root: Path) -> list[dict]:
+    from .snapshot import read_snapshot
+
+    root = _source_snapshot_root(import_root)
+    metadata = read_snapshot(root)
+    if metadata is None:
+        return []
+    exports = []
+    for source in metadata["sources"]:
+        project = tomllib.loads((root / source["path"] / "pyproject.toml").read_text())
+        names = list(project.get("project", {}).get("entry-points", {}).get("simstack.modules", {}).values())
+        try:
+            distribution = importlib.metadata.distribution(source["name"])
+        except importlib.metadata.PackageNotFoundError as exc:
+            raise ValueError(f"Locked source package is not installed: {source['name']}") from exc
+        from packaging.version import Version
+        if (canonicalize_name(distribution.metadata["Name"]) != source["name"]
+                or Version(distribution.version) != Version(source["version"])):
+            raise ValueError("Installed source package does not match the snapshot version")
+        if distribution.files is None:
+            raise ValueError("Locked source package has no immutable installed file inventory")
+        files = frozenset(Path(distribution.locate_file(item)).resolve() for item in distribution.files)
+        modules = []
+        for name in names:
+            if not isinstance(name, str) or ":" in name or not all(part.isidentifier() for part in name.split(".")):
+                raise ValueError("simstack.modules entry points must name canonical modules")
+            modules.append(name)
+        exports.append({"name": source["name"], "version": source["version"],
+                        "modules": modules, "files": files})
+    return exports
+
+
+def _dependency_owner(value, dependencies):
+    try:
+        origin = Path(inspect.getfile(inspect.unwrap(value))).resolve()
+    except (TypeError, OSError):
+        return None
+    owners = [dependency for dependency in dependencies if origin in dependency["files"]]
+    if len(owners) > 1:
+        raise ValueError("Installed packages disagree about ownership of workflow code")
+    return owners[0] if owners else None
+
+
 def load_modules(source_root: str | Path, names: list[str]) -> list[ModuleType]:
-    """Load only explicitly declared modules; their ordinary imports still run."""
+    """Load root exports and entry points of exact bundled distributions only."""
     root = Path(source_root).resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Workflow import root must be a directory")
@@ -73,14 +125,21 @@ def load_modules(source_root: str | Path, names: list[str]) -> list[ModuleType]:
 
     assert_database_runtime_unavailable()
     modules = []
-    for name in names:
+    requested = [(name, None) for name in names]
+    for dependency in _dependency_exports(root):
+        requested.extend((name, dependency) for name in dependency["modules"])
+    for name, dependency in requested:
         module = importlib.import_module(name)
         origin = getattr(module, "__file__", None)
-        if origin is None or not Path(origin).resolve().is_relative_to(root):
-            raise ValueError(
-                f"Declared module {name!r} does not belong to this source snapshot"
-            )
-        modules.append(module)
+        path = Path(origin).resolve() if origin is not None else None
+        allowed = path is not None and (
+            path.is_relative_to(root) if dependency is None else path in dependency["files"]
+        )
+        if not allowed:
+            raise ValueError(f"Declared module {name!r} does not belong to this source snapshot" if dependency is None
+                             else f"Declared dependency module {name!r} does not belong to its immutable source package")
+        if module not in modules:
+            modules.append(module)
     assert_database_runtime_unavailable()
     return modules
 
@@ -143,7 +202,7 @@ def _lookup(expression: ast.expr, namespace: dict[str, Any]) -> Any:
     return None
 
 
-def _children(function: Any, source_root: Path, warnings: list[str]) -> set[str]:
+def _children(function: Any, source_root: Path, warnings: list[str], *, dependency_files=frozenset()) -> set[str]:
     """Resolve actual decorated callables, not short-name catalogue guesses."""
     found, visited = set(), set()
 
@@ -180,8 +239,9 @@ def _children(function: Any, source_root: Path, warnings: list[str]) -> set[str]
                     found.add(object_mapping(target))
                 else:
                     source_file = inspect.getsourcefile(target)
-                    if source_file and Path(source_file).resolve().is_relative_to(
-                        source_root
+                    if source_file and (
+                        Path(source_file).resolve().is_relative_to(source_root)
+                        or Path(source_file).resolve() in dependency_files
                     ):
                         visit(target)
 
@@ -293,6 +353,8 @@ def discover_workflow(
         if _belongs_to_source(candidate, core_root):
             trusted_core.add(candidate)
     modules = load_modules(import_root, manifest.workflow.modules)
+    dependencies = _dependency_exports(import_root.resolve())
+    dependency_files = frozenset(path for dependency in dependencies for path in dependency["files"])
     functions, available, seeds = {}, {}, []
     for module in modules:
         for value in vars(module).values():
@@ -304,12 +366,12 @@ def discover_workflow(
                 and value is not Model
             ):
                 available[object_mapping(value)] = value
-                if _belongs_to_source(value, import_root.resolve()):
+                if _belongs_to_source(value, import_root.resolve()) or _dependency_owner(value, dependencies):
                     seeds.append(value)
             elif (
                 type(value) is FunctionType
                 and getattr(value, "_is_node", False)
-                and _belongs_to_source(value, import_root.resolve())
+                and (_belongs_to_source(value, import_root.resolve()) or _dependency_owner(value, dependencies))
             ):
                 functions[object_mapping(value)] = (module, value)
     if not functions:
@@ -347,7 +409,7 @@ def discover_workflow(
         seeds.extend(output_models)
         try:
             children = (
-                _children(function, import_root.resolve(), warnings)
+                _children(function, import_root.resolve(), warnings, dependency_files=dependency_files)
                 if override.called_nodes is None
                 else set(override.called_nodes)
             )
@@ -374,7 +436,7 @@ def discover_workflow(
                 "name": mapping,
                 "function_mapping": mapping,
                 "function_hash": function_hash,
-                "version": getattr(function, "_node_version", None),
+                "version": getattr(function, "_node_version", None) or (_dependency_owner(function, dependencies) or {}).get("version"),
                 "input_mappings": inputs,
                 "result_mappings": outputs,
                 "called_nodes": sorted(children),
@@ -404,7 +466,7 @@ def discover_workflow(
         version = (
             manifest.workflow.version
             if Path(origin).resolve().is_relative_to(import_root.resolve())
-            else None
+            else (_dependency_owner(model, dependencies) or {}).get("version")
         )
         models.append(
             {
@@ -457,12 +519,26 @@ def discover_workflow(
         if name not in {"simstack", "pip", "setuptools", "wheel"}:
             distributions.setdefault(name, dist.version)
     resolved = sorted(f"{name}=={version}" for name, version in distributions.items())
+    from .uv_project import _selected, load_uv_project
+    project = load_uv_project(root)
+    project_metadata = {}
+    if project is not None:
+        from .snapshot import read_snapshot
+        lock = tomllib.loads((root / "uv.lock").read_text())
+        resolved = sorted({f"{package['name']}=={package['version']}" for package in lock.get("package", [])
+                           if _selected(package)
+                           and canonicalize_name(package["name"]) not in {project.name, "simstack"}
+                           and distributions.get(canonicalize_name(package["name"])) == package["version"]})
+        snapshot = read_snapshot(root)
+        project_metadata = {"dependency_mode": "uv", "project_identity": project.identity,
+                            "source_dependencies": list(snapshot["sources"]) if snapshot is not None else []}
     return {
         "package_id": manifest.workflow.id,
         "version": manifest.workflow.version,
         "runtime_profile": manifest.workflow.runtime_profile,
-        "dependencies": manifest.workflow.dependencies,
+        "dependencies": list(project.dependencies) if project is not None else manifest.workflow.dependencies,
         "resolved_dependencies": resolved,
+        **project_metadata,
         "modules": manifest.workflow.modules,
         "source_root": manifest.workflow.source_root,
         "models": models,

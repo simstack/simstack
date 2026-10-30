@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import tempfile
 import time
 import uuid
 from pathlib import Path
@@ -83,7 +84,19 @@ class InstallationClient:
             ) from None
 
     def upload(self, source: Path, resources: list[str]):
-        data = snapshot_folder(source) if source.is_dir() else source.read_bytes()
+        if (
+            source.is_dir()
+            and (source / "uv.lock").is_file()
+            and not (source / ".simstack/snapshot.json").is_file()
+        ):
+            from .snapshot import build_snapshot
+
+            with tempfile.TemporaryDirectory(prefix="simstack-upload-") as temporary:
+                archive = Path(temporary) / "workflow.zip"
+                build_snapshot(source, archive)
+                data = archive.read_bytes()
+        else:
+            data = snapshot_folder(source) if source.is_dir() else source.read_bytes()
         validate_archive(data)
         boundary = "simstack-" + uuid.uuid4().hex
         body = (

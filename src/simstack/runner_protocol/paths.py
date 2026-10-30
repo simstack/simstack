@@ -21,6 +21,8 @@ class RunnerRoute(StrEnum):
     TASK_CACHE = "/tasks/{task_id}/cache/resolve"
     TASK_FAIL = "/tasks/{task_id}/fail"
     TASK_FILE_CONTENT = "/tasks/{task_id}/files/{file_stack_id}/content"
+    TASK_PROGRAM_POLICY = "/tasks/{task_id}/program-policy"
+    TASK_PROGRAM_PLAN = "/tasks/{task_id}/programs/{program}"
     DATASET_SNAPSHOT = "/tasks/{task_id}/datasets/{dataset_id}/sections/{section_key:path}/snapshot"
     DATASET_ROWS = "/tasks/{task_id}/datasets/{dataset_id}/sections/{section_key:path}/rows"
     HEARTBEAT = "/heartbeat"
@@ -77,6 +79,8 @@ TASK_COMMIT_ROUTE = RunnerRoute.TASK_COMMIT
 TASK_CACHE_ROUTE = RunnerRoute.TASK_CACHE
 TASK_FAIL_ROUTE = RunnerRoute.TASK_FAIL
 TASK_FILE_CONTENT_ROUTE = RunnerRoute.TASK_FILE_CONTENT
+TASK_PROGRAM_POLICY_ROUTE = RunnerRoute.TASK_PROGRAM_POLICY
+TASK_PROGRAM_PLAN_ROUTE = RunnerRoute.TASK_PROGRAM_PLAN
 DATASET_SNAPSHOT_ROUTE = RunnerRoute.DATASET_SNAPSHOT
 DATASET_ROWS_ROUTE = RunnerRoute.DATASET_ROWS
 
@@ -239,3 +243,11 @@ def file_transfer_list_path(
     if status is not None:
         query.append(("status", _canonical_query_value(status, field="status")))
     return f"{FILE_TRANSFER_COLLECTION_ROUTE}?{urlencode(query)}"
+
+
+def task_program_policy_path(task_id: str) -> str:
+    return RunnerRoute.TASK_PROGRAM_POLICY.format(task_id=_path_segment(task_id, field="task_id"))
+
+def task_program_plan_path(task_id: str, program: str, *, claim_id: str, attempt: int) -> str:
+    path = RunnerRoute.TASK_PROGRAM_PLAN.format(task_id=_path_segment(task_id, field="task_id"), program=_path_segment(program, field="program"))
+    return f"{path}?{_claim_query(claim_id=claim_id, attempt=attempt)}"

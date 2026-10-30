@@ -71,6 +71,9 @@ class NodeExecutionService(BaseService):
                 registry_entry, claim_id=claim_id, attempt=attempt,
                 execution_api=execution_api,
             )
+            from simstack.runner_runtime.programs import publish_task_program_policy
+            await publish_task_program_policy(context.runner_api, context.runner_adapter,
+                task_id=str(registry_entry.id), claim_id=claim_id, attempt=attempt)
             queue = registry_entry.parameters.queue
 
             if queue == Queue.SLURM_QUEUE:

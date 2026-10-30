@@ -43,6 +43,28 @@ class ExecutionRunnerClient(BaseRunnerClient):
     def _attempt(self, attempt: int) -> None:
         self._protocol(validate_attempt, attempt)
 
+    async def get_program_plan(
+        self, task_id: str, *, claim_id: str, attempt: int, program: str
+    ):
+        from simstack.runner_protocol.paths import task_program_plan_path
+        from simstack.runner_protocol.dto.programs import RunnerProgramPlanResponseV1
+
+        path = task_program_plan_path(
+            task_id, program, claim_id=claim_id, attempt=attempt
+        )
+        response = self._require_object(
+            await self._request("GET", path, retry_safe=True),
+            operation="named-program plan",
+        )
+        result = self._wire_dto(
+            RunnerProgramPlanResponseV1, response, operation="named-program plan"
+        )
+        if (result.task_id, result.claim_id, result.attempt, result.program) != (
+            task_id, claim_id, attempt, program
+        ):
+            raise RunnerApiError("Named-program plan differs from the active task claim")
+        return result
+
     async def task_bootstrap(
         self,
         task_id: str,

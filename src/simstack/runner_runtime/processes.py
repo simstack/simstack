@@ -13,6 +13,7 @@ import re
 import signal
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 _DIAGNOSTIC_STREAM_BYTES = 8 * 1024
 _DIAGNOSTIC_STREAM_LINES = 80
@@ -35,14 +36,45 @@ async def wait_for_worker_exit(process: asyncio.subprocess.Process) -> int:
     return process.returncode
 
 
-def signal_worker_tree(process: asyncio.subprocess.Process, sig: signal.Signals) -> None:
-    try:
-        if os.name != "nt":
-            os.killpg(process.pid, sig)
-        elif process.returncode is None:
+def worker_session_groups(session_id: int) -> set[int]:
+    """Find Linux child groups that share a worker-owned process session.
+
+    Native programs own a subgroup so their timeout can stop all descendants
+    without killing Python. A worker lease loss must also fence those subgroups.
+    This does not traverse arbitrary host process trees or unrelated sessions.
+    """
+    groups = set()
+    proc = Path("/proc")
+    if not proc.is_dir():
+        return groups
+    for item in proc.iterdir():
+        if not item.name.isdecimal():
+            continue
+        try:
+            # comm may contain spaces and parentheses. The fixed fields follow
+            # its final closing parenthesis: state, ppid, pgrp, session.
+            values = (item / "stat").read_text().rpartition(") ")[2].split()
+            if len(values) >= 4 and int(values[3]) == session_id:
+                groups.add(int(values[2]))
+        except (OSError, ValueError):
+            continue
+    return groups
+
+
+def signal_worker_tree(
+    process: asyncio.subprocess.Process, sig: signal.Signals
+) -> None:
+    if os.name != "nt":
+        for group in {process.pid, *worker_session_groups(process.pid)}:
+            try:
+                os.killpg(group, sig)
+            except ProcessLookupError:
+                pass
+    elif process.returncode is None:
+        try:
             process.terminate() if sig == signal.SIGTERM else process.kill()
-    except ProcessLookupError:
-        pass
+        except ProcessLookupError:
+            pass
 
 
 async def terminate_worker_tree(
@@ -142,13 +174,16 @@ def sanitize_worker_diagnostic(value: str, *, secrets: tuple[str, ...]) -> str:
             sanitized = sanitized.replace(secret, _REDACTED)
     sanitized = re.sub(
         r"(?i)(authorization\s*[:=]\s*bearer\s+)[^\s]+",
-        rf"\1{_REDACTED}", sanitized,
+        rf"\1{_REDACTED}",
+        sanitized,
     )
     sanitized = re.sub(
         r"(?i)(SIMSTACK_RUNNER_TOKEN\s*[:=]\s*)[^\s]+",
-        rf"\1{_REDACTED}", sanitized,
+        rf"\1{_REDACTED}",
+        sanitized,
     )
     return "".join(
-        character for character in sanitized
+        character
+        for character in sanitized
         if character in "\n\t" or character.isprintable()
     ).strip()

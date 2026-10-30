@@ -65,6 +65,37 @@ class SupervisorRunnerClient(BaseRunnerClient):
         )
         return parsed
 
+    async def register_program_policy(self, task_id: str, *, policy):
+        from simstack.runner_protocol.paths import task_program_policy_path
+        from simstack.runner_protocol.dto.programs import (
+            RunnerProgramPolicyRequestV1,
+            RunnerProgramPolicyResponseV1,
+        )
+
+        body = self._wire_body(
+            RunnerProgramPolicyRequestV1,
+            policy.model_dump(mode="json"),
+            operation="named-program policy",
+        )
+        response = self._require_object(
+            await self._request(
+                "POST", task_program_policy_path(task_id), body, retry_safe=True
+            ),
+            operation="named-program policy",
+        )
+        result = self._wire_dto(
+            RunnerProgramPolicyResponseV1,
+            response,
+            operation="named-program policy acknowledgement",
+        )
+        if (result.task_id, result.claim_id, result.attempt, result.policy_revision) != (
+            task_id, policy.claim_id, policy.attempt, policy.fingerprint()
+        ):
+            raise RunnerApiError(
+                "Named-program policy acknowledgement differs from the active task claim"
+            )
+        return result
+
     async def pending_workflow_installations(self) -> list[dict[str, Any]]:
         from simstack.runner_protocol.paths import RunnerRoute
 

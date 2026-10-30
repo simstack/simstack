@@ -203,7 +203,13 @@ def load_manifest(source: str | Path, *, max_bytes: int = DEFAULT_INSTALLATION_L
         executable = root / relative
         if executable.is_symlink() or not executable.is_file() or not executable.resolve().is_relative_to(root):
             raise ValueError(f"Workflow executable is not a contained regular file: {relative}")
-    if manifest.workflow.dependencies is None:
+    from simstack.workflows.uv_project import load_uv_project
+    project = load_uv_project(root)
+    if project is not None:
+        if manifest.workflow.dependencies:
+            raise ValueError("uv projects declare dependencies in pyproject.toml and uv.lock, not a second manifest list")
+        manifest.workflow.dependencies = []
+    elif manifest.workflow.dependencies is None:
         project_path = root / "pyproject.toml"
         dependencies = []
         if project_path.is_file():

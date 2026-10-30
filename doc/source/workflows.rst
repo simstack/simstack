@@ -460,10 +460,12 @@ Include ``example/__init__.py`` and this minimal manifest:
 
 ``id``, ``version``, ``modules`` and ``runtime_profile`` are required.
 ``source_root`` defaults to ``.``; use ``source_root = "src"`` for a ``src``
-layout. Explicit ``dependencies`` are optional: when omitted they are read from
-static ``[project].dependencies`` in ``pyproject.toml``, or are empty when there
-is no project file. Dependencies are index requirements; uploaded build recipes,
-URL/path requirements and database-driver dependencies are not supported.
+layout. For projects with ``pyproject.toml`` and ``uv.lock``, omit manifest
+``dependencies``: uv owns the complete dependency graph, sources and platform
+markers. Use the complete source snapshot command below for Git/path packages.
+Legacy manifest-only archives may still list ordinary package-index requirements;
+when omitted, static ``[project].dependencies`` are used if available. Workflows
+cannot install database drivers or replace the operator-deployed Core.
 
 Model schemas, ``Reference`` dependencies, canonical model/node mappings and
 annotated input/output contracts are derived from Python. Do not duplicate them
@@ -566,6 +568,76 @@ ceiling, not a lifetime CPU-seconds allowance for each installation.
 Private dependencies may overlay ordinary libraries, but may not replace Core,
 database namespaces, Python startup files or interpreter-startup hooks.
 
+
+Building an API Runner image
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Build from a clean, committed Core checkout. The Docker build context excludes
+Git metadata, so release builds must provide the exact source commit and its
+setuptools-scm version explicitly:
+
+.. code-block:: bash
+
+    core_revision="$(git rev-parse HEAD)"
+    core_version="$(uv run --no-project --with setuptools-scm python -m setuptools_scm)"
+    docker build --file Dockerfile.runner \
+      --build-arg SIMSTACK_CORE_COMMIT="$core_revision" \
+      --build-arg SIMSTACK_CORE_VERSION="$core_version" \
+      --tag simstack-runner:"$core_revision" .
+
+The image records this operator-owned identity outside workflow packages. A uv
+project selecting another Core revision is rejected with an explicit lock
+compatibility error; its private dependency installation cannot replace Core.
+
+Complete uv project snapshots
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``pyproject.toml`` and ``uv.lock`` are the authoritative Python dependency
+contract. Do not duplicate their requirements in ``simstack-workflow.toml``.
+The SimStack manifest still declares package identity, exported modules, runtime
+profile and optional node/artifact contracts; its ZIP-root location is unchanged.
+
+Create an uploadable source archive from the project checkout:
+
+.. code-block:: bash
+
+    simstack_workflow_snapshot ./my-project --output ../dist/my-project.zip
+
+This verifies the original lock with uv, copies recursive Git submodules at
+their gitlink commits, and includes Git/path dependency sources at the exact
+versions recorded in the lock. uv generates the relocated local-source lock;
+packaging fails if relocation changes package versions, dependency edges or
+platform alternatives. Original project/lock files and source commit/tree
+identities remain in ``.simstack/`` for audit. Native binaries and container
+images belong to resource execution and are not included.
+
+The source snapshot omits Runner ``config.toml``, ``simstack.toml``, tokens,
+``.env`` files, Git metadata and tool caches. Git-ignored generated files are
+omitted, while tracked scientific inputs remain source assets. Keep private
+repository credentials in the author machine's Git credential setup rather
+than embedding them in source URLs or the archive.
+
+``simstack_workflow upload DIRECTORY`` prepares this same complete snapshot
+when the directory has ``uv.lock``. Already prepared archives/folders and legacy
+manifest-only uploads keep the existing flow. The browser folder-to-ZIP feature
+cannot fetch Git dependencies or initialize submodules: upload the prepared ZIP
+for uv projects with external source dependencies.
+
+Server inspection and each Runner use uv with the immutable relocated lock.
+Source builds run offline inside the configured execution boundary; package-index
+artifacts are fetched in the separate preparation stage. Installed source
+packages expose dependent nodes through their ``simstack.modules`` entry points,
+and their exact distribution identities are checked. Ordinary imports preserve
+the original package/module names, so shared scientific models are not copied
+into each workflow namespace.
+
+A project locked to a different Core commit must be migrated and re-locked for
+the intended API release. Packaging does not rewrite scientific algorithms,
+convert ODMantic models, or provide a legacy external-program execution API.
+Existing resource command/container settings remain in the operator's single
+``config.toml``; this source packaging step does not alter those settings.
+
+
 Most Common Errors & Problems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -596,3 +668,61 @@ make sure all imports are relative to simstack. For example:
     from simstack.core.node import node
 
 or relative the other top-level modules. e.g. applications
+
+
+Configured external programs through the task API
+-------------------------------------------------
+
+Workflow code uses ``await simstack.core.programs.run_program(...)`` to run a
+named external program in its current Linux task allocation. The supervisor
+pins an immutable projection of the operator's named program settings to the
+task/claim/attempt through Server APIs. A worker can read only a named invocation
+plan for its active claim; it cannot publish policies or read the operator's
+configuration file. Inline child tasks inherit the exact parent's pinned policy.
+
+Keep program settings in the same operator-owned ``config.toml``. For example,
+these optional settings can accompany the generated Python worker profile::
+
+    [execution.program.orca]
+    run_command = "orca orca.inp > orca.out"
+    scripts = ["source ~/.bashrc", "module load orca"]
+    shell = ["/bin/bash", "-c"]
+    timeout_seconds = 3600
+    worker_environment_allowlist = []
+
+Inside an asynchronous node, with a ``FileStack`` named ``orca.inp``::
+
+    from simstack.core.programs import run_program
+
+    result = await run_program(
+        "orca", input_files=[orca_input], output_names=["orca.out"]
+    )
+    orca_output = result.output_files[0]
+
+Inputs materialize through the supported ``FileStack`` APIs. Output files and
+stdout/stderr are published through the active task API before the helper
+returns; attach the returned files to the node's typed results. Nonzero exits
+raise ``ProgramExecutionError`` with durable ``stdout`` and ``stderr`` file
+references. No direct MongoDB/S3 access or legacy ``ResourceConfig`` is used.
+
+``run_command`` may be a fixed argv list or a string. Plain command strings are
+parsed to argv; ``arguments=[...]`` is appended as literal arguments. Configured
+shell scripts preserve shell syntax and default to Bash. A shell script receiving
+workflow arguments must explicitly use ``"$@"`` or positional parameters; workflow
+values are never interpolated into shell/Jinja source. Declared environment
+variable names must also be preserved by the selected worker profile; ambient
+values and API credentials are not copied into the policy.
+
+Choose the resource, queue and container profile through normal task routing
+before calling the helper. It executes inside that existing allocation, including
+a Slurm compute job or configured container, and does not launch a native program
+on a supervisor/login host. The helper owns a process group for timeout and
+cancellation cleanup; supervisor teardown also fences child groups in the
+worker-owned Linux session. Native programs must not daemonize or escape that
+session. The mechanism is tested with local Linux subprocess fixtures; a real
+ORCA/DFTB installation, cluster allocation and container image still require
+acceptance tests on their configured resource.
+
+Each named invocation uses a trusted Linux child-subreaper wrapper. Descendants
+that create their own process group are cleaned on timeout or normal parent exit
+without terminating another invocation in the same task allocation.

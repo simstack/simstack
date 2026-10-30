@@ -21,6 +21,7 @@ license = { text = "MIT" }
 
 dependencies = [
     "packaging>=24",
+    "tomli-w>=1.2,<2",
     "pydantic>=2.12,<3",
     "cloudpickle>=3.1.1,<4",
     "coolname>=2.2.0,<3",
@@ -38,6 +39,7 @@ Homepage = "https://gitlab.kit.edu/kit/ag_wenzel/simstack-model/"
 
 [project.scripts]
 simstack_workflow = "simstack.workflows.cli:main"
+simstack_workflow_snapshot = "simstack.workflows.snapshot:main"
 simstack_runner = "simstack.core.runner:runner_main"
 run_node = "simstack.core.run_node:run_node_main"
 simstack_write_sample_config = "simstack.util.sample_config:sample_config_writer_entrypoint"

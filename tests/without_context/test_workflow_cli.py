@@ -33,6 +33,46 @@ def test_cli_upload_uses_http_multipart_and_explicit_target_resources(tmp_path):
     assert "user-token" not in request.data.decode(errors="replace")
 
 
+def test_cli_uv_folder_upload_materializes_locked_sources(tmp_path, monkeypatch):
+    from simstack.workflows import snapshot
+
+    (tmp_path / "simstack-workflow.toml").write_text("[workflow]\n")
+    (tmp_path / "uv.lock").write_text("version=1\n")
+    prepared = cli.snapshot_folder(tmp_path)
+    calls = []
+
+    def build(source, output):
+        calls.append(source)
+        output.write_bytes(prepared)
+
+    monkeypatch.setattr(snapshot, "build_snapshot", build)
+    client = InstallationClient("https://example.test/api", "user-token")
+    request = Mock(return_value={"status": "staged"})
+    monkeypatch.setattr(client, "request", request)
+    assert client.upload(tmp_path, ["cpu"])["status"] == "staged"
+    assert calls == [tmp_path]
+    assert prepared in request.call_args.kwargs["body"]
+
+
+def test_cli_prepared_uv_snapshot_is_uploaded_without_resolving_again(
+    tmp_path, monkeypatch
+):
+    from simstack.workflows import snapshot
+
+    (tmp_path / "simstack-workflow.toml").write_text("[workflow]\n")
+    (tmp_path / "uv.lock").write_text("version=1\n")
+    (tmp_path / ".simstack").mkdir()
+    (tmp_path / ".simstack/snapshot.json").write_text('{"version":1,"sources":[]}')
+    builder = Mock(
+        side_effect=AssertionError("Prepared source identity must be preserved")
+    )
+    monkeypatch.setattr(snapshot, "build_snapshot", builder)
+    client = InstallationClient("https://example.test/api", "user-token")
+    monkeypatch.setattr(client, "request", Mock(return_value={"status": "staged"}))
+    assert client.upload(tmp_path, ["cpu"])["status"] == "staged"
+    builder.assert_not_called()
+
+
 def test_cli_preserves_explicit_operator_base_path_without_api_guessing():
     assert (
         InstallationClient("https://example.test/custom/", "token").base
