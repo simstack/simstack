@@ -30,13 +30,16 @@ def sanitized_tail(
     value: bytes | str | None,
     connection_string: str | None,
     *,
-    limit: int = DEFAULT_OUTPUT_LIMIT,
+    limit: int | None = DEFAULT_OUTPUT_LIMIT,
 ) -> str:
     if isinstance(value, bytes):
         text = value.decode(errors="replace")
     else:
         text = value or ""
-    return bounded_tail(redact_connection_string(text, connection_string), limit).strip()
+    redacted = redact_connection_string(text, connection_string)
+    if limit is None:
+        return redacted.strip()
+    return bounded_tail(redacted, limit).strip()
 
 
 def sanitized_command(

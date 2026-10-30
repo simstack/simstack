@@ -122,15 +122,11 @@ async def test_async_parent_fanout_creates_slurm_children_with_nested_hash_traps
             existing_nm.function_mapping = nm.function_mapping
             await context.db.save(existing_nm)
     custom_name = f"hash-fanout-{uuid.uuid4()}"
-    submitted_ids = []
 
-    async def fake_submit_node(entry: NodeRegistry) -> None:
-        submitted_ids.append(entry.id)
-        entry.status = TaskStatus.COMPLETED
-        entry.job_id = f"fake-slurm-{len(submitted_ids)}"
-        await context.db.save(entry)
+    async def complete_on_host(self):
+        return await self.execute_node_locally()
 
-    monkeypatch.setattr("simstack.core.submit_node.submit_node", fake_submit_node)
+    monkeypatch.setattr(Node, "_wait_for_remote_completion", complete_on_host)
 
     result = await hashing_fanout_parent_in_tests(
         IntData(value=50),
@@ -138,7 +134,6 @@ async def test_async_parent_fanout_creates_slurm_children_with_nested_hash_traps
     )
 
     assert result.value == 50
-    assert len(submitted_ids) == 50
 
     entries = await context.db.find(NodeRegistry)
     parent_entries = [
@@ -158,7 +153,6 @@ async def test_async_parent_fanout_creates_slurm_children_with_nested_hash_traps
     ]
 
     assert len(child_entries) == 50
-    assert {entry.id for entry in child_entries} == set(submitted_ids)
     assert {entry.call_path for entry in child_entries} == {
         ".hashing_fanout_parent_in_tests.hashing_fanout_child_in_tests",
     }

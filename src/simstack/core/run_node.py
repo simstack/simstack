@@ -11,6 +11,10 @@ from simstack.core.run_node_protocol import RunNodeResult, encode_run_node_resul
 from simstack.core.services.node_execution_service import (
     run_node_from_registry_with_outcome,
 )
+from simstack.core.services.task_termination import (
+    TERMINATED_BY_USER,
+    record_process_id,
+)
 from simstack.util.sanitized_output import sanitized_tail
 
 logger = logging.getLogger("Run Node")
@@ -44,7 +48,7 @@ async def run_node_from_id(
             "project_root": project_root,
             "in_docker": bool(in_docker),
         }
-        # Host workdirs (e.g. C:/Users/...) are bind-mounted at a neutral path.
+        # Host resource workdir is bind-mounted at CONTAINER_WORKDIR.
         if in_docker:
             init_kwargs["workdir"] = CONTAINER_WORKDIR
         await context.initialize(**init_kwargs)
@@ -58,6 +62,13 @@ async def run_node_from_id(
         if not registry_entry:
             logger.error(f"Node with ID {node_id} not found in the database")
             return RunNodeResult(False, "none", f"Node {node_id} not found")
+        if registry_entry.status == TaskStatus.TERMINATING:
+            return RunNodeResult(
+                False,
+                "none",
+                registry_entry.error or TERMINATED_BY_USER,
+            )
+        await record_process_id(registry_entry, os.getpid(), context.db)
         parameters = registry_entry.parameters
         if parameters.in_docker and not in_docker:
             docker_result = await run_docker_with_outcome(registry_entry)

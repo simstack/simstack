@@ -31,7 +31,6 @@ from simstack.core.node_claim import (
     claim_submitted_node,
 )
 from simstack.core.node_runner import NodeRunner
-from simstack.core.node_code_version import node_code_version
 from simstack.core.process_results import process_result_helper
 from simstack.core.resource_assignment import (
     ResourceAssignmentResolution,
@@ -120,7 +119,16 @@ def should_handoff_nested_execution(
     On the host, only Docker tasks need a handoff to the runner. In a
     container, an explicit non-Docker task always returns to the host. A
     Docker task stays inline only when both images are known and equal.
+    ``Parameters.separate_cloud_vm`` hands the child off even when the image
+    matches, so the cloud poller can start another VM.
     """
+    if getattr(parameters, "separate_cloud_vm", False):
+        logger.info(
+            "Nested execution handoff: separate_cloud_vm child %s decision=True",
+            node_name,
+        )
+        return True
+
     in_container = process_is_in_docker()
     assignment_in_docker = bool(getattr(parameters, "in_docker", False))
     child_image = None
@@ -258,6 +266,25 @@ def _is_self_resource(parameters: Optional[Parameters]) -> bool:
     return resource == "self"
 
 
+def _explicit_cloud_child_needs_own_vm(parameters: Optional[Parameters]) -> bool:
+    """True when a cloud assignment from a cloud process needs another VM.
+
+    ``self`` stays on the VM that is already running. An explicit ``cloud``
+    resource with the default queue stays submitted so the Hetzner
+    orchestrator provisions a VM from that child's slurm parameters, including
+    when the Docker image matches the caller.
+    """
+    if parameters is None or _is_self_resource(parameters):
+        return False
+    if parameters.resource != "cloud" or parameters.queue != Queue.DEFAULT:
+        return False
+    try:
+        current_resource = context.config.resource
+    except RuntimeError:
+        return False
+    return current_resource == "cloud"
+
+
 def _execution_route(parameters: Optional[Parameters]) -> Optional[dict[str, Any]]:
     """Return the persisted fields that determine where a task executes."""
     if not isinstance(parameters, Parameters):
@@ -282,15 +309,13 @@ async def _find_reusable_task(
     *,
     name: str,
     arg_hash: str,
-    function_hash: str,
     execution_parameters: Parameters,
 ) -> Optional[NodeRegistry]:
     """Select a completed result or an existing task on the same route."""
     candidates = await db.find(
         NodeRegistry,
         (NodeRegistry.name == name)
-        & (NodeRegistry.arg_hash == arg_hash)
-        & (NodeRegistry.function_hash == function_hash),
+        & (NodeRegistry.arg_hash == arg_hash),
     )
     for candidate in candidates:
         if candidate.status == TaskStatus.COMPLETED:
@@ -515,6 +540,9 @@ class Node:
             self._owns_inline_nested_execution = True
             return
 
+        if _explicit_cloud_child_needs_own_vm(self.parameters):
+            return
+
         if not process_is_in_docker():
             return
 
@@ -665,9 +693,9 @@ class Node:
 
         This method ensures that a task entry exists in the database for the
         current task. It computes hashes of its arguments, checks if a
-        database entry already matches the node name, argument hash and code
-        version, and creates a new entry if no match is found. Code identity
-        excludes source paths, comments and line numbers. If the
+        database entry already matches the node name and argument hash, and
+        creates a new entry if no match is found. Function identity is
+        versioned by git rather than by hashing the function body. If the
         database is not connected, an exception is raised.
 
         :raises ValueError: if the database is not connected.
@@ -678,7 +706,8 @@ class Node:
             raise ValueError("Database is not connected")
 
         arg_hash = compute_arg_hash(self._args)
-        function_hash = node_code_version(self._func)
+        # Function identity is versioned by git, not by hashing the function body.
+        function_hash = ""
         self._arg_hash = arg_hash
         self._function_hash = function_hash
 
@@ -690,7 +719,6 @@ class Node:
                 context.db,
                 name=self.name,
                 arg_hash=arg_hash,
-                function_hash=function_hash,
                 execution_parameters=self.parameters,
             )
 
@@ -856,6 +884,7 @@ class Node:
             " ".join(clean_cmd),
         )
 
+        proc = None
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -882,6 +911,37 @@ class Node:
                 },
             )
             stdout_b, stderr_b = await proc.communicate()
+        except asyncio.CancelledError:
+            # TaskGroup cancellation is a BaseException, so the handler below
+            # never runs. Kill this child or its row stays RUNNING.
+            from simstack.core.services.fail_children import fail_abandoned_child
+
+            pids: tuple[int, ...] = ()
+            if proc is not None and proc.returncode is None:
+                pid = getattr(proc, "pid", None)
+                if type(pid) is int and pid > 0:
+                    pids = (pid,)
+                elif pid is not None:
+                    logger.error(
+                        "Task task_id: %s process_id must be a positive int, got %r",
+                        self.id,
+                        pid,
+                    )
+            await fail_abandoned_child(
+                self.registry_entry,
+                parent_id=self.parent_id,
+                runner_pid=os.getpid(),
+                extra_pids=pids,
+            )
+            if proc is not None and proc.returncode is None:
+                try:
+                    await proc.wait()
+                except Exception:
+                    logger.exception(
+                        "Task task_id: %s run_node child could not be reaped",
+                        self.id,
+                    )
+            raise
         except Exception as exc:
             error = sanitized_tail(str(exc), connection_string)
             self.registry_entry.status = TaskStatus.FAILED
@@ -1004,6 +1064,14 @@ class Node:
                 return await self.run_node_as_process()
             return await self._wait_for_remote_completion()
 
+        if _explicit_cloud_child_needs_own_vm(self.parameters):
+            logger.info(
+                "Task task_id: %s explicit cloud child of a cloud process; "
+                "waiting for a new VM",
+                self.id,
+            )
+            return await self._wait_for_remote_completion()
+
         same_resource_default_queue = (
             context.config.resource == self.parameters.resource
             and self.parameters.queue == Queue.DEFAULT
@@ -1020,12 +1088,12 @@ class Node:
                 return await self.run_node_as_process()
             return await self._wait_for_remote_completion()
 
-        if await self._submit_same_resource_slurm_node():
-            logger.info(
-                "Task task_id: %s submitted Slurm node directly from resource %s",
-                self.id,
-                context.config.resource,
-            )
+        logger.info(
+            "Task task_id: %s left SUBMITTED for host runner resource %s queue %s",
+            self.id,
+            self.parameters.resource,
+            self.parameters.queue,
+        )
         return await self._wait_for_remote_completion()
 
     async def _persist_nested_execution_handoff(self) -> bool:
@@ -1066,60 +1134,51 @@ class Node:
         self,
     ) -> Union[Model, SimstackResult, bool, None]:
         logger.info(f"entering wait for completion for task_id: {self.id}")
-        while True:
-            new_registry_entry = await context.db.load_task_by_id(self.id)
-            # TODO(recovery): A creator-owned RETRIEVED child can be reused by a
-            # later identical run after its container dies. Persist an execution
-            # owner/process or container ID and track liveness before failing or
-            # reclaiming it; wall-clock timeouts are unsafe for months-long jobs.
-            if new_registry_entry is None:
-                raise RuntimeError(
-                    f"Task task_id: {self.id} could not be found in the database"
-                )
-            new_status = new_registry_entry.status
-            if (
-                new_status != TaskStatus.RUNNING
-                and new_status != TaskStatus.SLURM_RUNNING
-                and new_status != TaskStatus.SUBMITTED
-                and new_status != TaskStatus.SLURM_QUEUED
-                and new_status != TaskStatus.RETRIEVED
-            ):
-                break
+        try:
+            while True:
+                new_registry_entry = await context.db.load_task_by_id(self.id)
+                # TODO(recovery): A creator-owned RETRIEVED child can be reused by a
+                # later identical run after its container dies. Persist an execution
+                # owner/process or container ID and track liveness before failing or
+                # reclaiming it; wall-clock timeouts are unsafe for months-long jobs.
+                if new_registry_entry is None:
+                    raise RuntimeError(
+                        f"Task task_id: {self.id} could not be found in the database"
+                    )
+                new_status = new_registry_entry.status
+                if (
+                    new_status != TaskStatus.RUNNING
+                    and new_status != TaskStatus.SLURM_RUNNING
+                    and new_status != TaskStatus.SUBMITTED
+                    and new_status != TaskStatus.SLURM_QUEUED
+                    and new_status != TaskStatus.RETRIEVED
+                ):
+                    break
 
-            print(f"Task task_id: {self.id} is waiting for results")
-            await asyncio.sleep(5)
+                print(f"Task task_id: {self.id} is waiting for results")
+                await asyncio.sleep(5)
 
-        self.registry_entry = new_registry_entry
-        if new_status == TaskStatus.COMPLETED:
-            logger.info(f"Task task_id: {self.id} completed remotely")
-            return await self.load_results()
-        error = sanitized_tail(
-            new_registry_entry.error or f"terminated with status {new_status}",
-            getattr(context.config, "connection_string", None),
-        )
-        raise RuntimeError(
-            f"Task task_id: {self.id} node: {self.name} failed with {error}"
-        )
+            self.registry_entry = new_registry_entry
+            if new_status == TaskStatus.COMPLETED:
+                logger.info(f"Task task_id: {self.id} completed remotely")
+                return await self.load_results()
+            error = sanitized_tail(
+                new_registry_entry.error or f"terminated with status {new_status}",
+                getattr(context.config, "connection_string", None),
+                limit=None,
+            )
+            raise RuntimeError(
+                f"Task task_id: {self.id} node: {self.name} failed with {error}"
+            )
+        except asyncio.CancelledError:
+            from simstack.core.services.fail_children import fail_abandoned_child
 
-    async def _submit_same_resource_slurm_node(self) -> bool:
-        """Submit a same-resource Slurm node before polling it.
-
-        This is primarily needed when a parent already running on a resource
-        creates a Slurm child for that resource. The same path also supports a
-        top-level Python caller on the resource. The atomic claim prevents a
-        concurrent resource runner from submitting the node twice.
-        """
-        if self.registry_entry is None:
-            return False
-        if self.parameters.queue != Queue.SLURM_QUEUE:
-            return False
-        if self.parameters.resource != context.config.resource:
-            return False
-        from simstack.core.submit_node import submit_node
-
-        if not await claim_submitted_node(self.registry_entry):
-            return False
-        return await submit_node(self.registry_entry)
+            await fail_abandoned_child(
+                self.registry_entry,
+                parent_id=self.parent_id,
+                runner_pid=os.getpid(),
+            )
+            raise
 
     async def execute_node_locally(self) -> Union[Model, SimstackResult, None]:
         """
@@ -1210,7 +1269,9 @@ class Node:
             except Exception as e:
                 # Save the error message if possible
                 clean_error = sanitized_tail(
-                    str(e), getattr(context.config, "connection_string", None)
+                    str(e),
+                    getattr(context.config, "connection_string", None),
+                    limit=None,
                 )
                 if self.registry_entry:
                     self.registry_entry.error = clean_error
@@ -1304,6 +1365,7 @@ class Node:
                     clean_error = sanitized_tail(
                         result.error_message,
                         getattr(context.config, "connection_string", None),
+                        limit=None,
                     )
                     self.registry_entry.error = clean_error
                     logger.error(
@@ -1340,6 +1402,11 @@ class Node:
     async def set_status(self, status: TaskStatus) -> None:
         if self.registry_entry is None:
             raise ValueError("Task has no registry entry")
+        if (
+            status == TaskStatus.RUNNING
+            and self.registry_entry.status == TaskStatus.TERMINATING
+        ):
+            raise RuntimeError("Terminated by user")
         if isinstance(status, TaskStatus):
             self.registry_entry.status = status
         else:
@@ -1347,6 +1414,10 @@ class Node:
             self.registry_entry.status = TaskStatus(status)
         await context.db.save(self.registry_entry)
         logger.info(f"Task task_id: {self.id} {self.name} is set to {status}, id is: {self.id}")
+        if status == TaskStatus.FAILED:
+            from simstack.core.services.fail_children import fail_and_terminate_children
+
+            await fail_and_terminate_children(self.id, runner_pid=os.getpid())
 
 
 async def _hydrate_embedded_file_stacks(
@@ -1443,8 +1514,8 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
 
     This function can delete the registry_entry !!!
     The only way that registry_entry.function_hash is "NOT INITIALIZED" is when the node
-    is created from the frontend. Pending entries acquire the imported implementation's
-    code version before completed-result reuse is considered.
+    is created from the frontend. Function identity is versioned by git, so an
+    uninitialized function_hash is stored as empty rather than hashed from source.
     No other node is listening specifically for this registry_entry to complete.
     If a duplicate is found the node from the duplication is returned
 
@@ -1472,6 +1543,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 f"Failed to load input {ref.variable_mapping} with id "
                 f"{ref.reference}: {e}",
                 getattr(context.config, "connection_string", None),
+                limit=None,
             )
             registry_entry.status = TaskStatus.FAILED
             registry_entry.error = error
@@ -1502,22 +1574,14 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             )
             completed = registry_entry.status == TaskStatus.COMPLETED
             if not completed or registry_entry.parameters.force_rerun:
-                current_code_version = node_code_version(func)
                 declared_version = getattr(func, "_node_version", None)
-                if (completed or registry_entry.function_hash not in ("", "NOT INITIALIZED")) and registry_entry.function_hash != current_code_version:
-                    raise ValueError(
-                        f"Node code version mismatch for {registry_entry.name}: "
-                        f"submitted {registry_entry.function_hash} (version={registry_entry.version!r}), "
-                        f"worker {current_code_version} (version={declared_version!r}); "
-                        "use the submitted implementation or submit a new task"
-                    )
                 if registry_entry.version is not None and registry_entry.version != declared_version:
                     raise ValueError(
                         f"Declared node version mismatch for {registry_entry.name}: "
                         f"submitted {registry_entry.version!r}, worker {declared_version!r}"
                     )
                 if not completed:
-                    registry_entry.function_hash = current_code_version
+                    registry_entry.function_hash = ""
                     registry_entry.version = declared_version
                     registry_entry.is_async = asyncio.iscoroutinefunction(func)
         else:
@@ -1528,6 +1592,7 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
         error = sanitized_tail(
             f"Failed to import function {registry_entry.func_mapping}: {e}",
             getattr(context.config, "connection_string", None),
+            limit=None,
         )
         registry_entry.status = TaskStatus.FAILED
         registry_entry.error = error
@@ -1547,7 +1612,6 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 NodeRegistry,
                 (NodeRegistry.name == registry_entry.name)
                 & (NodeRegistry.arg_hash == registry_entry.arg_hash)
-                & (NodeRegistry.function_hash == registry_entry.function_hash)
                 & (NodeRegistry.status == TaskStatus.COMPLETED)
                 & (NodeRegistry.id != registry_entry.id),
             )
@@ -1658,10 +1722,8 @@ def node(
     @node(name="example")
     def func(): ...
 
-    Code, defaults and initial captured values determine cached-result identity.
-    Set or bump ``version`` when external dependencies or runtime configuration
-    change without changing the node implementation. Opaque captured/default
-    objects require an explicit version.
+    Cached-result identity is the node name and argument hash. Function identity
+    is versioned by git rather than by hashing the function body.
 
     """
 
@@ -1748,6 +1810,7 @@ def node(
                     error = sanitized_tail(
                         current_registry_entry.error,
                         getattr(context.config, "connection_string", None),
+                        limit=None,
                     )
                     raise RuntimeError(
                         f"task_id: {current_registry_entry.id} node: "
@@ -1799,6 +1862,7 @@ def node(
                     error = sanitized_tail(
                         execution_node.registry_entry.error,
                         getattr(context.config, "connection_string", None),
+                        limit=None,
                     )
                     raise RuntimeError(
                         f"task_id: {execution_node.registry_entry.id} node: "
@@ -1814,6 +1878,7 @@ def node(
                     error = sanitized_tail(
                         execution_node.registry_entry.error,
                         getattr(context.config, "connection_string", None),
+                        limit=None,
                     )
                     raise RuntimeError(
                         f"task_id: {execution_node.registry_entry.id} node: "

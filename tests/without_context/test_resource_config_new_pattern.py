@@ -15,13 +15,15 @@ class MockFileStack:
 def test_run_with_parameters_override(tmp_path):
     config_file = tmp_path / "config.toml"
     content = """
+[local.setup]
+tmp_base_dir = "{base_dir}"
 [local.program.orca]
 use_temp = true
 run_command = "python -c \\"import shutil; import sys; shutil.copy('param_in.txt', 'param_out.txt')\\""
 input_files = ["toml_in.txt"]
 output_files = ["toml_out.txt"]
 scratch_cleanup = false
-"""
+""".replace("{base_dir}", (tmp_path / "scratch_base").as_posix())
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")
     
@@ -51,11 +53,13 @@ scratch_cleanup = false
 def test_run_with_filestack_input(tmp_path):
     config_file = tmp_path / "config.toml"
     content = """
+[local.setup]
+tmp_base_dir = "{base_dir}"
 [local.program.orca]
 use_temp = true
 run_command = "python -c \\"import shutil; shutil.copy('fs_in.txt', 'fs_out.txt')\\""
 scratch_cleanup = false
-"""
+""".replace("{base_dir}", (tmp_path / "scratch_base").as_posix())
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")
     
@@ -88,10 +92,12 @@ scratch_cleanup = false
 def test_run_with_filestack_output_name_handling(tmp_path):
     config_file = tmp_path / "config.toml"
     content = """
+[local.setup]
+tmp_base_dir = "{base_dir}"
 [local.program.orca]
 use_temp = true
 run_command = "python -c \\"open('fs_out.txt', 'w').write('fs result')\\""
-"""
+""".replace("{base_dir}", (tmp_path / "scratch_base").as_posix())
     config_file.write_text(content)
     rc = ResourceConfig(tmp_path, "local")
     

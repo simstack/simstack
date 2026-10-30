@@ -1,6 +1,7 @@
 import copy
 import tomllib
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -158,15 +159,40 @@ class ResourceConfig:
 
     @property
     def tmp_base_dir(self) -> Path:
-        tmp_base_dir_str = self.get_setup_params().get("tmp_base_dir", "")
+        configured = self.get_setup_params().get("tmp_base_dir", None)
+        candidates = []
+        if configured:
+            text = str(configured).strip()
+            for match in re.finditer(
+                r'(?:^|\n)\s*(?:set\s+|export\s+)?TMP_BASE_DIR\s*=\s*["\']?([^\n"\']+)',
+                text,
+                re.IGNORECASE,
+            ):
+                candidates.append(match.group(1).strip())
+            if "\n" not in text and not re.search(r"\bif\b", text, re.IGNORECASE):
+                if not re.search(r"TMP_BASE_DIR\s*=", text, re.IGNORECASE):
+                    candidates.append(text)
+        env_tmp_base = os.environ.get("TMP_BASE_DIR")
+        if env_tmp_base:
+            candidates.append(env_tmp_base)
 
-        if tmp_base_dir_str:
-            expanded_path_str = os.path.expandvars(os.path.expanduser(tmp_base_dir_str))
-            path = Path(expanded_path_str)
-            path.mkdir(parents=True, exist_ok=True)
-            return path
+        last_error = None
+        for raw in candidates:
+            expanded = os.path.expandvars(os.path.expanduser(raw.strip().strip('"')))
+            if not expanded or "$" in expanded or (os.name == "nt" and "%" in expanded):
+                continue
+            path = Path(expanded)
+            try:
+                path.mkdir(parents=True, exist_ok=True)
+                return path
+            except OSError as exc:
+                last_error = exc
 
-        # Default to system temp directory if no command/path specified
+        if configured:
+            raise ValueError(
+                f"Could not resolve tmp_base_dir from {configured!r}"
+                + (f": {last_error}" if last_error else "")
+            )
         return Path(tempfile.gettempdir())
 
     def run(self,
@@ -174,39 +200,109 @@ class ResourceConfig:
         input_files: Optional[List[Union[str, "FileStack"]]] = None,
         output_files: Optional[List[Union[str, "FileStack"]]] = None,
         node_runner: Optional[Any] = None,
-    ):
+        command: str = "run_command",
+        name: Optional[str] = None,
+        env: Optional[Dict[str, str]] = None,
+    ) -> bool:
         """
-        Executes the run command with optional temporary directory usage and file handling.
-        Retrieves parameters from the configuration for the specified program.
+        Executes a command from the program table with optional temporary
+        directory usage and file handling.
 
         Args:
             program_name: Name of the program to run.
             input_files: List of input files (str or FileStack). Overrides TOML input_files if provided.
             output_files: List of output files (str or FileStack). Overrides TOML output_files if provided.
             node_runner: Optional NodeRunner instance for execution.
-        """
+            command: Key in ``[<resource>.program.<name>]`` whose string is
+                executed. Defaults to ``run_command``. Use e.g.
+                ``define_command`` for a second launcher on the same table.
+            env: Environment overrides for this subprocess only.
+            name: Subprocess log name for NodeRunner. Defaults to ``"run"``.
 
+        Returns:
+            True if the subprocess returned 0, False otherwise. Without a
+            node_runner, ``subprocess.run(..., check=True)`` raises on failure
+            and this method returns True.
+
+        Raises:
+            ValueError: ``command`` is empty, or the program table is missing
+                that key or the value is not a non-empty string.
+        """
+        if not isinstance(command, str) or not command.strip():
+            raise ValueError(f"command must be a non-empty string, got {command!r}")
+
+        # Overrides belong to this invocation, never the global process.
+        env_kwargs = {"env": env} if env is not None else {}
         params = self.get_program(program_name)
-        run_command = params.get("run_command", "")
-        
+        if command not in params:
+            raise ValueError(
+                f"config.toml [{self._resource}.program.{program_name}] "
+                f"is missing {command!r}"
+            )
+        run_command = params[command]
+        if not isinstance(run_command, str) or not run_command.strip():
+            raise ValueError(
+                f"config.toml [{self._resource}.program.{program_name}] "
+                f"{command!r} must be a non-empty string, got {run_command!r}"
+            )
+
         if input_files is None:
             input_files = params.get("input_files", [])
         
         if output_files is None:
             output_files = params.get("output_files", [])
-            
-        use_temp = params.get("use_temp", False)
-        
-        # tmp_base_dir can come from setup or the program itself, but usually it's in setup for the resource
-    
+
+        if "use_tmp" in params and "use_temp" in params:
+            if bool(params["use_tmp"]) != bool(params["use_temp"]):
+                raise ValueError(
+                    f"Program {program_name!r} has conflicting use_tmp="
+                    f"{params['use_tmp']!r} and use_temp={params['use_temp']!r}"
+                )
+        if "use_tmp" in params:
+            use_temp = params["use_tmp"]
+        elif "use_temp" in params:
+            use_temp = params["use_temp"]
+        else:
+            use_temp = False
+        if not isinstance(use_temp, bool):
+            raise ValueError(
+                f"use_tmp/use_temp for program {program_name!r} must be a bool, "
+                f"got {use_temp!r}"
+            )
+
+        if node_runner is not None:
+            from simstack.core.node_runner import NodeRunner
+
+            if isinstance(node_runner, NodeRunner):
+                if use_temp:
+                    node_runner.stage(input_files=input_files)
+                    ok = node_runner.execute(
+                        program_name, command=command, name=name, **env_kwargs
+                    )
+                    node_runner.retrieve(output_files=output_files)
+                    return ok
+                return node_runner.execute(
+                    program_name, command=command, name=name, **env_kwargs
+                )
+
         # scratch_cleanup from postprocessing
         post_params = self.get_postprocessing_params()
         scratch_cleanup = params.get("scratch_cleanup", post_params.get("scratch_cleanup", False))
 
+        subprocess_name = "run" if name is None else name
+        ok = True
         tmp_dir = None
         try:
             exec_dir = Path.cwd()
             if use_temp:
+                if not self.get_setup_params().get("tmp_base_dir") and not os.environ.get(
+                    "TMP_BASE_DIR"
+                ):
+                    raise ValueError(
+                        f"Program {program_name!r} has use_tmp=true but tmp_base_dir "
+                        "is not set in config.toml [resource.setup] and TMP_BASE_DIR "
+                        "is not in the environment"
+                    )
                 tmp_id = node_runner.task_id if node_runner else uuid.uuid4()
                 tmp_dir = self.tmp_dir(tmp_id)
                 exec_dir = tmp_dir
@@ -220,12 +316,18 @@ class ResourceConfig:
                         if src.exists() and src != exec_dir / f:
                             shutil.copy(src, exec_dir / f)
 
-            # Execute run_command
             if node_runner and hasattr(node_runner, "subprocess"):
-                node_runner.subprocess("run", run_command, cwd=str(exec_dir))
+                ok = bool(
+                    node_runner.subprocess(
+                        subprocess_name, run_command, cwd=str(exec_dir), **env_kwargs
+                    )
+                )
             else:
-                subprocess.run(run_command, shell=True, check=True, cwd=exec_dir)
-
+                subprocess.run(
+                    run_command, shell=True, check=True, cwd=exec_dir,
+                    **({"env": {**os.environ, **env}} if env is not None else {}),
+                )
+                ok = True
 
             # Copy output files back to cwd
             if use_temp and tmp_dir:
@@ -242,6 +344,7 @@ class ResourceConfig:
         finally:
             if scratch_cleanup and tmp_dir and tmp_dir.exists():
                 shutil.rmtree(tmp_dir)
+        return ok
 
     def get_docker_registry(self, resource: str | None = None) -> Optional[str]:
         """Optional registry host for ``docker pull`` (e.g. ``167.233.117.31:5000``).

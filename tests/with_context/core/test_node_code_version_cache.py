@@ -14,11 +14,9 @@ async def _implementation_after(data: FloatData, **kwargs) -> FloatData:
 
 
 @pytest.mark.asyncio
-async def test_changed_implementation_executes_instead_of_loading_old_results(initialized_context, monkeypatch):
+async def test_changed_implementation_reuses_cached_results(initialized_context, monkeypatch):
     # Model one public node before and after a code update, with the same
-    # module, qualified name and inputs so only its implementation differs.
-    # Both revisions live in this interpreter; exercise the real execution and
-    # cache persistence paths without starting a child that can import only one.
+    # module, qualified name and inputs. Cache identity is name + arg_hash.
     monkeypatch.setattr(Node, "run_node_as_process", Node.execute_node_locally)
     for implementation in (_implementation_before, _implementation_after):
         implementation.__name__ = "versioned_workflow"
@@ -39,10 +37,10 @@ async def test_changed_implementation_executes_instead_of_loading_old_results(in
         old_entries = await context.db.find(NodeRegistry, NodeRegistry.name == "versioned_workflow")
         assert len(old_entries) == 1
 
-        assert (await updated_node(inputs)).value == 8102028.0
+        assert (await updated_node(inputs)).value == 8102027.0
         entries = await context.db.find(NodeRegistry, NodeRegistry.name == "versioned_workflow")
-        assert len(entries) == 2
-        assert len({entry.function_hash for entry in entries}) == 2
+        assert len(entries) == 1
+        assert entries[0].function_hash == ""
     finally:
         entries = await context.db.find(NodeRegistry, NodeRegistry.name == "versioned_workflow")
         for entry in entries:

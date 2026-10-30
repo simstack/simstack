@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -6,6 +7,7 @@ import pytest
 
 from simstack.core.run_docker import (
     CONTAINER_WORKDIR,
+    LEGACY_CONTAINER_WORKDIR,
     DockerRunResult,
     container_resource_args,
     docker_cidfile_path,
@@ -25,6 +27,14 @@ from simstack.util.resource_config import ResourceConfig
 
 
 _SUCCESS_PROTOCOL = encode_run_node_result(RunNodeResult(True, "bool")).encode()
+
+
+@pytest.fixture(autouse=True)
+def _runner_owner_ids(monkeypatch):
+    monkeypatch.setattr(
+        "simstack.core.run_docker.launcher_owner_ids",
+        lambda: (1000, 1000),
+    )
 
 
 def test_ensure_host_task_workdir_creates_node_and_task_dirs(tmp_path: Path):
@@ -70,12 +80,7 @@ def test_docker_memory_limit_uses_mem_and_mem_per_cpu():
 def test_container_resource_args_for_docker_and_apptainer():
     slurm = SimpleNamespace(cpus_per_task=4, tasks=2, mem="8G")
     assert container_resource_args("docker", slurm) == ["--cpus", "8", "--memory", "8g"]
-    assert container_resource_args("apptainer", slurm) == [
-        "--cpus",
-        "8",
-        "--memory",
-        "8G",
-    ]
+    assert container_resource_args("apptainer", slurm) == []
     assert container_resource_args("docker", None) == []
 
 
@@ -104,7 +109,10 @@ def _mock_context(tmp_path: Path, resource_config: ResourceConfig):
             connection_string="mongodb://localhost:27017",
             db_name="test_db",
         ),
-        db=SimpleNamespace(save=AsyncMock()),
+        db=SimpleNamespace(
+            save=AsyncMock(),
+            get_collection=lambda model: SimpleNamespace(update_one=AsyncMock()),
+        ),
     )
 
 
@@ -151,7 +159,7 @@ async def test_run_docker_does_not_fallback_to_context_registry(tmp_path: Path):
     resource_config = ResourceConfig(tmp_path, "local")
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry(resource="remote")
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 0
     proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
 
@@ -182,7 +190,7 @@ async def test_run_docker_reloads_config_before_image_lookup(tmp_path: Path):
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry()
 
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 0
     proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
 
@@ -193,7 +201,7 @@ async def test_run_docker_reloads_config_before_image_lookup(tmp_path: Path):
         result = await run_docker(registry_entry)
 
     assert result is True
-    cmd = mock_exec.await_args.args
+    cmd = mock_exec.await_args_list[0].args
     assert "molecular-qm-psi4:latest" in cmd
     assert "--cpus" not in cmd
     assert "--memory" not in cmd
@@ -215,7 +223,7 @@ async def test_run_docker_applies_slurm_cpu_and_memory_limits(tmp_path: Path):
         slurm_parameters=SimpleNamespace(cpus_per_task=4, tasks=2, mem="8G")
     )
 
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 0
     proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
 
@@ -226,12 +234,43 @@ async def test_run_docker_applies_slurm_cpu_and_memory_limits(tmp_path: Path):
         result = await run_docker(registry_entry)
 
     assert result is True
-    cmd = list(mock_exec.await_args.args)
+    cmd = list(mock_exec.await_args_list[0].args)
     image_index = cmd.index("molecular-qm-psi4:latest")
     assert cmd[:image_index][cmd[:image_index].index("--cpus") + 1] == "8"
     assert cmd[:image_index][cmd[:image_index].index("--memory") + 1] == "8g"
     assert cmd.index("--cpus") < image_index
     assert cmd.index("--memory") < image_index
+
+
+@pytest.mark.asyncio
+async def test_run_docker_apptainer_omits_cpu_and_memory_flags(tmp_path: Path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        "[local.program.psi4_calculator]\n"
+        'docker_image = "molecular-qm-psi4:latest"\n'
+        'docker_cmd = "apptainer"\n'
+    )
+    resource_config = ResourceConfig(tmp_path, "local")
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry(
+        slurm_parameters=SimpleNamespace(cpus_per_task=4, tasks=2, mem="8G")
+    )
+
+    proc = AsyncMock(pid=4242)
+    proc.returncode = 0
+    proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch("asyncio.create_subprocess_exec", AsyncMock(return_value=proc)) as mock_exec,
+    ):
+        result = await run_docker(registry_entry)
+
+    assert result is True
+    command = list(mock_exec.await_args.args)
+    assert command[:2] == ["apptainer", "run"]
+    assert "--cpus" not in command
+    assert "--memory" not in command
 
 
 @pytest.mark.asyncio
@@ -310,7 +349,7 @@ def _fake_docker_exec(*, returncode: int = 0, cid: str = "cid123"):
             cidfile = Path(cmd_list[cmd_list.index("--cidfile") + 1])
             cidfile.parent.mkdir(parents=True, exist_ok=True)
             cidfile.write_text(cid + "\n", encoding="utf-8")
-        proc = AsyncMock()
+        proc = AsyncMock(pid=4242)
         proc.returncode = returncode
         stdout = _SUCCESS_PROTOCOL if returncode == 0 else b""
         proc.communicate = AsyncMock(return_value=(stdout, b""))
@@ -335,12 +374,16 @@ async def test_run_docker_passes_cidfile(tmp_path: Path):
         result = await run_docker(registry_entry)
 
     assert result is True
-    cmd = list(mock_exec.await_args.args)
+    cmd = list(mock_exec.await_args_list[0].args)
     assert "--cidfile" in cmd
     cidfile = Path(cmd[cmd.index("--cidfile") + 1])
     expected = tmp_path / "psi4_calculator" / "abc123" / ".docker_cid"
     assert cidfile == expected
     assert f"{tmp_path}:{CONTAINER_WORKDIR}" in cmd
+    assert f"{tmp_path}:{LEGACY_CONTAINER_WORKDIR}" in cmd
+    assert CONTAINER_WORKDIR == "/mnt"
+    assert LEGACY_CONTAINER_WORKDIR == "/tmp/simstack"
+    assert not CONTAINER_WORKDIR.startswith("/tmp")
     assert not CONTAINER_WORKDIR.startswith("/root/")
 
 
@@ -394,7 +437,7 @@ async def test_run_docker_sigkill_without_oomkilled_sets_error(tmp_path: Path):
 
 
 @pytest.mark.asyncio
-async def test_run_docker_generic_failure_is_not_oom(tmp_path: Path):
+async def test_run_docker_generic_failure_is_not_oom(tmp_path: Path, caplog):
     resource_config = _psi4_image_config(tmp_path)
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry()
@@ -406,6 +449,7 @@ async def test_run_docker_generic_failure_is_not_oom(tmp_path: Path):
             side_effect=_fake_docker_exec(returncode=1),
         ),
         patch("simstack.core.run_docker.inspect_docker_oomkilled", return_value=False),
+        caplog.at_level(logging.ERROR, logger="DockerRunner"),
     ):
         result = await run_docker(registry_entry)
 
@@ -416,6 +460,8 @@ async def test_run_docker_generic_failure_is_not_oom(tmp_path: Path):
     assert "out of memory" not in registry_entry.error.lower()
     assert "Likely OOM" not in registry_entry.error
     assert "SIGKILL" not in registry_entry.error
+    assert "task_id: abc123" in caplog.text
+    assert "task_id=abc123" not in caplog.text
 
 
 def test_inspect_docker_oomkilled_parses_true_false():
@@ -426,6 +472,73 @@ def test_inspect_docker_oomkilled_parses_true_false():
         assert inspect_docker_oomkilled("cid") is False
         mock_run.return_value = SimpleNamespace(returncode=1, stdout="")
         assert inspect_docker_oomkilled("cid") is None
+
+
+def _bind_targets(command: list[str]) -> list[str]:
+    return [command[index + 1] for index, arg in enumerate(command[:-1]) if arg == "--bind"]
+
+
+@pytest.mark.asyncio
+async def test_run_docker_apptainer_binds_job_scratch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    scratch = tmp_path / "job-scratch"
+    scratch.mkdir()
+    monkeypatch.setenv("SCRATCH", str(scratch))
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        "[local.program.psi4_calculator]\n"
+        'docker_image = "molecular-qm-psi4:latest"\n'
+        'docker_cmd = "apptainer"\n'
+    )
+    resource_config = ResourceConfig(tmp_path, "local")
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+    proc = AsyncMock()
+    proc.pid = 4242
+    proc.returncode = 0
+    proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch("asyncio.create_subprocess_exec", AsyncMock(return_value=proc)) as mock_exec,
+    ):
+        result = await run_docker(registry_entry)
+
+    assert result is True
+    targets = _bind_targets(list(mock_exec.await_args.args))
+    assert f"{scratch}:{scratch}" in targets
+    assert f"{tmp_path}:{CONTAINER_WORKDIR}" in targets
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scratch_root", ["/tmp", "/scratch", "/ramdisk"])
+async def test_run_docker_apptainer_does_not_bind_scratch_mount_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scratch_root: str
+):
+    monkeypatch.setenv("SCRATCH", scratch_root)
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        "[local.program.psi4_calculator]\n"
+        'docker_image = "molecular-qm-psi4:latest"\n'
+        'docker_cmd = "apptainer"\n'
+    )
+    resource_config = ResourceConfig(tmp_path, "local")
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+    proc = AsyncMock()
+    proc.pid = 4242
+    proc.returncode = 0
+    proc.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch("asyncio.create_subprocess_exec", AsyncMock(return_value=proc)) as mock_exec,
+        patch.object(Path, "is_dir", return_value=True),
+    ):
+        result = await run_docker(registry_entry)
+
+    assert result is True
+    scratch_path = Path(scratch_root)
+    assert f"{scratch_path}:{scratch_path}" not in _bind_targets(list(mock_exec.await_args.args))
 
 
 @pytest.mark.asyncio
@@ -440,7 +553,7 @@ async def test_run_docker_apptainer_sigkill_uses_exit_code_heuristic(tmp_path: P
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry()
 
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 137
     proc.communicate = AsyncMock(return_value=(b"", b""))
 
@@ -461,6 +574,10 @@ async def test_run_docker_apptainer_sigkill_uses_exit_code_heuristic(tmp_path: P
     assert "OOMKilled" not in registry_entry.error
     command = list(mock_exec.await_args.args)
     assert f"{tmp_path}:{CONTAINER_WORKDIR}" in command
+    assert f"{tmp_path}:{LEGACY_CONTAINER_WORKDIR}" in command
+    assert CONTAINER_WORKDIR == "/mnt"
+    assert command[command.index("--no-mount") + 1] == "tmp"
+    assert f"{tmp_path}:/tmp" not in command
     assert not any("site-packages/simstack" in argument for argument in command)
 
 
@@ -474,7 +591,7 @@ async def test_run_docker_redacts_and_bounds_database_uri_in_child_errors(
     mock_context.config.connection_string = secret
     registry_entry = _registry_entry()
 
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 1
     proc.communicate = AsyncMock(
         return_value=(
@@ -503,7 +620,7 @@ async def test_run_docker_preserves_child_return_kind(tmp_path: Path):
     resource_config = _psi4_image_config(tmp_path)
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry()
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 0
     proc.communicate = AsyncMock(
         return_value=(
@@ -539,7 +656,7 @@ async def test_run_docker_failure_preserves_child_persisted_metadata(tmp_path: P
     mock_context.db.get_collection = lambda model: SimpleNamespace(
         update_one=update_one
     )
-    proc = AsyncMock()
+    proc = AsyncMock(pid=4242)
     proc.returncode = 1
     proc.communicate = AsyncMock(
         return_value=(
@@ -590,3 +707,112 @@ async def test_run_docker_redacts_database_uri_from_spawn_exception(
     assert "docker-user" not in caplog.text
     assert "docker-password" not in caplog.text
     assert secret not in (registry_entry.error or "")
+
+
+def _harmonize_aware_exec(*, job_returncode: int):
+    async def _exec(*cmd, **kwargs):
+        cmd_list = list(cmd)
+        if "--user" in cmd_list and "0:0" in cmd_list:
+            proc = AsyncMock()
+            proc.returncode = 0
+            proc.communicate = AsyncMock(return_value=(b"", b""))
+            return proc
+        return await _fake_docker_exec(returncode=job_returncode)(*cmd, **kwargs)
+
+    return _exec
+
+
+def _harmonize_command(mock_exec) -> list[str]:
+    commands = [list(call.args) for call in mock_exec.await_args_list]
+    harmonize = [cmd for cmd in commands if "--user" in cmd and "0:0" in cmd]
+    assert len(harmonize) == 1
+    return harmonize[0]
+
+
+@pytest.mark.asyncio
+async def test_run_docker_harmonizes_task_dir_after_success(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(
+        "simstack.core.run_docker.launcher_owner_ids",
+        lambda: (4242, 4243),
+    )
+    resource_config = _psi4_image_config(tmp_path)
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch("simstack.core.run_docker.platform.system", return_value="Linux"),
+        patch(
+            "asyncio.create_subprocess_exec",
+            side_effect=_harmonize_aware_exec(job_returncode=0),
+        ) as mock_exec,
+    ):
+        result = await run_docker_with_outcome(registry_entry)
+
+    assert result.success is True
+    command = _harmonize_command(mock_exec)
+    task_dir = tmp_path / "psi4_calculator" / "abc123"
+    assert command[:8] == [
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--entrypoint",
+    ]
+    assert command[8] == "python"
+    assert f"{task_dir.resolve()}:/work" in command
+    assert "molecular-qm-psi4:latest" in command
+    assert command[-3:] == ["4242", "4243", "/work"]
+    assert "0o664" in command[command.index("-c") + 1]
+    assert "0o775" in command[command.index("-c") + 1]
+
+
+@pytest.mark.asyncio
+async def test_run_docker_harmonizes_task_dir_after_nonzero_exit(tmp_path: Path):
+    resource_config = _psi4_image_config(tmp_path)
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch("simstack.core.run_docker.platform.system", return_value="Linux"),
+        patch(
+            "asyncio.create_subprocess_exec",
+            side_effect=_harmonize_aware_exec(job_returncode=1),
+        ) as mock_exec,
+        patch("simstack.core.run_docker.inspect_docker_oomkilled", return_value=False),
+    ):
+        result = await run_docker_with_outcome(registry_entry)
+
+    assert result.success is False
+    assert registry_entry.error is not None
+    assert "exit 1" in registry_entry.error
+    command = _harmonize_command(mock_exec)
+    assert command[-3:] == ["1000", "1000", "/work"]
+    assert "--user" in command
+    assert "0:0" in command
+
+
+@pytest.mark.asyncio
+async def test_run_docker_skips_harmonize_on_windows(tmp_path: Path):
+    resource_config = _psi4_image_config(tmp_path)
+    mock_context = _mock_context(tmp_path, resource_config)
+    registry_entry = _registry_entry()
+
+    with (
+        patch("simstack.core.run_docker.context", mock_context),
+        patch("simstack.core.run_docker.platform.system", return_value="Windows"),
+        patch("simstack.core.run_docker.launcher_owner_ids", side_effect=AssertionError("should not be called")),
+        patch(
+            "asyncio.create_subprocess_exec",
+            side_effect=_fake_docker_exec(returncode=0),
+        ) as mock_exec,
+    ):
+        result = await run_docker_with_outcome(registry_entry)
+
+    assert result.success is True
+    commands = [list(call.args) for call in mock_exec.await_args_list]
+    assert not any("--network" in cmd for cmd in commands)

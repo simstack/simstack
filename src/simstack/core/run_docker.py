@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import platform
 import re
 import shlex
@@ -12,6 +13,7 @@ from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.run_node_protocol import RESULT_PREFIX, parse_run_node_result
 from simstack.models import NodeRegistry
+from simstack.util.output_permissions import docker_harmonize_command
 from simstack.util.sanitized_output import (
     redact_connection_string,
     sanitized_command,
@@ -23,7 +25,14 @@ logger = logging.getLogger("DockerRunner")
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 _DOCKER_HUB_LIBRARY_PREFIX = "docker.io/library/"
 _pull_locks: dict[str, asyncio.Lock] = {}
-CONTAINER_WORKDIR = "/tmp/simstack"
+# In-container alias for the host resource workdir (not scratch). Must already
+# exist in typical images. Nested /tmp/simstack is hidden by Apptainer's default
+# host-/tmp bind; do not overlay container /tmp.
+CONTAINER_WORKDIR = "/mnt"
+# Images built before CONTAINER_WORKDIR moved still initialize --in-docker at
+# /tmp/simstack. Bind the host workdir there too; --no-mount tmp keeps the
+# image mkdir visible.
+LEGACY_CONTAINER_WORKDIR = "/tmp/simstack"
 _DOCKER_CIDFILE_NAME = ".docker_cid"
 _SIGKILL_RC = 137
 _SIGSEGV_RC = 139
@@ -70,6 +79,42 @@ async def _persist_post_launch_failure(
         )
         return
     await context.db.save(registry_entry)
+
+
+def launcher_owner_ids() -> tuple[int, int]:
+    """Uid and gid of the process that launches the container."""
+    getuid = getattr(os, "getuid", None)
+    getgid = getattr(os, "getgid", None)
+    if not callable(getuid) or not callable(getgid):
+        raise ValueError("launcher uid and gid are required to harmonize task output")
+    uid = getuid()
+    gid = getgid()
+    if uid is None or gid is None:
+        raise ValueError("launcher uid and gid are required to harmonize task output")
+    return int(uid), int(gid)
+
+
+async def _harmonize_docker_task_dir(image: str, task_dir: Path, uid: int, gid: int) -> None:
+    command = docker_harmonize_command(
+        image=image, task_dir=task_dir, uid=uid, gid=gid
+    )
+    logger.info(
+        "harmonizing task directory %s to %s:%s",
+        task_dir,
+        uid,
+        gid,
+    )
+    process = await asyncio.create_subprocess_exec(
+        *command,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout_b, stderr_b = await process.communicate()
+    if process.returncode != 0:
+        detail = (stderr_b or stdout_b or b"").decode("utf-8", errors="replace").strip()
+        raise RuntimeError(
+            f"harmonize task directory {task_dir} failed rc={process.returncode}: {detail}"
+        )
 
 
 def _positive_int(value: object) -> int | None:
@@ -137,13 +182,20 @@ def docker_memory_limit(slurm: object | None, *, uppercase: bool = False) -> str
 
 
 def container_resource_args(docker_cmd: str, slurm: object | None) -> list[str]:
-    """Runtime flags that pin CPU and memory for docker or apptainer."""
+    """Runtime flags that pin CPU and memory for docker.
+
+    Apptainer ``--cpus`` / ``--memory`` need cgroups v2 unified mode, which HPC
+    nodes (Justus) do not provide. Slurm already enforces the job's CPU and memory.
+    """
+    if docker_cmd == "apptainer":
+        return []
+
     args: list[str] = []
     cpu_limit = docker_cpu_limit(slurm)
     if cpu_limit is not None:
         args.extend(["--cpus", str(cpu_limit)])
 
-    memory_limit = docker_memory_limit(slurm, uppercase=docker_cmd == "apptainer")
+    memory_limit = docker_memory_limit(slurm, uppercase=False)
     if memory_limit is not None:
         args.extend(["--memory", memory_limit])
     return args
@@ -481,9 +533,18 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
     resource_args = container_resource_args(docker_cmd, slurm_parameters)
     if resource_args:
         logger.info(
-            "task_id=%s applying container resource limits from slurm_parameters: %s",
+            "task_id: %s applying container resource limits from slurm_parameters: %s",
             registry_entry.id,
             shlex.join(resource_args),
+        )
+    elif docker_cmd == "apptainer" and (
+        docker_cpu_limit(slurm_parameters) is not None
+        or docker_memory_limit(slurm_parameters) is not None
+    ):
+        logger.info(
+            "task_id: %s omitting apptainer --cpus/--memory (need cgroups v2); "
+            "Slurm already limits the job",
+            registry_entry.id,
         )
 
     # Prefer the task resource inside the container (self -> local for image/workdir lookups).
@@ -507,6 +568,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             "-e", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}",
             "-e", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}",
             "-v", f"{workdir}:{CONTAINER_WORKDIR}",
+            "-v", f"{workdir}:{LEGACY_CONTAINER_WORKDIR}",
             *project_mount_args,
             image,
             "--node-id", str(registry_entry.id),
@@ -516,8 +578,19 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         ]
     elif docker_cmd == "apptainer":
         bind_args = [
+            "--no-mount", "tmp",
             "--bind", f"{workdir}:{CONTAINER_WORKDIR}",
+            "--bind", f"{workdir}:{LEGACY_CONTAINER_WORKDIR}",
         ]
+        scratch = os.environ.get("SCRATCH", "").strip()
+        if scratch:
+            scratch_path = Path(scratch)
+            scratch_root = scratch_path.resolve()
+            mount_roots = {
+                Path(root).resolve() for root in ("/tmp", "/scratch", "/ramdisk")
+            }
+            if scratch_root not in mount_roots and scratch_path.is_dir():
+                bind_args.extend(["--bind", f"{scratch_path}:{scratch_path}"])
         for host_path, dest in project_file_mounts:
             bind_args.extend(["--bind", f"{host_path}:{dest}"])
         cmd = [
@@ -535,7 +608,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         ]
     else:
         registry_entry.error = f"Unsupported command {docker_cmd}"
-        logger.error("%s for task_id=%s", registry_entry.error, registry_entry.id)
+        logger.error("%s for task_id: %s", registry_entry.error, registry_entry.id)
         registry_entry.status = TaskStatus.FAILED
         await context.db.save(registry_entry)
         return DockerRunResult(False, "none", registry_entry.error)
@@ -544,7 +617,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
     registry_entry.status = TaskStatus.SLURM_QUEUED
     await context.db.save(registry_entry)
     logger.info(
-        "task_id=%s status set to %s before docker launch",
+        "task_id: %s status set to %s before docker launch",
         registry_entry.id,
         TaskStatus.SLURM_QUEUED,
     )
@@ -558,12 +631,15 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         shlex.join(sanitized_cmd),
     )
 
-    # Use platform specific flags to ensure the process survives if runner is killed
+    # DETACHED_PROCESS opens a console on Windows. CREATE_NO_WINDOW hides it.
     creationflags = 0
     if platform.system() == "Windows":
-        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | getattr(
+            subprocess, "CREATE_NO_WINDOW", 0x08000000
+        )
 
     process_started = False
+    outcome: DockerRunResult | None = None
     try:
         process = await asyncio.create_subprocess_exec(
             *cmd,
@@ -573,6 +649,9 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             start_new_session=True if platform.system() != "Windows" else False
         )
         process_started = True
+        from simstack.core.services.task_termination import record_process_id
+
+        await record_process_id(registry_entry, process.pid, context.db)
 
         stdout_b, stderr_b = await process.communicate()
         registry_entry = await _reload_registry_after_container(registry_entry)
@@ -587,8 +666,10 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
 
         if process.returncode != 0:
             oom_killed = _container_oom_killed(docker_cmd, cidfile)
-            memory_limit = docker_memory_limit(
-                slurm_parameters, uppercase=docker_cmd == "apptainer"
+            memory_limit = (
+                docker_memory_limit(slurm_parameters)
+                if docker_cmd != "apptainer"
+                else None
             )
             base_error = format_container_failure_error(
                 process.returncode,
@@ -618,7 +699,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
                 f"{base_error}\n{detail_tail}" if detail_tail else base_error
             )
             logger.error(
-                "docker run failed for task_id=%s rc=%s oom_killed=%s error=%s stderr=%s stdout=%s cmd=%s",
+                "docker run failed for task_id: %s rc=%s oom_killed=%s error=%s stderr=%s stdout=%s cmd=%s",
                 registry_entry.id,
                 process.returncode,
                 oom_killed,
@@ -630,13 +711,12 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             await _persist_post_launch_failure(
                 registry_entry, registry_entry.error
             )
-            return DockerRunResult(
+            outcome = DockerRunResult(
                 False,
                 child_outcome.return_kind if child_outcome is not None else "exception",
                 registry_entry.error,
             )
-
-        if child_outcome is None or not child_outcome.success:
+        elif child_outcome is None or not child_outcome.success:
             base_error = (
                 child_outcome.error
                 if child_outcome is not None and child_outcome.error
@@ -653,22 +733,22 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             await _persist_post_launch_failure(
                 registry_entry, registry_entry.error
             )
-            return DockerRunResult(
+            outcome = DockerRunResult(
                 False,
                 child_outcome.return_kind if child_outcome is not None else "none",
                 registry_entry.error,
             )
-
-        if stdout:
-            # For `docker run` without -d, stdout is the actual output of the command
-            logger.info("Docker container output for task_id=%s: %s", registry_entry.id, stdout)
         else:
-            logger.info("Docker container spawned for task_id=%s", registry_entry.id)
-        if stderr:
-            # Some Docker setups warn on stderr even on success
-            logger.warning("docker run stderr for task_id=%s: %s", registry_entry.id, stderr)
+            if stdout:
+                # For `docker run` without -d, stdout is the actual output of the command
+                logger.info("Docker container output for task_id: %s: %s", registry_entry.id, stdout)
+            else:
+                logger.info("Docker container spawned for task_id: %s", registry_entry.id)
+            if stderr:
+                # Some Docker setups warn on stderr even on success
+                logger.warning("docker run stderr for task_id: %s: %s", registry_entry.id, stderr)
 
-        return DockerRunResult(True, child_outcome.return_kind)
+            outcome = DockerRunResult(True, child_outcome.return_kind)
     except Exception as e:
         if process_started:
             registry_entry = await _reload_registry_after_container(registry_entry)
@@ -690,7 +770,28 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         else:
             registry_entry.status = TaskStatus.FAILED
             await context.db.save(registry_entry)
-        return DockerRunResult(False, "exception", registry_entry.error)
+        outcome = DockerRunResult(False, "exception", registry_entry.error)
+
+    if process_started and docker_cmd == "docker" and platform.system() != "Windows":
+        try:
+            owner_uid, owner_gid = launcher_owner_ids()
+            await _harmonize_docker_task_dir(image, task_dir, owner_uid, owner_gid)
+        except Exception as exc:
+            clean_error = redact_connection_string(
+                sanitized_tail(str(exc), configured_connection_string),
+                connection_string,
+            )
+            logger.error(
+                "task_id: %s failed to harmonize %s: %s",
+                registry_entry.id,
+                task_dir,
+                clean_error,
+            )
+            if outcome.success:
+                message = f"Failed to harmonize task directory ownership: {clean_error}"
+                await _persist_post_launch_failure(registry_entry, message)
+                outcome = DockerRunResult(False, "exception", message)
+    return outcome
 
 
 async def run_docker(registry_entry: NodeRegistry) -> bool:

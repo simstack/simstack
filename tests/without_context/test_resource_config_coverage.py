@@ -89,13 +89,62 @@ def test_run_with_runner(tmp_path, config_file):
         old_cwd = os.getcwd()
         os.chdir(test_cwd)
         try:
-            rc.run(program_name="orca", node_runner=runner)
+            ok = rc.run(program_name="orca", node_runner=runner)
+            assert ok is True
             runner.subprocess.assert_called_once()
             args, kwargs = runner.subprocess.call_args
             assert args == ("run", "orca orca.inp")
-            assert Path(kwargs["cwd"]).samefile(test_cwd)
+            scratch_cwd = Path(kwargs["cwd"])
+            assert scratch_cwd.parent.resolve() == rc.tmp_base_dir.resolve()
+            assert scratch_cwd.name == runner.task_id
         finally:
             os.chdir(old_cwd)
+
+def test_run_uses_named_command_key(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        """
+[local.program.turbomole]
+run_command = "jobex -ri"
+define_command = "define < define.inp > define.out"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "local")
+    runner = MockNodeRunner()
+    ok = rc.run(
+        program_name="turbomole",
+        node_runner=runner,
+        command="define_command",
+        name="turbomole_define",
+    )
+    assert ok is True
+    runner.subprocess.assert_called_once()
+    args, kwargs = runner.subprocess.call_args
+    assert args == ("turbomole_define", "define < define.inp > define.out")
+
+def test_run_missing_command_key_raises(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        """
+[local.program.turbomole]
+run_command = "jobex -ri"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "local")
+    with pytest.raises(ValueError, match="define_command"):
+        rc.run(program_name="turbomole", command="define_command")
+
+def test_run_empty_command_value_raises(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        """
+[local.program.turbomole]
+run_command = ""
+"""
+    )
+    rc = ResourceConfig(tmp_path, "local")
+    with pytest.raises(ValueError, match="run_command"):
+        rc.run(program_name="turbomole")
 
 def test_run_with_temp_and_copy(tmp_path, config_file):
     rc = ResourceConfig(tmp_path, "local")
@@ -108,13 +157,15 @@ def test_run_with_temp_and_copy(tmp_path, config_file):
             (test_cwd_path / "in.txt").write_text("hello")
             
             config_file.write_text("""
+[local.setup]
+tmp_base_dir = "{base_dir}"
 [local.program.orca]
 use_temp = true
 run_command = "mock_cmd"
 input_files = ["in.txt"]
 output_files = ["out.txt"]
 scratch_cleanup = true
-""")
+""".replace("{base_dir}", (tmp_path / "scratch_base").as_posix()))
             rc = ResourceConfig(tmp_path, "local")
 
             # Mock subprocess.run to simulate command execution
@@ -180,11 +231,13 @@ def test_get_postprocessing_params(tmp_path, config_file):
 def test_run_input_file_missing(tmp_path, config_file):
     # Coverage for if not src.exists()
     config_file.write_text("""
+[local.setup]
+tmp_base_dir = "{base_dir}"
 [local.program.orca]
 use_temp = true
 run_command = "echo"
 input_files = ["nonexistent.txt"]
-""")
+""".replace("{base_dir}", (tmp_path / "scratch_base").as_posix()))
     rc = ResourceConfig(tmp_path, "local")
     with patch("subprocess.run"):
         rc.run(program_name="orca")
@@ -193,12 +246,84 @@ input_files = ["nonexistent.txt"]
 def test_run_output_file_missing(tmp_path, config_file):
     # Coverage for if not src.exists() for output files
     config_file.write_text("""
+[local.setup]
+tmp_base_dir = "{base_dir}"
 [local.program.orca]
 use_temp = true
 run_command = "echo"
 output_files = ["nonexistent_out.txt"]
-""")
+""".replace("{base_dir}", (tmp_path / "scratch_base").as_posix()))
     rc = ResourceConfig(tmp_path, "local")
     with patch("subprocess.run"):
         rc.run(program_name="orca")
         # Should not raise error
+
+
+def test_run_honors_use_tmp_alias(tmp_path):
+    config_file = tmp_path / "config.toml"
+    scratch_base = tmp_path / "scratch_base"
+    config_file.write_text(
+        f"""
+[local.setup]
+tmp_base_dir = "{scratch_base.as_posix()}"
+[local.program.orca]
+use_tmp = true
+run_command = "echo"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "local")
+    runner = MockNodeRunner(task_id="job1")
+    with tempfile.TemporaryDirectory() as test_cwd:
+        old_cwd = os.getcwd()
+        os.chdir(test_cwd)
+        try:
+            rc.run(program_name="orca", node_runner=runner)
+            args, kwargs = runner.subprocess.call_args
+            assert Path(kwargs["cwd"]).resolve() == (scratch_base / "job1").resolve()
+        finally:
+            os.chdir(old_cwd)
+
+
+def test_run_use_tmp_without_tmp_base_dir_raises(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        """
+[local.program.orca]
+use_tmp = true
+run_command = "echo"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "local")
+    with pytest.raises(ValueError, match="tmp_base_dir"):
+        rc.run(program_name="orca")
+
+
+def test_tmp_base_dir_parses_set_assignment(tmp_path):
+    config_file = tmp_path / "config.toml"
+    target = tmp_path / "from_set"
+    config_file.write_text(
+        f"""
+[local.setup]
+tmp_base_dir = "set TMP_BASE_DIR={target.as_posix()}"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "local")
+    assert rc.tmp_base_dir.resolve() == target.resolve()
+
+
+def test_conflicting_use_tmp_and_use_temp_raises(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        f"""
+[local.setup]
+tmp_base_dir = "{(tmp_path / "scratch_base").as_posix()}"
+[local.program.orca]
+use_tmp = true
+use_temp = false
+run_command = "echo"
+"""
+    )
+    rc = ResourceConfig(tmp_path, "local")
+    with pytest.raises(ValueError, match="conflicting"):
+        rc.run(program_name="orca")
+

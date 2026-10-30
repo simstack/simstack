@@ -2,6 +2,7 @@ import pytest
 import os
 import uuid
 import asyncio
+import logging
 import pytest_asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock
@@ -241,7 +242,8 @@ async def test_get_node_registry(initialized_context, setup_mappings):
         assert status2 == TaskStatus.SUBMITTED
         assert n2.id == first_id
 
-        # 3. A changed implementation is a different cache version.
+        # 3. Changing the implementation must not invalidate the cached task:
+        # function identity is versioned by git, not by hashing the body.
         def changed_sync_node(data: FloatData, **kwargs) -> FloatData:
             return FloatData(value=data.value + 99.0)
 
@@ -256,12 +258,11 @@ async def test_get_node_registry(initialized_context, setup_mappings):
         status_changed = await changed.get_node_registry()
         changed_entry = changed.registry_entry
         assert status_changed == TaskStatus.SUBMITTED
-        assert changed.id != first_id
+        assert changed.id == first_id
         assert changed_entry is not None
-        assert changed_entry.id != entry1.id
-        assert changed_entry.function_hash
-        assert changed_entry.function_hash != entry1.function_hash
-        await context.db.delete(changed_entry)
+        assert changed_entry.id == entry1.id
+        assert changed_entry.function_hash == ""
+        assert changed_entry.function_hash == entry1.function_hash
 
         # 4. Call with force_rerun - should create new entry
         params_rerun = Parameters(force_rerun=True)
@@ -544,6 +545,51 @@ async def test_process_results_persists_simstack_result_metadata_and_files(
     assert secret not in (loaded.error_message or "")
     assert loaded.info_files[0].name == "info.txt"
     assert loaded.files.elements == [result_file.id]
+
+
+@pytest.mark.asyncio
+async def test_process_results_does_not_truncate_task_error(
+    initialized_context, caplog
+):
+    parameters = Parameters()
+    execution_node = Node(func=sync_node._inner, is_async=False, parameters=parameters)
+    execution_node.registry_entry = NodeRegistry(
+        name="sync_node",
+        status=TaskStatus.RUNNING,
+        function_hash="long-error-function-hash",
+        arg_hash="long-error-arg-hash",
+        func_mapping="tests.sync_node",
+        parameters=parameters,
+    )
+    secret = "mongodb://error-user:error-password@db.internal/simstack"
+    long_error = (
+        "head-marker "
+        + ("x" * 8000)
+        + f" {secret} "
+        + "tail-marker"
+    )
+    result = SimstackResult(
+        status=TaskStatus.FAILED,
+        error_message=long_error,
+        value=FloatData(value=12.0),
+    )
+
+    with caplog.at_level(logging.ERROR, logger="Node"):
+        status, _ = await execution_node.process_results(result)
+
+    assert status == TaskStatus.FAILED
+    persisted = execution_node.registry_entry.error
+    assert persisted is not None
+    assert persisted.startswith("head-marker")
+    assert persisted.endswith("tail-marker")
+    assert "[truncated]" not in persisted
+    assert secret not in persisted
+    assert "error-user" not in persisted
+    assert "returned with error" in caplog.text
+    assert "head-marker" in caplog.text
+    assert "tail-marker" in caplog.text
+    assert "[truncated]" not in caplog.text
+    assert secret not in caplog.text
 
 
 @pytest.mark.asyncio

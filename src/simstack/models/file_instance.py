@@ -139,6 +139,7 @@ class FileInstance(EmbeddedModel):
             absolute_dir = Path(context.config.workdir) / relative_path
             absolute_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy(source_path, absolute_dir)
+            relative_path = relative_path / source_path.name
 
         file_instance = FileInstance(
             path=str(relative_path),

@@ -67,6 +67,7 @@ async def async_main(args: argparse.Namespace) -> None:
             no_pull=not args.pull,
             is_default=is_default_resource,
             with_file_transfer=args.file_transfer,
+            with_jobs=args.jobs,
         )
         await runner_manager.run_nodes_for_resource(
             args.polling_interval, 10, timeout=args.timeout
@@ -136,6 +137,16 @@ def runner_main() -> None:
         type=lambda x: (str(x).lower() not in ["false", "0", "no"]),
         default=True,
         help="If true (default), start the FileTransferService. Set to 'false' to skip.",
+    )
+
+    parser.add_argument(
+        "--jobs",
+        type=lambda x: (str(x).lower() not in ["false", "0", "no"]),
+        default=True,
+        help=(
+            "If true (default), start NodeExecutionService and SlurmStatusService. "
+            "Set to 'false' to skip job claiming (file-transfer sidecar)."
+        ),
     )
 
     args = parser.parse_args()

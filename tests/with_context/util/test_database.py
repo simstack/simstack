@@ -391,7 +391,7 @@ def _registry(
 
 
 @pytest.mark.asyncio
-async def test_load_task_finds_registry_by_name_arg_hash_and_function_hash(
+async def test_load_task_finds_registry_by_name_and_arg_hash(
         initialized_context,
         monkeypatch,
 ):
@@ -402,7 +402,7 @@ async def test_load_task_finds_registry_by_name_arg_hash_and_function_hash(
     loaded = await db.load_task(
         "database_load_task",
         "database_load_task-arg-hash",
-        "database_load_task-function-hash",
+        "ignored-function-hash",
     )
     missing = await db.load_task(
         "database_load_task",
