@@ -298,15 +298,21 @@ class DocumentRepository:
         ]
         ignored = getattr(instance, "_simstack_refreshed_fields", set())
         changed = [name for name in changed if name not in ignored]
+        entry = {
+            "document": document,
+            "changed_fields": changed,
+            "model_mapping": model_mapping(type(instance)),
+        }
+        inline_claim_id = (
+            getattr(instance, "_inline_claim_id", None)
+            if collection_name(type(instance)) == "node_registry"
+            else None
+        )
+        if inline_claim_id is not None:
+            entry["inline_claim_id"] = inline_claim_id
         await self.save_documents(
             collection_name(type(instance)),
-            [
-                {
-                    "document": document,
-                    "changed_fields": changed,
-                    "model_mapping": model_mapping(type(instance)),
-                }
-            ],
+            [entry],
         )
         self.remember(instance)
         object.__setattr__(instance, "_simstack_refreshed_fields", set())

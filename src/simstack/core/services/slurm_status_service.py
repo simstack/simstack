@@ -86,9 +86,16 @@ class SlurmStatusService(BaseService):
                 if slurm_entry:
                     await context.db.delete(slurm_entry)
                 if check_job.status == TaskStatus.RUNNING:
-                    task.job_id = None
-                    task.status = TaskStatus.TIME_OUT
-                    await context.db.save(task)
+                    from simstack.runner_api.runtime import is_api_runner
+                    if is_api_runner(context):
+                        await context.db.task_mutation(task.id, "timeout", {
+                            "job_id": task.job_id,
+                            "generation": getattr(task, "_execution_generation", None),
+                        })
+                    else:
+                        task.job_id = None
+                        task.status = TaskStatus.TIME_OUT
+                        await context.db.save(task)
 
         except SqueueNotFoundError:
             return

@@ -687,7 +687,25 @@ class Node:
         self._apply_parent_slurm_for_self_resource()
         registry_entry.parameters = self.parameters
         self._prepare_nested_execution_publication()
+        inline_receipt = None
+        from simstack.runner_api.runtime import is_api_runner
+        if self._owns_inline_nested_execution and is_api_runner(context):
+            from simstack.runner_api.claims import receipt
+
+            inline_receipt = receipt(
+                context.db.core_engine.api,
+                str(registry_entry.id),
+                begin=True,
+                revision=registry_entry.repository_revision,
+            )
+            object.__setattr__(registry_entry, "_inline_claim_id", inline_receipt["claim_id"])
         await context.db.save(registry_entry)
+        if inline_receipt is not None:
+            from simstack.runner_api.claims import finish
+
+            object.__delattr__(registry_entry, "_inline_claim_id")
+            finish(context.db.core_engine.api, inline_receipt, claimed=True)
+            object.__setattr__(registry_entry, "_execution_claim_id", inline_receipt["claim_id"])
         logger.info(
             f"Task task_id: {self.id} with name {self.name} created for resource: {registry_entry.parameters.resource} queue: {registry_entry.parameters.queue} with id: {self.id} and status: {registry_entry.status}"
         )
@@ -1145,10 +1163,6 @@ class Node:
         try:
             while True:
                 new_registry_entry = await context.db.load_task_by_id(self.id)
-                # TODO(recovery): A creator-owned RETRIEVED child can be reused by a
-                # later identical run after its container dies. Persist an execution
-                # owner/process or container ID and track liveness before failing or
-                # reclaiming it; wall-clock timeouts are unsafe for months-long jobs.
                 if new_registry_entry is None:
                     raise RuntimeError(
                         f"Task task_id: {self.id} could not be found in the database"
