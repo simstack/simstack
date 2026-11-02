@@ -5,22 +5,21 @@ UI Setup
 --------
 
 1. Register at ``simstack.int.kit.edu`` (inside the KIT network). This will create an **inactive** user.
-2. Email the maintainer so your account can be activated and you can receive:
-
-   * a database name
-   * a database password
-
-   (This is not automated yet.)
-3. Go to your profile and upload your resources configuration.
+2. Ask an administrator to configure your user databases and activate your account.
+3. Copy your connection string and database names from **Profile → Workspace access**.
+4. Add your resources in **Profile → Resources** and mark one as **Default resource**.
 
 Example resources configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This example is for initial setup. Upload JSON replaces the saved list; omitted
+resources and their tokens are deleted. For an existing account, add resources
+individually or export and retain the complete list. Omit ``id`` for new resources.
 
 .. code-block:: json
 
    [
      {
-       "id": "<object-id>",
        "resource_str": "local-home",
        "hostname": "localhost",
        "workdir": "$HOME/simstack",
@@ -30,10 +29,10 @@ Example resources configuration
        "routes": [
          "int-nano"
        ],
-       "queue": "default"
+       "queue": "default",
+       "is_default": true
      },
      {
-       "id": "<object-id>",
        "resource_str": "int-nano",
        "hostname": "int-nano.int.kit.edu",
        "workdir": "$HOME/simstack",
@@ -44,7 +43,6 @@ Example resources configuration
        "queue": "default"
      },
      {
-       "id": "<object-id>",
        "resource_str": "justus",
        "hostname": "justus2.uni-ulm.de",
        "workdir": "$HOME/simstack",
@@ -66,6 +64,7 @@ Installation of Runners
 Prerequisites
 ~~~~~~~~~~~~~
 
+* Use Python 3.12
 * Install ``uv``:
   https://docs.astral.sh/uv/getting-started/installation/
 * Create directories:
@@ -123,13 +122,19 @@ On ``justus`` you may need:
 Sync dependencies
 ~~~~~~~~~~~~~~~~~
 
+Normally, use the Core revision pinned by the project's ``uv.lock``. To test
+Core ``develop`` instead, first update the dependency in this project checkout:
+
+.. code-block:: bash
+
+   uv add --no-sync "simstack @ git+https://github.com/simstack/simstack.git@develop"
+
+This changes ``pyproject.toml`` and ``uv.lock``. Then install the dependencies:
+
 .. code-block:: bash
 
    source ~/.bashrc
    uv sync --locked
-
-Note: This will install all required dependencies, including ``mongomock`` and ``mongomock-motor``, which are used for in-memory database support during testing.
-
 
 .. _configuration-file:
 
@@ -147,10 +152,9 @@ Create a ``simstack.toml`` file (placeholders shown below):
    # these are parameters for one user for all hosts
 
    [parameters.db]
-   database = "<NAME>_data"
-   test_database = "<NAME>_test"
-   connection_string = "mongodb://<USER>:<PASSWORD>@<HOST>:27017/"
-   mongodump_path = "<PATH_TO_MONGODUMP_EXE>"
+   database = "<DATABASE_NAME_FROM_PROFILE>"
+   test_database = "<TEST_DATABASE_NAME_FROM_PROFILE>"
+   connection_string = "<COMPLETE_CONNECTION_STRING_FROM_PROFILE>"
 
    [parameters.server]
    url = "https://simstack.int.kit.edu"
@@ -159,36 +163,37 @@ Create a ``simstack.toml`` file (placeholders shown below):
 Where:
 
 * ``<PATH_TO_SIMSTACK_DATA_DIR>`` is the path to the data directory created above (e.g. ``$HOME/simstack``)
-* ``<NAME>`` is your database name (often your first name in lower case)
-* ``<PASSWORD>`` is the database password
-* ``<PATH_TO_MONGODUMP_EXE>`` is the path to the ``mongodump`` executable (required for database backups)
-* ``url`` is the SimStack server address used for file transfers. Do not add ``/api``.
+* Copy the database names and complete connection string from **Profile → Workspace access**; keep URI query parameters such as ``authSource``.
+* Keep the section name ``[parameters.server]``; ``[server]`` alone is not read.
+* ``url`` is the SimStack server address used for file transfers, without ``/api``.
+  It must be reachable from the runner; ``localhost`` works only on the server's own machine.
 * ``<TOKEN_FOR_THIS_RESOURCE>`` is the runner access token from that server's UI:
   open **Profile → Resources**, select this resource, then **Generate token → Copy token**.
 
 Each resource uses its own token. Runners transferring files between each other
-must connect to the same server. Restart them after changing these settings.
+must connect to the same server and user database. Restart them after changing these settings.
 
 
 Initialize the system
 ~~~~~~~~~~~~~~~~~~~~~
 
-This will happen automatically when the default runner starts.
+The runner for the resource marked **Default resource** initializes the installed
+workflow modules automatically. To include these project directories explicitly:
 
 .. code-block:: bash
 
    uv run create_model_table --dir examples --dir applications
    uv run create_node_table --dir examples --dir applications
 
-Note: this may crash if your database is very old.
+For an existing account, keep its assigned database names and connection string.
 
 
 
 
-Configure Git identity (required)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Configure Git identity (for automatic updates, required)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Because the runner performs Git operations, ensure you have:
+If you enable the runner's automatic Git updates, configure your Git identity:
 
 .. code-block:: bash
 
@@ -203,21 +208,10 @@ From ``$HOME/projects/simstack-model``:
 
 .. code-block:: bash
 
-   nohup uv run simstack_runner --resource <RESOURCE_NAME> &
+   nohup uv run simstack_runner --resource "<RESOURCE_NAME>" --pull false &
 
 Where ``<RESOURCE_NAME>`` is one of the resources you defined in the UI.
 
-
-
-Ignore after this line
-----------------------
-
-Notes / scratch commands:
-
-.. code-block:: bash
-
-   git submodule add -b new-init https://git@github.com/simstack/simstack.git simstack
-
-.. code-block:: bash
-
-   uv lock --upgrade-package <package-name>
+``--pull false`` keeps the runner from changing your checkout during setup.
+Enable automatic updates only after saving your changes and setting the
+resource's **Git branch** to the intended project branch.
