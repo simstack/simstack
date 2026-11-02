@@ -91,7 +91,7 @@ async def test_base_service_write_resource_event(initialized_context):
 
 @pytest.mark.asyncio
 async def test_base_service_write_node_event(initialized_context):
-    from odmantic import ObjectId
+    from simstack.models.document import ObjectId
     resource = Resource(value="self")
     service = MockService("TestService", resource, 60)
     node_id = ObjectId()

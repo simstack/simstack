@@ -46,11 +46,12 @@ class RunnerControlService(BaseService):
             return
         credentials = read_credentials(path)
         digest = hashlib.sha256(json.dumps(credentials, sort_keys=True).encode()).digest()
-        tasks = await context.db.find(NodeRegistry, {
-            "parameters.resource.value": str(self.manager._resource),
-            "parameters.in_docker": True,
-            "status": {"$in": ["retrieved", "running", "slurm_queued", "slurm_running"]},
-        })
+        from simstack.persistence.criteria import eq
+        tasks = await context.db.find(NodeRegistry,
+            eq("parameters.resource.value", str(self.manager._resource)),
+            eq("parameters.in_docker", True),
+            NodeRegistry.status.in_(["retrieved", "running", "slurm_queued", "slurm_running"]),
+        )
         active = set()
         for task in tasks:
             cidfile = docker_cidfile_path(Path(context.config.workdir) / task.name / str(task.id))

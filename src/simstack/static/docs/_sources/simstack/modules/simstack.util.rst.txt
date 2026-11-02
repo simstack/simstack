@@ -60,14 +60,6 @@ simstack.util.db module
    :show-inheritance:
    :undoc-members:
 
-simstack.util.db\_logger module
--------------------------------
-
-.. automodule:: simstack.util.db_logger
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 simstack.util.default\_from\_dict module
 ----------------------------------------
 
@@ -328,14 +320,6 @@ simstack.util.sensitive\_content\_filter module
 -----------------------------------------------
 
 .. automodule:: simstack.util.sensitive_content_filter
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.util.setup\_logging module
------------------------------------
-
-.. automodule:: simstack.util.setup_logging
    :members:
    :show-inheritance:
    :undoc-members:

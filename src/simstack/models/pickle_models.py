@@ -4,7 +4,7 @@ import types
 from typing import Optional, Type, Any, Callable
 
 import cloudpickle
-from odmantic import Model
+from simstack.models.document import Model
 from simstack.util.b64mixin import BytesB64Mixin
 
 logger = logging.getLogger("PickleModels")

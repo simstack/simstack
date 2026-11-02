@@ -1,4 +1,4 @@
-from odmantic import Model
+from simstack.models.document import Model
 
 from simstack.models import simstack_model
 

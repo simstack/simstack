@@ -1,7 +1,7 @@
 import importlib
 import logging
 from typing import Any, Callable, Optional, Type, cast
-from odmantic import Model, AIOEngine, ObjectId
+from simstack.models.document import Model, ObjectId
 
 from simstack.core.context import context
 from simstack.models.models import ModelMapping, NodeModel
@@ -32,20 +32,6 @@ def _context_cache_matches_engine(ctx: Any | None, db: Database | None = None) -
         return ctx.db is not None and db is ctx.db
     except RuntimeError:
         return False
-
-
-def _resolve_engine(ctx: Any | None, engine: AIOEngine | None = None) -> AIOEngine:
-    if engine is not None:
-        return engine
-    if ctx is not None:
-        try:
-            if ctx.db is not None:
-                return cast(AIOEngine, ctx.db.core_engine)
-        except RuntimeError:
-            pass
-    raise RuntimeError(
-        "Could not resolve engine both engine and context have no engine"
-    )
 
 
 def _lookup_node_cache(node_mappings: Any, function_path: str) -> Optional[NodeModel]:

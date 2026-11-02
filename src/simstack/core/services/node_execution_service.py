@@ -6,7 +6,7 @@ import subprocess
 from dataclasses import dataclass
 from typing import Any
 
-from odmantic import Model
+from simstack.models.document import Model
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
@@ -244,15 +244,7 @@ class NodeExecutionService(BaseService):
                             start_new_session=True
                             if platform.system() != "Windows"
                             else False,
-                            env={
-                                **(task_environment(registry_entry) if is_api_runner(context) else os.environ),
-                                "PYTHONPATH": child_python_path,
-                                **(
-                                    {"SIMSTACK_DB_CONNECTION_STRING": str(context.config.connection_string), "SIMSTACK_DB_DATABASE": str(context.config.db_name)}
-                                    if not is_api_runner(context) and getattr(context.config, "connection_string", None) is not None
-                                    else {}
-                                ),
-                            },
+                            env={**task_environment(registry_entry), "PYTHONPATH": child_python_path},
                         )
                     except Exception as exc:
                         error = sanitized_tail(

@@ -54,7 +54,8 @@ async def apply_persisted_user_editable_fields(
         )
         if persisted_wins:
             # This is a refresh, not a local edit. Keep the field out of
-            # ODMantic's $set so a later UI PATCH cannot be overwritten by
+            # the persistence patch so a later UI PATCH cannot be overwritten by
             # the runner's status update after this read.
             object.__setattr__(registry_entry, name, persisted_value)
-            registry_entry.__fields_modified__.discard(name)
+            ignored = getattr(registry_entry, "_simstack_refreshed_fields", set())
+            object.__setattr__(registry_entry, "_simstack_refreshed_fields", ignored | {name})

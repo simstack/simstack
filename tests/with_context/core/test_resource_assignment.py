@@ -157,11 +157,11 @@ def _allow_assignment_resources():
 
 @pytest.mark.asyncio
 async def test_resolve_resource_assignment_matches_path_and_normalizes_slurm(
-    odmantic_engine,
+    document_repository,
 ):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+    await _delete_all(document_repository, ResourceAssignmentRule)
 
-    await odmantic_engine.save(
+    await document_repository.save(
         ResourceAssignmentRule(
             name="master-orca",
             regex_pattern="master.*.orca",
@@ -173,7 +173,7 @@ async def test_resolve_resource_assignment_matches_path_and_normalizes_slurm(
     )
 
     resolution = await resolve_resource_assignment(
-        odmantic_engine,
+        document_repository,
         call_path=".master.step.orca",
         base_parameters=Parameters(),
     )
@@ -191,18 +191,18 @@ async def test_resolve_resource_assignment_matches_path_and_normalizes_slurm(
 
 @pytest.mark.asyncio
 async def test_resolve_resource_assignment_uses_most_specific_path_pattern(
-    odmantic_engine,
+    document_repository,
 ):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+    await _delete_all(document_repository, ResourceAssignmentRule)
 
-    await odmantic_engine.save(
+    await document_repository.save(
         ResourceAssignmentRule(
             name="generic-gaussian",
             regex_pattern="*.gaussian",
             resource_str="cluster-a",
         )
     )
-    await odmantic_engine.save(
+    await document_repository.save(
         ResourceAssignmentRule(
             name="master-gaussian",
             regex_pattern="master.*.gaussian",
@@ -211,7 +211,7 @@ async def test_resolve_resource_assignment_uses_most_specific_path_pattern(
     )
 
     resolution = await resolve_resource_assignment(
-        odmantic_engine,
+        document_repository,
         call_path=".master.step.gaussian",
         base_parameters=Parameters(),
     )
@@ -223,18 +223,18 @@ async def test_resolve_resource_assignment_uses_most_specific_path_pattern(
 
 @pytest.mark.asyncio
 async def test_resolve_resource_assignment_rejects_equally_specific_matches(
-    odmantic_engine,
+    document_repository,
 ):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+    await _delete_all(document_repository, ResourceAssignmentRule)
 
-    await odmantic_engine.save(
+    await document_repository.save(
         ResourceAssignmentRule(
             name="rule-a",
             regex_pattern="maste*.step.gaussian",
             resource_str="cluster-a",
         )
     )
-    await odmantic_engine.save(
+    await document_repository.save(
         ResourceAssignmentRule(
             name="rule-b",
             regex_pattern="master.ste*.gaussian",
@@ -244,17 +244,17 @@ async def test_resolve_resource_assignment_rejects_equally_specific_matches(
 
     with pytest.raises(ValueError, match="Ambiguous resource assignment"):
         await resolve_resource_assignment(
-            odmantic_engine,
+            document_repository,
             call_path=".master.step.gaussian",
             base_parameters=Parameters(),
         )
 
 
 @pytest.mark.asyncio
-async def test_resolve_resource_assignment_allows_nested_slurm(odmantic_engine):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+async def test_resolve_resource_assignment_allows_nested_slurm(document_repository):
+    await _delete_all(document_repository, ResourceAssignmentRule)
 
-    await odmantic_engine.save(
+    await document_repository.save(
         ResourceAssignmentRule(
             name="master-orca",
             regex_pattern="master.*.orca",
@@ -266,7 +266,7 @@ async def test_resolve_resource_assignment_allows_nested_slurm(odmantic_engine):
     )
 
     resolution = await resolve_resource_assignment(
-        odmantic_engine,
+        document_repository,
         call_path=".master.step.orca",
         base_parameters=Parameters(),
         parent_parameters=Parameters(
@@ -281,12 +281,12 @@ async def test_resolve_resource_assignment_allows_nested_slurm(odmantic_engine):
 
 @pytest.mark.asyncio
 async def test_resolve_resource_assignment_allows_nested_slurm_from_base_parameters(
-    odmantic_engine,
+    document_repository,
 ):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+    await _delete_all(document_repository, ResourceAssignmentRule)
 
     resolution = await resolve_resource_assignment(
-        odmantic_engine,
+        document_repository,
         call_path=(
             ".many_orca_master_job_mariana_cluster_and_gather_jinja."
             "many_orca_jobs_from_single_smiles_cluster_and_gather_jinja"
@@ -316,12 +316,12 @@ async def test_resolve_resource_assignment_allows_nested_slurm_from_base_paramet
 
 @pytest.mark.asyncio
 async def test_resolve_resource_assignment_without_call_path_keeps_slurm(
-    odmantic_engine,
+    document_repository,
 ):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+    await _delete_all(document_repository, ResourceAssignmentRule)
 
     resolution = await resolve_resource_assignment(
-        odmantic_engine,
+        document_repository,
         call_path="",
         base_parameters=Parameters(
             queue="default",
@@ -344,10 +344,10 @@ async def test_resolve_resource_assignment_without_call_path_keeps_slurm(
 
 
 @pytest.mark.asyncio
-async def test_apply_resource_assignment_sets_trace_fields(odmantic_engine):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+async def test_apply_resource_assignment_sets_trace_fields(document_repository):
+    await _delete_all(document_repository, ResourceAssignmentRule)
 
-    saved_rule = await odmantic_engine.save(
+    saved_rule = await document_repository.save(
         ResourceAssignmentRule(
             name="master-orca",
             regex_pattern="master.*.orca",
@@ -365,7 +365,7 @@ async def test_apply_resource_assignment_sets_trace_fields(odmantic_engine):
     )
 
     resolution = await apply_resource_assignment_to_node_registry(
-        odmantic_engine, node_registry
+        document_repository, node_registry
     )
 
     assert resolution.matched_rule is not None
@@ -376,12 +376,12 @@ async def test_apply_resource_assignment_sets_trace_fields(odmantic_engine):
 
 
 @pytest.mark.asyncio
-async def test_node_registry_creation_applies_resource_assignment(odmantic_engine, initialized_context):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
-    await _ensure_probe_node_model(odmantic_engine)
+async def test_node_registry_creation_applies_resource_assignment(document_repository, initialized_context):
+    await _delete_all(document_repository, ResourceAssignmentRule)
+    await _ensure_probe_node_model(document_repository)
     context = initialized_context
 
-    await odmantic_engine.save(
+    await document_repository.save(
         ResourceAssignmentRule(
             name="probe-slurm",
             regex_pattern="workflow.resource_assignment_probe_in_tests",
@@ -430,13 +430,13 @@ async def test_node_registry_creation_applies_resource_assignment(odmantic_engin
 
 @pytest.mark.asyncio
 async def test_direct_node_creation_uses_default_call_path_and_syncs_assignment(
-    odmantic_engine, initialized_context
+    document_repository, initialized_context
 ):
     context = initialized_context
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
-    await _ensure_probe_node_model(odmantic_engine)
+    await _delete_all(document_repository, ResourceAssignmentRule)
+    await _ensure_probe_node_model(document_repository)
 
-    await odmantic_engine.save(
+    await document_repository.save(
         ResourceAssignmentRule(
             name="direct-probe-slurm",
             regex_pattern="resource_assignment_probe_in_tests",
@@ -487,12 +487,12 @@ async def test_direct_node_creation_uses_default_call_path_and_syncs_assignment(
 
 @pytest.mark.asyncio
 async def test_node_registry_creation_allows_nested_slurm_assignment(
-    odmantic_engine,
+    document_repository,
 ):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
-    await _ensure_probe_node_model(odmantic_engine)
+    await _delete_all(document_repository, ResourceAssignmentRule)
+    await _ensure_probe_node_model(document_repository)
 
-    await odmantic_engine.save(
+    await document_repository.save(
         ResourceAssignmentRule(
             name="probe-slurm",
             regex_pattern="workflow.resource_assignment_probe_in_tests",
@@ -525,9 +525,9 @@ async def test_node_registry_creation_allows_nested_slurm_assignment(
 
 @pytest.mark.asyncio
 async def test_concrete_resource_rule_legacy_null_flags_become_explicit_false(
-    odmantic_engine,
+    document_repository,
 ):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
+    await _delete_all(document_repository, ResourceAssignmentRule)
     rule = ResourceAssignmentRule(
         name="resource-only",
         regex_pattern="workflow.probe",
@@ -536,10 +536,10 @@ async def test_concrete_resource_rule_legacy_null_flags_become_explicit_false(
     assert rule.in_docker is False
     assert rule.force_rerun is False
     assert rule.recompute_artifacts is False
-    await odmantic_engine.save(rule)
+    await document_repository.save(rule)
 
     resolution = await resolve_resource_assignment(
-        odmantic_engine,
+        document_repository,
         call_path="workflow.probe",
         base_parameters=Parameters(
             in_docker=True,
@@ -555,10 +555,10 @@ async def test_concrete_resource_rule_legacy_null_flags_become_explicit_false(
 
 @pytest.mark.asyncio
 async def test_legacy_rule_documents_are_normalized_before_execution(
-    odmantic_engine,
+    document_repository,
 ):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
-    collection = odmantic_engine.collection(ResourceAssignmentRule)
+    await _delete_all(document_repository, ResourceAssignmentRule)
+    collection = document_repository.collection(ResourceAssignmentRule)
     await collection.insert_many(
         [
             {
@@ -581,7 +581,7 @@ async def test_legacy_rule_documents_are_normalized_before_execution(
     )
 
     self_resolution = await resolve_resource_assignment(
-        odmantic_engine,
+        document_repository,
         call_path="workflow.self_child",
         base_parameters=Parameters(),
     )
@@ -594,7 +594,7 @@ async def test_legacy_rule_documents_are_normalized_before_execution(
     assert self_resolution.parameters.slurm_parameters.cpus_per_task == 1
 
     concrete_resolution = await resolve_resource_assignment(
-        odmantic_engine,
+        document_repository,
         call_path="workflow.remote_child",
         base_parameters=Parameters(
             in_docker=True,
@@ -628,9 +628,9 @@ def test_self_rule_clears_routing_overrides_but_keeps_in_docker():
 
 
 @pytest.mark.asyncio
-async def test_self_rule_in_docker_overrides_node_default(odmantic_engine):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
-    await odmantic_engine.save(
+async def test_self_rule_in_docker_overrides_node_default(document_repository):
+    await _delete_all(document_repository, ResourceAssignmentRule)
+    await document_repository.save(
         ResourceAssignmentRule(
             name="self-docker",
             regex_pattern="workflow.docker_child",
@@ -640,7 +640,7 @@ async def test_self_rule_in_docker_overrides_node_default(odmantic_engine):
     )
 
     resolution = await resolve_resource_assignment(
-        odmantic_engine,
+        document_repository,
         call_path="workflow.docker_child",
         base_parameters=Parameters(in_docker=False),
     )
@@ -653,10 +653,10 @@ async def test_self_rule_in_docker_overrides_node_default(odmantic_engine):
 
 @pytest.mark.asyncio
 async def test_force_rerun_rule_is_resolved_before_cache_lookup(
-    odmantic_engine, initialized_context, monkeypatch
+    document_repository, initialized_context, monkeypatch
 ):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
-    await odmantic_engine.save(
+    await _delete_all(document_repository, ResourceAssignmentRule)
+    await document_repository.save(
         ResourceAssignmentRule(
             name="force-probe",
             regex_pattern="workflow.resource_assignment_probe_in_tests",
@@ -691,10 +691,10 @@ async def test_force_rerun_rule_is_resolved_before_cache_lookup(
 
 @pytest.mark.asyncio
 async def test_recompute_rule_is_resolved_before_cached_result_handling(
-    odmantic_engine, initialized_context, monkeypatch
+    document_repository, initialized_context, monkeypatch
 ):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
-    await odmantic_engine.save(
+    await _delete_all(document_repository, ResourceAssignmentRule)
+    await document_repository.save(
         ResourceAssignmentRule(
             name="recompute-probe",
             regex_pattern="workflow.resource_assignment_probe_in_tests",
@@ -734,10 +734,10 @@ async def test_recompute_rule_is_resolved_before_cached_result_handling(
 
 @pytest.mark.asyncio
 async def test_same_route_cached_task_keeps_its_persisted_routing(
-    odmantic_engine, initialized_context, monkeypatch
+    document_repository, initialized_context, monkeypatch
 ):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
-    await odmantic_engine.save(
+    await _delete_all(document_repository, ResourceAssignmentRule)
+    await document_repository.save(
         ResourceAssignmentRule(
             name="persisted-route",
             regex_pattern="workflow.resource_assignment_probe_in_tests",
@@ -784,11 +784,11 @@ async def test_same_route_cached_task_keeps_its_persisted_routing(
 
 @pytest.mark.asyncio
 async def test_new_registry_uses_one_assignment_resolution_snapshot(
-    odmantic_engine, initialized_context, monkeypatch
+    document_repository, initialized_context, monkeypatch
 ):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
-    await _ensure_probe_node_model(odmantic_engine)
-    await odmantic_engine.save(
+    await _delete_all(document_repository, ResourceAssignmentRule)
+    await _ensure_probe_node_model(document_repository)
+    await document_repository.save(
         ResourceAssignmentRule(
             name="single-snapshot",
             regex_pattern="workflow.resource_assignment_probe_in_tests",
@@ -844,9 +844,9 @@ async def test_new_registry_uses_one_assignment_resolution_snapshot(
 
 
 @pytest.mark.asyncio
-async def test_explicit_false_rule_flags_are_effective_overrides(odmantic_engine):
-    await _delete_all(odmantic_engine, ResourceAssignmentRule)
-    await odmantic_engine.save(
+async def test_explicit_false_rule_flags_are_effective_overrides(document_repository):
+    await _delete_all(document_repository, ResourceAssignmentRule)
+    await document_repository.save(
         ResourceAssignmentRule(
             name="disable-runtime-flags",
             regex_pattern="workflow.probe",
@@ -857,7 +857,7 @@ async def test_explicit_false_rule_flags_are_effective_overrides(odmantic_engine
     )
 
     resolution = await resolve_resource_assignment(
-        odmantic_engine,
+        document_repository,
         call_path="workflow.probe",
         base_parameters=Parameters(
             in_docker=True,

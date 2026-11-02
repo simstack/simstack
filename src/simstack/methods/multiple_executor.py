@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import List, Callable, TypeVar, Generic, Dict, Any, AsyncGenerator, Union
 
-from odmantic import Model, Field, ObjectId, Reference
+from simstack.models.document import Model, Field, ObjectId, Reference
 
 from simstack.core.asnyc_helper import async_helper
 from simstack.core.context import context

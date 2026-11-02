@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import logging
+import builtins
 import os
 import zlib
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
 
-from odmantic import Model, Field, ObjectId, Reference
+from simstack.models.document import Model, Field, ObjectId, Reference
 from pydantic import model_validator
 
 from simstack.models import simstack_model
@@ -30,12 +31,14 @@ MONGODB_MAX_DOCUMENT_SIZE = 16 * 1024 * 1024  # 16 MB in bytes
 
 @simstack_model
 class FileStack(Model):
-    name: Optional[str] = Field(description="Name of the file", default=None)
+    model_config = {"json_schema_extra": {"x-simstack-file": True}}
+
+    name: Optional[builtins.str] = Field(description="Name of the file", default=None)
     size: Optional[int] = Field(description="Size of the file in bytes", default=None)
     is_hashable: bool = Field(
         default=False, description="Whether the file stack is hashable"
     )
-    hash: Optional[str] = Field(
+    hash: Optional[builtins.str] = Field(
         default=None, description="Hash of the file stack content", index=True
     )
     in_memory: bool = Field(

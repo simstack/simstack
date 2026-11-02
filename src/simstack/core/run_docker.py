@@ -7,7 +7,6 @@ import shlex
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urlparse, urlunparse
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
@@ -22,7 +21,6 @@ from simstack.util.sanitized_output import (
 
 logger = logging.getLogger("DockerRunner")
 
-_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 _DOCKER_HUB_LIBRARY_PREFIX = "docker.io/library/"
 _pull_locks: dict[str, asyncio.Lock] = {}
 # In-container alias for the host resource workdir (not scratch). Must already
@@ -65,20 +63,9 @@ async def _persist_post_launch_failure(
     """Update only failure fields so child-persisted metadata remains intact."""
     registry_entry.status = TaskStatus.FAILED
     registry_entry.error = error
-    get_collection = getattr(context.db, "get_collection", None)
-    if callable(get_collection):
-        collection = get_collection(NodeRegistry)
-        await collection.update_one(
-            {"_id": registry_entry.id},
-            {
-                "$set": {
-                    "status": TaskStatus.FAILED.value,
-                    "error": error,
-                }
-            },
-        )
-        return
-    await context.db.save(registry_entry)
+    await context.db.task_mutation(registry_entry.id, "failure", {
+        "status": TaskStatus.FAILED.value, "error": error,
+    })
 
 
 def launcher_owner_ids() -> tuple[int, int]:
@@ -428,48 +415,6 @@ def ensure_host_task_workdir(workdir: Path | str, node_name: str, node_id: str) 
     return path
 
 
-def _mongo_host_is_loopback(connection_string: str | None) -> bool:
-    if not connection_string:
-        return False
-    host = (urlparse(connection_string).hostname or "").lower()
-    return host in _LOCAL_HOSTS
-
-
-def _rewrite_mongo_host(connection_string: str, new_host: str) -> str:
-    """Replace the Mongo URI host while preserving userinfo, port, path, and query."""
-    parsed = urlparse(connection_string)
-    userinfo = ""
-    if parsed.username is not None:
-        userinfo = parsed.username
-        if parsed.password is not None:
-            userinfo += f":{parsed.password}"
-        userinfo += "@"
-    port = parsed.port
-    hostport = new_host if port is None else f"{new_host}:{port}"
-    return urlunparse(
-        (parsed.scheme, f"{userinfo}{hostport}", parsed.path, parsed.params, parsed.query, parsed.fragment)
-    )
-
-
-def _docker_loopback_mongo_args(connection_string: str) -> tuple[str, list[str]]:
-    """
-    Make loopback Mongo reachable from inside `docker run`.
-
-    On Linux, mongod often binds 127.0.0.1 only, so bridge networking cannot
-    reach it — use host networking. On Docker Desktop (Windows/macOS), rewrite
-    to host.docker.internal instead.
-    """
-    if platform.system() == "Linux":
-        logger.info("Mongo URI uses loopback; using --network host for docker run")
-        return connection_string, ["--network", "host"]
-
-    rewritten = _rewrite_mongo_host(connection_string, "host.docker.internal")
-    logger.info(
-        "Mongo URI uses loopback; rewriting host to host.docker.internal for docker run"
-    )
-    return rewritten, ["--add-host", "host.docker.internal:host-gateway"]
-
-
 def _reload_resource_config() -> None:
     """Re-read config.toml so docker_image assignments from git pull are visible."""
     resource_config = context.resource_config
@@ -529,7 +474,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         cidfile = prepare_docker_cidfile(task_dir)
     project_file_mounts = host_project_file_mounts(task_project_root(registry_entry, context.config.project_root))
     container_project_root = "/app"
-    container_environment = task_environment(registry_entry) if is_api_runner(context) else None
+    container_environment = task_environment(registry_entry)
     container_auth_args = []
     if is_api_runner(context) and getattr(registry_entry, "repository_revision", None):
         from pathlib import Path as RuntimePath
@@ -538,7 +483,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         container_project_root = "/simstack-source"
         container_environment["SIMSTACK_REPOSITORY_ROOT"] = container_project_root
         container_environment["PYTHONPATH"] = "/simstack-core:/simstack-source/src:/simstack-source"
-    if is_api_runner(context) and container_environment.get("SIMSTACK_RUNNER_CREDENTIALS"):
+    if container_environment.get("SIMSTACK_RUNNER_CREDENTIALS"):
         if docker_cmd == "docker":
             from simstack.runner_api.credentials import CONTAINER_CREDENTIAL_PATH, CONTAINER_CREDENTIAL_TMPFS
             container_environment["SIMSTACK_RUNNER_CREDENTIALS"] = CONTAINER_CREDENTIAL_PATH
@@ -547,13 +492,8 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             credentials_path = Path(container_environment["SIMSTACK_RUNNER_CREDENTIALS"])
             project_file_mounts.append((credentials_path, "/simstack-runner-credentials.json:ro"))
             container_environment["SIMSTACK_RUNNER_CREDENTIALS"] = "/simstack-runner-credentials.json"
-    configured_connection_string = context.config.connection_string
+    configured_connection_string = getattr(context.config, "connection_string", None)
     connection_string = configured_connection_string
-    docker_net_args: list[str] = []
-
-    if docker_cmd == "docker" and _mongo_host_is_loopback(connection_string):
-        connection_string, docker_net_args = _docker_loopback_mongo_args(connection_string)
-
     slurm_parameters = getattr(registry_entry.parameters, "slurm_parameters", None)
     resource_args = container_resource_args(docker_cmd, slurm_parameters)
     if resource_args:
@@ -587,12 +527,10 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         cmd = [
             "docker", "run",
             "--cidfile", str(cidfile),
-            *docker_net_args,
             *container_auth_args,
             *resource_args,
             *(
                 [item for key in ("SIMSTACK_SERVER_URL", "SIMSTACK_RUNNER_TOKEN", "SIMSTACK_RUNNER_CREDENTIALS", "SIMSTACK_REPOSITORY_REVISION", "SIMSTACK_REPOSITORY_ROOT", "PYTHONPATH") if key in container_environment for item in ("-e", key)]
-                if is_api_runner(context) else ["-e", f"SIMSTACK_DB_DATABASE={context.config.db_name}", "-e", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}", "-e", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}"]
             ),
             "-v", f"{workdir}:{CONTAINER_WORKDIR}",
             "-v", f"{workdir}:{LEGACY_CONTAINER_WORKDIR}",
@@ -623,7 +561,6 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
         cmd = [
             "apptainer", "run",
             *resource_args,
-            *([] if is_api_runner(context) else ["--env", f"SIMSTACK_DB_DATABASE={context.config.db_name}", "--env", f"SIMSTACK_DB_TEST_DATABASE={context.config.db_name}", "--env", f"SIMSTACK_DB_CONNECTION_STRING={connection_string}"]),
             *bind_args,
             image,
             "--node-id", str(registry_entry.id),

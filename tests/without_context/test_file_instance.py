@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 from simstack.models.file_instance import FileInstance
 from simstack.models.parameters import Resource

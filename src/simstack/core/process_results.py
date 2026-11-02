@@ -1,5 +1,5 @@
 from typing import Any, Tuple, List, Union
-from odmantic import ObjectId, Model
+from simstack.models.document import ObjectId, Model
 from simstack.core.simstack_result import SimstackResult
 from simstack.models import BooleanData
 from simstack.models.files import FileStack

@@ -1,4 +1,4 @@
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 from simstack.models.dataset import DataSet, DataSetSection
 from simstack.models.dataset_metadata import DataSetMetadata

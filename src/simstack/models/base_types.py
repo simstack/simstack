@@ -1,4 +1,4 @@
-from odmantic import Model, Reference
+from simstack.models.document import Model, Reference
 from pydantic import model_validator
 
 from simstack.models import simstack_model

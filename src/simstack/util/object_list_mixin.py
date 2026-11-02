@@ -1,7 +1,7 @@
 import re
 from typing import Generic, Optional, List, Iterator, Type, Union, Iterable, TypeVar, TYPE_CHECKING
 
-from odmantic import ObjectId, Model
+from simstack.models.document import ObjectId, Model
 
 from simstack.util.generic_list_mixin import GenericListMixin
 

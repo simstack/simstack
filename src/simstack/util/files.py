@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
-from odmantic import Field
+from simstack.models.document import Field
 from pydantic import BaseModel
 
 

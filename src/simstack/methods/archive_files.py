@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from odmantic import Model, Field
+from simstack.models.document import Model, Field
 
 from simstack.core.context import context
 from simstack.core.node import node

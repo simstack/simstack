@@ -9,6 +9,7 @@ from typing import Iterable, Optional, Type
 import fnmatch  # <-- added
 
 from simstack.core.context import context
+from simstack.core.definitions import DBType
 from simstack.core.find_simstack_modules import find_simstack_modules
 from simstack.util.db import Database
 from simstack.util.import_module import import_module_from_file
@@ -83,6 +84,10 @@ class TableBuilderBase(ABC):
         await self._process_dirs(scan_dirs, drops=drops, exclude=exclude or [])
 
     async def _ensure_context_initialized(self) -> None:
+        if getattr(self.db, "databae_type", None) == DBType.API:
+            raise RuntimeError(
+                "Repository registration is Server-owned; upload the repository through Server"
+            )
         if not context.initialized:
             await context.initialize()
 

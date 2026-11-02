@@ -2,7 +2,7 @@ import base64
 import logging
 from typing import List, Optional, TypeVar
 
-from odmantic import EmbeddedModel, Field, Model
+from simstack.models.document import EmbeddedModel, Field, Model
 
 from simstack.models.parameters import Parameters
 from simstack.models.pickle_models import FunctionPickle

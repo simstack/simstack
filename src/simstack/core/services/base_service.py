@@ -8,7 +8,7 @@ import subprocess
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 from simstack.core.context import context
 from simstack.models.parameters import Resource

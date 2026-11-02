@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, List
 
-from odmantic import Model, ObjectId
+from simstack.models.document import Model, ObjectId
 from pydantic import BaseModel
 
 from simstack.core.context import context

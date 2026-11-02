@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from odmantic import Model
+from simstack.models.document import Model
 
 logger = logging.getLogger(__name__)
 

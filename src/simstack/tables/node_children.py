@@ -176,10 +176,7 @@ async def update_node_children(database, drops: str) -> None:
         nm.called_nodes = sorted(resolved)
 
         
-        await database.get_collection(NodeModel).update_one(
-            {"_id": nm.id},
-            {"$set": {"called_nodes": nm.called_nodes}},
-        )
+        await database.save(nm)
 
     with open("node_models.txt", "w", encoding="utf-8") as outfile:
         for nm in node_models:

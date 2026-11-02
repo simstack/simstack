@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, Union
 
-from odmantic import EmbeddedModel, Field, ObjectId
+from simstack.models.document import EmbeddedModel, Field, ObjectId
 from pydantic import model_validator
 
 from simstack.models import simstack_model

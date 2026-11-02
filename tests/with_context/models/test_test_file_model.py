@@ -1,7 +1,7 @@
 from tests.object_storage_fakes import stored_file
 import pytest
 from typing import Optional
-from odmantic import Model, Field
+from simstack.models.document import Model, Field
 from simstack.models import simstack_model
 from simstack.models.files import FileStack
 from simstack.models import FileList

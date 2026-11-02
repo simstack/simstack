@@ -2,7 +2,7 @@ from tests.object_storage_fakes import stored_file
 import pytest
 import pytest_asyncio
 import logging
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 from simstack.core.context import context
 from simstack.core.node import node, node_from_database
 from simstack.models import FloatData, NodeModel, NodeRegistry, Parameters

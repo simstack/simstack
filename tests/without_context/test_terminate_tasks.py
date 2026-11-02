@@ -24,32 +24,25 @@ class _Finished:
         return b"", b""
 
 
-class _Collection:
-    def __init__(self, entry) -> None:
-        self.entry = entry
-
-    async def find_one_and_update(self, query, update):
-        if self.entry.status != TaskStatus.TERMINATING:
-            return None
-        if query.get("status") != TaskStatus.TERMINATING.value:
-            return None
-        self.entry.status = TaskStatus.FAILED
-        self.entry.error = update["$set"]["error"]
-        self.entry.completed_at = update["$set"]["completed_at"]
-        return self.entry
-
-
 class _Database:
     def __init__(self, entry) -> None:
         self.entry = entry
-        self.collection = _Collection(entry)
 
     async def load_task_by_id(self, task_id):
         assert task_id == self.entry.id
         return self.entry
 
-    def get_collection(self, model):
-        return self.collection
+    async def task_mutation(self, task_id, action, values=None, expected_statuses=None):
+        assert task_id == self.entry.id
+        assert action == "terminate"
+        assert expected_statuses == [TaskStatus.TERMINATING.value]
+        if self.entry.status.value not in expected_statuses:
+            return None
+        assert set(values) == {"status", "error", "completed_at"}
+        self.entry.status = TaskStatus(values["status"])
+        self.entry.error = values["error"]
+        self.entry.completed_at = values["completed_at"]
+        return self.entry
 
 
 def _entry(**overrides):

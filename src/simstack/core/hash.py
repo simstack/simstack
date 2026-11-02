@@ -3,7 +3,8 @@ import inspect
 from collections.abc import Callable, Iterable, Mapping
 from typing import Any, cast
 
-from odmantic import ObjectId
+from pydantic import BaseModel
+from simstack.models.document import ObjectId, Model
 
 max_iterable_hash_count = 10000
 
@@ -109,14 +110,16 @@ class ComplexHash:
         # TODO is __dict__ better than vars ?
         # dict_hash = self.hash_dict(vars(cls_obj))
 
-        obj_dict = cls_obj.__dict__.copy()
-        if hasattr(cls_obj, "__class__") and hasattr(cls_obj.__class__, "__bases__"):
-            for base in cls_obj.__class__.__bases__:
-                if base.__name__ == "Model" and "odmantic.model" in str(
-                    base.__module__
-                ):
-                    if "id" in obj_dict:
-                        del obj_dict["id"]
+        if isinstance(cls_obj, BaseModel):
+            # Repository snapshots and private caches describe transport state,
+            # not scientific inputs. Inspect declared values for every depth of
+            # inheritance, retaining each concrete subtype's scientific fields.
+            obj_dict = {name: cls_obj.__dict__[name]
+                        for name in type(cls_obj).model_fields if name in cls_obj.__dict__}
+            if isinstance(cls_obj, Model):
+                obj_dict.pop(type(cls_obj).__primary_field__, None)
+        else:
+            obj_dict = cls_obj.__dict__.copy()
 
         dict_hash = self.hash_dict(obj_dict)
         if hasattr(cls_obj, "model_extra") and cls_obj.model_extra is not None:

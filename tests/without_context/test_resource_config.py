@@ -250,20 +250,6 @@ async def test_global_state_initialization(tmp_path):
     )
     
     # 2. Save ResourceDefinition to DB
-    # We need to patch the DB save because mongomock doesn't support sessions
-    # mimicking create_db_patches from conftest.py
-    async def patched_save(instance, *args, **kwargs):
-        collection = gs.db.get_collection(type(instance))
-        if not instance.id:
-            from odmantic import ObjectId
-            instance.id = ObjectId()
-        doc = instance.model_dump(by_alias=True)
-        doc["_id"] = instance.id
-        await collection.replace_one({"_id": instance.id}, doc, upsert=True)
-        return instance
-
-    gs.db._engine.save = patched_save
-    
     resource_definition = ResourceDefinition(
         resource_str="local",
         workdir=str(tmp_path),

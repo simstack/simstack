@@ -250,8 +250,8 @@ async def test_detached_spawn_failure_is_sanitized_and_marks_task_failed(
     assert "runner-user" not in caplog.text
     assert "runner-password" not in caplog.text
     child_env = spawn.await_args.kwargs["env"]
-    assert child_env["SIMSTACK_DB_CONNECTION_STRING"] == secret
-    assert child_env["SIMSTACK_DB_DATABASE"] == "runner-database"
+    assert "SIMSTACK_DB_CONNECTION_STRING" not in child_env
+    assert "SIMSTACK_DB_DATABASE" not in child_env
     assert child_env["PYTHONPATH"].split(os.pathsep)[:2] == [
         str(context.config.project_root),
         str(context.config.project_root / "src"),

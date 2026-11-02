@@ -1,7 +1,7 @@
 import os
 
 import pytest
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus

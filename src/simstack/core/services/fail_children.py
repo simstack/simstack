@@ -9,8 +9,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-from bson import ObjectId as BsonObjectId
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
@@ -42,10 +41,6 @@ def _require_pid(process_id: object, label: str) -> int:
 def _parent_object_id(parent_id: object) -> ObjectId:
     if isinstance(parent_id, ObjectId):
         return parent_id
-    # model_validate_doc keeps pymongo's ObjectId. It is not an instance of
-    # odmantic.ObjectId, even though both render as ObjectId('...').
-    if isinstance(parent_id, BsonObjectId):
-        return ObjectId(parent_id)
     if isinstance(parent_id, str) and ObjectId.is_valid(parent_id):
         return ObjectId(parent_id)
     raise ValueError(
@@ -151,20 +146,9 @@ async def _mark_failed_if_active(entry: NodeRegistry, error: str) -> bool:
     if not error.strip():
         raise ValueError("error message is required")
     completed_at = datetime.now()
-    collection = context.db.get_collection(NodeRegistry)
-    updated = await collection.find_one_and_update(
-        {
-            "_id": entry.id,
-            "status": {"$in": [status.value for status in _ACTIVE_STATUSES]},
-        },
-        {
-            "$set": {
-                "status": TaskStatus.FAILED.value,
-                "error": error,
-                "completed_at": completed_at,
-            }
-        },
-    )
+    updated = await context.db.task_mutation(entry.id, "failure", {
+        "status": TaskStatus.FAILED.value, "error": error, "completed_at": completed_at,
+    }, [status.value for status in _ACTIVE_STATUSES])
     if updated is None:
         return False
     entry.status = TaskStatus.FAILED

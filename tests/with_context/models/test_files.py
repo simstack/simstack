@@ -10,8 +10,8 @@ from unittest.mock import patch
 from typing import Type, TypeVar
 import tempfile
 
-from odmantic import ObjectId as OdmanticObjectId
-from mongomock.object_id import ObjectId
+from simstack.models.document import ObjectId as OdmanticObjectId
+from simstack.models.document import ObjectId
 
 from simstack.core.resources import allowed_resources
 from simstack.models.files import FileStack
@@ -102,7 +102,7 @@ def test_from_local_file(test_file, setup_test_env):
         # Patch the context import that happens inside the from_local_file method
         with patch("simstack.core.context.context", context):
             from simstack.models.file_instance import FileInstance
-            from bson import ObjectId
+            from simstack.models.document import ObjectId
 
             file_instance = FileInstance.from_local_file(
                 path=temp_path, file_stack_id=ObjectId(), make_copy=False

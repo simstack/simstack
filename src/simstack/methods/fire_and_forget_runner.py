@@ -2,7 +2,7 @@ import asyncio
 import inspect
 from typing import List, Callable, Any, Optional
 
-from odmantic import Model
+from simstack.models.document import Model
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus

@@ -60,16 +60,13 @@ async def test_update_node_children_keeps_attribute_calls_from_the_docstring(
     )
     updates = []
 
-    class FakeCollection:
-        async def update_one(self, query, update):
-            updates.append((query, update))
-
     class FakeDatabase:
         async def find(self, model):
             return [child, parent]
 
-        def get_collection(self, model):
-            return FakeCollection()
+        async def save(self, model):
+            updates.append((model.id, list(model.called_nodes)))
+            return model
 
     async def import_function(function_mapping, database):
         if function_mapping == "pkg.parent_node":
@@ -81,5 +78,5 @@ async def test_update_node_children_keeps_attribute_calls_from_the_docstring(
 
     await node_children.update_node_children(FakeDatabase(), "")
 
-    parent_update = next(update for query, update in updates if query == {"_id": "parent"})
-    assert parent_update == {"$set": {"called_nodes": ["pkg.child_node"]}}
+    parent_update = next(calls for identity, calls in updates if identity == "parent")
+    assert parent_update == ["pkg.child_node"]

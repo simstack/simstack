@@ -17,33 +17,21 @@ class FakeDatabase:
         self.saved.append(item)
         return item
 
-    def get_collection(self, model):
-        return self
-
-    def _matches(self, item, query):
-        for key, expected in query.items():
-            actual = item.id if key == "_id" else getattr(item, key)
-            if isinstance(expected, dict) and "$in" in expected:
-                if actual not in expected["$in"]:
-                    return False
-            elif actual != expected:
-                return False
-        return True
-
-    def _apply_update(self, item, update):
-        for key, value in update.get("$set", {}).items():
-            setattr(item, key, value)
-
-    async def find_one_and_update(self, query, update):
-        if not self.saved or not self._matches(self.saved[-1], query):
+    async def task_mutation(self, task_id, action, values=None, expected_statuses=None):
+        if not self.saved or str(self.saved[-1].id) != str(task_id):
             return None
-        self._apply_update(self.saved[-1], update)
-        return {}
-
-    async def update_one(self, query, update):
-        if self.saved and self._matches(self.saved[-1], query):
-            self._apply_update(self.saved[-1], update)
-        return SimpleNamespace()
+        item = self.saved[-1]
+        if expected_statuses is not None and item.status.value not in expected_statuses:
+            return None
+        if action == "scheduler":
+            assert set(values) == {"job_id"}
+        else:
+            assert action == "failure"
+            assert set(values) == {"status", "error"}
+            assert expected_statuses == [TaskStatus.SLURM_QUEUED.value]
+        for key, value in values.items():
+            setattr(item, key, TaskStatus(value) if key == "status" else value)
+        return item
 
 
 def _slurm_registry(name: str, parameters: Parameters, parent_ids=None) -> NodeRegistry:
@@ -69,6 +57,9 @@ async def test_submit_node_does_not_persist_generated_startup_commands(
     python_path.mkdir()
 
     secret = "mongodb://slurm-env:slurm-password@db.internal:27017/simstack"
+    monkeypatch.setenv("SIMSTACK_SERVER_URL", "https://server.example/api")
+    monkeypatch.setenv("SIMSTACK_RUNNER_TOKEN", "runner-test-token")
+    monkeypatch.setenv("SIMSTACK_DB_CONNECTION_STRING", secret)
     submitted = []
 
     def fake_sbatch(*args, **kwargs):
@@ -88,7 +79,7 @@ async def test_submit_node_does_not_persist_generated_startup_commands(
             workdir=workdir,
             environment_start="",
             docker=False,
-            resource="local",
+            resource="test",
             connection_string=secret,
             db_name="slurm-database",
         ),
@@ -99,7 +90,7 @@ async def test_submit_node_does_not_persist_generated_startup_commands(
     )
 
     parent_parameters = Parameters(
-        resource="local",
+        resource="test",
         queue="slurm-queue",
         slurm_parameters=SlurmParameters(
             nodes=2,
@@ -126,8 +117,10 @@ async def test_submit_node_does_not_persist_generated_startup_commands(
     assert "#SBATCH --job-name=parent." in parent_script
     assert "module load orca" in parent_script
     assert secret not in parent_script
-    assert submitted[0][1]["env"]["SIMSTACK_DB_CONNECTION_STRING"] == secret
-    assert submitted[0][1]["env"]["SIMSTACK_DB_DATABASE"] == "slurm-database"
+    assert "SIMSTACK_DB_CONNECTION_STRING" not in submitted[0][1]["env"]
+    assert "SIMSTACK_DB_DATABASE" not in submitted[0][1]["env"]
+    assert submitted[0][1]["env"]["SIMSTACK_SERVER_URL"] == "https://server.example/api"
+    assert submitted[0][1]["env"]["SIMSTACK_RUNNER_TOKEN"] == "runner-test-token"
     assert parent.status == TaskStatus.SLURM_QUEUED
     assert parent.job_id == "12345"
 

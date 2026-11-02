@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 from simstack.core.definitions import TaskStatus
 

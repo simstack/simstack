@@ -8,7 +8,7 @@ import uuid
 from pathlib import Path
 from typing import Set, List, Tuple, Union, Optional
 
-from odmantic import ObjectId, Model
+from simstack.models.document import ObjectId, Model
 
 from simstack.core.definitions import TaskStatus
 from simstack.core.simstack_result import SimstackResult

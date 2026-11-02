@@ -111,7 +111,7 @@ def _mock_context(tmp_path: Path, resource_config: ResourceConfig):
         ),
         db=SimpleNamespace(
             save=AsyncMock(),
-            get_collection=lambda model: SimpleNamespace(update_one=AsyncMock()),
+            task_mutation=AsyncMock(),
         ),
     )
 
@@ -651,11 +651,9 @@ async def test_run_docker_failure_preserves_child_persisted_metadata(tmp_path: P
         return_kind="exception",
         message="child message",
     )
-    update_one = AsyncMock()
+    mutation = AsyncMock()
     mock_context.db.load_task_by_id = AsyncMock(return_value=child_entry)
-    mock_context.db.get_collection = lambda model: SimpleNamespace(
-        update_one=update_one
-    )
+    mock_context.db.task_mutation = mutation
     proc = AsyncMock(pid=4242)
     proc.returncode = 1
     proc.communicate = AsyncMock(
@@ -679,7 +677,8 @@ async def test_run_docker_failure_preserves_child_persisted_metadata(tmp_path: P
     assert child_entry.return_kind == "exception"
     assert child_entry.message == "child message"
     assert mock_context.db.save.await_count == 1
-    update = update_one.await_args.args[1]["$set"]
+    assert mutation.await_args.args[1] == "failure"
+    update = mutation.await_args.args[2]
     assert set(update) == {"status", "error"}
 
 

@@ -20,7 +20,7 @@ from typing import (
 
 import coolname  # type: ignore[import-untyped]
 import nest_asyncio  # type: ignore[import-untyped]
-from odmantic import Model, ObjectId
+from simstack.models.document import Model, ObjectId
 from pydantic import BaseModel
 
 from simstack.core.artifacts import create_artifacts, ArtifactArguments
@@ -213,7 +213,7 @@ def hashable_inputs(arg: Any) -> dict[str, Any]:
     return {
         key: hashable_value(value)
         for key, value in arg.__dict__.items()
-        if key not in ["id"]
+        if key != "id" and not key.startswith("_simstack_")
     }
 
 
@@ -340,11 +340,7 @@ async def _link_parent_id(registry_entry: NodeRegistry, parent_id: ObjectId) -> 
     A full ``db.save`` of a previously loaded entry can clobber fields the
     child already wrote, including ``custom_name``.
     """
-    collection = context.db.get_collection(NodeRegistry)
-    await collection.update_one(
-        {"_id": registry_entry.id},
-        {"$addToSet": {"parent_ids": parent_id}},
-    )
+    await context.db.task_mutation(registry_entry.id, "link_parent", {"parent_id": parent_id})
     if parent_id not in registry_entry.parent_ids:
         registry_entry.parent_ids.append(parent_id)
 
@@ -609,8 +605,8 @@ class Node:
                 logger.error(f"Could not find table name for {arg.__class__.__name__}")
                 raise ValueError(f"Could not find table name for {arg.__class__.__name__}")
             if not isinstance(arg, Model):
-                logger.error(f"{arg.__class__.__name__} is not an odmantic Model")
-                raise ValueError(f"{arg.__class__.__name__} is not an odmantic Model")
+                logger.error(f"{arg.__class__.__name__} is not a SimStack Model")
+                raise ValueError(f"{arg.__class__.__name__} is not a SimStack Model")
 
             argument_entry = await context.db.save(arg)
 
@@ -861,6 +857,8 @@ class Node:
         self,
     ) -> Union[Model, SimstackResult, bool, None]:
         """Run this task in an isolated child and restore its persisted result."""
+        from simstack.runner_api.runtime import task_environment
+
         assert self.registry_entry is not None
 
         node_id = str(self.id)
@@ -909,24 +907,7 @@ class Node:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=project_root,
-                env={
-                    **os.environ,
-                    "PYTHONPATH": child_python_path,
-                    **(
-                        {"SIMSTACK_DB_CONNECTION_STRING": str(connection_string)}
-                        if connection_string is not None
-                        else {}
-                    ),
-                    **(
-                        {
-                            "SIMSTACK_DB_DATABASE": str(
-                                getattr(context.config, "db_name")
-                            )
-                        }
-                        if getattr(context.config, "db_name", None) is not None
-                        else {}
-                    ),
-                },
+                env={**task_environment(self.registry_entry), "PYTHONPATH": child_python_path},
             )
             stdout_b, stderr_b = await proc.communicate()
         except asyncio.CancelledError:
@@ -1133,14 +1114,7 @@ class Node:
         if self.parameters.resource == "self":
             selected_resource = str(context.config.resource)
             updates["parameters.resource.value"] = selected_resource
-        collection = context.db.get_collection(NodeRegistry)
-        updated = await collection.find_one_and_update(
-            {
-                "_id": self.registry_entry.id,
-                "status": TaskStatus.SUBMITTED.value,
-            },
-            {"$set": updates},
-        )
+        updated = await context.db.task_mutation(self.registry_entry.id, "handoff", updates, [TaskStatus.SUBMITTED.value])
         if updated is None:
             return False
         if selected_resource is not None:

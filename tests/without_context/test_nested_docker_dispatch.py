@@ -224,9 +224,12 @@ def _patch_run_somewhere_context(
 ):
     saved_entries: list = []
 
-    async def fake_find_one_and_update(query, update):
-        saved_entries.append((query, update))
+    async def fake_task_mutation(task_id, action, values=None, expected_statuses=None):
+        assert action == "handoff"
+        assert expected_statuses == [TaskStatus.SUBMITTED.value]
+        saved_entries.append((task_id, values))
         return {}
+
 
     async def fake_claim(entry):
         if entry.status != TaskStatus.SUBMITTED:
@@ -242,9 +245,7 @@ def _patch_run_somewhere_context(
             config=SimpleNamespace(resource=resource),
             resource_config=None,
             db=SimpleNamespace(
-                get_collection=lambda model: SimpleNamespace(
-                    find_one_and_update=fake_find_one_and_update
-                )
+                task_mutation=fake_task_mutation
             ),
         ),
     )
@@ -598,7 +599,7 @@ async def test_in_docker_non_docker_handoff_preserves_explicit_false(monkeypatch
     assert execution_node.parameters.in_docker is False
     assert len(saved_entries) == 1
     assert execution_node.registry_entry.parameters.in_docker is False
-    assert saved_entries[0][1]["$set"]["parameters.in_docker"] is False
+    assert saved_entries[0][1]["parameters.in_docker"] is False
 
 
 @pytest.mark.asyncio

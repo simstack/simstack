@@ -1,6 +1,6 @@
 import pytest
 import pytest_asyncio
-from odmantic import Model
+from simstack.models.document import Model
 
 from simstack.core.context import context
 from simstack.models.models import ModelMapping

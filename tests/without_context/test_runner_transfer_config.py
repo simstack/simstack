@@ -16,7 +16,7 @@ from simstack.util.toml_reader import TomlReader
 @pytest.mark.parametrize(
     "use_db,config_token,token_env,has_token,expected_token",
     [
-        (True, None, None, True, "local-token"),
+        (True, None, None, True, None),
         (True, "config-token", None, True, "config-token"),
         (True, None, "SIMSTACK_RUNNER_TOKEN", True, "env-token"),
         (True, None, "SIMSTACK_SERVER_TOKEN", True, "env-token"),
@@ -66,9 +66,6 @@ async def test_runner_transfer_credentials(
     await tokens.insert_one(
         {"resource_str": "other", "access_token": "other-resource-token"}
     )
-    await db.client["other_user"]["runner_resource_tokens"].insert_one(
-        {"resource_str": "local", "access_token": "other-user-token"}
-    )
     if has_token:
         await tokens.insert_one(
             {"resource_str": "local", "access_token": "local-token"}
@@ -78,9 +75,8 @@ async def test_runner_transfer_credentials(
     monkeypatch.setattr(db, "collection", collections)
     try:
         config = await ConfigReader.create("local", db, toml, tmp_path)
-        assert (call("runner_resource_tokens") in collections.call_args_list) == (
-            use_db and not config_token and not token_env
-        )
+        # Tokens are supplied by enrollment/configuration, never fetched from a DB.
+        assert call("runner_resource_tokens") not in collections.call_args_list
         monkeypatch.setattr(
             "simstack.core.context.context", SimpleNamespace(config=config)
         )

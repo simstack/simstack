@@ -11,7 +11,6 @@ from simstack.util.project_root_finder import find_project_root
 from simstack.util.toml_reader import TomlReader
 
 from simstack.util.resource_config import ResourceConfig
-from simstack.util.setup_logging import setup_logging
 from simstack.util.mappings import ModelMappingTable, NodeMappingTable
 
 if TYPE_CHECKING:
@@ -184,7 +183,7 @@ class GlobalState:
 
         # check that the database can be reached and set logging up
         self.initialize_database(db_info, is_test)
-        self.initialize_logging(db_info.connection_string, db_info.db_name, is_test, kwargs.get("log_level", "INFO"))
+        self.initialize_logging(kwargs.get("log_level", "INFO"))
 
         logger = logging.getLogger("Context")
         if db_info.connection_string is not None:
@@ -266,36 +265,23 @@ class GlobalState:
         if nodes:
             self._node_mappings = await NodeMappingTable.load(self._db)
 
-    def initialize_logging(self, connection_string: str, db_name: str, is_test: bool, log_level: str = "INFO"):
-        if is_test:
-            # For tests, use simple console logging without the database handler
-            # We use force=True to ensure it overrides any existing configuration (e.g. from pytest or PyCharm)
-            # We also ensure the stream is sys.stderr so PyCharm/pytest can capture it properly if configured
-            logging.basicConfig(
-                level=log_level,
-                format="%(asctime)s - %(name)-15s - %(levelname)-10s - %(filename)-20s:%(lineno)4d - %(message)s",
-                stream=sys.stderr,
-                force=True,
-            )
-            self._log_handler = logging.getLogger()
-            # Flush stdout and stderr to ensure logs are not buffered
-            sys.stdout.flush()
-            sys.stderr.flush()
-        else:
-            self._log_handler = setup_logging(
-                connection_string,
-                db_name,
-                log_level,
-            )
+    def initialize_logging(self, log_level: str = "INFO"):
+        """Initialize console logging for the local in-memory context."""
+        logging.basicConfig(
+            level=log_level,
+            format="%(asctime)s - %(name)-15s - %(levelname)-10s - %(filename)-20s:%(lineno)4d - %(message)s",
+            stream=sys.stderr,
+            force=True,
+        )
+        self._log_handler = logging.getLogger()
+        sys.stdout.flush()
+        sys.stderr.flush()
 
     def initialize_database(self, db_info: DatabaseInformation, is_test: bool):
         from simstack.util.db import Database
 
         try:
             self._db = Database.from_db_info(db_info)
-            if self._db is not None and db_info.db_type == DBType.MONGODB:
-                # Only ping real MongoDB connections
-                self._db.client.admin.command("ping")
 
         except ConnectionError as e:
             if not is_test:

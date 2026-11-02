@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 import simstack.methods.generate_test as generate_test_module
 from simstack.models import FloatData, ModelMapping, NamedDataReference

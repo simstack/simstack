@@ -1,7 +1,7 @@
 from typing import Optional, Literal, Dict, Any, Union
 import base64
 import os
-from odmantic import Model, Field, ObjectId
+from simstack.models.document import Model, Field, ObjectId
 from simstack.models.simstack_model import simstack_model
 
 @simstack_model

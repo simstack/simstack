@@ -1,6 +1,6 @@
 import datetime
 
-from odmantic import Model, ObjectId
+from simstack.models.document import Model, ObjectId
 
 from simstack.models.parameters import Resource
 

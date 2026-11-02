@@ -28,17 +28,6 @@ class _Process:
         return self._stdout, self._stderr
 
 
-class _ProcessIdCollection:
-    def __init__(self, entry) -> None:
-        self.entry = entry
-
-    async def update_one(self, query, update):
-        process_id = update["$set"]["process_id"]
-        if type(process_id) is not int:
-            raise ValueError(f"process_id must be an int, got {process_id!r}")
-        self.entry.process_id = process_id
-
-
 class _Database:
     def __init__(self, entry) -> None:
         self.entry = entry
@@ -51,8 +40,13 @@ class _Database:
         self.saved.append(entry)
         return entry
 
-    def get_collection(self, model):
-        return _ProcessIdCollection(self.entry)
+    async def task_mutation(self, task_id, action, values=None, expected_statuses=None):
+        assert str(task_id) == str(self.entry.id)
+        assert action == "process"
+        assert set(values) == {"process_id"}
+        assert type(values["process_id"]) is int
+        self.entry.process_id = values["process_id"]
+        return self.entry
 
 
 def _process_node(entry, parameters: Parameters | None = None) -> Node:
@@ -89,6 +83,9 @@ async def test_process_for_self_uses_actual_resource_and_preserves_true(
     host_python_path = "/host-only/simstack/src"
     image_python_path = "/image/site-packages"
     monkeypatch.setenv("PYTHONPATH", image_python_path)
+    monkeypatch.setenv("SIMSTACK_SERVER_URL", "https://server.example/api")
+    monkeypatch.setenv("SIMSTACK_RUNNER_TOKEN", "runner-test-token")
+    monkeypatch.setenv("SIMSTACK_DB_CONNECTION_STRING", "must-not-reach-child")
 
     async def fake_create_subprocess_exec(*cmd, **kwargs):
         captured.append((cmd, kwargs))
@@ -120,10 +117,10 @@ async def test_process_for_self_uses_actual_resource_and_preserves_true(
     assert command[command.index("--resource") + 1] == "cluster-a"
     assert "--in-docker" in command
     child_env = captured[0][1]["env"]
-    assert child_env["SIMSTACK_DB_CONNECTION_STRING"] == (
-        "mongodb://user:password@db:27017/"
-    )
-    assert child_env["SIMSTACK_DB_DATABASE"] == "child-database"
+    assert "SIMSTACK_DB_CONNECTION_STRING" not in child_env
+    assert "SIMSTACK_DB_DATABASE" not in child_env
+    assert child_env["SIMSTACK_SERVER_URL"] == "https://server.example/api"
+    assert child_env["SIMSTACK_RUNNER_TOKEN"] == "runner-test-token"
     assert captured[0][1]["cwd"] == str(tmp_path)
     assert child_env["PYTHONPATH"].split(os.pathsep) == [
         str(tmp_path),

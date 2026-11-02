@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from odmantic import Model, Field, ObjectId
+from simstack.models.document import Model, Field, ObjectId
 
 from simstack.models import simstack_model
 from simstack.models.array_storage import ArrayStorage

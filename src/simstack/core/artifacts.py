@@ -3,7 +3,7 @@ import logging
 import re
 from typing import Any, Callable, Optional, List
 
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 from simstack.core.context import context
 from simstack.models.artifact_models import ArtifactMapping, ArtifactModel
@@ -222,105 +222,18 @@ async def create_artifacts(
 
 
 async def save_artifact_model(artifact: ArtifactModel) -> ArtifactModel:
-    """
-    Custom save function for polymorphic models
-
-    If the item is a List type, it will also save any unsaved nested items.
-    """
-    # Special handling for List type
-    if artifact.type == "list":
-        # Save all nested items first
-        saved_items = []
-        for nested_item in artifact.items:
-            # Save the nested item
-            saved_item = await save_artifact_model(nested_item)
-            saved_items.append(saved_item)
-
-        # Update the items list with all saved items
-        artifact.items = saved_items
-
-    # Get the model's collection
-    collection = context.db.collection(ArtifactModel)
-
-    # Convert model to dict
-    item_dict = artifact.model_dump(by_alias=True)
-
-    # For List types, we need to convert ArtifactModel objects to their IDs for storage
-    if artifact.type == "list":
-        # Replace ArtifactModel objects with their IDs in the dict for storage
-        item_dict["items"] = [nested_item.id for nested_item in artifact.items]
-
-    # Check if this artifact already exists in the database
-    if artifact.id is not None:
-        existing = await collection.find_one({"_id": artifact.id})
-        if existing:
-            # ArtifactModel exists, update it
-            await collection.replace_one({"_id": artifact.id}, item_dict)
-            return artifact
-
-    # ArtifactModel doesn't exist or has no ID, insert it
-    # Remove id field if it exists to let MongoDB generate it
-    if "_id" in item_dict:
-        del item_dict["_id"]
-
-    result = await collection.insert_one(item_dict)
-    artifact.id = result.inserted_id
-
-    return artifact
+    """Persist a polymorphic artifact through the neutral model API."""
+    if getattr(artifact, "type", None) == "list":
+        artifact.items = [await save_artifact_model(item) for item in artifact.items]
+    return await context.db.save(artifact)
 
 
-async def find_artifacts(
-    model_class: type[ArtifactModel], **kwargs: Any
-) -> List[ArtifactModel]:
-    """
-    Custom find function for polymorphic models
-    """
-    # Get the collection
-    collection = context.db.collection(ArtifactModel)
-
-    # Add item_type filter for subclasses
-    if model_class != ArtifactModel:
-        discriminator_value = model_class.model_fields["artifact_type"].default
-        kwargs["artifact_type"] = discriminator_value
-
-    # Execute find
-    cursor = collection.find(kwargs)
-    results = await cursor.to_list(length=None)
-
-    # Convert results to model instances
-    items = []
-    for doc in results:
-        artifact_type = doc.get("artifact_type")
-
-        # For List types, we need special handling
-        if artifact_type == "list":
-            # Store item_ids temporarily
-            item_ids = doc.get("items", [])
-            # Remove items field for validation
-            doc_copy = doc.copy()
-            doc_copy["items"] = []
-
-            # Create the List instance without items first
-            item = model_class.model_validate(doc_copy)
-
-            # Load all referenced items
-            loaded_items = []
-            for item_id in item_ids:
-                nested_item = await context.db.find_one(
-                    ArtifactModel, ArtifactModel.id == item_id
-                )
-                if nested_item:
-                    loaded_items.append(nested_item)
-
-            # Now assign the loaded items
-            item.items = loaded_items
-        else:
-            # For non-List types, normal validation is fine
-            item = model_class.model_validate(doc)
-
-    items.append(item)
-
-    return items
+async def find_artifacts(model_class: type[ArtifactModel], **kwargs: Any) -> List[ArtifactModel]:
+    from simstack.persistence.criteria import eq
+    if model_class != ArtifactModel and "artifact_type" in model_class.model_fields:
+        kwargs["artifact_type"] = model_class.model_fields["artifact_type"].default
+    criteria = [eq(field, value) for field, value in kwargs.items()]
+    return await context.db.find(model_class, *criteria)
 
 
 # async def find_one_artifact(artifact_id: ObjectId) -> Optional[ArtifactModel]:

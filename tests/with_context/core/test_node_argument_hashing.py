@@ -3,7 +3,7 @@ import uuid
 from typing import ClassVar
 
 import pytest
-from odmantic import EmbeddedModel, Model
+from simstack.models.document import EmbeddedModel, Model
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus

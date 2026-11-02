@@ -1,7 +1,7 @@
 import re
 from typing import List, Optional, Iterator
 
-from odmantic import EmbeddedModel, Field, Model, ObjectId
+from simstack.models.document import EmbeddedModel, Field, Model, ObjectId
 
 from simstack.models import simstack_model
 from simstack.util.object_list_mixin import ObjectListMixin

@@ -170,71 +170,6 @@ use_db = true
     def mock_db(self, mock_db_info):
         db = Database.from_db_info(mock_db_info)
 
-        # Patch ODMantic engine to work without sessions in test mode
-        async def patched_save(instance, **kwargs):
-            """Patched save method that doesn't use sessions"""
-            # Use the collection directly without transactions
-            collection = db.get_collection(type(instance))
-
-            # Update route table if it's a ResourceDefinition
-            if isinstance(instance, ResourceDefinition):
-                route_table.add_route_set(instance.resource_str, instance.routes)
-
-            # Ensure the instance has an ObjectId
-            if not instance.id:
-                from odmantic import ObjectId
-
-                instance.id = ObjectId()
-
-            # Convert to dict and save
-            doc = instance.model_dump(by_alias=True)
-            doc["_id"] = instance.id
-
-            # Recursively convert Path objects to strings for BSON encoding
-            def convert_paths(obj):
-                if isinstance(obj, dict):
-                    return {k: convert_paths(v) for k, v in obj.items()}
-                elif isinstance(obj, list):
-                    return [convert_paths(v) for v in obj]
-                elif isinstance(obj, Path):
-                    return str(obj)
-                return obj
-
-            doc = convert_paths(doc)
-
-            # Upsert the document
-            await collection.replace_one({"_id": instance.id}, doc, upsert=True)
-            return instance
-
-        async def patched_save_all(instances, **kwargs):
-            """Patched save_all method that doesn't use sessions"""
-            results = []
-            for instance in instances:
-                result = await patched_save(instance, **kwargs)
-                results.append(result)
-            return results
-
-        async def patched_find(model, *args, **kwargs):
-            """Patched find method that reads from the mock collections"""
-            if model == ResourceConfig:
-                return []
-            collection = db.get_collection(model)
-            cursor = collection.find({})
-            docs = await cursor.to_list(length=None)
-            
-            results = []
-            for doc in docs:
-                # Remove _id if it's not in the model
-                if "_id" in doc and "_id" not in model.model_fields:
-                    doc.pop("_id")
-                results.append(model.model_validate(doc))
-            return results
-
-        # Apply patches only for mock database
-        db.save = patched_save
-        db.save_all = patched_save_all
-        db.save_unchecked = patched_save
-        db.find = patched_find
         yield db
         if asyncio.iscoroutinefunction(db.close):
             loop = asyncio.get_event_loop()
@@ -270,6 +205,7 @@ use_db = true
 
         for resource_def in resource_definitions:
             await mock_db.save(resource_def)
+            route_table.add_route_set(resource_def.resource_str, resource_def.routes)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_workdir = Path(temp_dir) / "workdir"
@@ -289,6 +225,7 @@ use_db = true
 
         for resource_def in resource_definitions:
             await mock_db.save(resource_def)
+            route_table.add_route_set(resource_def.resource_str, resource_def.routes)
 
         project_root = find_project_root(skip_files=())
         config_reader = await ConfigReader.create("local", mock_db, toml_reader, project_root)
@@ -300,6 +237,7 @@ use_db = true
         """Test that the resource property is read-only."""
         for resource_def in resource_definitions:
             await mock_db.save(resource_def)
+            route_table.add_route_set(resource_def.resource_str, resource_def.routes)
 
         project_root = find_project_root(skip_files=())
         config_reader = await ConfigReader.create("local", mock_db, toml_reader, project_root)

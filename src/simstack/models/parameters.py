@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Optional, List, ClassVar, Dict, Any
-from odmantic import Field, EmbeddedModel
+from simstack.models.document import Field, EmbeddedModel
 from pydantic import field_validator, model_validator
 
 from simstack.core.resources import allowed_resources

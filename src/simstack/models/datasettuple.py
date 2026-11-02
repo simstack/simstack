@@ -1,6 +1,6 @@
 from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List
 
-from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
+from simstack.models.document import Model, ObjectId, EmbeddedModel, Field, Reference
 
 
 from simstack.models import simstack_model

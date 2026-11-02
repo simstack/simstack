@@ -4,8 +4,7 @@ from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
-from bson import ObjectId as BsonObjectId
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import Node
@@ -39,26 +38,9 @@ class _CancelledProcess:
         return self.returncode
 
 
-class _Collection:
-    def __init__(self, entries) -> None:
-        self.entries = {entry.id: entry for entry in entries}
-
-    async def find_one_and_update(self, query, update):
-        entry = self.entries.get(query["_id"])
-        if entry is None:
-            return None
-        if entry.status.value not in query["status"]["$in"]:
-            return None
-        entry.status = TaskStatus.FAILED
-        entry.error = update["$set"]["error"]
-        entry.completed_at = update["$set"]["completed_at"]
-        return entry
-
-
 class _Database:
     def __init__(self, entries) -> None:
         self.entries = list(entries)
-        self.collection = _Collection(self.entries)
         self.saved = []
 
     async def load_task_by_id(self, task_id):
@@ -74,8 +56,14 @@ class _Database:
         self.saved.append(entry)
         return entry
 
-    def get_collection(self, model):
-        return self.collection
+    async def task_mutation(self, task_id, action, values, expected_statuses=None):
+        assert action == "failure"
+        entry = await self.load_task_by_id(task_id)
+        if entry is None or entry.status.value not in expected_statuses:
+            return None
+        for name, value in values.items():
+            setattr(entry, name, TaskStatus(value) if name == "status" else value)
+        return entry
 
 
 def _entry(**overrides):
@@ -130,8 +118,8 @@ async def test_failed_parent_kills_running_children_and_leaves_completed(monkeyp
 
 
 @pytest.mark.asyncio
-async def test_loaded_bson_parent_id_terminates_children(monkeypatch, tmp_path):
-    parent_id = BsonObjectId("6acc94fd41c9db0721eb8ac0")
+async def test_loaded_string_parent_id_terminates_children(monkeypatch, tmp_path):
+    parent_id = "6acc94fd41c9db0721eb8ac0"
     assert not isinstance(parent_id, ObjectId)
     running = _entry(process_id=41)
     database = _Database([running])

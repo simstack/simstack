@@ -3,7 +3,7 @@ import json
 import logging
 from pathlib import Path
 
-from odmantic.exceptions import DocumentParsingError
+from simstack.models.document import DocumentParsingError, Model, EmbeddedModel
 from pydantic import ValidationError
 
 from simstack.core.context import context
@@ -41,20 +41,17 @@ class CreateModelTable(TableBuilderBase):
         classes = inspect.getmembers(module, inspect.isclass)
 
         for class_name, new_class in classes:
-            # this is required because of the Odmantic Metaclass Model
-            # subclass does not work even if applied to the imported classes
-            # this is a bug in importlib
             bases = [base.__name__ for base in new_class.__bases__]
             is_ui_model = any("UIModel" in s for s in bases) or is_simstack_model(
                 new_class
             )
-            is_model = any(s == "Model" for s in bases)
+            is_model = issubclass(new_class, Model)
 
-            is_embedded_model = any(s == "EmbeddedModel" for s in bases)
+            is_embedded_model = issubclass(new_class, EmbeddedModel)
 
             if not (is_model or is_ui_model or is_embedded_model):
                 continue
-            if class_name == "Model":
+            if new_class in (Model, EmbeddedModel):
                 continue
             if new_class.__module__ != module.__name__:
                 continue

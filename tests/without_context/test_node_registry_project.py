@@ -1,4 +1,4 @@
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 from simstack.core.definitions import TaskStatus
 from simstack.models.node_registry import NodeRegistry

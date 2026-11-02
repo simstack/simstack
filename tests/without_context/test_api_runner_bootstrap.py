@@ -6,7 +6,7 @@ import pytest
 from simstack.core.context import GlobalState
 from simstack.core.definitions import DBType
 from simstack.models.resource_definition import ResourceDefinition
-from simstack.runner_api.persistence import HTTPMotorClient
+from simstack.runner_api.repository import HTTPRepository
 from simstack.runner_api.transport import RunnerAPIClient, RunnerAPIError
 
 
@@ -38,13 +38,13 @@ async def test_api_bootstrap_opens_no_mongo_connection_and_erases_db_env(
                 "resource_definition": resource.model_dump(mode="json"),
                 "resources": ["cluster"],
             }
-        return {"result": "[]"}
+        return {"documents": []}
 
     def forbidden(*args, **kwargs):
         raise AssertionError("A runner opened a MongoDB client")
 
     monkeypatch.setattr(RunnerAPIClient, "json", json)
-    monkeypatch.setattr(db_module, "AsyncIOMotorClient", forbidden)
+    assert not hasattr(db_module, "AsyncIOMotorClient")
     monkeypatch.setattr(api_logging, "setup_runner_logging", lambda *args: None)
     monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", "")
     monkeypatch.setenv("SIMSTACK_SERVER_URL", "https://example.test/api")
@@ -53,7 +53,9 @@ async def test_api_bootstrap_opens_no_mongo_connection_and_erases_db_env(
     monkeypatch.setenv("MONGODB_URI", "mongodb://must-not-be-used")
     await state.initialize(project_root=tmp_path, api_only=True, resource="cluster")
     assert state.db.databae_type == DBType.API
-    assert isinstance(state.db.client, HTTPMotorClient)
+    assert isinstance(state.db.core_engine, HTTPRepository)
+    with pytest.raises(RuntimeError, match="Runner"):
+        _ = state.db.client
     assert state.config.connection_string is None
     assert state.config.db_name is None
     assert state.config.workdir == tmp_path / "configured-shared-work"

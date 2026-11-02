@@ -55,7 +55,6 @@ workdir = "test_workdir"
     with patch("simstack.core.context.DatabaseInformation") as mock_db_info_class, \
          patch("simstack.util.db.Database") as mock_db_class, \
          patch("simstack.util.config_reader.ConfigReader.create", new_callable=AsyncMock) as mock_config_create, \
-         patch("simstack.core.context.setup_logging") as mock_setup_logging, \
          patch("simstack.util.mappings.ModelMappingTable.load", new_callable=AsyncMock) as mock_model_load, \
          patch("simstack.util.mappings.NodeMappingTable.load", new_callable=AsyncMock) as mock_node_load:
         
@@ -129,7 +128,6 @@ workdir = "test_workdir"
     with patch("simstack.core.context.DatabaseInformation") as mock_db_info_class, \
          patch("simstack.util.db.Database") as mock_db_class, \
          patch("simstack.util.config_reader.ConfigReader.create", new_callable=AsyncMock), \
-         patch("simstack.core.context.setup_logging"), \
          patch("simstack.util.mappings.ModelMappingTable.load", new_callable=AsyncMock), \
          patch("simstack.util.mappings.NodeMappingTable.load", new_callable=AsyncMock):
 
@@ -186,7 +184,6 @@ workdir = "test_workdir"
     with patch("simstack.core.context.DatabaseInformation") as mock_db_info_class, \
          patch("simstack.util.db.Database"), \
          patch("simstack.util.config_reader.ConfigReader.create", new_callable=AsyncMock), \
-         patch("simstack.core.context.setup_logging"), \
          patch("simstack.util.mappings.ModelMappingTable.load", new_callable=AsyncMock), \
          patch("simstack.util.mappings.NodeMappingTable.load", new_callable=AsyncMock):
         

@@ -5,7 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from types import SimpleNamespace
 
 import pytest
-from bson import BSON
+import json
 
 from simstack.models.files import FileStack
 from simstack.models.file_instance import FileInstance
@@ -103,7 +103,7 @@ def test_file_constructors_preserve_workflow_api_without_bson_payload(tmp_path, 
     assert value.hash == checksum
     assert value.content is None and value.in_memory is False
     assert all(location.location_type == "s3" for location in value.locations)
-    document = BSON.encode(value.model_dump_doc())
+    document = json.dumps(value.model_dump_doc()).encode()
     assert b"data" not in document
     assert all(location.checksum_sha256 == checksum for location in value.locations)
 
@@ -163,7 +163,7 @@ def test_string_constructor_get_and_pickle_work_without_initialized_context(tmp_
     assert value.get(tmp_path / "first").read_text() == "import-time default"
     restored = cloudpickle.loads(cloudpickle.dumps(value))
     assert restored.get(tmp_path / "second").read_text() == "import-time default"
-    assert b"import-time default" not in BSON.encode(value.model_dump_doc())
+    assert b"import-time default" not in json.dumps(value.model_dump_doc()).encode()
 
 
 def test_multipart_streams_ranges_and_retries_only_failed_part(tmp_path, monkeypatch):

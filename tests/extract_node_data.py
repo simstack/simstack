@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from typing import List, Dict, Any
 
-from bson import ObjectId
+from simstack.models.document import ObjectId
 from simstack.core.context import context
 from simstack.util.custom_model_dump import custom_model_dump
 from simstack.util.importer import import_class

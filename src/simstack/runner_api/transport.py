@@ -6,10 +6,7 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
-from uuid import uuid4
 
-from bson import json_util
-from pymongo.errors import DuplicateKeyError, OperationFailure
 
 
 class RunnerAPIError(RuntimeError):
@@ -92,25 +89,6 @@ class RunnerAPIClient:
     async def json(self, method: str, path: str, body=None):
         return await asyncio.to_thread(self.json_sync, method, path, body)
 
-    async def persistence(self, collection: str, operation: str, args, kwargs):
-        request_id = str(uuid4())
-        body = {
-            "collection": collection,
-            "operation": operation,
-            "arguments": json_util.dumps({"args": args, "kwargs": kwargs}),
-            "request_id": request_id,
-            "repository_revision": os.environ.get("SIMSTACK_REPOSITORY_REVISION")
-            or None,
-        }
-        response = await self.json("POST", "/runner/persistence", body)
-        error = response.get("error")
-        if error:
-            error_type = error.get("type")
-            message = error.get("message", "Persistence request failed")
-            if error_type == "DuplicateKeyError":
-                raise DuplicateKeyError(message, code=error.get("code", 11000))
-            raise OperationFailure(message, code=error.get("code"))
-        return json_util.loads(response["result"])
 
 
 def runner_environment(environment=None) -> dict[str, str]:

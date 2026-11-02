@@ -3,7 +3,7 @@ import urllib.parse
 import socket
 import re
 from pathlib import Path
-from odmantic import EmbeddedModel, Field, Model
+from simstack.models.document import EmbeddedModel, Field, Model
 from pydantic import field_validator, model_serializer
 
 from simstack.models.parameters import normalize_execution_queue

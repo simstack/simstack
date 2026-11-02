@@ -1,7 +1,7 @@
 import re
 from typing import Optional, ClassVar, Dict, Any
 
-from odmantic import Field, Model, EmbeddedModel
+from simstack.models.document import Field, Model, EmbeddedModel
 from pydantic import field_validator, model_validator
 
 from simstack.models.parameters import normalize_execution_queue

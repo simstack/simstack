@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 
-from odmantic import Model, Field, ObjectId, Reference
+from simstack.models.document import Model, Field, ObjectId, Reference
 
 from simstack.core.definitions import TaskStatus
 from simstack.models.file_list import FileList
@@ -64,9 +64,7 @@ class NodeRegistry(Model):
     version: Optional[str] = None
     repository_revision: Optional[str] = None
     repository_version: Optional[int] = None
-    # Keep this as Optional[ObjectId] instead of Reference(Project):
-    # in the ODMantic version used here, nullable references are not supported
-    # as Optional[Project] + Reference() field definitions.
+    # Store project identity without loading its record for task execution.
     project: Optional[ObjectId] = Field(default=None)
     category: Optional[str] = None
     description: Optional[str] = None
@@ -111,4 +109,4 @@ class NodeRegistry(Model):
 
 async def find_child_nodes(task_id: str) -> List[NodeRegistry]:
     from simstack.core.context import context
-    return await context.db.find(NodeRegistry, {"parent_ids": {"$in": [task_id]}})
+    return await context.db.find(NodeRegistry, NodeRegistry.parent_ids.in_([ObjectId(task_id)]))

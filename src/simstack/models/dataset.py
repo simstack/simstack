@@ -1,6 +1,6 @@
 import uuid
 from typing import Dict, Iterator, Union, Tuple, KeysView, ValuesView, ItemsView, List, Optional, Any
-from odmantic import Model, ObjectId, EmbeddedModel, Field, Reference
+from simstack.models.document import Model, ObjectId, EmbeddedModel, Field, Reference
 from simstack.core.asnyc_helper import async_helper
 from simstack.models import simstack_model
 from simstack.models.dataset_metadata import DataSetMetadata

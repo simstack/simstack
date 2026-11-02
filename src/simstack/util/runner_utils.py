@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import List
 
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 from simstack.core.context import context
 from simstack.models.parameters import Resource
 from simstack.models.slurm_info import SlurmInfo

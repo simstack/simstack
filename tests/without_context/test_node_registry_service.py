@@ -1,6 +1,4 @@
 import pytest
-from mongomock_motor import AsyncMongoMockClient
-from odmantic import AIOEngine
 
 from simstack.core.definitions import TaskStatus
 from simstack.core.services.node_registry_service import (
@@ -102,35 +100,29 @@ async def test_apply_skips_when_registry_has_no_id():
 @pytest.mark.asyncio
 @pytest.mark.parametrize("ui_edit_before_reload", [False, True])
 async def test_status_only_save_preserves_concurrent_ui_edit(monkeypatch, ui_edit_before_reload):
-    client = AsyncMongoMockClient()
-    engine = AIOEngine(client=client, database="registry_concurrent_ui_edit")
-
-    async def sessionless_save(model, *args, **kwargs):
-        # Mongomock has no sessions; keep ODMantic's production dirty-field
-        # tracking and $set writes instead of the context fixture's replace_one.
-        return await engine._save(model, None)
-
-    monkeypatch.setattr(engine, "save", sessionless_save)
-    db = Database(engine=engine, client=client, database_name="registry_concurrent_ui_edit")
+    from simstack.persistence.memory import InMemoryRepository
+    engine = InMemoryRepository()
+    db = Database(repository=engine)
     entry = _registry()
     await db.save(entry)
     stale = await db.find_one(NodeRegistry, NodeRegistry.id == entry.id)
-    assert stale.__fields_modified__ == set()
+    assert stale._simstack_persisted_document["status"] == TaskStatus.RUNNING.value
     stale.status = TaskStatus.COMPLETED
-    collection = db.get_collection(NodeRegistry)
     if ui_edit_before_reload:
-        await collection.update_one(
-            {"_id": entry.id},
-            {"$set": {"custom_name": "first-ui-name", "category": "first-ui-category"}},
-        )
+        ui_copy = await engine.find_one(NodeRegistry, NodeRegistry.id == entry.id)
+        ui_copy.custom_name = "first-ui-name"
+        ui_copy.category = "first-ui-category"
+        await engine.save(ui_copy)
+
+    original_save = engine.save
 
     async def interleaved_save(model, *args, **kwargs):
-        # The UI PATCH lands after the facade's reload, before its status write.
-        await collection.update_one(
-            {"_id": entry.id},
-            {"$set": {"custom_name": "ui-name", "category": "ui-category"}},
-        )
-        return await engine._save(model, None)
+        # The UI write lands after the facade's reload, before its status write.
+        ui_copy = await engine.find_one(NodeRegistry, NodeRegistry.id == entry.id)
+        ui_copy.custom_name = "ui-name"
+        ui_copy.category = "ui-category"
+        await original_save(ui_copy)
+        return await original_save(model)
 
     monkeypatch.setattr(engine, "save", interleaved_save)
     await db.save(stale)

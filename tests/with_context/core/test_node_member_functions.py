@@ -6,7 +6,7 @@ import logging
 import pytest_asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock
-from odmantic import Model, ObjectId
+from simstack.models.document import Model, ObjectId
 from simstack.core.context import context
 from simstack.core.node import Node, node, node_from_database
 from simstack.models import FloatData, Parameters, NodeRegistry, ModelMapping, NodeModel

@@ -5,48 +5,29 @@ import pytest_asyncio
 
 from simstack.core.context import context
 from simstack.core.definitions import DBType
-from simstack.models import ModelMapping
 from simstack.tables.model_table import make_model_table
 from simstack.tables.node_table import make_node_table
 from simstack.models.files import FileStack
 
 
 def pytest_report_header(config):
-    import os
-    db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
-    use_real_db = db_connection_string.lower() != "none"
+    return "SIMSTACK: Using the Pydantic in-memory repository"
 
-    if use_real_db:
-        conn_str = db_connection_string if db_connection_string.lower() != "none" else os.getenv("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017")
-        return f"SIMSTACK: Using real MongoDB database at: {conn_str}"
-    else:
-        return "SIMSTACK: Using mock database (patched for mongomock)"
 
 @pytest_asyncio.fixture(autouse=True, scope="session", loop_scope="session")
 async def initialized_context(tmp_path_factory):
-    # Use environment variable to control the database type for tests
     import os
 
     db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
-    use_real_db = db_connection_string.lower() != "none" and db_connection_string != ""
+    if db_connection_string.lower() not in {"none", ""}:
+        raise RuntimeError("Core tests use an isolated repository. Run MongoDB integration tests in simstack-server.")
     test_database_name = os.getenv("SIMSTACK_TEST_DB", "test_database")
 
     import logging
-    logging.getLogger("pymongo").setLevel(logging.WARNING)
 
     logger = logging.getLogger("simstack.test")
 
-    if use_real_db:
-        logger.info(f"Test context initialized with real MongoDB")
-        if not _mongodb_available(db_connection_string):
-            pytest.exit("SIMSTACK_TEST: Failed to reach MongoDB. Terminating all tests. .",
-                        returncode=1)
-        # Test actual read/write operations
-        if not await _test_mongodb_connection(db_connection_string, test_database_name):
-            pytest.exit("SIMSTACK_TEST: Failed to write and read test document from MongoDB. Terminating all tests.",
-                        returncode=1)
-    else:
-        logger.info("Test context initialized with mock database (patched for mongomock)")
+    logger.info("Test context initialized with the Pydantic in-memory repository")
 
     working_dir = tmp_path_factory.mktemp("simstack_test")
     # set the variables such that fake dirs exist, project_root is the actual project root
@@ -74,8 +55,8 @@ async def initialized_context(tmp_path_factory):
         skip_config=True, # we first need to write the ResourceDefinition to the database
         is_test=True,
         resource="self",
-        connection_string=db_connection_string if use_real_db else "none",
-        db_type=DBType.MONGODB if use_real_db else DBType.IN_MEMORY,
+        connection_string="none",
+        db_type=DBType.IN_MEMORY,
         db_name=test_database_name,
         workdir=working_dir,
         project_root=project_root,
@@ -83,11 +64,6 @@ async def initialized_context(tmp_path_factory):
     )
 
 
-
-    if use_real_db:
-        await context.db.reset_database()
-    else:
-        await create_db_patches(context.db)
 
     from simstack.models.resource_definition import ResourceDefinition
     test_resource_definition = ResourceDefinition(
@@ -104,7 +80,7 @@ async def initialized_context(tmp_path_factory):
                                      environment_start = "")
 
 
-    # Initialize model and node tables for both real and mock databases
+    # Register the test catalogue in the isolated repository.
     dirs = ["tests", "src/simstack/models" ,"src/simstack/methods"]  # "simstack/src/simstack/models", "simstack/src/simstack/methods", "tests"]
     await make_model_table(context.db, dirs=dirs, drops="src", clear=True,
                            project_root=project_root, ignore_entrypoints=True)
@@ -112,11 +88,8 @@ async def initialized_context(tmp_path_factory):
                           project_root=project_root, ignore_entrypoints=True)
 
     # Refresh mappings in context after they are filled in DB
-    if not use_real_db:
-        await context.refresh_mappings()
+    await context.refresh_mappings()
 
-    test_mapping = await context.db.find_one(ModelMapping, ModelMapping.name == "FloatData")
-    test_node_mapping = await context.db.find_one(ModelMapping, ModelMapping.name == "failing_node")
     # Ensure a "test" resource exists in DB for tests
     from simstack.models.resource_definition import ResourceDefinition
     local_resource = ResourceDefinition(
@@ -143,20 +116,6 @@ async def initialized_context(tmp_path_factory):
                                                workdir=working_dir, python_paths=[project_root / "src"],
                                                environment_start="")
 
-    if use_real_db:
-        # print(f"\n[SIMSTACK] Test context initialized with real MongoDB database at: {db_connection_string}")
-        pass
-    else:
-        # print("\n[SIMSTACK] Test context initialized with mock database (patched for mongomock)")
-        pass
-
-    import logging
-    logger = logging.getLogger("simstack.test")
-    if use_real_db:
-        logger.info(f"Test context initialized with real MongoDB database at: {db_connection_string}")
-    else:
-        logger.info("Test context initialized with mock database (patched for mongomock)")
-
     if hasattr(context, "log_handler") and context.log_handler:
         root_logger = context.log_handler.root
         root_logger.setLevel("ERROR")
@@ -164,7 +123,7 @@ async def initialized_context(tmp_path_factory):
     # Provide the initialized context
     yield context
 
-    # Cleanup after each test
+    # Clean up the session repository and logging handlers.
     try:
         from simstack.core.resources import allowed_resources
         allowed_resources.clear_resources()
@@ -176,17 +135,15 @@ async def initialized_context(tmp_path_factory):
             # route_table might have been removed or moved
             pass
         if context.initialized:
-            # Close the main database connection
+            # Close the repository.
             if hasattr(context, "db") and context.db:
                 await context.db.close()
                 context.db = None
 
-            # Close logging handler's MongoDB connection
+            # Close logging handlers.
             if hasattr(context, "log_handler") and context.log_handler:
-                # Close all handlers that might have MongoDB connections
                 for handler in context.log_handler.handlers[:]:
                     if hasattr(handler, "close"):
-                        # This is likely a DBLogHandler with a close method
                         handler.close()
                     elif hasattr(handler, "client") and handler.client:
                         # Fallback: directly close the client
@@ -206,19 +163,11 @@ async def initialized_context(tmp_path_factory):
 
 
 @pytest.fixture(autouse=True)
-def execute_nodes_in_process_with_mongomock(initialized_context, monkeypatch):
-    """Keep unit tests on the process-local in-memory database.
+def execute_nodes_in_process_with_in_memory_repository(initialized_context, monkeypatch):
+    """Keep unit execution beside its process-local repository.
 
-    Production and real-MongoDB integration tests exercise ``run_node`` in a
-    subprocess. Mongomock cannot expose its state to a child process, so these
-    tests retain their existing execution assertions in the current process.
+    Server HTTP integration tests exercise the real separate job process.
     """
-    import os
-
-    connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
-    if connection_string and connection_string.lower() != "none":
-        return
-
     from simstack.core.node import Node
     from simstack.core.definitions import TaskStatus
 
@@ -234,75 +183,8 @@ def execute_nodes_in_process_with_mongomock(initialized_context, monkeypatch):
     monkeypatch.setattr(Node, "run_node_as_process", execute_in_process)
 
 
-async def create_db_patches(db):
-    from simstack.util.db import Database
-    # Patch ODMantic engine to work without sessions in test mode
-    async def patched_save(instance, *args, **kwargs):
-        """Patched save method that doesn't use sessions"""
-        # Handle engine.save(None, model) which is how it might be called
-        if instance is None and args:
-            instance = args[0]
-            args = args[1:]
-
-        # If instance is still None, it might be a call to validate args
-        if instance is None:
-            from odmantic import Model
-            if not args or not isinstance(args[0], Model):
-                raise TypeError("AIOEngine.save() missing 1 required positional argument: 'instance'")
-            return instance
-
-        # Use the collection directly without transactions
-        collection = context.db.get_collection(type(instance))
-
-        # Ensure the instance has an ObjectId
-        if not instance.id:
-            from odmantic import ObjectId
-
-            instance.id = ObjectId()
-
-        # Convert to dict and save
-        doc = instance.model_dump(by_alias=True)
-        doc["_id"] = instance.id
-
-        # Upsert the document
-        await collection.replace_one({"_id": instance.id}, doc, upsert=True)
-        return instance
-
-    async def patched_save_all(instances, **kwargs):
-        """Patched save_all method that doesn't use sessions"""
-        results = []
-        for instance in instances:
-            result = await patched_save(instance, **kwargs)
-            results.append(result)
-        return results
-
-    # Apply patches only for the mock database
-    db._engine.save = patched_save
-    db._engine.save_all = patched_save_all
-    # DO NOT patch find/find_one on _engine with the facade methods,
-    # because the facade methods call _engine.find/find_one, creating recursion.
-
-    db.save = Database.save.__get__(context.db, Database)
-    db.find = Database.find.__get__(context.db, Database)
-    db.find_one = Database.find_one.__get__(context.db, Database)
-    db.save_all = patched_save_all
-    db.save_unchecked = Database.save_unchecked.__get__(context.db, Database)
-
-    # Mock database command for stats
-    async def patched_command(command, *args, **kwargs):
-        if isinstance(command, str):
-            command = {command: 1}
-        if "dbStats" in command:
-            return {"db": "ui_testing", "collections": 10, "objects": 100}
-        if "ping" in command:
-            return {"ok": 1.0}
-        raise NotImplementedError(f"Mock command {command} not implemented")
-
-    context.db.database.command = patched_command
-
-
 @pytest.fixture(scope="function")
-def odmantic_engine(initialized_context):
+def document_repository(initialized_context):
     """
     Get the ODMantic engine from the context for each test.
     """
@@ -327,57 +209,3 @@ def test_file_stack():
     # Cleanup
     if temp_file.exists():
         temp_file.unlink()
-
-# Check if real MongoDB is available for tests that require it
-def _mongodb_available(conn_str: str = None):
-    """Check if MongoDB is available"""
-    try:
-        import os
-        from urllib.parse import urlparse
-        parsed = urlparse(conn_str)
-        host = parsed.hostname or "localhost"
-        port = parsed.port or 27017
-
-        # Use a simple socket connection test instead of Motor client
-        import socket
-
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1)  # 1 second timeout
-        result = sock.connect_ex((host, port))
-        sock.close()
-        return result == 0
-    except Exception:
-        return False
-
-
-async def _test_mongodb_connection(conn_str: str, db_name: str = "ui_testing"):
-    """Test MongoDB connection by writing and reading a test document"""
-    try:
-        from motor.motor_asyncio import AsyncIOMotorClient
-        import datetime
-
-        client = AsyncIOMotorClient(conn_str)
-        db = client.get_database(db_name)
-        collection = db["connection_test"]
-
-        # Write test document
-        test_doc = {
-            "test": "connection_check",
-            "timestamp": datetime.datetime.now(datetime.UTC)
-        }
-        result = await collection.insert_one(test_doc)
-
-        # Read it back
-        retrieved_doc = await collection.find_one({"_id": result.inserted_id})
-
-        # Clean up
-        await collection.delete_one({"_id": result.inserted_id})
-        client.close()
-
-        if retrieved_doc is None or retrieved_doc.get("test") != "connection_check":
-            return False
-
-        return True
-    except Exception as e:
-        print(f"MongoDB connection test failed: {e}")
-        return False

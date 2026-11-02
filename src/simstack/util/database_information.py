@@ -92,13 +92,6 @@ class DatabaseInformation:
             print("You must specify a connection string in the config file")
             sys.exit(-1)
 
-        server_url = config.get("parameters", {}).get("server", {}).get("url", None)
-        if server_url is None:
-            server_url = os.environ.get("SIMSTACK_SERVER_URL")
-        server_token = config.get("parameters", {}).get("server", {}).get("token", None)
-        if server_token is None:
-            server_token = os.environ.get("SIMSTACK_SERVER_TOKEN")
-
         # Use in-memory database for tests
         db_type = (
             DBType.IN_MEMORY

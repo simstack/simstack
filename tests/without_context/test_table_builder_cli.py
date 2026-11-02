@@ -41,6 +41,16 @@ class RecordingCliBuilder(TableBuilderBase):
         return
 
 
+@pytest.mark.asyncio
+async def test_runner_cannot_scan_or_register_a_repository(monkeypatch):
+    from simstack.core.definitions import DBType
+
+    builder = RecordingCliBuilder(db=SimpleNamespace(databae_type=DBType.API))
+    monkeypatch.setattr(builder, "_process_simstack_modules", lambda **kwargs: pytest.fail("Runner scanned repository modules"))
+    with pytest.raises(RuntimeError, match="registration is Server-owned"):
+        await TableBuilderBase.build(builder)
+
+
 def test_cli_omitted_dir_passes_empty_dirs(monkeypatch):
     RecordingCliBuilder.captured = {}
 

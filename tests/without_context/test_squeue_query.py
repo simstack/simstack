@@ -2,7 +2,7 @@ import subprocess
 from types import SimpleNamespace
 
 import pytest
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 from simstack.models.parameters import Resource
 from simstack.util.runner_utils import (

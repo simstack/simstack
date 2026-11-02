@@ -1,6 +1,5 @@
 import pytest
-from mongomock_motor import AsyncMongoMockClient
-from odmantic import Model, ObjectId
+from simstack.models.document import Model, ObjectId
 from pydantic import PrivateAttr
 
 from simstack.core.context import context
@@ -87,35 +86,21 @@ async def test_context_database_is_initialized_database_facade(initialized_conte
     db = _db()
 
     assert isinstance(db, Database)
-    assert db.client is not None
     assert db.core_engine is not None
-    assert db.database_name
-    assert db.raw_database is not None
-    assert db.database is not None
+    assert db.connection_string is None
 
 
 @pytest.mark.asyncio
-async def test_collection_and_get_collection_return_model_collection(initialized_context):
-    db = _db()
-
-    collection = db.collection(StringData)
-    alias_collection = db.get_collection(StringData)
-
-    assert collection is not None
-    assert alias_collection is not None
-    assert collection.name == alias_collection.name
-
-
-@pytest.mark.asyncio
-async def test_collection_accepts_collection_name(initialized_context):
-    db = _db()
-
-    named_collection = db.collection("database_test_named_collection")
-    await named_collection.insert_one({"kind": "database-test", "value": 1})
-    found = await named_collection.find_one({"kind": "database-test"})
-
-    assert found is not None
-    assert found["value"] == 1
+async def test_api_facade_rejects_collection_access():
+    from simstack.core.definitions import DBType
+    from simstack.util.database_information import DatabaseInformation
+    db = Database.from_db_info(DatabaseInformation(None, None, DBType.API, "https://api.invalid", "token"))
+    with pytest.raises(RuntimeError, match="Runner"):
+        db.collection(StringData)
+    with pytest.raises(RuntimeError, match="Runner"):
+        db.get_collection("string_data")
+    with pytest.raises(RuntimeError, match="Runner"):
+        _ = db.client
 
 
 @pytest.mark.asyncio
@@ -656,24 +641,10 @@ async def test_save_calls_parts_saves_recursively(initialized_context, monkeypat
 
 
 @pytest.mark.asyncio
-async def test_reset_database_drops_existing_collections():
-    db = Database(
-        client=AsyncMongoMockClient(),
-        database_name="isolated_reset_database_test",
-    )
-
-    collection = db.collection(StringData)
-    marker_id = ObjectId()
-    await collection.insert_one(
-        {"_id": marker_id, "value": "database-reset-marker"}
-    )
-    loaded_before_reset = await collection.find_one({"_id": marker_id})
-    assert loaded_before_reset is not None
-
+async def test_reset_database_clears_in_memory_documents():
+    from simstack.persistence.memory import InMemoryRepository
+    db = Database(repository=InMemoryRepository())
+    marker = await db.save(StringData(value="database-reset-marker"))
+    assert await db.find_one(StringData, StringData.id == marker.id) is not None
     await db.reset_database()
-
-    collection_names = await db.raw_database.list_collection_names()
-    loaded_after_reset = await collection.find_one({"_id": marker_id})
-
-    assert collection_names == []
-    assert loaded_after_reset is None
+    assert await db.find_one(StringData, StringData.id == marker.id) is None

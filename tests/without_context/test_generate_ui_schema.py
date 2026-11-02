@@ -1,4 +1,4 @@
-from odmantic import EmbeddedModel, Model
+from simstack.models.document import EmbeddedModel, Model
 
 from simstack.models import simstack_model
 

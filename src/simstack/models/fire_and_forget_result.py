@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from odmantic import Model, Field
+from simstack.models.document import Model, Field
 from simstack.models.simstack_model import simstack_model
 
 @simstack_model

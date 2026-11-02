@@ -28,14 +28,7 @@ async def record_process_id(registry_entry: NodeRegistry, process_id: int, datab
     if type(process_id) is not int or process_id < 1:
         raise ValueError(f"process_id must be a positive int, got {process_id!r}")
     registry_entry.process_id = process_id
-    get_collection = getattr(database, "get_collection", None)
-    if not callable(get_collection):
-        raise ValueError("database cannot persist process_id")
-    collection = get_collection(NodeRegistry)
-    await collection.update_one(
-        {"_id": registry_entry.id},
-        {"$set": {"process_id": process_id}},
-    )
+    await database.task_mutation(registry_entry.id, "process", {"process_id": process_id})
 
 
 def _kill_process_tree(process_id: int) -> None:
@@ -141,17 +134,10 @@ async def terminate_task(registry_entry: NodeRegistry, *, runner_pid: int) -> No
             _kill_process_tree(process_id)
 
     completed_at = datetime.now()
-    collection = context.db.get_collection(NodeRegistry)
-    updated = await collection.find_one_and_update(
-        {"_id": fresh.id, "status": TaskStatus.TERMINATING.value},
-        {
-            "$set": {
-                "status": TaskStatus.FAILED.value,
-                "error": TERMINATED_BY_USER,
-                "completed_at": completed_at,
-            }
-        },
-    )
+    updated = await context.db.task_mutation(fresh.id, "terminate", {
+        "status": TaskStatus.FAILED.value, "error": TERMINATED_BY_USER,
+        "completed_at": completed_at,
+    }, [TaskStatus.TERMINATING.value])
     if updated is None:
         return
     fresh.status = TaskStatus.FAILED

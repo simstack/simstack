@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
-from odmantic import Model
+from simstack.models.document import Model
 
 from simstack.core.context import context
 from simstack.models import simstack_model

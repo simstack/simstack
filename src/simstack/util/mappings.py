@@ -1,6 +1,6 @@
 from typing import Dict, Optional, List
 from simstack.models.models import ModelMapping, NodeModel
-from odmantic import AIOEngine
+from typing import Any
 
 class ModelMappingTable:
     def __init__(self, mappings: List[ModelMapping]):
@@ -14,7 +14,7 @@ class ModelMappingTable:
         return self._by_mapping.get(mapping)
 
     @classmethod
-    async def load(cls, engine: AIOEngine):
+    async def load(cls, engine: Any):
         mappings = await engine.find(ModelMapping)
         return cls(list(mappings))
 
@@ -30,7 +30,7 @@ class NodeMappingTable:
         return self._by_mapping.get(mapping)
 
     @classmethod
-    async def load(cls, engine: AIOEngine):
+    async def load(cls, engine: Any):
         try:
             nodes = await engine.find(NodeModel)
         except Exception as e:

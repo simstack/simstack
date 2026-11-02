@@ -26,19 +26,9 @@ async def _persist_submission_failure(
         await context.db.save(registry_entry)
         return
 
-    collection = context.db.get_collection(NodeRegistry)
-    updated = await collection.find_one_and_update(
-        {
-            "_id": registry_entry.id,
-            "status": TaskStatus.SLURM_QUEUED.value,
-        },
-        {
-            "$set": {
-                "status": TaskStatus.FAILED.value,
-                "error": error,
-            }
-        },
-    )
+    updated = await context.db.task_mutation(registry_entry.id, "failure", {
+        "status": TaskStatus.FAILED.value, "error": error,
+    }, [TaskStatus.SLURM_QUEUED.value])
     if updated is not None:
         registry_entry.status = TaskStatus.FAILED
         registry_entry.error = error
@@ -208,19 +198,7 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
         make_executable(script_path)
         # submit the script to the slurm queue
         connection_string = getattr(context.config, "connection_string", None)
-        db_name = getattr(context.config, "db_name", None)
-        database_env = task_environment(registry_entry) if is_api_runner(context) else {
-            **(
-                {"SIMSTACK_DB_CONNECTION_STRING": str(connection_string)}
-                if connection_string is not None
-                else {}
-            ),
-            **(
-                {"SIMSTACK_DB_DATABASE": str(db_name)}
-                if db_name is not None
-                else {}
-            ),
-        }
+        database_env = task_environment(registry_entry)
         # Publish the queued state before sbatch. A very short job may update
         # the same record before the submission command returns.
         registry_entry.status = TaskStatus.SLURM_QUEUED
@@ -246,7 +224,7 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
                 capture_output=True,
                 text=True,
                 timeout=30,  # Add timeout to prevent hanging
-                env=database_env if is_api_runner(context) else {**os.environ, **database_env},
+                env=database_env,
             )
 
         stdout = sanitized_tail(result.stdout, connection_string)
@@ -267,11 +245,7 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
                     f"task_id: {task_id} job successfully submitted with job_id: {job_id}"
                 )
                 registry_entry.job_id = job_id
-                collection = context.db.get_collection(NodeRegistry)
-                await collection.update_one(
-                    {"_id": registry_entry.id},
-                    {"$set": {"job_id": job_id}},
-                )
+                await context.db.task_mutation(registry_entry.id, "scheduler", {"job_id": job_id})
             else:
                 logger.warning(
                     "task_id: %s job submitted but could not extract job_id from output: %s",

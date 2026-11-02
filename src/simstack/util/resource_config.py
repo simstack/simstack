@@ -9,7 +9,7 @@ import uuid
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Union
 
-from odmantic import ObjectId
+from simstack.models.document import ObjectId
 
 import logging
 logger = logging.getLogger("ResourceConfig")

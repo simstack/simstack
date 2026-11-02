@@ -1,3 +1,4 @@
+from .document import Model, EmbeddedModel, Field, Reference, ObjectId
 from .fire_and_forget_result import FireAndForgetResult
 from .simstack_model import simstack_model
 from .artifact_models import ArtifactMapping, ArtifactModel
@@ -35,6 +36,7 @@ from .images2d import Image2DArtifactModel
 
 
 __all__ = [
+    "Model", "EmbeddedModel", "Field", "Reference", "ObjectId",
     "FireAndForgetResult",
     "ModelMapping",
     "NodeModel",
