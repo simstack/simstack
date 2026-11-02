@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
 
 from simstack.models.document import Model, Field, ObjectId, Reference
-from pydantic import model_validator
+from pydantic import AliasChoices, AliasPath, model_validator
 
 from simstack.models import simstack_model
 from simstack.models.file_instance import FileInstance
@@ -32,6 +32,30 @@ MONGODB_MAX_DOCUMENT_SIZE = 16 * 1024 * 1024  # 16 MB in bytes
 @simstack_model
 class FileStack(Model):
     model_config = {"json_schema_extra": {"x-simstack-file": True}}
+
+    @classmethod
+    def __get_pydantic_json_schema__(cls, core_schema, handler):
+        # Storage policy is inherited even when a workflow customizes its schema.
+        schema = super().__get_pydantic_json_schema__(core_schema, handler)
+        schema["x-simstack-file"] = True
+        def field_paths(name):
+            field = cls.model_fields[name]
+            paths = [[name]]
+            def add(alias):
+                if isinstance(alias, AliasChoices):
+                    for choice in alias.choices:
+                        add(choice)
+                elif isinstance(alias, AliasPath):
+                    paths.append(alias.path)
+                elif isinstance(alias, str):
+                    paths.append([alias])
+            for alias in (field.alias, field.validation_alias, field.serialization_alias):
+                add(alias)
+            return list(dict.fromkeys(tuple(path) for path in paths))
+        schema["x-simstack-file-fields"] = {
+            name: field_paths(name) for name in ("content", "in_memory")
+        }
+        return schema
 
     name: Optional[builtins.str] = Field(description="Name of the file", default=None)
     size: Optional[int] = Field(description="Size of the file in bytes", default=None)

@@ -168,6 +168,7 @@ class Database:
 
             remember_user_editable_fields(result)
 
+        model_class = type(result)
         post_process = getattr(model_class, "db_find_postprocess", None)
 
         if post_process and callable(post_process):

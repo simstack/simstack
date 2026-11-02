@@ -1,5 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
+import sys
+from typing import Optional
 
 import pytest
 
@@ -91,6 +93,83 @@ async def test_reference_and_embedded_subclasses_keep_their_fields():
     assert restored.child.detail == "scientific subtype"
     assert type(restored.value) is SpecificValue
     assert restored.value.extra == 7
+
+
+@pytest.mark.asyncio
+async def test_nullable_reference_map_and_loaded_child_hook():
+    class NullableReferences(Model):
+        children: Optional[dict[str, RepositoryChild]] = Reference(default=None)
+
+    class BaseWithHook(Model):
+        model_config = {"collection": "hook_subtypes"}
+        value: int
+
+        async def db_find_postprocess(self, db):
+            object.__setattr__(self, "_cache", -1)
+
+    class ChildWithHook(BaseWithHook):
+        label: str
+
+        async def db_find_postprocess(self, db):
+            object.__setattr__(self, "_cache", self.value * 2)
+
+    store = InMemoryRepository()
+    db = Database(repository=store)
+    value = await db.save(NullableReferences(children={"one": RepositoryChild(value=3)}))
+    restored = await db.find_one(NullableReferences, NullableReferences.id == value.id)
+    assert restored.children["one"].value == 3
+    empty = await db.save(NullableReferences())
+    assert (await db.find_one(NullableReferences, NullableReferences.id == empty.id)).children is None
+    child = await db.save(ChildWithHook(value=4, label="retained"))
+    through_base = await db.find_one(BaseWithHook, BaseWithHook.id == child.id)
+    assert type(through_base) is ChildWithHook
+    assert through_base.label == "retained" and through_base._cache == 8
+
+
+@pytest.mark.asyncio
+async def test_cold_subtype_import_requires_exact_catalogue_entry(tmp_path, monkeypatch):
+    from simstack.models.document import DocumentParsingError, SUBTYPE_KEY
+    from simstack.models.models import ModelMapping
+    from simstack.runner_api.repository import wire
+
+    module = "cold_repository_subtype"
+    marker = module + ".ColdChild"
+    (tmp_path / (module + ".py")).write_text(
+        f"from {RepositoryChild.__module__} import RepositoryChild\n"
+        "class ColdChild(RepositoryChild):\n"
+        f"    model_config = {{'collection': {RepositoryChild.__collection__!r}}}\n"
+        "    detail: str\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    identity = str(ObjectId())
+
+    class CatalogueAPI:
+        authorized = False
+        calls = []
+
+        async def json(self, method, path, body):
+            self.calls.append(body)
+            if body["model"] == ModelMapping.__collection__:
+                return {"documents": [{"mapping": marker}] if self.authorized else []}
+            return {"documents": [wire({"id": identity, "value": 5, "detail": "cold", SUBTYPE_KEY: marker})]}
+
+    api = CatalogueAPI()
+    repository = HTTPRepository(api)
+    assert module not in sys.modules
+    with pytest.raises(DocumentParsingError, match="Unknown or incompatible"):
+        await repository.find_one(RepositoryChild)
+    assert module not in sys.modules
+    api.authorized = True
+    monkeypatch.setenv("SIMSTACK_REPOSITORY_REVISION", "a" * 64)
+    try:
+        value = await repository.find_one(RepositoryChild)
+        assert type(value).__name__ == "ColdChild"
+        assert value.value == 5 and value.detail == "cold"
+        catalogue_call = next(call for call in reversed(api.calls) if call["model"] == "model_mapping")
+        assert catalogue_call["filter"] == {"op": "eq", "field": "mapping", "value": marker}
+        assert catalogue_call["repository_revision"] == "a" * 64
+    finally:
+        sys.modules.pop(module, None)
 
 
 @pytest.mark.asyncio

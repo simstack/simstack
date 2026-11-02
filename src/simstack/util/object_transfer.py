@@ -103,7 +103,8 @@ class ObjectFileClient(FileTransferClient):
             except FileTransferError as exc:
                 if attempt or "HTTP 403" not in str(exc):
                     raise
-        completed = self._json_request("POST", f"/runner/objects/{prepared['upload_id']}/complete", {})
+        completed = self._json_request("POST", f"/runner/objects/{prepared['upload_id']}/complete", {},
+            timeout_seconds=max(self.timeout_seconds, 60 + Path(path).stat().st_size // (1024 * 1024)))
         return next(location for location in completed["locations"] if location["location_type"] == "s3")
 
 

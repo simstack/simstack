@@ -28,7 +28,9 @@ async def record_process_id(registry_entry: NodeRegistry, process_id: int, datab
     if type(process_id) is not int or process_id < 1:
         raise ValueError(f"process_id must be a positive int, got {process_id!r}")
     registry_entry.process_id = process_id
-    await database.task_mutation(registry_entry.id, "process", {"process_id": process_id})
+    from simstack.runner_api.claims import task_execution
+    with task_execution(registry_entry):
+        await database.task_mutation(registry_entry.id, "process", {"process_id": process_id})
 
 
 def _kill_process_tree(process_id: int) -> None:
@@ -135,14 +137,18 @@ async def terminate_task(registry_entry: NodeRegistry, *, runner_pid: int) -> No
 
     completed_at = datetime.now()
     updated = await context.db.task_mutation(fresh.id, "terminate", {
-        "status": TaskStatus.FAILED.value, "error": TERMINATED_BY_USER,
+        "status": TaskStatus.FAILED.value, "error": fresh.error or TERMINATED_BY_USER,
         "completed_at": completed_at,
     }, [TaskStatus.TERMINATING.value])
     if updated is None:
         return
     fresh.status = TaskStatus.FAILED
-    fresh.error = TERMINATED_BY_USER
+    fresh.error = fresh.error or TERMINATED_BY_USER
     fresh.completed_at = completed_at
     registry_entry.status = TaskStatus.FAILED
-    registry_entry.error = TERMINATED_BY_USER
+    registry_entry.error = fresh.error
     registry_entry.completed_at = completed_at
+    from simstack.core.definitions import DBType
+    if getattr(context.db, "databae_type", None) == DBType.API:
+        from simstack.core.services.fail_children import fail_and_terminate_children
+        await fail_and_terminate_children(fresh.id, runner_pid=runner_pid)

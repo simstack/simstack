@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 from simstack.core.context import context
 from simstack.core.definitions import DBType
@@ -37,6 +38,9 @@ def task_resource_config(entry, runtime_context=None):
     from simstack.util.resource_config import ResourceConfig
 
     active = runtime_context or context
+    explicit = os.environ.get("SIMSTACK_MACHINE_CONFIG")
+    if explicit:
+        return ResourceConfig(Path(explicit), str(active.config.resource))
     root = task_project_root(entry, active.config.project_root)
     if root == active.config.project_root:
         return active.resource_config
@@ -50,4 +54,14 @@ def task_environment(entry):
     revision = getattr(entry, "repository_revision", None)
     if revision:
         result["SIMSTACK_REPOSITORY_REVISION"] = str(revision)
+    from simstack.runner_api.claims import task_execution, current_execution
+    with task_execution(entry):
+        execution = current_execution()
+        if execution:
+            result["SIMSTACK_EXECUTION_TASK"] = execution["task_id"]
+            result["SIMSTACK_EXECUTION_CLAIM"] = execution["claim_id"]
+            result["SIMSTACK_EXECUTION_START"] = execution["start_id"]
+        else:
+            for key in ("SIMSTACK_EXECUTION_TASK", "SIMSTACK_EXECUTION_CLAIM", "SIMSTACK_EXECUTION_START"):
+                result.pop(key, None)
     return result

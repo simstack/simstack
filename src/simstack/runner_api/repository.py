@@ -8,8 +8,11 @@ from __future__ import annotations
 
 import os
 from copy import deepcopy
-from typing import Any, get_args, get_origin
+from types import UnionType
+from typing import Any, Union, get_args, get_origin
 from uuid import uuid4
+
+from pydantic import TypeAdapter, ValidationError
 
 from simstack.models.document import EmbeddedModel, Model
 
@@ -111,10 +114,11 @@ class DocumentRepository:
         return rows[0] if rows else None
 
     async def hydrate(self, model, document, seen=None):
-        from simstack.models.document import SUBTYPE_KEY, resolve_document_type
+        from simstack.models.document import SUBTYPE_KEY
+        from simstack.models.document.models import _unwrap_annotation
 
         value = unwire(deepcopy(document))
-        model = resolve_document_type(model, value)
+        model = await self.resolve_type(model, value)
         seen = {} if seen is None else seen
         identity = (collection_name(model), str(value.get("_id", value.get("id"))))
         if identity in seen:
@@ -124,6 +128,14 @@ class DocumentRepository:
         async def expand(annotation, item, reference=False):
             if item is None:
                 return None
+            annotation = _unwrap_annotation(annotation)
+            if get_origin(annotation) in (Union, UnionType) and isinstance(item, dict):
+                try:
+                    selected = TypeAdapter(annotation).validate_python(item)
+                except ValidationError:
+                    selected = None
+                if isinstance(selected, (Model, EmbeddedModel)):
+                    return await expand(type(selected), item, reference)
             if isinstance(item, list):
                 args = get_args(annotation)
                 return [
@@ -150,7 +162,7 @@ class DocumentRepository:
             target = _model_type(annotation)
             if target is None:
                 return item
-            target = resolve_document_type(target, item)
+            target = await self.resolve_type(target, item)
             if (
                 reference
                 and issubclass(target, Model)
@@ -186,6 +198,11 @@ class DocumentRepository:
         instance = model.model_validate(value)
         self.remember(instance)
         return instance
+
+    async def resolve_type(self, declared, value):
+        from simstack.models.document import resolve_document_type
+
+        return resolve_document_type(declared, value)
 
     @staticmethod
     async def _expand_embedded(model, value, expand):
@@ -317,6 +334,45 @@ class HTTPRepository(DocumentRepository):
     def revision():
         return os.environ.get("SIMSTACK_REPOSITORY_REVISION") or None
 
+    async def hydrate(self, model, document, seen=None):
+        instance = await super().hydrate(model, document, seen)
+        if collection_name(model) == "node_registry":
+            object.__setattr__(instance, "_execution_generation", document.get("_runner_generation"))
+            object.__setattr__(instance, "_execution_resource", document.get("_runner_resource"))
+        return instance
+
+    async def resolve_type(self, declared, value):
+        """Load cold runtime types only after the pinned catalogue approves them."""
+        from simstack.models.document import DocumentParsingError, SUBTYPE_KEY
+
+        try:
+            return await super().resolve_type(declared, value)
+        except DocumentParsingError:
+            marker = value.get(SUBTYPE_KEY) if isinstance(value, dict) else None
+            if not isinstance(marker, str) or not all(
+                part.isidentifier() for part in marker.split(".")
+            ):
+                raise
+            from simstack.models.models import ModelMapping
+
+            rows = await self.query_documents(
+                collection_name(ModelMapping),
+                {"op": "eq", "field": "mapping", "value": marker},
+                [], 0, 1, model_mapping=model_mapping(ModelMapping),
+            )
+            if not rows or unwire(rows[0]).get("mapping") != marker:
+                raise
+            import importlib
+
+            module, _, name = marker.rpartition(".")
+            try:
+                candidate = getattr(importlib.import_module(module), name)
+            except (ImportError, AttributeError) as exc:
+                raise DocumentParsingError(f"Cannot load registered subtype: {marker!r}") from exc
+            if not isinstance(candidate, type) or not issubclass(candidate, declared):
+                raise DocumentParsingError(f"Incompatible document subtype: {marker!r}")
+            return await super().resolve_type(declared, value)
+
     async def query_documents(
         self, model, filter, sort, offset, limit, *, model_mapping=None
     ):
@@ -336,6 +392,7 @@ class HTTPRepository(DocumentRepository):
         return response["documents"]
 
     async def save_documents(self, model, documents):
+        from simstack.runner_api.claims import current_execution
         response = await self.api.json(
             "POST",
             "/runner/data/save",
@@ -344,11 +401,13 @@ class HTTPRepository(DocumentRepository):
                 "documents": documents,
                 "repository_revision": self.revision(),
                 "request_id": str(uuid4()),
+                "execution": current_execution(),
             },
         )
         return response["documents"]
 
     async def delete_document(self, model, id, *, model_mapping=None):
+        from simstack.runner_api.claims import current_execution
         response = await self.api.json(
             "POST",
             "/runner/data/delete",
@@ -358,11 +417,16 @@ class HTTPRepository(DocumentRepository):
                 "model_mapping": model_mapping,
                 "request_id": str(uuid4()),
                 "repository_revision": self.revision(),
+                "execution": current_execution(),
             },
         )
         return response["deleted"]
 
     async def task_mutation(self, task_id, action, values=None, expected_statuses=None):
+        from simstack.runner_api.claims import current_execution, receipt
+        if action == "claim":
+            value = receipt(self.api, str(task_id), begin=True, revision=self.revision(), generation=(values or {}).get("generation"))
+            return await self._claim(value)
         response = await self.api.json(
             "POST",
             f"/runner/tasks/{task_id}/"
@@ -371,8 +435,39 @@ class HTTPRepository(DocumentRepository):
                 "action": action,
                 "values": wire(values or {}),
                 "expected_statuses": expected_statuses,
-                "request_id": str(uuid4()),
+                "request_id": str((values or {}).get("start_id") or uuid4()),
                 "repository_revision": self.revision(),
+                "execution": current_execution(),
             },
         )
         return response.get("document")
+
+    async def _claim(self, value):
+        from simstack.runner_api.claims import finish
+        from simstack.runner_api.transport import RunnerAPIError
+        body = {"action": "claim", "values": {"generation": value.get("generation")}, "expected_statuses": None,
+                "request_id": value["claim_id"], "repository_revision": value.get("revision")}
+        for attempt in range(2):
+            try:
+                response = await self.api.json("POST", f"/runner/tasks/{value['task_id']}/claim", body)
+                break
+            except RunnerAPIError:
+                if attempt:
+                    raise
+        document = response.get("document")
+        finish(self.api, value, claimed=document is not None)
+        if document is not None:
+            document["_execution_claim_id"] = value["claim_id"]
+        return document
+
+    async def recover_claims(self):
+        from simstack.runner_api.claims import pending
+        from simstack.models.node_registry import NodeRegistry
+        result = []
+        for value in list(pending(self.api)):
+            document = await self._claim(value)
+            if document is not None:
+                entry = await self.hydrate(NodeRegistry, document)
+                object.__setattr__(entry, "_execution_claim_id", value["claim_id"])
+                result.append(entry)
+        return result

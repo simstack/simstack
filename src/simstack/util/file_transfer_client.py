@@ -325,14 +325,14 @@ class FileTransferClient:
         )
 
     def _json_request(
-        self, method: str, path: str, payload: Dict[str, Any] | None = None
+        self, method: str, path: str, payload: Dict[str, Any] | None = None, *, timeout_seconds: int | None = None
     ) -> Dict[str, Any]:
         body = None if payload is None else json.dumps(payload).encode("utf-8")
         headers = self._auth_headers()
         if body is not None:
             headers["Content-Type"] = "application/json"
         for attempt in range(2):
-            conn = self._connection()
+            conn = self._connection() if timeout_seconds is None else self._connection(timeout_seconds)
             try:
                 conn.request(method, self._path(path), body=body, headers=headers)
                 response = conn.getresponse()
@@ -347,13 +347,13 @@ class FileTransferClient:
             finally:
                 conn.close()
 
-    def _connection(self) -> http.client.HTTPConnection:
+    def _connection(self, timeout_seconds: int | None = None) -> http.client.HTTPConnection:
         connection_cls = (
             http.client.HTTPSConnection
             if self._parsed.scheme == "https"
             else http.client.HTTPConnection
         )
-        return connection_cls(self._parsed.netloc, timeout=self.timeout_seconds)
+        return connection_cls(self._parsed.netloc, timeout=self.timeout_seconds if timeout_seconds is None else timeout_seconds)
 
     def _path(self, path: str) -> str:
         base_path = self._parsed.path.rstrip("/")

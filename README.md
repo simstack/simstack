@@ -13,6 +13,20 @@ fastapi app that connects to the Simstack II database. a
 You can use the [simstack-example](https://github.com/simstack/simstack-example) project 
 to get started. 
 
+### API/S3 installation on `feature-api-s3`
+
+For the new deployment, use the Server's [API/S3 Compose guide](https://github.com/simstack/simstack-server/blob/feature-api-s3/deploy/api-s3/README.md)
+and the [Runner/workflow adjustment guide](doc/api_s3_runner.md). Create a
+resource and its token in the UI, then run the install command shown there.
+The Runner uses the Server API; MongoDB and object storage credentials belong
+only to Server. Repository registration is performed through Server after the
+user selects a GitLab repository in the UI. Existing workflow functions,
+resource assignments and machine execution profiles remain the execution
+contract.
+
+The manual MongoDB, catalogue and repository checkout instructions below
+describe older deployments and must not be used to configure this branch.
+
 ## Development workflow and versioning
 
 This repository uses [Gitflow](https://nvie.com/posts/a-successful-git-branching-model/):
@@ -44,7 +58,7 @@ git push origin vX.Y.Z
 ```
 
 
-## Using SimStack II
+## Legacy setup for older deployments
 
 ### Setting Up a MongoDB Instance
 

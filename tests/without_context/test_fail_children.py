@@ -7,6 +7,7 @@ import pytest
 from simstack.models.document import ObjectId
 
 from simstack.core.definitions import TaskStatus
+from simstack.core.definitions import DBType
 from simstack.core.node import Node
 from simstack.core.services import fail_children
 from simstack.core.services.fail_children import (
@@ -82,6 +83,45 @@ def _entry(**overrides):
 
 def _context(database, tmp_path):
     return SimpleNamespace(db=database, config=SimpleNamespace(workdir=tmp_path))
+
+
+@pytest.mark.asyncio
+async def test_remote_child_delegates_stop_without_local_pid_kill(monkeypatch, tmp_path):
+    from unittest.mock import AsyncMock
+    parent = ObjectId()
+    remote = _entry(process_id=99, parameters=SimpleNamespace(resource="other"), _execution_resource="other")
+    database = _Database([remote])
+    database.databae_type = DBType.API
+    database.task_mutation = AsyncMock(return_value={"status":"terminating"})
+    active = _context(database,tmp_path)
+    active.config.resource = "local"
+    monkeypatch.setattr(fail_children,"context",active)
+    monkeypatch.setattr(fail_children,"_stop_task",AsyncMock(side_effect=AssertionError("foreign PID killed locally")))
+    await fail_and_terminate_task(remote,error="parent failed",runner_pid=os.getpid(),parent_id=parent)
+    database.task_mutation.assert_awaited_once_with(remote.id,"request_termination",{"parent_id":str(parent),"error":"parent failed"})
+    fail_children._stop_task.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_foreign_cached_missing_result_preserves_original_error(monkeypatch,tmp_path):
+    from unittest.mock import AsyncMock
+    from simstack.core import node as node_module
+    from simstack.models import FloatData, NamedDataReference, NodeRegistry, Parameters
+    from simstack.core.resources import allowed_resources
+    monkeypatch.setattr(allowed_resources,"_initialized",False)
+    monkeypatch.setattr(allowed_resources,"_resources",[])
+    allowed_resources.set_resources(["local","other","self"])
+    registry=NodeRegistry(name="cached",status=TaskStatus.COMPLETED,func_mapping="test.cached",function_hash="f",arg_hash="a",parameters=Parameters(resource="other"),results_references=[NamedDataReference(variable_name="value",variable_mapping=FloatData.__module__+".FloatData",reference=ObjectId())])
+    object.__setattr__(registry,"_execution_resource","other")
+    database=SimpleNamespace(databae_type=DBType.API,find_one=AsyncMock(return_value=None),task_mutation=AsyncMock())
+    active=SimpleNamespace(db=database,config=SimpleNamespace(resource="local",workdir=tmp_path))
+    monkeypatch.setattr(node_module,"context",active)
+    monkeypatch.setattr(node_module,"import_class",AsyncMock(return_value=FloatData))
+    value=Node.__new__(Node);value.registry_entry=registry;value.parameters=registry.parameters
+    with pytest.raises(ValueError,match="could not find result"):
+        await value.load_results()
+    database.task_mutation.assert_not_called()
+    assert registry.status==TaskStatus.COMPLETED
 
 
 @pytest.mark.asyncio

@@ -829,7 +829,6 @@ class Node:
                 model = await import_class(ref.variable_mapping, db)
                 result = await db.find_one(model, model.id == ref.reference)
                 if result is None:
-                    await self.set_status(TaskStatus.FAILED)
                     logger.error(
                         f"Task task_id: {self.id} could not find result with id {ref.reference} in table {ref.variable_mapping}"
                     )
@@ -849,7 +848,24 @@ class Node:
                 return simstack_result  # return the SimstackResult with all results
 
         except Exception as e:
-            await self.set_status(TaskStatus.FAILED)
+            from simstack.runner_api.runtime import is_api_runner
+            if is_api_runner(context):
+                owner = getattr(self.registry_entry, "_execution_resource", None)
+                if owner is None and str(self.parameters.resource) != "self":
+                    owner = str(self.parameters.resource)
+                if owner == str(context.config.resource):
+                    try:
+                        changed = await db.task_mutation(self.id, "failure", {
+                            "status": TaskStatus.FAILED.value,
+                            "error": f"Failed to load outputs: {e}",
+                            "completed_at": datetime.now(),
+                        }, [TaskStatus.COMPLETED.value])
+                        if changed is not None:
+                            self.registry_entry.status = TaskStatus.FAILED
+                    except Exception:
+                        logger.warning("Could not invalidate unreadable cached task %s", self.id, exc_info=True)
+            else:
+                await self.set_status(TaskStatus.FAILED)
             logger.exception(f"Task task_id: {self.id} failed to load outputs: {e}")
             raise ValueError(f"Task task_id: {self.id} failed to load outputs: {e}")
 

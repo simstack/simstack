@@ -140,9 +140,9 @@ class RunnerManager:
         if context.db.databae_type == DBType.API:
             from simstack.core.services.runner_control_service import RunnerControlService
             control_service = RunnerControlService(self)
-            await control_service.execute()
-            if self._restart_requested:
-                return
+            # Do not claim until the first control reply establishes pause state.
+            # The service loop already retries API outages, including startup.
+            self._claiming_paused.set()
             self._services.append(control_service)
         self._services.extend(
             [

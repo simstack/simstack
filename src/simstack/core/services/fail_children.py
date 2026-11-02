@@ -164,6 +164,7 @@ async def fail_and_terminate_task(
     runner_pid: int,
     extra_pids: tuple[int, ...] = (),
     seen: set[ObjectId] | None = None,
+    parent_id: object = None,
 ) -> bool:
     """Kill an active task, mark it failed, then do the same for its children."""
     if entry is None or entry.id is None:
@@ -180,6 +181,16 @@ async def fail_and_terminate_task(
     if fresh.id in seen:
         return False
     seen.add(fresh.id)
+    from simstack.core.definitions import DBType
+    if getattr(context.db, "databae_type", None) == DBType.API:
+        owner = getattr(fresh, "_execution_resource", None) or str(fresh.parameters.resource)
+        if owner != str(context.config.resource):
+            if parent_id is None:
+                raise ValueError("A parent task is required for remote cancellation")
+            await context.db.task_mutation(fresh.id, "request_termination", {
+                "parent_id": str(parent_id), "error": error,
+            })
+            return True
     logger.info(
         "Task task_id: %s terminating with %s",
         fresh.id,
@@ -213,6 +224,7 @@ async def fail_and_terminate_children(
             error=error,
             runner_pid=runner_pid,
             seen=seen,
+            parent_id=parent,
         )
 
 
@@ -234,6 +246,7 @@ async def fail_abandoned_child(
             error=error,
             runner_pid=runner_pid,
             extra_pids=extra_pids,
+            parent_id=parent_id,
         )
     except Exception:
         logger.exception(

@@ -476,6 +476,10 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
     container_project_root = "/app"
     container_environment = task_environment(registry_entry)
     container_auth_args = []
+    if container_environment.get("SIMSTACK_MACHINE_CONFIG"):
+        machine_config = Path(container_environment["SIMSTACK_MACHINE_CONFIG"])
+        project_file_mounts.append((machine_config, "/simstack-machine-config.toml:ro"))
+        container_environment["SIMSTACK_MACHINE_CONFIG"] = "/simstack-machine-config.toml"
     if is_api_runner(context) and getattr(registry_entry, "repository_revision", None):
         from pathlib import Path as RuntimePath
         core_root = RuntimePath(__file__).resolve().parents[1]
@@ -530,7 +534,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
             *container_auth_args,
             *resource_args,
             *(
-                [item for key in ("SIMSTACK_SERVER_URL", "SIMSTACK_RUNNER_TOKEN", "SIMSTACK_RUNNER_CREDENTIALS", "SIMSTACK_REPOSITORY_REVISION", "SIMSTACK_REPOSITORY_ROOT", "PYTHONPATH") if key in container_environment for item in ("-e", key)]
+                [item for key in ("SIMSTACK_SERVER_URL", "SIMSTACK_RUNNER_TOKEN", "SIMSTACK_RUNNER_CREDENTIALS", "SIMSTACK_REPOSITORY_REVISION", "SIMSTACK_REPOSITORY_ROOT", "SIMSTACK_MACHINE_CONFIG", "SIMSTACK_EXECUTION_TASK", "SIMSTACK_EXECUTION_CLAIM", "SIMSTACK_EXECUTION_START", "PYTHONPATH") if key in container_environment for item in ("-e", key)]
             ),
             "-v", f"{workdir}:{CONTAINER_WORKDIR}",
             "-v", f"{workdir}:{LEGACY_CONTAINER_WORKDIR}",
@@ -585,7 +589,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
     )
 
     if is_api_runner(context) and docker_cmd == "apptainer":
-        for key in ("SIMSTACK_SERVER_URL", "SIMSTACK_RUNNER_TOKEN", "SIMSTACK_RUNNER_CREDENTIALS", "SIMSTACK_REPOSITORY_REVISION", "SIMSTACK_REPOSITORY_ROOT", "PYTHONPATH"):
+        for key in ("SIMSTACK_SERVER_URL", "SIMSTACK_RUNNER_TOKEN", "SIMSTACK_RUNNER_CREDENTIALS", "SIMSTACK_REPOSITORY_REVISION", "SIMSTACK_REPOSITORY_ROOT", "SIMSTACK_MACHINE_CONFIG", "SIMSTACK_EXECUTION_TASK", "SIMSTACK_EXECUTION_CLAIM", "SIMSTACK_EXECUTION_START", "PYTHONPATH"):
             if key in container_environment:
                 container_environment["APPTAINERENV_" + key] = container_environment[key]
 

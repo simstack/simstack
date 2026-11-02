@@ -40,6 +40,18 @@ async def run_node_from_id(
     project_root: str | None = None,
     in_docker: bool = False,
 ) -> RunNodeResult:
+    from types import SimpleNamespace
+    from simstack.runner_api.claims import task_execution
+    with task_execution(SimpleNamespace(id=node_id)):
+        return await _run_node_from_id(node_id, resource_str, project_root, in_docker)
+
+
+async def _run_node_from_id(
+    node_id: str,
+    resource_str: str,
+    project_root: str | None = None,
+    in_docker: bool = False,
+) -> RunNodeResult:
     """Run a single node by its ID from the database"""
     logger.info(f"Initializing node run: node_id={node_id}, resource={resource_str}, project_root={project_root}, in_docker={in_docker}")
     try:
@@ -66,9 +78,10 @@ async def run_node_from_id(
         from simstack.runner_api.runtime import prepare_task
         repository_root = await prepare_task(registry_entry, context)
         if repository_root is not None:
-            from simstack.util.resource_config import ResourceConfig
+            from simstack.runner_api.runtime import task_resource_config
+            machine_config = task_resource_config(registry_entry, context)
             context.config._project_root = repository_root
-            context._resource_config = ResourceConfig(repository_root / "config.toml", str(context.config.resource))
+            context._resource_config = machine_config
             os.environ["SIMSTACK_REPOSITORY_REVISION"] = str(registry_entry.repository_revision)
             await context.refresh_mappings()
         if registry_entry.status == TaskStatus.TERMINATING:
@@ -77,7 +90,9 @@ async def run_node_from_id(
                 "none",
                 registry_entry.error or TERMINATED_BY_USER,
             )
-        await record_process_id(registry_entry, os.getpid(), context.db)
+        from simstack.core.definitions import DBType
+        if getattr(context.db, "databae_type", None) != DBType.API:
+            await record_process_id(registry_entry, os.getpid(), context.db)
         parameters = registry_entry.parameters
         if parameters.in_docker and not in_docker:
             docker_result = await run_docker_with_outcome(registry_entry)

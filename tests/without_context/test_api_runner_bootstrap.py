@@ -99,3 +99,57 @@ async def test_control_agent_keeps_retrying_api_outages(monkeypatch):
     await service.start()
     assert service.attempts == 5
     assert service._consecutive_failures == 0
+
+
+@pytest.mark.asyncio
+async def test_initial_control_failure_stays_paused_and_retries(tmp_path, monkeypatch):
+    import asyncio
+    from simstack.core.services import runner_manager, runner_control_service
+    from simstack.core.services.base_service import BaseService
+
+    context = SimpleNamespace(config=SimpleNamespace(workdir=tmp_path), db=SimpleNamespace(databae_type=DBType.API))
+    monkeypatch.setattr(runner_manager, "context", context)
+
+    class Idle(BaseService):
+        def __init__(self, resource, *args, **kwargs):
+            super().__init__("idle", resource, 0)
+        async def execute(self):
+            pass
+
+    for name in ("RunnerStatusService", "RunnerCleanupService", "StopCheckService", "FileTransferService"):
+        monkeypatch.setattr(runner_manager, name, Idle)
+    manager = runner_manager.RunnerManager("test", with_jobs=False, no_pull=True)
+    calls = []
+    async def json(method, path, body=None):
+        assert manager._claiming_paused.is_set()
+        calls.append(path)
+        if len(calls) == 1:
+            raise RunnerAPIError("temporary first-request outage")
+        manager._services[0]._stop_event.set()
+        asyncio.get_running_loop().call_soon(manager._shutdown_event.set)
+        return {"paused": False, "commands": []}
+    monkeypatch.setattr(runner_control_service.RunnerAPIClient, "from_environment", lambda: SimpleNamespace(json=json))
+    original = runner_control_service.RunnerControlService
+    def control(active):
+        service = original(active)
+        service._interval = 0
+        return service
+    monkeypatch.setattr(runner_control_service, "RunnerControlService", control)
+    await asyncio.wait_for(manager.run_nodes_for_resource(), 3)
+    assert calls == ["/runner/control", "/runner/control"]
+    assert not manager._claiming_paused.is_set()
+
+
+def test_explicit_machine_config_survives_pinned_project_selection(tmp_path, monkeypatch):
+    from simstack.runner_api.runtime import task_resource_config, task_environment
+    from simstack.util.resource_config import ResourceConfig
+    machine = tmp_path/"machine.toml"
+    machine.write_text('[test.programs.fixture]\ndocker_image="machine-image"\n')
+    source = tmp_path/"pinned-source"
+    source.mkdir()
+    (source/"config.toml").write_text('[test.programs.fixture]\ndocker_image="repository-image"\n')
+    monkeypatch.setenv("SIMSTACK_MACHINE_CONFIG", str(machine))
+    entry = SimpleNamespace(id="0"*24, repository_revision="a"*64, _repository_project_root=source)
+    context = SimpleNamespace(config=SimpleNamespace(project_root=tmp_path, resource="test"), resource_config=ResourceConfig(machine,"test"))
+    assert task_resource_config(entry, context)._config_path == machine
+    assert task_environment(entry)["SIMSTACK_MACHINE_CONFIG"] == str(machine)

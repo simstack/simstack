@@ -138,7 +138,7 @@ def test_expired_upload_url_is_refreshed(tmp_path, monkeypatch):
     path.write_bytes(b"data")
     client = ObjectFileClient(server_url="https://api.test", runner_token="private")
     prepared = []
-    def request(method, endpoint, payload):
+    def request(method, endpoint, payload, **kwargs):
         if endpoint.endswith("/prepare"):
             prepared.append(endpoint)
             return {"upload_id": "id", "upload_url": "expired" if len(prepared) == 1 else "fresh", "upload_headers": {}}

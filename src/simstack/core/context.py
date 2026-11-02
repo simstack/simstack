@@ -233,7 +233,9 @@ class GlobalState:
         info = DatabaseInformation(None, None, DBType.API, server_url, server_token)
         self._db = Database.from_db_info(info)
         self._config = ConfigReader(info, resource, project_root=project_root, git_list=[])
-        config_file = kwargs.get("config_file") or project_root / "config.toml"
+        if kwargs.get("config_file"):
+            os.environ["SIMSTACK_MACHINE_CONFIG"] = str(Path(kwargs["config_file"]).expanduser().resolve())
+        config_file = kwargs.get("config_file") or os.environ.get("SIMSTACK_MACHINE_CONFIG") or project_root / "config.toml"
         self._resource_config = ResourceConfig(Path(config_file), resource_name)
         self._log_handler = setup_runner_logging(api, kwargs.get("log_level", "INFO"))
         await self.refresh_mappings()

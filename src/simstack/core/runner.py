@@ -64,6 +64,8 @@ async def async_main(args: argparse.Namespace) -> None:
         os.environ["SIMSTACK_RUNNER_TOKEN"] = getattr(args, "token", None)
     project_root = Path(getattr(args, "project_root", None) or Path.home() / ".local/share/simstack/runner/runtime").expanduser().resolve()
     project_root.mkdir(parents=True, exist_ok=True)
+    if getattr(args, "config", None):
+        os.environ["SIMSTACK_MACHINE_CONFIG"] = str(Path(args.config).expanduser().resolve())
     await context.initialize(resource=args.resource, config_file=args.config, project_root=project_root, api_only=True)
     resource = context.config.resource
     runner_manager = RunnerManager(

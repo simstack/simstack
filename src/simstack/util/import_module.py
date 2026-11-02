@@ -25,9 +25,9 @@ def import_module_from_file(file_path: Path, root_dir: Path):
         relative_path = file_path.relative_to(root_dir)
 
         basename = relative_path.stem
-        module_name = ".".join(relative_path.parts[:-1]) + "." + basename
+        module_name = ".".join((*relative_path.parts[:-1], basename))
 
-        if root_dir not in sys.path:
+        if str(root_dir) not in sys.path:
             sys.path.insert(0, str(root_dir))
             # logger.debug(f"Added {root_dir} to sys.path")
         # Try a simple import first

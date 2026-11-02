@@ -50,6 +50,21 @@ def _return_kind(result: Any, registry_entry: NodeRegistry) -> str:
 async def run_node_from_registry_with_outcome(
     registry_entry: NodeRegistry,
 ) -> NodeExecutionOutcome:
+    from simstack.runner_api.claims import task_execution, current_execution
+    with task_execution(registry_entry):
+        execution = current_execution()
+        if execution:
+            started = await context.db.task_mutation(registry_entry.id, "start", {
+                "process_id": None if getattr(context, "in_docker", False) else os.getpid(), "start_id": execution["start_id"],
+            })
+            if started is None:
+                return NodeExecutionOutcome(False, "none")
+        return await _run_node_from_registry_with_outcome(registry_entry)
+
+
+async def _run_node_from_registry_with_outcome(
+    registry_entry: NodeRegistry,
+) -> NodeExecutionOutcome:
     """
     Executes a node task from the provided registry entry and updates its status
     based on the success or failure of execution.
@@ -325,18 +340,25 @@ class NodeExecutionService(BaseService):
             return
 
         # Load tasks
+        recovered = []
+        from simstack.core.definitions import DBType
+        if getattr(context.db, "databae_type", None) == DBType.API:
+            recovered = await context.db.core_engine.recover_claims()
         registry_entry_list = await context.db.load_waiting_tasks_for_resource(self._resource_name)
 
-        if registry_entry_list:
+        if registry_entry_list or recovered:
             logger.info(
                 f"Retrieved {len(registry_entry_list)} tasks for {self._resource_name}"
             )
-            for entry in registry_entry_list:
-                if not await claim_submitted_node(entry):
+            recovered_ids = {entry.id for entry in recovered}
+            for entry in [*recovered, *(item for item in registry_entry_list if item.id not in recovered_ids)]:
+                if entry.id not in recovered_ids and not await claim_submitted_node(entry):
                     continue
                 task = asyncio.create_task(self._run_with_semaphore(entry))
                 self._running_tasks.add(task)
 
     async def _run_with_semaphore(self, entry: NodeRegistry) -> bool:
         async with self._semaphore:
-            return await self.run_node(entry)
+            from simstack.runner_api.claims import task_execution
+            with task_execution(entry):
+                return await self.run_node(entry)
