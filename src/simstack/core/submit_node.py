@@ -8,6 +8,7 @@ from pathlib import Path
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.models import NodeRegistry
+from simstack.util.resource_config import is_shell_snippet
 from simstack.util.submit_to_watchdog import submit_to_watchdog
 import logging
 
@@ -77,24 +78,58 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
 
         logger.info(f"task_id: {task_id} program_config {program_config}")
         if program_config.get("use_tmp", False):
-            tmp_dir = context.resource_config.tmp_dir(registry_entry.id)
-
-            if not tmp_dir.exists() or not tmp_dir.is_dir():
-                logger.error(
-                    f"Task task_id: {task_id} tmp_dir {tmp_dir} does not exist or is not a directory -- failing")
-                registry_entry.status = TaskStatus.FAILED
-                await context.db.save(registry_entry)
-                return False
-
-            full_sync_data = (
-                sync_data_start
-                + f'cp -a {shlex.quote(str(tmp_dir))}/. {shlex.quote(str(work_dir))}/recovery\n'
-                + sync_data_end
+            setup_params = (
+                context.resource_config.get_setup_params()
+                if context.resource_config is not None
+                else {}
             )
+            tmp_base_dir_raw = (setup_params or {}).get("tmp_base_dir", "")
 
-            logger.info(f"task_id: {task_id} full_sync_data {full_sync_data}")
-            slurm_parameters.startup_commands.append(full_sync_data)
-            slurm_parameters.startup_commands.append("trap 'sync_data' SIGUSR1")
+            if is_shell_snippet(str(tmp_base_dir_raw or "")):
+                # tmp_base_dir is a runtime shell snippet (e.g. node-local
+                # $TMPDIR on justus/horeka): the concrete path only exists
+                # inside the job, so we embed the snippet in the trap and
+                # evaluate it at trap time instead of baking in a
+                # submit-host-resolved value.
+                snippet_lines = "\n            ".join(
+                    str(tmp_base_dir_raw).strip().splitlines()
+                )
+                full_sync_data = (
+                    sync_data_start
+                    + "# Resolve TMP_BASE_DIR at runtime (node-local scratch / env-dependent paths)\n"
+                    + '            TMP_BASE_DIR=""\n'
+                    + f"            {snippet_lines}\n"
+                    + '            if [ -n "${TMP_BASE_DIR}" ]'
+                    + f' && [ -d "${{TMP_BASE_DIR}}/{registry_entry.id}" ]; then\n'
+                    + f'                cp -a "${{TMP_BASE_DIR}}/{registry_entry.id}"/. '
+                    + f"{shlex.quote(str(work_dir))}/recovery\n"
+                    + "            else\n"
+                    + '                echo "WARNING: scratch dir $TMP_BASE_DIR not available; skipping recovery copy"\n'
+                    + "            fi\n"
+                    + sync_data_end
+                )
+                logger.info(f"task_id: {task_id} full_sync_data {full_sync_data}")
+                slurm_parameters.startup_commands.append(full_sync_data)
+                slurm_parameters.startup_commands.append("trap 'sync_data' SIGUSR1")
+            else:
+                tmp_dir = context.resource_config.tmp_dir(registry_entry.id)
+
+                if not tmp_dir.exists() or not tmp_dir.is_dir():
+                    logger.error(
+                        f"Task task_id: {task_id} tmp_dir {tmp_dir} does not exist or is not a directory -- failing")
+                    registry_entry.status = TaskStatus.FAILED
+                    await context.db.save(registry_entry)
+                    return False
+
+                full_sync_data = (
+                    sync_data_start
+                    + f'cp -a {shlex.quote(str(tmp_dir))}/. {shlex.quote(str(work_dir))}/recovery\n'
+                    + sync_data_end
+                )
+
+                logger.info(f"task_id: {task_id} full_sync_data {full_sync_data}")
+                slurm_parameters.startup_commands.append(full_sync_data)
+                slurm_parameters.startup_commands.append("trap 'sync_data' SIGUSR1")
 
         if context.config.docker:
             external_work_dir = (

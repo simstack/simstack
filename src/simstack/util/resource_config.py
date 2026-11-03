@@ -12,6 +12,19 @@ from odmantic import ObjectId
 import logging
 logger = logging.getLogger("ResourceConfig")
 
+
+def is_shell_snippet(value: str) -> bool:
+    """Return True if ``value`` is a POSIX snippet assigning ``TMP_BASE_DIR``.
+
+    Snippets are evaluated at runtime (see ``ResourceConfig.tmp_base_dir``),
+    because values such as ``$TMPDIR`` are only meaningful inside a job and
+    differ between submit and compute hosts.
+    """
+    raw = str(value).strip()
+    return (
+        "\n" in raw or "TMP_BASE_DIR" in raw or ("=" in raw and "$" in raw)
+    )
+
 class ResourceConfig:
     """
     ResourceConfig is responsible for managing configuration settings, setup,
@@ -87,9 +100,7 @@ class ResourceConfig:
             # snippet text in a path is invalid (submit_node.py embeds
             # tmp_base_dir into the SIGUSR1 trap's `cp -a` line, which would
             # produce a syntax error).
-            looks_like_shell = (
-                "\n" in raw or "TMP_BASE_DIR" in raw or ("=" in raw and "$" in raw)
-            )
+            looks_like_shell = is_shell_snippet(raw)
             if looks_like_shell:
                 resolved = self._evaluate_tmp_base_dir_snippet(raw)
                 if resolved is not None:

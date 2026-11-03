@@ -3,7 +3,7 @@
 import tempfile
 from pathlib import Path
 
-from simstack.util.resource_config import ResourceConfig
+from simstack.util.resource_config import ResourceConfig, is_shell_snippet
 
 
 def _make_config(tmp_path: Path, tmp_base_dir) -> Path:
@@ -81,3 +81,20 @@ def test_missing_tmp_base_dir_falls_back_to_system_tempdir(tmp_path):
     cfg.write_text("[test-resource]\n[test-resource.setup]\n")
     rc = ResourceConfig(cfg, "test-resource")
     assert rc.tmp_base_dir == Path(tempfile.gettempdir())
+
+
+def test_is_shell_snippet():
+    assert is_shell_snippet('TMP_BASE_DIR="/tmp/${USER}"') is True
+    assert (
+        is_shell_snippet(
+            'if test -n "${TMPDIR}" ; then\n'
+            '  TMP_BASE_DIR="${TMPDIR}"\n'
+            "fi\n"
+        )
+        is True
+    )
+    assert is_shell_snippet("/scratch/ka_is2364") is False
+    assert is_shell_snippet("/tmp") is False
+    assert is_shell_snippet("") is False
+    assert is_shell_snippet("set TMP_BASE_DIR=C:\\Temp") is True
+

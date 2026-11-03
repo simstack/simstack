@@ -31,9 +31,103 @@ def _slurm_registry(name: str, parameters: Parameters, parent_ids=None) -> NodeR
 
 
 @pytest.mark.asyncio
+async def test_submit_node_tmp_base_dir_shell_snippet_is_evaluated_at_runtime(
+    tmp_path, monkeypatch, initialized_context
+):
+    """A shell-snippet tmp_base_dir (e.g. node-local $TMPDIR) must not be
+    resolved on the submit host. Instead the snippet is embedded in the
+    SIGUSR1 trap and evaluated at trap time on the compute node."""
+    project_root = tmp_path / "project"
+    python_path = tmp_path / "simstack-model"
+    workdir = tmp_path / "work"
+    project_root.mkdir()
+    python_path.mkdir()
+
+    monkeypatch.setattr(
+        context,
+        "config",
+        SimpleNamespace(
+            project_root=project_root,
+            python_paths=[python_path],
+            workdir=workdir,
+            environment_start="",
+            docker=False,
+            resource="justus-jinja",
+        ),
+    )
+    monkeypatch.setattr(
+        "simstack.core.submit_node.subprocess.run",
+        lambda *args, **kwargs: SimpleNamespace(
+            returncode=0,
+            stdout="Submitted batch job 12346\n",
+            stderr="",
+        ),
+    )
+
+    class StubResourceConfig:
+        def get_program(self, name):
+            return {"use_tmp": True}
+
+        def get_setup_params(self):
+            return {
+                "tmp_base_dir": (
+                    'if test -n "${TMPDIR}" -a -d "${TMPDIR}"; then\n'
+                    '  TMP_BASE_DIR="${TMPDIR}"\n'
+                    "elif test -n \"${SCRATCH}\" -a -d \"${SCRATCH}\"; then\n"
+                    '  TMP_BASE_DIR="${SCRATCH}"\n'
+                    "else\n"
+                    '  TMP_BASE_DIR="${TMPDIR:-/tmp/${USER}}"\n'
+                    "fi\n"
+                )
+            }
+
+        def tmp_dir(self, task_id):
+            # The submit host must NOT create/resolve any tmp dir for snippets:
+            # the concrete per-job path only exists on the compute node.
+            raise AssertionError("tmp_dir must not be called for shell snippets")
+
+    # resource_config is a read-only property on GlobalState; the backing
+    # instance attribute is what init_resource uses.
+    monkeypatch.setattr(context, "_resource_config", StubResourceConfig())
+
+    parent_parameters = Parameters(
+        resource="justus-jinja",
+        queue="slurm-queue",
+        slurm_parameters=SlurmParameters(
+            nodes=1,
+            tasks_per_node=2,
+            mem="1G",
+            time="0:10:00",
+            job_name="template-job",
+            output="/template/%j.out",
+            error="/template/%j.err",
+            startup_commands=["module load chem/orca"],
+            chdir="/template/work",
+        ),
+    )
+    parent = _slurm_registry("parent", parent_parameters)
+
+    await submit_node(parent)
+
+    parent_script = (
+        workdir / parent.name / str(parent.id) / "slurm_script.sh"
+    ).read_text()
+    # Snippet embedded verbatim for runtime evaluation in the trap ...
+    assert 'Test' not in parent_script  # sanity guard
+    assert 'TMP_BASE_DIR="${TMPDIR}"' in parent_script
+    assert 'TMP_BASE_DIR="${SCRATCH}"' in parent_script
+    # ... guarded cp operating on the runtime-resolved value ...
+    assert f'&& [ -d "${{TMP_BASE_DIR}}/{parent.id}" ]; then' in parent_script
+    assert parent_script.count("TMP_BASE_DIR") >= 4
+    # ... and the trap is still armed.
+    assert "trap 'sync_data' SIGUSR1" in parent_script
+    assert parent.status == TaskStatus.SLURM_QUEUED
+    assert parent.job_id == "12346"
+@pytest.mark.asyncio
 async def test_submit_node_does_not_persist_generated_startup_commands(
     tmp_path, monkeypatch, initialized_context
 ):
+
     project_root = tmp_path / "project"
     python_path = tmp_path / "simstack-model"
     workdir = tmp_path / "work"
