@@ -1,10 +1,12 @@
 import asyncio
+import gc
 import logging
 import os
 import socket
 import sys
 import platform
 import subprocess
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -35,6 +37,7 @@ class BaseService(ABC):
         self._hostname = socket.gethostname()
         self._username = os.environ.get("USER", os.environ.get("USERNAME", "unknown"))
         self._time_started = datetime.now()
+        self._last_full_gc = time.monotonic()
 
     def _get_uptime_string(self) -> str:
         time_diff = datetime.now() - self._time_started
@@ -111,6 +114,21 @@ class BaseService(ABC):
                     self._stop_event.set()
                     if self._shutdown_event:
                         self._shutdown_event.set()
+
+            # Periodic garbage collection. async-heavy polls accumulate
+            # reference cycles (exception tracebacks, task frames, partially
+            # built results) that refcounting alone never frees, so RSS grows
+            # monotonically unless they are collected. gc.collect does NOT
+            # hand memory back to the OS, but it lets the interpreter reuse
+            # the freed memory internally, capping the growth. A GC failure
+            # must never take the service down.
+            try:
+                gc.collect(1)  # cheap: generations 0 + 1 on every poll
+                if time.monotonic() - self._last_full_gc >= 1800:
+                    gc.collect()  # full sweep (all generations) ~ every 30 min
+                    self._last_full_gc = time.monotonic()
+            except Exception:
+                pass
 
             # Calculate wait time to maintain interval regardless of execution duration
             elapsed = asyncio.get_event_loop().time() - start_time
