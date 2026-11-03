@@ -77,13 +77,64 @@ class ResourceConfig:
         tmp_base_dir_str = self.get_setup_params().get("tmp_base_dir", "")
 
         if tmp_base_dir_str:
-            expanded_path_str = os.path.expandvars(os.path.expanduser(tmp_base_dir_str))
-            path = Path(expanded_path_str)
-            path.mkdir(parents=True, exist_ok=True)
-            return path
+            raw = str(tmp_base_dir_str).strip()
+
+            # tmp_base_dir may be a plain filesystem path or a POSIX shell
+            # snippet that assigns TMP_BASE_DIR (as used on justus / horeka to
+            # compute node-local scratch paths, e.g.
+            #   if test -n "${SCRATCH}" ...; then TMP_BASE_DIR="${SCRATCH}"; else ...
+            # ). Shell snippets must be evaluated at runtime - embedding the raw
+            # snippet text in a path is invalid (submit_node.py embeds
+            # tmp_base_dir into the SIGUSR1 trap's `cp -a` line, which would
+            # produce a syntax error).
+            looks_like_shell = (
+                "\n" in raw or "TMP_BASE_DIR" in raw or ("=" in raw and "$" in raw)
+            )
+            if looks_like_shell:
+                resolved = self._evaluate_tmp_base_dir_snippet(raw)
+                if resolved is not None:
+                    path = Path(resolved)
+                    path.mkdir(parents=True, exist_ok=True)
+                    return path
+                logger.warning(
+                    "Could not evaluate tmp_base_dir shell snippet; "
+                    "falling back to the system temp directory."
+                )
+            else:
+                expanded_path_str = os.path.expandvars(os.path.expanduser(raw))
+                path = Path(expanded_path_str)
+                path.mkdir(parents=True, exist_ok=True)
+                return path
 
         # Default to system temp directory if no command/path specified
         return Path(tempfile.gettempdir())
+
+    def _evaluate_tmp_base_dir_snippet(self, snippet: str) -> Optional[str]:
+        """Evaluate a POSIX snippet assigning ``TMP_BASE_DIR`` and return the value.
+
+        The snippet is executed through ``/bin/sh`` so environment variables
+        (``SCRATCH``, ``TMPDIR``, ``USER``, ...) are resolved at runtime. The
+        assigned value is captured from a marker line appended to the script.
+        """
+        try:
+            marker = f"__SIMSTACK_TMP_BASE_DIR_{uuid.uuid4().hex}__"
+            completed = subprocess.run(
+                ["/bin/sh", "-c", f'{snippet}\necho "{marker}=$TMP_BASE_DIR"\n'],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if completed.returncode != 0:
+                return None
+            for line in completed.stdout.splitlines():
+                line = line.strip()
+                if line.startswith(marker + "="):
+                    value = line[len(marker) + 1:]
+                    if value:
+                        return value
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+        return None
 
     def run(self,
         program_name: str,

@@ -1,5 +1,6 @@
 import os
 import re
+import shlex
 import stat
 import subprocess
 from pathlib import Path
@@ -85,7 +86,11 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
                 await context.db.save(registry_entry)
                 return False
 
-            full_sync_data = sync_data_start + f'cp -a {tmp_dir}/. {work_dir}/recovery\n' + sync_data_end
+            full_sync_data = (
+                sync_data_start
+                + f'cp -a {shlex.quote(str(tmp_dir))}/. {shlex.quote(str(work_dir))}/recovery\n'
+                + sync_data_end
+            )
 
             logger.info(f"task_id: {task_id} full_sync_data {full_sync_data}")
             slurm_parameters.startup_commands.append(full_sync_data)
