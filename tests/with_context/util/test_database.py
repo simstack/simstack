@@ -475,6 +475,48 @@ async def test_load_waiting_tasks_for_resource_filters_submitted_matching_resour
 
 
 @pytest.mark.asyncio
+async def test_load_waiting_tasks_for_resource_scopes_db_query_to_resource(
+        initialized_context,
+        monkeypatch,
+):
+    """The DB query itself must be scoped to the resource.
+
+    A runner that loads *all* SUBMITTED registers (as it used to, filtering
+    only afterwards in Python) can grow unboundedly when the shared database
+    holds many submitted tasks for other resources."""
+    from simstack.core.resources import allowed_resources
+    allowed_resources.add_resource("database-test-resource")
+
+    db = await _restore_database_facade_methods(monkeypatch)
+    await db.save(
+        _registry(
+            "database_waiting_query_spy",
+            status=TaskStatus.SUBMITTED,
+            resource="database-test-resource",
+        )
+    )
+
+    original_find = db.find
+    captured = {}
+
+    async def spy_find(*args, **kwargs):
+        captured["args"] = args
+        return await original_find(*args, **kwargs)
+
+    monkeypatch.setattr(db, "find", spy_find)
+
+    waiting = await db.load_waiting_tasks_for_resource("database-test-resource")
+
+    assert any(e.name == "database_waiting_query_spy" for e in waiting)
+    assert all(
+        str(e.parameters.resource) == "database-test-resource" for e in waiting
+    )
+    query_str = str(captured["args"][1])
+    assert "parameters.resource" in query_str
+    assert "database-test-resource" in query_str
+
+
+@pytest.mark.asyncio
 async def test_load_waiting_tasks_for_local_includes_self_resource(
         initialized_context,
         monkeypatch,

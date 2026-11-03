@@ -497,10 +497,21 @@ class Database:
         Returns:
             List of matching NodeRegistry instances
         """
-        # Try to use the engine directly if find is failing in tests
+        # Scope the database query by status AND resource so a runner only
+        # pulls *its own resource's* submitted tasks instead of every
+        # SUBMITTED register in the shared database. Previously the whole
+        # submitted workload was loaded into memory on every poll and only
+        # then filtered in Python (runners with a crowded shared DB could
+        # grow unboundedly). Mirrors the resource scoping already used by
+        # SlurmStatusService.
+        from simstack.models.parameters import Resource
+
+        resource_value = Resource(value=resource)
         try:
             submitted_tasks = await self.find(
-                NodeRegistry, NodeRegistry.status == TaskStatus.SUBMITTED
+                NodeRegistry,
+                (NodeRegistry.status == TaskStatus.SUBMITTED)
+                & (NodeRegistry.parameters.resource == resource_value),
             )
         except Exception as e:
             logger.warning(
@@ -518,12 +529,12 @@ class Database:
             # TODO not the local runner the default resource should pick up self but there should be no seld
             if (
                 hasattr(task.parameters, "resource")
-                and task.parameters.resource == resource
+                and str(task.parameters.resource) == resource
             ):
                 matching_tasks.append(task)
             if (
                 hasattr(task.parameters, "resource")
-                and task.parameters.resource == "self"
+                and str(task.parameters.resource) == "self"
             ):
                 logger.error("There should be tasks submitted to self")
         return matching_tasks
