@@ -1,6 +1,7 @@
 """Reload resource credentials without restarting running workflow processes."""
 import json
 import os
+import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -31,6 +32,40 @@ def read_credentials(path):
     if not isinstance(data, dict) or not isinstance(data.get("token"), str) or not data["token"]:
         raise ValueError("Runner credentials file has no token")
     return data
+
+
+def configure_git_credentials(credentials):
+    """Restore installer-owned SSH file paths when the agent is restarted."""
+    for field, variable in (("git_ssh_key", "SIMSTACK_GIT_SSH_KEY"),
+                            ("git_known_hosts", "SIMSTACK_GIT_KNOWN_HOSTS")):
+        value = credentials.get(field)
+        if value:
+            os.environ[variable] = str(Path(value).expanduser().resolve())
+    if credentials.get("git_ssh_key_version") is not None:
+        os.environ["SIMSTACK_GIT_SSH_KEY_VERSION"] = str(credentials["git_ssh_key_version"])
+
+
+def update_known_hosts(value):
+    """Install only the host keys explicitly trusted in the owner's Server UI."""
+    path = os.environ.get("SIMSTACK_GIT_KNOWN_HOSTS")
+    if path is None or value is None:
+        return
+    if not isinstance(value, str):
+        raise ValueError("Invalid trusted Git host key response")
+    target = Path(path)
+    if target.is_file() and target.read_text() == value:
+        return
+    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    descriptor, temporary = tempfile.mkstemp(prefix=".known-hosts-", dir=target.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(value)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, target)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
 
 
 def current_token(server_url, fallback):

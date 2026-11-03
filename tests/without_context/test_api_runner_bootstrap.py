@@ -37,7 +37,11 @@ async def test_api_bootstrap_opens_no_mongo_connection_and_erases_db_env(
                 "resource": "cluster",
                 "resource_definition": resource.model_dump(mode="json"),
                 "resources": ["cluster"],
+                "repository_reconciliation_required": True,
             }
+        if path == "/runner/repositories/reconcile":
+            assert body == {"prepared": []}
+            return {"reconciled": True}
         return {"documents": []}
 
     def forbidden(*args, **kwargs):
@@ -51,6 +55,7 @@ async def test_api_bootstrap_opens_no_mongo_connection_and_erases_db_env(
     monkeypatch.setenv("SIMSTACK_RUNNER_TOKEN", "resource-token")
     monkeypatch.setenv("SIMSTACK_DB_CONNECTION_STRING", "mongodb://must-not-be-used")
     monkeypatch.setenv("MONGODB_URI", "mongodb://must-not-be-used")
+    monkeypatch.setattr("simstack.util.repository_runtime.prepared_repositories", lambda: [])
     await state.initialize(project_root=tmp_path, api_only=True, resource="cluster")
     assert state.db.databae_type == DBType.API
     assert isinstance(state.db.core_engine, HTTPRepository)
@@ -65,6 +70,7 @@ async def test_api_bootstrap_opens_no_mongo_connection_and_erases_db_env(
     assert "SIMSTACK_DB_CONNECTION_STRING" not in os.environ
     assert "MONGODB_URI" not in os.environ
     assert calls[0] == ("GET", "/runner/bootstrap")
+    assert calls[1] == ("POST", "/runner/repositories/reconcile")
 
 
 @pytest.mark.asyncio

@@ -214,10 +214,15 @@ class GlobalState:
             raise ValueError("API runners cannot receive database credentials")
         api = RunnerAPIClient(server_url, server_token)
         bootstrap = await api.json("GET", "/runner/bootstrap")
+        from simstack.runner_api.credentials import update_known_hosts
+        update_known_hosts(bootstrap.get("known_hosts"))
         resource_name = bootstrap["resource"]
         requested = kwargs.get("resource", "self")
         if requested not in {"self", "local", resource_name}:
             raise ValueError("Runner token is bound to a different resource")
+        if bootstrap.get("repository_reconciliation_required"):
+            from simstack.util.repository_runtime import reconcile_prepared_repositories
+            await reconcile_prepared_repositories(api)
         allowed_resources.set_resources(list(dict.fromkeys([*bootstrap["resources"], "self"])))
         for key in set(os.environ) - set(runner_environment()):
             os.environ.pop(key, None)

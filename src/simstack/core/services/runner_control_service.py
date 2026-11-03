@@ -13,17 +13,56 @@ class RunnerControlService(BaseService):
 
     async def execute(self):
         state = await self.api.json("GET", "/runner/control")
+        import os
+        from simstack.runner_api.credentials import configure_git_credentials, read_credentials, update_known_hosts
+        credentials = os.environ.get("SIMSTACK_RUNNER_CREDENTIALS")
+        if credentials:
+            configure_git_credentials(read_credentials(credentials))
+        update_known_hosts(state.get("known_hosts"))
         await self.refresh_container_credentials()
         if state.get("paused"):
             self.manager._claiming_paused.set()
         else:
             self.manager._claiming_paused.clear()
         for command in state.get("commands", []):
+            if command["action"] == "prepare_repository":
+                if state.get("busy") or command.get("status") == "deferred_busy":
+                    continue
+                key_version = state.get("ssh_key_version")
+                key_status = state.get("ssh_key_status")
+                requires_reinstall = (key_status is not None and key_status != "active") or (
+                    key_version is not None and str(key_version) != os.environ.get("SIMSTACK_GIT_SSH_KEY_VERSION"))
+                await self.prepare_repository(command, requires_reinstall=requires_reinstall)
+                continue
             if command["action"] == "restart":
                 await self.api.json("POST", f"/runner/control/{command['id']}/ack", {})
                 self.manager._restart_requested = True
                 self.manager._shutdown_event.set()
                 return
+
+    async def prepare_repository(self, command, *, requires_reinstall=False):
+        from simstack.util.repository_runtime import prepare_repository
+
+        path = f"/runner/control/{command['id']}"
+        # The Server checks persisted task states and reserves preparation
+        # atomically with claim admission. Never infer this from local processes.
+        state = await self.api.json("POST", path + "/status", {"status": "preparing"})
+        if state.get("status") != "preparing":
+            return
+        if requires_reinstall:
+            await self.api.json("POST", path + "/ack", {
+                "status": "failed", "error": "Git SSH key was revoked or rotated; rerun the Runner installer",
+            })
+            return
+        try:
+            await prepare_repository(self.api, command["payload"])
+        except Exception:
+            await self.api.json("POST", path + "/ack", {
+                "status": "failed",
+                "error": "Repository preparation failed; check Git host trust, access, pinned revisions, uv.lock and extras",
+            })
+        else:
+            await self.api.json("POST", path + "/ack", {"status": "ready"})
 
 
     async def refresh_container_credentials(self):

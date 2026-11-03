@@ -15,14 +15,25 @@ to get started.
 
 ### API/S3 installation on `feature-api-s3`
 
-For the new deployment, use the Server's [API/S3 Compose guide](https://github.com/simstack/simstack-server/blob/feature-api-s3/deploy/api-s3/README.md)
+For API/S3 deployments, use the [Server project](https://github.com/simstack/simstack-server)
 and the [Runner/workflow adjustment guide](doc/api_s3_runner.md). Create a
-resource and its token in the UI, then run the install command shown there.
-The Runner uses the Server API; MongoDB and object storage credentials belong
-only to Server. Repository registration is performed through Server after the
-user selects a GitLab repository in the UI. Existing workflow functions,
-resource assignments and machine execution profiles remain the execution
-contract.
+resource in the UI, then run its install command with a short-lived, one-use
+enrollment token. Over HTTPS, the installer receives resource API credentials
+and the owner's per-user SSH identity, and stores the private key locally with
+permissions `0600`. Runner uses the Server API; MongoDB and object storage
+credentials belong only to Server.
+
+Connect a workflow by entering its SSH or HTTPS clone URL and selecting a
+branch. For private SSH repositories, add your public key to the Git host and
+explicitly confirm its host-key fingerprints. Server checks out the pinned
+source temporarily, runs `uv sync --locked`, and publishes the catalogue using
+the existing recursive builders. Optional automatic updates follow the chosen
+branch. Runner receives preparation commands through its control poll, clones
+the pinned Git source into a version-specific cache, prepares its resource
+extras, and reports ready after Git and `uv` succeed. Busy resources defer new
+preparation while existing tasks continue with their original versions.
+Existing workflow functions, resource assignments and machine execution
+profiles remain the execution contract.
 
 The manual MongoDB, catalogue and repository checkout instructions below
 describe older deployments and must not be used to configure this branch.

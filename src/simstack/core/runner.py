@@ -50,12 +50,13 @@ async def async_main(args: argparse.Namespace) -> None:
     if args.connection_string not in (None, "none") or args.db_name not in (None, "none"):
         raise ValueError("Runner database credentials are no longer supported; use --server and --token")
     if getattr(args, "credentials", None):
-        from simstack.runner_api.credentials import read_credentials
+        from simstack.runner_api.credentials import read_credentials, configure_git_credentials
         source = Path(getattr(args, "credentials", None)).expanduser().resolve()
         credentials = read_credentials(source)
         os.environ["SIMSTACK_RUNNER_CREDENTIALS"] = str(source)
         os.environ["SIMSTACK_SERVER_URL"] = credentials["server_url"]
         os.environ["SIMSTACK_RUNNER_TOKEN"] = credentials["token"]
+        configure_git_credentials(credentials)
     if (getattr(args, "server", None) or getattr(args, "token", None)) and not getattr(args, "credentials", None):
         os.environ.pop("SIMSTACK_RUNNER_CREDENTIALS", None)
     if getattr(args, "server", None):

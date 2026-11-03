@@ -106,3 +106,23 @@ def test_container_copy_keeps_secrets_out_of_exec_arguments(monkeypatch):
     assert "private-token" not in " ".join(command)
     assert json.loads(options["input"])["token"] == "private-token"
     assert "--user" not in command
+
+
+def test_restart_restores_git_paths_and_explicit_server_host_trust(tmp_path, monkeypatch):
+    from simstack.runner_api.credentials import configure_git_credentials, update_known_hosts
+    key = tmp_path / "git" / "id_ed25519"
+    hosts = tmp_path / "git" / "known_hosts"
+    monkeypatch.delenv("SIMSTACK_GIT_SSH_KEY", raising=False)
+    monkeypatch.delenv("SIMSTACK_GIT_KNOWN_HOSTS", raising=False)
+    configure_git_credentials({"git_ssh_key": str(key), "git_known_hosts": str(hosts)})
+    assert os.environ["SIMSTACK_GIT_SSH_KEY"] == str(key)
+    assert os.environ["SIMSTACK_GIT_KNOWN_HOSTS"] == str(hosts)
+    trusted = "example.test ssh-ed25519 explicit-user-approved-key\n"
+    update_known_hosts(trusted)
+    assert hosts.read_text() == trusted
+    assert stat.S_IMODE(hosts.stat().st_mode) == 0o600
+    inode = hosts.stat().st_ino
+    update_known_hosts(trusted)
+    assert hosts.stat().st_ino == inode
+    update_known_hosts("")
+    assert hosts.read_text() == ""
