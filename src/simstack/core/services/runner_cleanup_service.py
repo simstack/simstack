@@ -41,6 +41,38 @@ def _cache_cleanup_enabled() -> bool:
     }
 
 
+def _cache_sweep_batch_size() -> int:
+    """Number of FileStack documents loaded per sweep page.
+
+    Bounding the page size keeps the runner memory stable even when the
+    shared database accumulates huge numbers of FileStack registers (the
+    collection is scanned without a query predicate because ODMantic cannot
+    filter on list elements of an embedded model).
+    """
+    raw = os.environ.get("SIMSTACK_FILE_CACHE_SWEEP_BATCH_SIZE")
+    if raw is None:
+        return 200
+    try:
+        return max(int(raw), 1)
+    except ValueError:
+        return 200
+
+
+def _cache_sweep_max_per_cycle() -> int:
+    """Upper bound of FileStack documents examined per cleanup cycle.
+
+    The sweep resumes at the beginning of the next cycle for whatever was
+    not reached - best effort, bounded memory.
+    """
+    raw = os.environ.get("SIMSTACK_FILE_CACHE_SWEEP_MAX_PER_CYCLE")
+    if raw is None:
+        return 5000
+    try:
+        return max(int(raw), 1)
+    except ValueError:
+        return 5000
+
+
 def _as_naive_datetime(value: datetime | None) -> datetime | None:
     if value is None:
         return None
@@ -58,6 +90,10 @@ class RunnerCleanupService(BaseService):
     def __init__(self, resource: Resource, interval: int = 300) -> None:
         # Default interval 5 minutes
         super().__init__("RunnerCleanup", resource, interval)
+        # Resume offset for the file-cache sweep so a budget-limited cycle
+        # continues from where it stopped in the next cycle instead of
+        # restarting at the beginning of the collection every time.
+        self._sweep_offset = 0
 
     async def execute(self) -> None:
         cutoff_time = datetime.now() - timedelta(minutes=30)
@@ -86,59 +122,89 @@ class RunnerCleanupService(BaseService):
         resource_name = _resource_to_str(self._resource)
         workdir = Path(context.config.workdir).resolve()
 
-        file_stacks = await context.db.find_all(FileStack)
+        # Sweep the FileStack collection in bounded pages. Loading the entire
+        # collection (including embedded content blobs) in a single pass can
+        # explode the runner memory on a shared, growing database.
+        batch_size = _cache_sweep_batch_size()
+        max_per_cycle = _cache_sweep_max_per_cycle()
         updated_count = 0
         deleted_count = 0
+        examined_count = 0
+        offset = self._sweep_offset
 
-        for file_stack in file_stacks:
-            changed = False
-            for location in file_stack.locations or []:
-                if _resource_to_str(location.resource) != resource_name:
-                    continue
-                if getattr(location, "location_type", "local_path") != "local_path":
-                    continue
-                if getattr(location, "status", "available") != "available":
-                    continue
-                if not getattr(location, "is_cached", False):
-                    continue
+        while examined_count < max_per_cycle:
+            file_stacks = await context.db.find(
+                FileStack, skip=offset, limit=batch_size
+            )
+            if not file_stacks:
+                self._sweep_offset = 0  # collection is smaller now; restart
+                break
 
-                accessed_at = _as_naive_datetime(
-                    getattr(location, "last_accessed_at", None) or location.created_at
-                )
-                if accessed_at and accessed_at > cutoff_time:
-                    continue
+            for file_stack in file_stacks:
+                examined_count += 1
+                changed = False
+                for location in file_stack.locations or []:
+                    if _resource_to_str(location.resource) != resource_name:
+                        continue
+                    if getattr(location, "location_type", "local_path") != "local_path":
+                        continue
+                    if getattr(location, "status", "available") != "available":
+                        continue
+                    if not getattr(location, "is_cached", False):
+                        continue
 
-                path = Path(location.path)
-                resolved_path = path if path.is_absolute() else workdir / path
-                try:
-                    resolved_path = resolved_path.resolve()
-                    if (
-                        workdir != resolved_path
-                        and workdir not in resolved_path.parents
-                    ):
+                    accessed_at = _as_naive_datetime(
+                        getattr(location, "last_accessed_at", None) or location.created_at
+                    )
+                    if accessed_at and accessed_at > cutoff_time:
+                        continue
+
+                    path = Path(location.path)
+                    resolved_path = path if path.is_absolute() else workdir / path
+                    try:
+                        resolved_path = resolved_path.resolve()
+                        if (
+                            workdir != resolved_path
+                            and workdir not in resolved_path.parents
+                        ):
+                            logger.warning(
+                                "Skipping cached FileInstance outside workdir: file_stack=%s path=%s",
+                                file_stack.id,
+                                resolved_path,
+                            )
+                            continue
+                        if resolved_path.exists():
+                            resolved_path.unlink()
+                            deleted_count += 1
+                        location.status = "deleted"
+                        location.expires_at = datetime.now()
+                        changed = True
+                    except Exception as exc:
                         logger.warning(
-                            "Skipping cached FileInstance outside workdir: file_stack=%s path=%s",
+                            "Failed to clean cached FileInstance file_stack=%s path=%s: %s",
                             file_stack.id,
                             resolved_path,
+                            exc,
                         )
-                        continue
-                    if resolved_path.exists():
-                        resolved_path.unlink()
-                        deleted_count += 1
-                    location.status = "deleted"
-                    location.expires_at = datetime.now()
-                    changed = True
-                except Exception as exc:
-                    logger.warning(
-                        "Failed to clean cached FileInstance file_stack=%s path=%s: %s",
-                        file_stack.id,
-                        resolved_path,
-                        exc,
-                    )
 
-            if changed:
-                await context.db.save(file_stack)
-                updated_count += 1
+                if changed:
+                    await context.db.save(file_stack)
+                    updated_count += 1
+
+            offset += len(file_stacks)
+            if len(file_stacks) < batch_size:
+                self._sweep_offset = 0  # reached the end of the collection
+                break
+        else:
+            # Budget exhausted: remember where to resume on the next cycle.
+            self._sweep_offset = offset
+            logger.info(
+                "File cache sweep for resource %s reached cycle budget (%s stacks); "
+                "resuming at offset %s in the next cycle.",
+                resource_name,
+                max_per_cycle,
+                offset,
+            )
 
         if updated_count:
             logger.info(

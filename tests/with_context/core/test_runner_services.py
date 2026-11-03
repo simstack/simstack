@@ -103,6 +103,145 @@ async def test_runner_cleanup_service(initialized_context):
     assert found_recent is not None
 
 @pytest.mark.asyncio
+async def test_runner_cleanup_file_cache_sweeps_in_bounded_pages(
+        initialized_context, monkeypatch, tmp_path
+):
+    """The file-cache sweep must page through FileStack documents.
+
+    It used to load the whole FileStack collection (including embedded
+    content blobs) into the runner on every cleanup cycle, which grows
+    unboundedly on a shared database."""
+    from unittest.mock import patch
+    from simstack.models.files import FileStack
+    from simstack.models.file_instance import FileInstance
+
+    monkeypatch.setenv("SIMSTACK_FILE_CACHE_SWEEP_BATCH_SIZE", "2")
+    monkeypatch.setenv("SIMSTACK_FILE_CACHE_SWEEP_MAX_PER_CYCLE", "100")
+
+    resource = Resource(value="self")
+    service = RunnerCleanupService(resource, interval=300)
+
+    # The mongomock DB is shared across tests in this module; clear stale stacks.
+    fs_collection = context.db.get_collection(FileStack)
+    await fs_collection.delete_many({})
+
+    old_ts = datetime.now() - timedelta(days=30)
+    for i in range(3):
+        f = tmp_path / f"cache_file_{i}.out"
+        f.write_text(f"content {i}")
+        stack = FileStack(
+            name=f"stack_{i}",
+            locations=[
+                FileInstance(
+                    path=str(f),
+                    resource=resource,
+                    created_at=old_ts,
+                    location_type="local_path",
+                    status="available",
+                    is_cached=True,
+                    last_accessed_at=old_ts,
+                )
+            ],
+        )
+        await context.db.save(stack)
+
+    captured = []
+    original_find = context.db.find
+
+    async def spy_find(*args, **kwargs):
+        model = args[0]
+        captured.append(
+            (model, kwargs.get("skip"), kwargs.get("limit"))
+        )
+        return await original_find(*args, **kwargs)
+
+    monkeypatch.setattr(context.db, "find", spy_find)
+
+    with patch("simstack.core.services.runner_cleanup_service.context") as mock_ctx:
+        mock_ctx.config.workdir = tmp_path
+        mock_ctx.config.project_root = tmp_path
+        mock_ctx.db = context.db
+        mock_ctx.initialized = True
+        await service.execute()
+
+    # All three expired cache files were actually deleted...
+    for i in range(3):
+        assert not (tmp_path / f"cache_file_{i}.out").exists()
+
+    # ... but the sweep only ever materialized bounded pages.
+    fs_calls = [c for c in captured if c[0] is FileStack]
+    assert len(fs_calls) >= 2
+    assert all(call[2] == 2 for call in fs_calls)  # limit == batch size
+    assert [call[1] for call in fs_calls] == [0, 2]  # skip advances per page
+
+    stacks = await context.db.find(FileStack)
+    assert len(stacks) == 3
+    assert all(stack.locations[0].status == "deleted" for stack in stacks)
+
+
+@pytest.mark.asyncio
+async def test_runner_cleanup_file_cache_budget_resumes_next_cycle(
+        initialized_context, monkeypatch, tmp_path
+):
+    """When the per-cycle sweep budget is hit, the next cycle must resume
+    from the saved offset instead of restarting at index 0."""
+    from unittest.mock import patch
+    from simstack.models.files import FileStack
+    from simstack.models.file_instance import FileInstance
+
+    monkeypatch.setenv("SIMSTACK_FILE_CACHE_SWEEP_BATCH_SIZE", "2")
+    monkeypatch.setenv("SIMSTACK_FILE_CACHE_SWEEP_MAX_PER_CYCLE", "2")
+
+    resource = Resource(value="self")
+    service = RunnerCleanupService(resource, interval=300)
+
+    # The mongomock DB is shared across tests in this module; clear stale stacks.
+    fs_collection = context.db.get_collection(FileStack)
+    await fs_collection.delete_many({})
+
+    old_ts = datetime.now() - timedelta(days=30)
+    for i in range(3):
+        f = tmp_path / f"budget_file_{i}.out"
+        f.write_text(f"content {i}")
+        stack = FileStack(
+            name=f"stack_{i}",
+            locations=[
+                FileInstance(
+                    path=str(f),
+                    resource=resource,
+                    created_at=old_ts,
+                    location_type="local_path",
+                    status="available",
+                    is_cached=True,
+                    last_accessed_at=old_ts,
+                )
+            ],
+        )
+        await context.db.save(stack)
+
+    async def _execute_cycle():
+        with patch("simstack.core.services.runner_cleanup_service.context") as mock_ctx:
+            mock_ctx.config.workdir = tmp_path
+            mock_ctx.config.project_root = tmp_path
+            mock_ctx.db = context.db
+            mock_ctx.initialized = True
+            await service.execute()
+
+    # First cycle: budget (2) consumed by the first page only.
+    # (Which exact files get cleaned depends on collection order, so only
+    # the *count* of surviving files is asserted.)
+    await _execute_cycle()
+    survivors = list(tmp_path.glob("budget_file_*.out"))
+    assert len(survivors) == 1
+    assert service._sweep_offset == 2
+
+    # Second cycle resumes at offset 2 and completes the sweep.
+    await _execute_cycle()
+    assert list(tmp_path.glob("budget_file_*.out")) == []
+    assert service._sweep_offset == 0
+
+
+@pytest.mark.asyncio
 async def test_timeout_restart_service(initialized_context):
     from unittest.mock import patch, AsyncMock
     resource = Resource(value="self")
