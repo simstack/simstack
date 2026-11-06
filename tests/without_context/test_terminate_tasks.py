@@ -17,11 +17,12 @@ from simstack.core.services.task_termination import (
 
 
 class _Finished:
-    def __init__(self, returncode: int = 0) -> None:
+    def __init__(self, returncode: int = 0, stdout=b"", stderr=b"") -> None:
         self.returncode = returncode
+        self.stdout, self.stderr = stdout, stderr
 
     async def communicate(self):
-        return b"", b""
+        return self.stdout, self.stderr
 
 
 class _Database:
@@ -105,7 +106,7 @@ def test_kill_process_tree_kills_children_then_process_on_unix(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_terminate_task_scancels_kills_docker_and_process_tree(
+async def test_slurm_termination_never_kills_login_process_or_container(
     monkeypatch, tmp_path
 ):
     entry = _entry(job_id="4321", process_id=99)
@@ -116,7 +117,7 @@ async def test_terminate_task_scancels_kills_docker_and_process_tree(
 
     async def fake_exec(*args, **kwargs):
         commands.append(args)
-        return _Finished()
+        return _Finished(stdout=b"4321|RUNNING\n" if len(commands) == 1 else b"")
 
     killed = []
     monkeypatch.setattr(
@@ -134,8 +135,9 @@ async def test_terminate_task_scancels_kills_docker_and_process_tree(
 
     await terminate_task(entry, runner_pid=os.getpid())
 
-    assert commands == [("scancel", "4321"), ("docker", "kill", "abc123def")]
-    assert killed == [99]
+    query = ("squeue", "--noheader", "--me", "--all", "--local", "--states=all", "--format=%F|%T")
+    assert commands == [query, ("scancel", "4321"), query]
+    assert killed == []
     assert entry.status == TaskStatus.FAILED
     assert entry.error == TERMINATED_BY_USER
     assert isinstance(entry.completed_at, datetime)
@@ -229,3 +231,86 @@ async def test_terminate_task_leaves_a_task_that_is_no_longer_terminating(
 
     assert entry.status == TaskStatus.COMPLETED
     assert entry.error is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["scancel", "squeue", "still_running"])
+async def test_slurm_stop_failure_does_not_report_task_stopped(monkeypatch, tmp_path, failure):
+    entry = _entry(job_id="4321", process_id=99)
+    results = [_Finished(stdout=b"4321|RUNNING\n")]
+    results += [_Finished(returncode=1, stderr=b"cancel denied")] if failure == "scancel" else [
+        _Finished(), _Finished(returncode=1, stderr=b"scheduler unavailable") if failure == "squeue"
+        else _Finished(stdout=b"4321|RUNNING\n")]
+    async def execute(*args, **kwargs):
+        return results.pop(0)
+    monkeypatch.setattr(task_termination, "context", SimpleNamespace(db=_Database(entry), config=SimpleNamespace(workdir=tmp_path)))
+    monkeypatch.setattr(task_termination.asyncio, "create_subprocess_exec", execute)
+    monkeypatch.setattr(task_termination, "_kill_process_tree", lambda pid: pytest.fail("Slurm PID killed locally"))
+    with pytest.raises(task_termination.TaskTerminationError):
+        await terminate_task(entry, runner_pid=os.getpid())
+    assert entry.status == TaskStatus.TERMINATING
+    assert entry.completed_at is None
+
+
+@pytest.mark.asyncio
+async def test_slurm_without_job_id_never_falls_back_to_legacy_pid(monkeypatch, tmp_path):
+    entry = _entry(process_id=99, parameters=SimpleNamespace(queue="slurm-queue"))
+    monkeypatch.setattr(task_termination, "context", SimpleNamespace(db=_Database(entry), config=SimpleNamespace(workdir=tmp_path)))
+    monkeypatch.setattr(task_termination, "_kill_process_tree", lambda pid: pytest.fail("Legacy PID killed locally"))
+    with pytest.raises(task_termination.TaskTerminationError, match="valid job ID"):
+        await terminate_task(entry, runner_pid=os.getpid())
+    assert entry.status == TaskStatus.TERMINATING
+
+
+@pytest.mark.asyncio
+async def test_gone_slurm_job_is_not_confused_with_another_users_job_id(monkeypatch, tmp_path):
+    entry = _entry(job_id="4321", process_id=99)
+    query = AsyncMock(return_value="14321|RUNNING\n43210|RUNNING")
+    monkeypatch.setattr(task_termination, "context", SimpleNamespace(db=_Database(entry), config=SimpleNamespace(workdir=tmp_path)))
+    monkeypatch.setattr(task_termination, "_run_command", query)
+    await terminate_task(entry, runner_pid=os.getpid())
+    assert entry.status == TaskStatus.FAILED
+    assert query.await_count == 1
+    assert "--jobs" not in query.call_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_suspended_array_job_is_cancelled_and_retained_terminal_rows_are_not_active(monkeypatch, tmp_path):
+    entry = _entry(job_id="4321", process_id=99)
+    command = AsyncMock(side_effect=["4321|CANCELLED\n4321|SUSPENDED", "", "4321|CANCELLED"])
+    monkeypatch.setattr(task_termination, "context", SimpleNamespace(db=_Database(entry), config=SimpleNamespace(workdir=tmp_path)))
+    monkeypatch.setattr(task_termination, "_run_command", command)
+    await terminate_task(entry, runner_pid=os.getpid())
+    assert command.call_args_list[1].args[0] == ["scancel", "4321"]
+    assert entry.status == TaskStatus.FAILED
+
+
+@pytest.mark.asyncio
+async def test_api_cancellation_sends_observed_generation(monkeypatch, tmp_path):
+    from simstack.core.definitions import DBType
+    entry = _entry(job_id="4321", _execution_generation="old-attempt")
+    database = _Database(entry)
+    database.databae_type = DBType.API
+    database.task_mutation = AsyncMock(return_value=None)
+    monkeypatch.setattr(task_termination, "context", SimpleNamespace(db=database, config=SimpleNamespace(workdir=tmp_path)))
+    monkeypatch.setattr(task_termination, "_run_command", AsyncMock(return_value=""))
+    await terminate_task(entry, runner_pid=os.getpid())
+    assert database.task_mutation.call_args.args[2]["generation"] == "old-attempt"
+    assert entry.status == TaskStatus.TERMINATING
+
+
+@pytest.mark.asyncio
+async def test_stop_error_does_not_stop_runner_polling(monkeypatch):
+    import asyncio
+    from simstack.core.services import node_execution_service as module
+    entry = _entry()
+    service = module.NodeExecutionService.__new__(module.NodeExecutionService)
+    service._started, service._running_tasks = True, set()
+    service._resource_name, service._pid = "test", os.getpid()
+    service._claiming_paused = asyncio.Event()
+    service._claiming_paused.set()
+    database = SimpleNamespace(load_terminating_tasks_for_resource=AsyncMock(return_value=[entry]))
+    monkeypatch.setattr(module, "context", SimpleNamespace(db=database))
+    monkeypatch.setattr(module, "terminate_task", AsyncMock(side_effect=task_termination.TaskTerminationError("scancel denied")))
+    await service.execute()
+    module.terminate_task.assert_awaited_once()

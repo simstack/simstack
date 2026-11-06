@@ -10,6 +10,7 @@ from simstack.core.definitions import TaskStatus
 from simstack.core.definitions import DBType
 from simstack.core.node import Node
 from simstack.core.services import fail_children
+from simstack.core.services import task_termination
 from simstack.core.services.fail_children import (
     fail_and_terminate_children,
     fail_and_terminate_task,
@@ -17,11 +18,12 @@ from simstack.core.services.fail_children import (
 
 
 class _Finished:
-    def __init__(self) -> None:
+    def __init__(self, stdout=b"") -> None:
         self.returncode = 0
+        self.stdout = stdout
 
     async def communicate(self):
-        return b"", b""
+        return self.stdout, b""
 
 
 class _CancelledProcess:
@@ -103,6 +105,24 @@ async def test_remote_child_delegates_stop_without_local_pid_kill(monkeypatch, t
 
 
 @pytest.mark.asyncio
+async def test_failed_parent_keeps_owned_child_terminating_when_stop_fails(monkeypatch, tmp_path):
+    from unittest.mock import AsyncMock
+    parent = ObjectId()
+    child = _entry(parameters=SimpleNamespace(resource="local"), _execution_resource="local")
+    database = _Database([child])
+    database.databae_type = DBType.API
+    database.task_mutation = AsyncMock(return_value={"status": "terminating"})
+    active = _context(database, tmp_path)
+    active.config.resource = "local"
+    monkeypatch.setattr(fail_children, "context", active)
+    monkeypatch.setattr(fail_children, "_stop_task", AsyncMock(side_effect=task_termination.TaskTerminationError("scancel denied")))
+    with pytest.raises(task_termination.TaskTerminationError):
+        await fail_and_terminate_task(child, error="parent failed", runner_pid=os.getpid(), parent_id=parent)
+    assert child.status == TaskStatus.TERMINATING
+    database.task_mutation.assert_awaited_once_with(child.id, "request_termination", {"parent_id": str(parent), "error": "parent failed"})
+
+
+@pytest.mark.asyncio
 async def test_foreign_cached_missing_result_preserves_original_error(monkeypatch,tmp_path):
     from unittest.mock import AsyncMock
     from simstack.core import node as node_module
@@ -117,7 +137,9 @@ async def test_foreign_cached_missing_result_preserves_original_error(monkeypatc
     active=SimpleNamespace(db=database,config=SimpleNamespace(resource="local",workdir=tmp_path))
     monkeypatch.setattr(node_module,"context",active)
     monkeypatch.setattr(node_module,"import_class",AsyncMock(return_value=FloatData))
-    value=Node.__new__(Node);value.registry_entry=registry;value.parameters=registry.parameters
+    value = Node.__new__(Node)
+    value.registry_entry = registry
+    value.parameters = registry.parameters
     with pytest.raises(ValueError,match="could not find result"):
         await value.load_results()
     database.task_mutation.assert_not_called()
@@ -138,18 +160,19 @@ async def test_failed_parent_kills_running_children_and_leaves_completed(monkeyp
 
     async def fake_exec(*args, **kwargs):
         commands.append(args)
-        return _Finished()
+        return _Finished(stdout=b"4321|RUNNING\n" if len(commands) == 1 else b"")
 
     monkeypatch.setattr(fail_children, "context", _context(database, tmp_path))
-    monkeypatch.setattr(fail_children.asyncio, "create_subprocess_exec", fake_exec)
+    monkeypatch.setattr(task_termination.asyncio, "create_subprocess_exec", fake_exec)
     monkeypatch.setattr(
-        fail_children, "_kill_process_tree", lambda process_id: killed.append(process_id)
+        task_termination, "_kill_process_tree", lambda process_id: killed.append(process_id)
     )
 
     await fail_and_terminate_children(parent_id, runner_pid=os.getpid())
 
-    assert commands == [("scancel", "4321"), ("docker", "kill", "abc123def")]
-    assert killed == [99]
+    query = ("squeue", "--noheader", "--me", "--all", "--local", "--states=all", "--format=%F|%T")
+    assert commands == [query, ("scancel", "4321"), query]
+    assert killed == []
     assert running.status == TaskStatus.FAILED
     assert running.error == f"Terminated because parent task {parent_id} failed"
     assert isinstance(running.completed_at, datetime)
@@ -167,7 +190,7 @@ async def test_loaded_string_parent_id_terminates_children(monkeypatch, tmp_path
 
     monkeypatch.setattr(fail_children, "context", _context(database, tmp_path))
     monkeypatch.setattr(
-        fail_children, "_kill_process_tree", lambda process_id: killed.append(process_id)
+        task_termination, "_kill_process_tree", lambda process_id: killed.append(process_id)
     )
 
     await fail_and_terminate_children(parent_id, runner_pid=os.getpid())
@@ -186,12 +209,12 @@ async def test_terminate_task_does_not_kill_the_runner(monkeypatch, tmp_path):
 
     monkeypatch.setattr(fail_children, "context", _context(database, tmp_path))
     monkeypatch.setattr(
-        fail_children.asyncio,
+        task_termination.asyncio,
         "create_subprocess_exec",
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("command ran")),
     )
     monkeypatch.setattr(
-        fail_children, "_kill_process_tree", lambda process_id: killed.append(process_id)
+        task_termination, "_kill_process_tree", lambda process_id: killed.append(process_id)
     )
 
     marked = await fail_and_terminate_task(
@@ -219,7 +242,7 @@ async def test_cancelled_run_node_kills_and_fails_the_child(monkeypatch, tmp_pat
 
     monkeypatch.setattr(fail_children, "context", _context(database, tmp_path))
     monkeypatch.setattr(
-        fail_children, "_kill_process_tree", lambda process_id: killed.append(process_id)
+        task_termination, "_kill_process_tree", lambda process_id: killed.append(process_id)
     )
     monkeypatch.setattr(
         "simstack.core.node.context",
@@ -265,7 +288,7 @@ async def test_set_status_failed_terminates_children(monkeypatch, tmp_path):
     monkeypatch.setattr("simstack.core.node.context", fake_context)
     monkeypatch.setattr(fail_children, "context", fake_context)
     monkeypatch.setattr(
-        fail_children, "_kill_process_tree", lambda process_id: killed.append(process_id)
+        task_termination, "_kill_process_tree", lambda process_id: killed.append(process_id)
     )
     node = Node.__new__(Node)
     node.name = "orchestrator"

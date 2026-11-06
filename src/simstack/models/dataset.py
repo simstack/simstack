@@ -405,12 +405,14 @@ class DataSetSelection(Model):
             if section is None:
                 raise ValueError(f"Section {selection_field.section_name} not found in dataset")
 
+            row_names = list(section.data)
             for index in selection_field.indices:
-                if index >= len(section):
+                if index < 0 or index >= len(row_names):
                     raise IndexError(
-                        f"Index {index} out of range for section {selection_field.section_name} with {len(section)} elements"
+                        f"Index {index} out of range for section {selection_field.section_name} with {len(row_names)} elements"
                     )
-                model_group = section.get_model_group(index)
+                row = section.get_item(row_names[index])
+                model_group = tuple(row.get(key) for key in section.model_types)
                 selected_elements.append(model_group)
 
         return selected_elements
@@ -437,12 +439,14 @@ class DataSetSelection(Model):
             if section is None:
                 raise ValueError(f"Section {selection_field.section_name} not found in dataset")
 
+            row_names = list(section.data)
             for index in selection_field.indices:
-                if index >= len(section):
+                if index < 0 or index >= len(row_names):
                     raise IndexError(
-                        f"Index {index} out of range for section {selection_field.section_name} with {len(section)} elements"
+                        f"Index {index} out of range for section {selection_field.section_name} with {len(row_names)} elements"
                     )
-                yield section.get_model_group(index)
+                row = section.get_item(row_names[index])
+                yield tuple(row.get(key) for key in section.model_types)
 
     @classmethod
     def ui_schema(cls) -> dict:

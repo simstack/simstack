@@ -334,7 +334,11 @@ class NodeExecutionService(BaseService):
             self._resource_name
         )
         for entry in terminating_tasks:
-            await terminate_task(entry, runner_pid=self._pid)
+            from simstack.core.services.task_termination import TaskTerminationError
+            try:
+                await terminate_task(entry, runner_pid=self._pid)
+            except TaskTerminationError as exc:
+                logger.error("Task task_id: %s cancellation is not complete: %s", entry.id, exc)
 
         if self._claiming_paused is not None and self._claiming_paused.is_set():
             return

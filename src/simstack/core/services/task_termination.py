@@ -16,6 +16,18 @@ logger = logging.getLogger("NodeRunner")
 TERMINATED_BY_USER = "Terminated by user"
 
 
+class TaskTerminationError(RuntimeError):
+    """A task could not be confirmed stopped."""
+
+
+def stop_mutation_values(entry, values, database):
+    from simstack.core.definitions import DBType
+
+    if getattr(database, "databae_type", None) == DBType.API:
+        return {**values, "generation": getattr(entry, "_execution_generation", None)}
+    return values
+
+
 async def record_process_id(registry_entry: NodeRegistry, process_id: int, database) -> None:
     """Persist the OS pid of a spawned job process.
 
@@ -73,20 +85,78 @@ def _child_pids(process_id: int) -> list[int]:
     return children
 
 
-async def _run_command(args: list[str]) -> None:
+async def _run_command(args: list[str]) -> str:
     try:
         process = await asyncio.create_subprocess_exec(
             *args,
-            stdout=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        _, stderr_b = await process.communicate()
+        try:
+            stdout_b, stderr_b = await asyncio.wait_for(process.communicate(), timeout=30)
+        except TimeoutError as exc:
+            process.kill()
+            await process.wait()
+            raise TaskTerminationError(f"{args[0]} timed out while stopping the task") from exc
     except OSError as exc:
-        logger.warning("Could not run %s: %s", args[0], exc)
-        return
+        raise TaskTerminationError(f"Could not run {args[0]}: {exc}") from exc
     if process.returncode != 0:
         stderr = stderr_b.decode("utf-8", errors="replace").strip()
-        logger.warning("%s exited %s: %s", args[0], process.returncode, stderr)
+        raise TaskTerminationError(f"{args[0]} exited {process.returncode}: {stderr}")
+    return stdout_b.decode("utf-8", errors="replace").strip()
+
+
+async def _slurm_job_present(job_id: str) -> bool:
+    # A job-specific squeue query may fail when the job has already vanished.
+    # %F reports the numeric base ID for both ordinary jobs and array elements.
+    output = await _run_command([
+        "squeue", "--noheader", "--me", "--all", "--local", "--states=all", "--format=%F|%T",
+    ])
+    terminal = {"COMPLETED", "CANCELLED", "FAILED", "TIMEOUT", "NODE_FAIL",
+                "BOOT_FAIL", "OUT_OF_MEMORY", "PREEMPTED", "DEADLINE"}
+    for line in output.splitlines():
+        fields = line.strip().split("|")
+        if len(fields) != 2 or not fields[0].isdigit() or not fields[1]:
+            raise TaskTerminationError("Unexpected response while checking Slurm cancellation")
+        if fields[0] == job_id and fields[1].upper() not in terminal:
+            return True
+    return False
+
+
+async def stop_task_execution(entry, *, runner_pid: int, workdir, extra_pids=()) -> None:
+    """Stop the scheduler job, or use the existing local cleanup path."""
+    if type(runner_pid) is not int or runner_pid < 1:
+        raise ValueError("runner_pid must be a positive int")
+    job_id = entry.job_id
+    queue = getattr(getattr(entry, "parameters", None), "queue", None)
+    queue = getattr(queue, "value", queue)
+    if job_id is not None or queue == "slurm-queue":
+        if not isinstance(job_id, str) or not job_id.isdigit():
+            raise TaskTerminationError("Cannot stop a Slurm task without a valid job ID")
+        if not await _slurm_job_present(job_id):
+            return
+        await _run_command(["scancel", job_id])
+        if await _slurm_job_present(job_id):
+            raise TaskTerminationError(f"Slurm job {job_id} is still stopping")
+        # Compute-node PIDs and container IDs are not local Runner handles.
+        return
+
+    if workdir is None:
+        raise ValueError("runner workdir is not configured")
+    from simstack.core.run_docker import docker_cidfile_path, read_container_id
+
+    cidfile = docker_cidfile_path(Path(workdir) / entry.name / str(entry.id))
+    container_id = read_container_id(cidfile) if cidfile.is_file() else None
+    if container_id:
+        await _run_command(["docker", "kill", container_id])
+    pids = [pid for pid in (entry.process_id, *extra_pids) if pid is not None]
+    for process_id in dict.fromkeys(pids):
+        if type(process_id) is not int or process_id < 1:
+            raise ValueError("process_id must be a positive int")
+        if process_id == runner_pid:
+            logger.warning("Task task_id: %s process_id is the Runner; not killing it", entry.id)
+        else:
+            _kill_process_tree(process_id)
 
 
 async def terminate_task(registry_entry: NodeRegistry, *, runner_pid: int) -> None:
@@ -105,41 +175,15 @@ async def terminate_task(registry_entry: NodeRegistry, *, runner_pid: int) -> No
     if fresh.status != TaskStatus.TERMINATING:
         return
 
-    job_id = fresh.job_id
-    if isinstance(job_id, str) and job_id.isdigit():
-        await _run_command(["scancel", job_id])
-
-    workdir = getattr(context.config, "workdir", None)
-    if workdir is None:
-        raise ValueError("runner workdir is not configured")
-    from simstack.core.run_docker import docker_cidfile_path, read_container_id
-
-    cidfile = docker_cidfile_path(Path(workdir) / fresh.name / str(fresh.id))
-    container_id = read_container_id(cidfile) if cidfile.is_file() else None
-    if container_id:
-        await _run_command(["docker", "kill", container_id])
-
-    process_id = fresh.process_id
-    if process_id is not None:
-        if type(process_id) is not int or process_id < 1:
-            raise ValueError(
-                f"Task task_id: {fresh.id} process_id must be a positive int, "
-                f"got {process_id!r}"
-            )
-        if process_id == runner_pid:
-            logger.warning(
-                "Task task_id: %s process_id %s is the runner; not killing it",
-                fresh.id,
-                process_id,
-            )
-        else:
-            _kill_process_tree(process_id)
+    await stop_task_execution(
+        fresh, runner_pid=runner_pid, workdir=getattr(context.config, "workdir", None)
+    )
 
     completed_at = datetime.now()
-    updated = await context.db.task_mutation(fresh.id, "terminate", {
+    updated = await context.db.task_mutation(fresh.id, "terminate", stop_mutation_values(fresh, {
         "status": TaskStatus.FAILED.value, "error": fresh.error or TERMINATED_BY_USER,
         "completed_at": completed_at,
-    }, [TaskStatus.TERMINATING.value])
+    }, context.db), [TaskStatus.TERMINATING.value])
     if updated is None:
         return
     fresh.status = TaskStatus.FAILED
