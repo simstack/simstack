@@ -10,6 +10,7 @@ from simstack.core.simstack_result import SimstackResult
 from simstack.core.node_runner import NodeRunner
 from simstack.core.process_results import process_result_helper
 from simstack.models import DataSetMetadata, DataSet, DataSetSection, BooleanData, StringData
+from simstack.runner_api.transport import RunnerAPIError
 
 class MassRunner(NodeRunner):
     def __init__(self, node: Callable[..., Any],max_concurrency: Optional[int] = None, **kwargs):
@@ -42,6 +43,7 @@ class MassRunner(NodeRunner):
         self._semaphore = asyncio.Semaphore(max_concurrency) if max_concurrency else None
         self._arg_hash_counts: dict[str, int] = {}
         self._primary_ready: dict[str, asyncio.Event] = {}
+        self._primary_api_errors: dict[str, RunnerAPIError] = {}
 
 
     async def recover_orphaned_datasets(self):
@@ -92,6 +94,9 @@ class MassRunner(NodeRunner):
                 f"Duplicate arg_hash {combined_arg_hash}; reusing the first result as row {row_name}"
             )
             await ready.wait()
+            api_error = self._primary_api_errors.get(combined_arg_hash)
+            if api_error is not None:
+                raise api_error
             if combined_arg_hash not in self.dataset["tasks"]:
                 raise ValueError(
                     f"Duplicate arg_hash {combined_arg_hash} has no primary result row"
@@ -135,6 +140,8 @@ class MassRunner(NodeRunner):
                         result = await self._node(*args, **self._kwargs)
                     else:
                         result = self._node(*args, **self._kwargs)
+            except RunnerAPIError:
+                raise
             except Exception as e:
                 self._failure = True
                 self.error(f"Error running node: {e}")
@@ -165,6 +172,10 @@ class MassRunner(NodeRunner):
 
             self.dataset["tasks"].add_row(task_dict, name=row_name)
             return result
+        except RunnerAPIError as exc:
+            self._failure = True
+            self._primary_api_errors[combined_arg_hash] = exc
+            raise
         finally:
             ready = self._primary_ready.get(combined_arg_hash)
             if ready is not None and not ready.is_set():
@@ -195,8 +206,22 @@ class MassRunner(NodeRunner):
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        errors = [exc_val] if exc_val is not None else []
         if self._tasks:
-            await asyncio.gather(*self._tasks)
+            # Cancelling a remote waiter can terminate its job. Drain siblings
+            # before propagating an infrastructure failure instead.
+            outcomes = await asyncio.gather(*self._tasks, return_exceptions=True)
+            errors.extend(result for result in outcomes if isinstance(result, BaseException))
+        if errors:
+            self._failure = True
+            if exc_val is not None and not isinstance(exc_val, Exception):
+                return False
+            for error in errors:
+                if isinstance(error, RunnerAPIError):
+                    raise error
+            if exc_val is not None:
+                return False
+            raise errors[0]
         
         db = context.db
         await self.dataset.save(db)
