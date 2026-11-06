@@ -10,8 +10,9 @@ readme = "README.md"
 requires-python = ">= 3.12"
 authors = [
     {name = "Wolfgang Wenzel", email = "wolfgang.wenzel@kit.edu"},
-    { name = "Artem Buildin", email = "artem.buildin@kit.edu" },
-    { name = "Nikita Mitagin", email = "nikita.mitagin@kit.edu" },
+    { name = "Artem Buldin", email = "artem.buildin@kit.edu" },
+    { name = "Nikita Mitiagin", email = "nikita.mitagin@kit.edu" },
+    { name = "Jörg Schaarschmidt", email = "joerg.schaarschmidt@kit.edu" },
     { name = "Phillip Dullinger", email = "phillip.dullinger@kit.edu" },
     { name = "Celso Rego", email = "celso.rego@kit.edu" },
     { name = "Oliver Pettkau", email = "oliver.pettkau@kit.edu" },

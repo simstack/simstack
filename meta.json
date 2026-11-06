@@ -1,0 +1,24 @@
+{
+  "title": "SimStack",
+  "workflow_environment": "SimStack",
+  "description": "Core Python framework and runner for defining, registering and executing scientific workflow nodes with typed input and output models, task state tracking and resource configuration.",
+  "authors": [
+    "Wolfgang Wenzel",
+    "Artem Buldin",
+    "Nikita Mitiagin",
+    "Jörg Schaarschmidt",
+    "Phillip Dullinger",
+    "Celso Rego",
+    "Oliver Pettkau",
+    "Timo Strunk"
+  ],
+  "release": "v2.1.0",
+  "keywords": [
+    "SimStack",
+    "workflow",
+    "workflow engine",
+    "scientific computing",
+    "Python",
+    "workflow nodes"
+  ]
+}
