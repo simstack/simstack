@@ -4,6 +4,7 @@ import os
 import platform
 import re
 import shlex
+import stat
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,7 +14,7 @@ from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
 from simstack.core.run_node_protocol import RESULT_PREFIX, parse_run_node_result
 from simstack.models import NodeRegistry
-from simstack.util.output_permissions import docker_harmonize_command
+from simstack.util.output_permissions import docker_harmonize_command, output_owner_ids
 from simstack.util.sanitized_output import (
     redact_connection_string,
     sanitized_command,
@@ -82,21 +83,131 @@ async def _persist_post_launch_failure(
 
 
 def launcher_owner_ids() -> tuple[int, int]:
-    """Uid and gid of the process that launches the container."""
-    getuid = getattr(os, "getuid", None)
-    getgid = getattr(os, "getgid", None)
-    if not callable(getuid) or not callable(getgid):
-        raise ValueError("launcher uid and gid are required to harmonize task output")
-    uid = getuid()
-    gid = getgid()
-    if uid is None or gid is None:
-        raise ValueError("launcher uid and gid are required to harmonize task output")
-    return int(uid), int(gid)
+    """Uid and gid of the shared workdir, never the container's root user."""
+    workdir = getattr(getattr(context, "config", None), "workdir", None)
+    if not workdir:
+        raise ValueError("workdir is required to harmonize task output")
+    return output_owner_ids(workdir)
 
 
-async def _harmonize_docker_task_dir(image: str, task_dir: Path, uid: int, gid: int) -> None:
+def docker_harmonize_image(resource_config: object) -> str:
+    """A local Docker image that can run the ownership helper as root."""
+    if resource_config is None:
+        raise ValueError("docker image is required to harmonize task output")
+    resource = getattr(resource_config, "_resource", None)
+    section_fn = getattr(resource_config, "_resource_section", None)
+    if not isinstance(resource, str) or not resource or not callable(section_fn):
+        raise ValueError("docker image is required to harmonize task output")
+    section = section_fn(resource)
+    programs = section.get("program") if isinstance(section, dict) else None
+    if not isinstance(programs, dict):
+        raise ValueError("docker image is required to harmonize task output")
+    for program in programs.values():
+        if not isinstance(program, dict):
+            continue
+        image = program.get("docker_image")
+        command = program.get("docker_cmd", "docker")
+        if command != "docker":
+            continue
+        if not isinstance(image, str) or not image.strip():
+            continue
+        if image.endswith(".sif") or image.startswith("docker://"):
+            continue
+        return image
+    raise ValueError("docker image is required to harmonize task output")
+
+
+def task_directory(path: Path | str, workdir: Path | str) -> tuple[Path, Path]:
+    """Return ``(task_dir, node_dir)`` for an output path under the workdir."""
+    resolved = Path(path).resolve()
+    root = Path(workdir).resolve()
+    try:
+        relative = resolved.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(
+            f"transfer path {resolved} is outside workdir {root}"
+        ) from exc
+    if len(relative.parts) < 2:
+        raise ValueError(
+            f"transfer path {resolved} is not inside a node task directory under {root}"
+        )
+    node_dir = root / relative.parts[0]
+    task_dir = node_dir / relative.parts[1]
+    if not task_dir.is_dir():
+        raise ValueError(f"task directory does not exist: {task_dir}")
+    return task_dir, node_dir
+
+
+def node_directories_to_harmonize(workdir: Path | str, uid: int, gid: int) -> list[Path]:
+    """Node directories whose owner is not the workdir owner, including every child."""
+    pending: list[Path] = []
+    for node_dir in Path(workdir).iterdir():
+        if node_dir.name.startswith("."):
+            continue
+        try:
+            node_stat = os.lstat(node_dir)
+        except OSError:
+            pending.append(node_dir)
+            continue
+        if stat.S_ISLNK(node_stat.st_mode) or not stat.S_ISDIR(node_stat.st_mode):
+            continue
+        if node_stat.st_uid != uid or node_stat.st_gid != gid:
+            pending.append(node_dir)
+            continue
+        try:
+            children = list(node_dir.iterdir())
+        except OSError:
+            pending.append(node_dir)
+            continue
+        for child in children:
+            try:
+                child_stat = os.lstat(child)
+            except OSError:
+                pending.append(node_dir)
+                break
+            if stat.S_ISLNK(child_stat.st_mode):
+                continue
+            if child_stat.st_uid != uid or child_stat.st_gid != gid:
+                pending.append(node_dir)
+                break
+    return pending
+
+
+def harmonize_directory_blocking(
+    image: str,
+    task_dir: Path | str,
+    uid: int,
+    gid: int,
+    parent_dir: Path | str | None = None,
+) -> None:
     command = docker_harmonize_command(
-        image=image, task_dir=task_dir, uid=uid, gid=gid
+        image=image,
+        task_dir=task_dir,
+        uid=uid,
+        gid=gid,
+        parent_dir=parent_dir,
+    )
+    completed = subprocess.run(command, capture_output=True, text=True)
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "").strip()
+        raise RuntimeError(
+            f"harmonize task directory {task_dir} failed rc={completed.returncode}: {detail}"
+        )
+
+
+async def _harmonize_docker_task_dir(
+    image: str,
+    task_dir: Path,
+    uid: int,
+    gid: int,
+    parent_dir: Path | None = None,
+) -> None:
+    command = docker_harmonize_command(
+        image=image,
+        task_dir=task_dir,
+        uid=uid,
+        gid=gid,
+        parent_dir=parent_dir,
     )
     logger.info(
         "harmonizing task directory %s to %s:%s",
@@ -115,6 +226,36 @@ async def _harmonize_docker_task_dir(image: str, task_dir: Path, uid: int, gid: 
         raise RuntimeError(
             f"harmonize task directory {task_dir} failed rc={process.returncode}: {detail}"
         )
+
+
+async def repair_root_owned_directories(
+    workdir: Path | str, resource_config: object
+) -> None:
+    """Give the workdir owner every node directory a root container left behind."""
+    if platform.system() != "Linux":
+        return
+    if not workdir:
+        raise ValueError("workdir is required to harmonize task output")
+    workdir = Path(workdir)
+    try:
+        uid, gid = output_owner_ids(workdir)
+        pending = node_directories_to_harmonize(workdir, uid, gid)
+        if not pending:
+            return
+        image = docker_harmonize_image(resource_config)
+    except (OSError, ValueError) as exc:
+        logger.info("Skipping root-owned output repair: %s", exc)
+        return
+    logger.info(
+        "Repairing %s root-owned node directories under %s",
+        len(pending),
+        workdir,
+    )
+    for node_dir in pending:
+        try:
+            await _harmonize_docker_task_dir(image, node_dir, uid, gid)
+        except Exception:
+            logger.exception("Failed to harmonize %s", node_dir)
 
 
 def _positive_int(value: object) -> int | None:
@@ -775,7 +916,12 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry) -> DockerRunResu
     if process_started and docker_cmd == "docker" and platform.system() != "Windows":
         try:
             owner_uid, owner_gid = launcher_owner_ids()
-            await _harmonize_docker_task_dir(image, task_dir, owner_uid, owner_gid)
+            parent_dir = task_dir.parent
+            if parent_dir.resolve() == Path(workdir).resolve():
+                parent_dir = None
+            await _harmonize_docker_task_dir(
+                image, task_dir, owner_uid, owner_gid, parent_dir
+            )
         except Exception as exc:
             clean_error = redact_connection_string(
                 sanitized_tail(str(exc), configured_connection_string),

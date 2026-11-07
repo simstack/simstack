@@ -5,6 +5,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+import os
+import stat
+
 from simstack.core.run_docker import (
     CONTAINER_WORKDIR,
     LEGACY_CONTAINER_WORKDIR,
@@ -12,13 +15,16 @@ from simstack.core.run_docker import (
     container_resource_args,
     docker_cidfile_path,
     docker_cpu_limit,
+    docker_harmonize_image,
     docker_memory_limit,
     ensure_host_task_workdir,
     format_container_failure_error,
     inspect_docker_oomkilled,
+    node_directories_to_harmonize,
     prepare_docker_cidfile,
     run_docker,
     run_docker_with_outcome,
+    task_directory,
     _docker_program_config,
 )
 from simstack.core.definitions import TaskStatus
@@ -35,6 +41,68 @@ def _runner_owner_ids(monkeypatch):
         "simstack.core.run_docker.launcher_owner_ids",
         lambda: (1000, 1000),
     )
+
+
+def test_node_directories_to_harmonize_includes_every_foreign_node(tmp_path: Path, monkeypatch):
+    foreign = tmp_path / "pyscf_hessian"
+    mixed = tmp_path / "psi4_calculator"
+    clean = tmp_path / "crest"
+    foreign.mkdir()
+    (mixed / "fresh").mkdir(parents=True)
+    (mixed / "old").mkdir()
+    (clean / "task").mkdir(parents=True)
+    (tmp_path / "notes.txt").write_text("skip")
+    owned = (clean / "task").lstat()
+    foreign_uid = owned.st_uid + 1
+
+    real_lstat = os.lstat
+
+    def lstat(path, *args, **kwargs):
+        text = os.fspath(path)
+        if text.endswith("pyscf_hessian") or text.endswith(os.sep + "old") or text.endswith("/old"):
+            return os.stat_result(
+                (stat.S_IFDIR | 0o700, 0, 0, 1, foreign_uid, owned.st_gid, 0, 0, 0, 0)
+            )
+        return real_lstat(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "lstat", lstat)
+    names = sorted(
+        path.name
+        for path in node_directories_to_harmonize(tmp_path, owned.st_uid, owned.st_gid)
+    )
+    assert names == ["psi4_calculator", "pyscf_hessian"]
+
+
+def test_task_directory_rejects_a_path_outside_the_workdir(tmp_path: Path):
+    with pytest.raises(ValueError, match="outside workdir"):
+        task_directory(tmp_path.parent / "other.txt", tmp_path)
+
+
+def test_docker_harmonize_image_skips_apptainer(tmp_path: Path):
+    config = SimpleNamespace(
+        _resource="big2",
+        _resource_section=lambda resource: {
+            "program": {
+                "pyscf_hessian": {"docker_image": "molecular-qm-psi4:latest"},
+                "orca": {"docker_cmd": "apptainer", "docker_image": "orca.sif"},
+            }
+        },
+    )
+    assert docker_harmonize_image(config) == "molecular-qm-psi4:latest"
+    with pytest.raises(ValueError, match="docker image is required"):
+        docker_harmonize_image(
+            SimpleNamespace(
+                _resource="justus",
+                _resource_section=lambda resource: {
+                    "program": {
+                        "pyscf_hessian": {
+                            "docker_cmd": "apptainer",
+                            "docker_image": "molecular_qm_psi4.sif",
+                        }
+                    }
+                },
+            )
+        )
 
 
 def test_ensure_host_task_workdir_creates_node_and_task_dirs(tmp_path: Path):
@@ -764,8 +832,11 @@ async def test_run_docker_harmonizes_task_dir_after_success(tmp_path: Path, monk
     ]
     assert command[8] == "python"
     assert f"{task_dir.resolve()}:/work" in command
+    assert f"{task_dir.parent.resolve()}:/parent" in command
+    assert f"{tmp_path.resolve()}:/parent" not in command
+    assert f"{tmp_path.resolve()}:/work" not in command
     assert "molecular-qm-psi4:latest" in command
-    assert command[-3:] == ["4242", "4243", "/work"]
+    assert command[-4:] == ["4242", "4243", "/work", "/parent"]
     assert "0o664" in command[command.index("-c") + 1]
     assert "0o775" in command[command.index("-c") + 1]
 
@@ -791,7 +862,7 @@ async def test_run_docker_harmonizes_task_dir_after_nonzero_exit(tmp_path: Path)
     assert registry_entry.error is not None
     assert "exit 1" in registry_entry.error
     command = _harmonize_command(mock_exec)
-    assert command[-3:] == ["1000", "1000", "/work"]
+    assert command[-4:] == ["1000", "1000", "/work", "/parent"]
     assert "--user" in command
     assert "0:0" in command
 

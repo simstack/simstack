@@ -7,6 +7,7 @@ import pytest
 from simstack.util.output_permissions import (
     docker_harmonize_command,
     harmonize_output_tree,
+    output_owner_ids,
 )
 
 
@@ -99,6 +100,46 @@ def test_harmonize_rejects_missing_owner(tmp_path: Path, uid, gid):
         harmonize_output_tree(task, uid, gid)
 
 
+def test_harmonize_parent_directory_without_sibling_tasks(tmp_path: Path, monkeypatch):
+    node = tmp_path / "pyscf_hessian"
+    task = node / "6ae0404a"
+    other = node / "other"
+    other.mkdir(parents=True)
+    task.mkdir()
+    (task / "result.wfn.npy").write_bytes(b"npy")
+    (other / "secret.npy").write_bytes(b"secret")
+    chowns, _lchowns, chmods = _record_ownership(monkeypatch)
+
+    harmonize_output_tree(task, 1000, 1000, parent=node)
+
+    chown_paths = {path for path, _uid, _gid in chowns}
+    assert os.fspath(node) in chown_paths
+    assert os.fspath(task) in chown_paths
+    assert os.fspath(task / "result.wfn.npy") in chown_paths
+    assert os.fspath(other) not in chown_paths
+    assert os.fspath(other / "secret.npy") not in chown_paths
+    modes = dict(chmods)
+    assert modes[os.fspath(node)] == 0o775
+    assert modes[os.fspath(task / "result.wfn.npy")] == 0o664
+
+
+def test_output_owner_ids_uses_workdir_owner(tmp_path: Path, monkeypatch):
+    stat_result = _Stat(0)
+    stat_result.st_uid = 1000
+    stat_result.st_gid = 1001
+    monkeypatch.setattr(os, "stat", lambda path: stat_result)
+    assert output_owner_ids(tmp_path) == (1000, 1001)
+
+
+def test_output_owner_ids_refuses_root(tmp_path: Path, monkeypatch):
+    stat_result = _Stat(0)
+    stat_result.st_uid = 0
+    stat_result.st_gid = 1000
+    monkeypatch.setattr(os, "stat", lambda path: stat_result)
+    with pytest.raises(ValueError, match="root"):
+        output_owner_ids(tmp_path)
+
+
 def test_docker_harmonize_command_targets_only_the_task_dir(tmp_path: Path):
     task = tmp_path / "psi4_calculator" / "abc"
     task.mkdir(parents=True)
@@ -111,6 +152,23 @@ def test_docker_harmonize_command_targets_only_the_task_dir(tmp_path: Path):
     assert f"{task.resolve()}:/work" in command
     assert f"{tmp_path.resolve()}:/work" not in command
     assert command[-3:] == ["1000", "1000", "/work"]
+
+
+def test_docker_harmonize_command_mounts_the_node_directory(tmp_path: Path):
+    task = tmp_path / "pyscf_hessian" / "abc"
+    task.mkdir(parents=True)
+    command = docker_harmonize_command(
+        image="molecular-qm-psi4:latest",
+        task_dir=task,
+        uid=1000,
+        gid=1000,
+        parent_dir=task.parent,
+    )
+    assert f"{task.resolve()}:/work" in command
+    assert f"{task.parent.resolve()}:/parent" in command
+    assert f"{tmp_path.resolve()}:/work" not in command
+    assert f"{tmp_path.resolve()}:/parent" not in command
+    assert command[-4:] == ["1000", "1000", "/work", "/parent"]
 
 
 def test_docker_harmonize_command_rejects_missing_owner(tmp_path: Path):

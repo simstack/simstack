@@ -121,6 +121,13 @@ class RunnerManager:
         # Save PID on startup
         self._pid_file.write_text(str(self._pid))
 
+        from simstack.core.run_docker import repair_root_owned_directories
+
+        await repair_root_owned_directories(
+            context.config.workdir,
+            getattr(context, "resource_config", None),
+        )
+
         self._services = []
         if self._with_jobs:
             self._services.append(

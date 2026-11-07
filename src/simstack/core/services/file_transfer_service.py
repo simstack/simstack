@@ -1,4 +1,5 @@
 import asyncio
+import errno
 import logging
 from pathlib import Path
 from typing import Any
@@ -129,6 +130,18 @@ class FileTransferService(BaseService):
             )
             return False
         except OSError as exc:
+            if exc.errno == errno.EACCES:
+                try:
+                    _repair_unreadable_source(path)
+                    client.upload_file(transfer_id, path)
+                    logger.info(
+                        "Uploaded FileStack transfer %s from %s after repairing ownership",
+                        transfer_id,
+                        path,
+                    )
+                    return True
+                except (OSError, ValueError, RuntimeError) as repair_exc:
+                    exc = OSError(exc.errno, f"{exc}; {repair_exc}")
             logger.warning("File transfer source is not readable for %s: %s", transfer_id, exc)
             _report_transfer_failure(
                 client,
@@ -137,3 +150,23 @@ class FileTransferService(BaseService):
                 error_code="SOURCE_NOT_READABLE",
             )
             return False
+
+
+def _repair_unreadable_source(path: Path) -> None:
+    from simstack.core.run_docker import (
+        docker_harmonize_image,
+        harmonize_directory_blocking,
+        task_directory,
+    )
+    from simstack.util.output_permissions import output_owner_ids
+
+    workdir = Path(context.config.workdir)
+    task_dir, node_dir = task_directory(path, workdir)
+    uid, gid = output_owner_ids(workdir)
+    image = docker_harmonize_image(context.resource_config)
+    logger.warning(
+        "Repairing root-owned output %s under %s before retrying the transfer",
+        path,
+        task_dir,
+    )
+    harmonize_directory_blocking(image, task_dir, uid, gid, node_dir)
