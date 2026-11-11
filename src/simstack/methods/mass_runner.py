@@ -40,6 +40,8 @@ class MassRunner(NodeRunner):
         self._tasks = []
         self._node = node
         self._semaphore = asyncio.Semaphore(max_concurrency) if max_concurrency else None
+        self._arg_hash_counts: dict[str, int] = {}
+        self._primary_ready: dict[str, asyncio.Event] = {}
 
 
     async def recover_orphaned_datasets(self):
@@ -54,82 +56,138 @@ class MassRunner(NodeRunner):
                 self.info(f"Found existing dataset: {previous_dataset_field_name}")
                 return
 
-    async def _run_node(self, args: List[Model]):
-        await self.recover_orphaned_datasets()
-
+    def _arg_row(self, args: List[Model]) -> dict[str, Model]:
         import inspect
+
         sig = inspect.signature(self._node)
         param_names = list(sig.parameters.keys())
-
-        arg_hashes = [complex_hash_function(arg) for arg in args]
-        combined_arg_hash = complex_hash_function(arg_hashes)
-        
-        if self._existing_dataset and combined_arg_hash in self._existing_dataset["tasks"].data:
-            row = self._existing_dataset["tasks"].get_item(combined_arg_hash)
-            success = row.get("success", None)
-            if success is not None:
-                success = success.value
-            if success:
-                self.info(f"Skipping node with arg_hash: {combined_arg_hash}")
-                self.dataset["tasks"].add_row(row, combined_arg_hash)
-                return None
-        
-        self.info(f"Running node with arg_hash: {combined_arg_hash}")
-
         task_dict = {}
-
         for i, m in enumerate(args):
             if i < len(param_names):
                 task_dict[f"arg_{param_names[i]}"] = m
             else:
                 task_dict[f"arg_{i}"] = m
+        return task_dict
+
+    async def _run_node(
+        self,
+        args: List[Model],
+        combined_arg_hash: Optional[str] = None,
+        row_name: Optional[str] = None,
+        is_primary: bool = True,
+    ):
+        if combined_arg_hash is None:
+            arg_hashes = [complex_hash_function(arg) for arg in args]
+            combined_arg_hash = str(complex_hash_function(arg_hashes))
+        if row_name is None:
+            row_name = combined_arg_hash
+
+        if not is_primary:
+            ready = self._primary_ready.get(combined_arg_hash)
+            if ready is None:
+                raise ValueError(
+                    f"Duplicate arg_hash {combined_arg_hash} has no primary task"
+                )
+            self.info(
+                f"Duplicate arg_hash {combined_arg_hash}; reusing the first result as row {row_name}"
+            )
+            await ready.wait()
+            if combined_arg_hash not in self.dataset["tasks"]:
+                raise ValueError(
+                    f"Duplicate arg_hash {combined_arg_hash} has no primary result row"
+                )
+            primary_row = self.dataset["tasks"].get_item(combined_arg_hash)
+            row = {
+                key: model
+                for key, model in primary_row.items()
+                if not key.startswith("arg_")
+            }
+            row.update(self._arg_row(args))
+            self.dataset["tasks"].add_row(row, name=row_name)
+            return None
 
         try:
-            if self._semaphore:
-                async with self._semaphore:
+            await self.recover_orphaned_datasets()
+
+            if self._existing_dataset and combined_arg_hash in self._existing_dataset["tasks"].data:
+                row = self._existing_dataset["tasks"].get_item(combined_arg_hash)
+                success = row.get("success", None)
+                if success is not None:
+                    success = success.value
+                if success:
+                    self.info(f"Skipping node with arg_hash: {combined_arg_hash}")
+                    self.dataset["tasks"].add_row(row, row_name)
+                    return None
+
+            self.info(f"Running node with arg_hash: {combined_arg_hash}")
+
+            task_dict = self._arg_row(args)
+
+            try:
+                if self._semaphore:
+                    async with self._semaphore:
+                        if asyncio.iscoroutinefunction(self._node):
+                            result = await self._node(*args, **self._kwargs)
+                        else:
+                            result = self._node(*args, **self._kwargs)
+                else:
                     if asyncio.iscoroutinefunction(self._node):
                         result = await self._node(*args, **self._kwargs)
                     else:
                         result = self._node(*args, **self._kwargs)
-            else:
-                if asyncio.iscoroutinefunction(self._node):
-                    result = await self._node(*args, **self._kwargs)
-                else:
-                    result = self._node(*args, **self._kwargs)
-        except Exception as e:
-            self._failure = True
-            self.error(f"Error running node: {e}")
-            task_dict["success"] = BooleanData(value=False)
-            task_dict["error"] = StringData(field_name="error_message",value=str(e))
-            self.dataset["tasks"].add_row(task_dict, name=combined_arg_hash)
-            return None
+            except Exception as e:
+                self._failure = True
+                self.error(f"Error running node: {e}")
+                task_dict["success"] = BooleanData(value=False)
+                task_dict["error"] = StringData(field_name="error_message",value=str(e))
+                self.dataset["tasks"].add_row(task_dict, name=row_name)
+                return None
 
-        if result is None:
-            task_dict["success"] = BooleanData(value=False)
-        elif isinstance(result, bool):
-            task_dict["success"] = BooleanData(value=result)
-        elif isinstance(result, (SimstackResult, Model)):
-            references, models = await process_result_helper(result, self.task_id)
-            if isinstance(result, SimstackResult):
-                if result.status != TaskStatus.COMPLETED:
-                    self._failure = True
-                task_dict["success"] = BooleanData(value=result.status == TaskStatus.COMPLETED)
-            else: 
+            if result is None:
+                task_dict["success"] = BooleanData(value=False)
+            elif isinstance(result, bool):
+                task_dict["success"] = BooleanData(value=result)
+            elif isinstance(result, (SimstackResult, Model)):
+                references, models = await process_result_helper(result, self.task_id)
+                if isinstance(result, SimstackResult):
+                    if result.status != TaskStatus.COMPLETED:
+                        self._failure = True
+                    task_dict["success"] = BooleanData(value=result.status == TaskStatus.COMPLETED)
+                else:
+                    task_dict["success"] = BooleanData(value=True)
+                if references:
+                    for reference, model in zip(references, models):
+                        task_dict[f"result_{reference.variable_name}"] = model
+            elif isinstance(result, (list, tuple)) and all(isinstance(m, Model) for m in result):
                 task_dict["success"] = BooleanData(value=True)
-            if references:
-                for reference, model in zip(references, models):
-                    task_dict[f"result_{reference.variable_name}"] = model
-        elif isinstance(result, (list, tuple)) and all(isinstance(m, Model) for m in result):
-            task_dict["success"] = BooleanData(value=True)
-            for i, m in enumerate(result):
-                task_dict[f"result_{i}"] = m
-        
-        self.dataset["tasks"].add_row(task_dict, name=combined_arg_hash)
-        return result
+                for i, m in enumerate(result):
+                    task_dict[f"result_{i}"] = m
+
+            self.dataset["tasks"].add_row(task_dict, name=row_name)
+            return result
+        finally:
+            ready = self._primary_ready.get(combined_arg_hash)
+            if ready is not None and not ready.is_set():
+                ready.set()
 
     def create_tasks(self, *args: Model):
+        args_list = list(args)
+        combined_arg_hash = str(
+            complex_hash_function([complex_hash_function(arg) for arg in args_list])
+        )
+        seen = self._arg_hash_counts.get(combined_arg_hash, 0)
+        self._arg_hash_counts[combined_arg_hash] = seen + 1
+        if seen == 0:
+            row_name = combined_arg_hash
+            is_primary = True
+            self._primary_ready[combined_arg_hash] = asyncio.Event()
+        else:
+            row_name = f"{combined_arg_hash}#{seen}"
+            is_primary = False
 
-        task = asyncio.create_task(self._run_node(list(args)))
+        task = asyncio.create_task(
+            self._run_node(args_list, combined_arg_hash, row_name, is_primary)
+        )
         self._tasks.append(task)
         return task
 
