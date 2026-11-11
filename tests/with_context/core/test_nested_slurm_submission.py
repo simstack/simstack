@@ -1,4 +1,3 @@
-import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -13,7 +12,6 @@ from simstack.core.node_claim import (
 from simstack.core.services.node_execution_service import NodeExecutionService
 from simstack.models import (
     FloatData,
-    NamedDataReference,
     NodeModel,
     NodeRegistry,
     ResourceAssignmentRule,
@@ -87,14 +85,6 @@ def _execution_node(registry_entry: NodeRegistry) -> Node:
     return execution_node
 
 
-def _result_reference() -> NamedDataReference:
-    return NamedDataReference(
-        variable_name="result",
-        variable_mapping="simstack.models.FloatData",
-        reference=FloatData(value=1.0).id,
-    )
-
-
 @pytest.mark.asyncio
 async def test_completed_result_is_reusable_after_execution_route_change():
     completed = _slurm_registry("completed_route_cache", TaskStatus.COMPLETED)
@@ -141,7 +131,7 @@ async def test_active_task_is_reusable_only_on_the_same_execution_route():
 
 
 @pytest.mark.asyncio
-async def test_changed_nested_route_ignores_stale_self_cache_and_submits_slurm(
+async def test_changed_nested_route_ignores_stale_self_cache_and_waits_for_runner(
     monkeypatch,
 ):
     await _delete_nested_slurm_route_probe_data()
@@ -196,30 +186,24 @@ async def test_changed_nested_route_ignores_stale_self_cache_and_submits_slurm(
         assert persisted_stale.parameters.resource == "self"
         assert persisted_stale.parameters.queue == "default"
 
-        submitted_ids = []
         sentinel = SimpleNamespace(value="nested-slurm-result")
 
-        async def fake_submit_node(entry):
-            submitted_ids.append(entry.id)
-            assert entry.status == TaskStatus.RETRIEVED
-            entry.status = TaskStatus.SLURM_QUEUED
-            await context.db.save(entry)
-            return True
-
         async def fake_wait_for_remote_completion(self):
+            saved = await context.db.load_task_by_id(self.id)
+            assert saved.status == TaskStatus.SUBMITTED
             return sentinel
 
         async def fail_if_executed_locally(self):
-            raise AssertionError("the changed child route must be submitted to Slurm")
+            raise AssertionError("the changed child route must wait for the host runner")
 
-        monkeypatch.setattr("simstack.core.submit_node.submit_node", fake_submit_node)
         monkeypatch.setattr(
             Node, "_wait_for_remote_completion", fake_wait_for_remote_completion
         )
         monkeypatch.setattr(Node, "run_node_as_process", fail_if_executed_locally)
 
         assert await slurm_node.run_somewhere() is sentinel
-        assert submitted_ids == [slurm_node.registry_entry.id]
+        persisted = await context.db.load_task_by_id(slurm_node.registry_entry.id)
+        assert persisted.status == TaskStatus.SUBMITTED
     finally:
         await _delete_nested_slurm_route_probe_data()
 
@@ -237,41 +221,43 @@ async def test_claim_submitted_node_only_claims_once():
 
 
 @pytest.mark.asyncio
-async def test_nested_slurm_child_is_submitted_inline_on_current_resource(monkeypatch):
-    registry_entry = await context.db.save(_slurm_registry("inline_slurm_child"))
+async def test_nested_slurm_child_stays_submitted_for_host_runner(monkeypatch):
+    registry_entry = await context.db.save(_slurm_registry("host_runner_slurm_child"))
     execution_node = _execution_node(registry_entry)
-    submitted_ids = []
     sentinel = SimpleNamespace(value="nested-result")
 
-    async def fake_submit_node(entry):
-        submitted_ids.append(entry.id)
-        entry.status = TaskStatus.COMPLETED
-        entry.results_references = [_result_reference()]
-        await context.db.save(entry)
-
-    async def fake_load_results(self):
+    async def fake_wait_for_remote_completion(self):
+        saved = await context.db.load_task_by_id(self.id)
+        assert saved.status == TaskStatus.SUBMITTED
         return sentinel
 
-    monkeypatch.setattr("simstack.core.submit_node.submit_node", fake_submit_node)
-    monkeypatch.setattr(Node, "load_results", fake_load_results)
+    monkeypatch.setattr(
+        Node, "_wait_for_remote_completion", fake_wait_for_remote_completion
+    )
 
     result = await execution_node.run_somewhere()
 
     assert result is sentinel
-    assert submitted_ids == [registry_entry.id]
+    saved_entry = await context.db.load_task_by_id(registry_entry.id)
+    assert saved_entry.status == TaskStatus.SUBMITTED
 
 
 @pytest.mark.asyncio
-async def test_nested_slurm_submit_failure_stops_polling(monkeypatch):
-    registry_entry = await context.db.save(_slurm_registry("failed_inline_slurm_child"))
+async def test_nested_slurm_wait_raises_when_host_runner_fails(monkeypatch):
+    registry_entry = await context.db.save(_slurm_registry("failed_host_slurm_child"))
     execution_node = _execution_node(registry_entry)
 
-    async def fail_submit(entry):
+    async def fail_on_host(self):
+        entry = await context.db.load_task_by_id(self.id)
         entry.status = TaskStatus.FAILED
+        entry.error = "terminated with status TaskStatus.FAILED"
         await context.db.save(entry)
-        return False
+        raise RuntimeError(
+            f"Task task_id: {self.id} node: {self.name} failed with "
+            "terminated with status TaskStatus.FAILED"
+        )
 
-    monkeypatch.setattr("simstack.core.submit_node.submit_node", fail_submit)
+    monkeypatch.setattr(Node, "_wait_for_remote_completion", fail_on_host)
 
     with pytest.raises(RuntimeError, match="terminated with status"):
         await execution_node.run_somewhere()
@@ -281,13 +267,18 @@ async def test_nested_slurm_submit_failure_stops_polling(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_sync_node_wrapper_raises_when_nested_slurm_submit_fails(monkeypatch):
-    async def fail_submit(entry):
+async def test_sync_node_wrapper_raises_when_host_slurm_child_fails(monkeypatch):
+    async def fail_on_host(self):
+        entry = await context.db.load_task_by_id(self.id)
         entry.status = TaskStatus.FAILED
+        entry.error = "terminated with status TaskStatus.FAILED"
         await context.db.save(entry)
-        return False
+        raise RuntimeError(
+            f"Task task_id: {self.id} node: {self.name} failed with "
+            "terminated with status TaskStatus.FAILED"
+        )
 
-    monkeypatch.setattr("simstack.core.submit_node.submit_node", fail_submit)
+    monkeypatch.setattr(Node, "_wait_for_remote_completion", fail_on_host)
 
     with pytest.raises(RuntimeError, match="terminated with status"):
         sync_nested_slurm_failure_node(
@@ -307,46 +298,6 @@ async def test_sync_node_wrapper_raises_when_nested_slurm_submit_fails(monkeypat
     assert entries[-1].status == TaskStatus.FAILED
     for entry in entries:
         await context.db.delete(entry)
-
-
-@pytest.mark.asyncio
-async def test_already_claimed_slurm_child_is_not_submitted_twice(monkeypatch):
-    registry_entry = await context.db.save(
-        _slurm_registry("already_claimed_slurm_child", status=TaskStatus.RETRIEVED)
-    )
-    execution_node = _execution_node(registry_entry)
-    submitted_ids = []
-
-    async def fake_submit(entry):
-        submitted_ids.append(entry.id)
-        return True
-
-    monkeypatch.setattr("simstack.core.submit_node.submit_node", fake_submit)
-
-    assert await execution_node._submit_same_resource_slurm_node() is False
-    assert submitted_ids == []
-
-
-@pytest.mark.asyncio
-async def test_submitted_slurm_node_is_claimed_once_before_sbatch(monkeypatch):
-    registry_entry = await context.db.save(_slurm_registry("single_sbatch_child"))
-    first = _execution_node(registry_entry.model_copy(deep=True))
-    second = _execution_node(registry_entry.model_copy(deep=True))
-    submitted_ids = []
-
-    async def fake_submit(entry):
-        submitted_ids.append(entry.id)
-        return True
-
-    monkeypatch.setattr("simstack.core.submit_node.submit_node", fake_submit)
-
-    first_submitted, second_submitted = await asyncio.gather(
-        first._submit_same_resource_slurm_node(),
-        second._submit_same_resource_slurm_node(),
-    )
-
-    assert sorted([first_submitted, second_submitted]) == [False, True]
-    assert submitted_ids == [registry_entry.id]
 
 
 @pytest.mark.asyncio

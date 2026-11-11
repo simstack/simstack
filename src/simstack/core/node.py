@@ -1020,12 +1020,12 @@ class Node:
                 return await self.run_node_as_process()
             return await self._wait_for_remote_completion()
 
-        if await self._submit_same_resource_slurm_node():
-            logger.info(
-                "Task task_id: %s submitted Slurm node directly from resource %s",
-                self.id,
-                context.config.resource,
-            )
+        logger.info(
+            "Task task_id: %s left SUBMITTED for host runner resource %s queue %s",
+            self.id,
+            self.parameters.resource,
+            self.parameters.queue,
+        )
         return await self._wait_for_remote_completion()
 
     async def _persist_nested_execution_handoff(self) -> bool:
@@ -1100,26 +1100,6 @@ class Node:
         raise RuntimeError(
             f"Task task_id: {self.id} node: {self.name} failed with {error}"
         )
-
-    async def _submit_same_resource_slurm_node(self) -> bool:
-        """Submit a same-resource Slurm node before polling it.
-
-        This is primarily needed when a parent already running on a resource
-        creates a Slurm child for that resource. The same path also supports a
-        top-level Python caller on the resource. The atomic claim prevents a
-        concurrent resource runner from submitting the node twice.
-        """
-        if self.registry_entry is None:
-            return False
-        if self.parameters.queue != Queue.SLURM_QUEUE:
-            return False
-        if self.parameters.resource != context.config.resource:
-            return False
-        from simstack.core.submit_node import submit_node
-
-        if not await claim_submitted_node(self.registry_entry):
-            return False
-        return await submit_node(self.registry_entry)
 
     async def execute_node_locally(self) -> Union[Model, SimstackResult, None]:
         """
