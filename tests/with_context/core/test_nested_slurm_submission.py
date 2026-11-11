@@ -95,7 +95,6 @@ async def test_completed_result_is_reusable_after_execution_route_change():
         db,
         name=completed.name,
         arg_hash=completed.arg_hash,
-        function_hash=completed.function_hash,
         execution_parameters=Parameters(
             resource="test",
             queue="slurm-queue",
@@ -115,14 +114,12 @@ async def test_active_task_is_reusable_only_on_the_same_execution_route():
         db,
         name=active.name,
         arg_hash=active.arg_hash,
-        function_hash=active.function_hash,
         execution_parameters=active.parameters.model_copy(deep=True),
     )
     changed_route = await _find_reusable_task(
         db,
         name=active.name,
         arg_hash=active.arg_hash,
-        function_hash=active.function_hash,
         execution_parameters=Parameters(resource="self", queue="default"),
     )
 

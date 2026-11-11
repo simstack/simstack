@@ -31,7 +31,6 @@ from simstack.core.node_claim import (
     claim_submitted_node,
 )
 from simstack.core.node_runner import NodeRunner
-from simstack.core.node_code_version import node_code_version
 from simstack.core.process_results import process_result_helper
 from simstack.core.resource_assignment import (
     ResourceAssignmentResolution,
@@ -282,15 +281,13 @@ async def _find_reusable_task(
     *,
     name: str,
     arg_hash: str,
-    function_hash: str,
     execution_parameters: Parameters,
 ) -> Optional[NodeRegistry]:
     """Select a completed result or an existing task on the same route."""
     candidates = await db.find(
         NodeRegistry,
         (NodeRegistry.name == name)
-        & (NodeRegistry.arg_hash == arg_hash)
-        & (NodeRegistry.function_hash == function_hash),
+        & (NodeRegistry.arg_hash == arg_hash),
     )
     for candidate in candidates:
         if candidate.status == TaskStatus.COMPLETED:
@@ -665,9 +662,9 @@ class Node:
 
         This method ensures that a task entry exists in the database for the
         current task. It computes hashes of its arguments, checks if a
-        database entry already matches the node name, argument hash and code
-        version, and creates a new entry if no match is found. Code identity
-        excludes source paths, comments and line numbers. If the
+        database entry already matches the node name and argument hash, and
+        creates a new entry if no match is found. Function identity is
+        versioned by git rather than by hashing the function body. If the
         database is not connected, an exception is raised.
 
         :raises ValueError: if the database is not connected.
@@ -678,7 +675,8 @@ class Node:
             raise ValueError("Database is not connected")
 
         arg_hash = compute_arg_hash(self._args)
-        function_hash = node_code_version(self._func)
+        # Function identity is versioned by git, not by hashing the function body.
+        function_hash = ""
         self._arg_hash = arg_hash
         self._function_hash = function_hash
 
@@ -690,7 +688,6 @@ class Node:
                 context.db,
                 name=self.name,
                 arg_hash=arg_hash,
-                function_hash=function_hash,
                 execution_parameters=self.parameters,
             )
 
@@ -1427,8 +1424,8 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
 
     This function can delete the registry_entry !!!
     The only way that registry_entry.function_hash is "NOT INITIALIZED" is when the node
-    is created from the frontend. Pending entries acquire the imported implementation's
-    code version before completed-result reuse is considered.
+    is created from the frontend. Function identity is versioned by git, so an
+    uninitialized function_hash is stored as empty rather than hashed from source.
     No other node is listening specifically for this registry_entry to complete.
     If a duplicate is found the node from the duplication is returned
 
@@ -1487,22 +1484,14 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
             )
             completed = registry_entry.status == TaskStatus.COMPLETED
             if not completed or registry_entry.parameters.force_rerun:
-                current_code_version = node_code_version(func)
                 declared_version = getattr(func, "_node_version", None)
-                if (completed or registry_entry.function_hash not in ("", "NOT INITIALIZED")) and registry_entry.function_hash != current_code_version:
-                    raise ValueError(
-                        f"Node code version mismatch for {registry_entry.name}: "
-                        f"submitted {registry_entry.function_hash} (version={registry_entry.version!r}), "
-                        f"worker {current_code_version} (version={declared_version!r}); "
-                        "use the submitted implementation or submit a new task"
-                    )
                 if registry_entry.version is not None and registry_entry.version != declared_version:
                     raise ValueError(
                         f"Declared node version mismatch for {registry_entry.name}: "
                         f"submitted {registry_entry.version!r}, worker {declared_version!r}"
                     )
                 if not completed:
-                    registry_entry.function_hash = current_code_version
+                    registry_entry.function_hash = ""
                     registry_entry.version = declared_version
                     registry_entry.is_async = asyncio.iscoroutinefunction(func)
         else:
@@ -1533,7 +1522,6 @@ async def node_from_database(registry_entry: NodeRegistry) -> Union["Node", None
                 NodeRegistry,
                 (NodeRegistry.name == registry_entry.name)
                 & (NodeRegistry.arg_hash == registry_entry.arg_hash)
-                & (NodeRegistry.function_hash == registry_entry.function_hash)
                 & (NodeRegistry.status == TaskStatus.COMPLETED)
                 & (NodeRegistry.id != registry_entry.id),
             )
@@ -1644,10 +1632,8 @@ def node(
     @node(name="example")
     def func(): ...
 
-    Code, defaults and initial captured values determine cached-result identity.
-    Set or bump ``version`` when external dependencies or runtime configuration
-    change without changing the node implementation. Opaque captured/default
-    objects require an explicit version.
+    Cached-result identity is the node name and argument hash. Function identity
+    is versioned by git rather than by hashing the function body.
 
     """
 
