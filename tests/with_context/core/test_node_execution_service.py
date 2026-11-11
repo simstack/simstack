@@ -2,7 +2,7 @@ import asyncio
 import os
 from types import SimpleNamespace
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock
 from simstack.core.context import context
 from simstack.core.node import Node
 from simstack.models.parameters import Queue, Resource, Parameters
@@ -57,6 +57,38 @@ async def test_node_execution_service_execute_with_tasks(node_execution_service,
             await asyncio.gather(*node_execution_service._running_tasks)
         
         mock_run.assert_called_once_with(registry_entry)
+
+@pytest.mark.asyncio
+async def test_execute_terminates_inflight_tasks(node_execution_service, initialized_context):
+    registry_entry = NodeRegistry(
+        name="test_node",
+        status=TaskStatus.TERMINATING,
+        parameters=Parameters(),
+        func_mapping="test_mapping",
+        function_hash="test_func_hash",
+        arg_hash="test_arg_hash",
+    )
+    with (
+        patch.object(
+            context.db,
+            "load_terminating_tasks_for_resource",
+            AsyncMock(return_value=[registry_entry]),
+        ),
+        patch.object(
+            context.db,
+            "load_waiting_tasks_for_resource",
+            AsyncMock(return_value=[]),
+        ),
+        patch(
+            "simstack.core.services.node_execution_service.terminate_task",
+            AsyncMock(),
+        ) as mock_terminate,
+    ):
+        await node_execution_service.execute()
+
+    mock_terminate.assert_awaited_once_with(
+        registry_entry, runner_pid=node_execution_service._pid
+    )
 
 @pytest.mark.asyncio
 async def test_node_execution_service_run_node_default_queue(node_execution_service, initialized_context):

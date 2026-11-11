@@ -87,6 +87,7 @@ class NodeRegistry(Model):
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
     job_id: Optional[str] = None
+    process_id: Optional[int] = None
     function_hash: str
     arg_hash: str
     func_mapping: str
