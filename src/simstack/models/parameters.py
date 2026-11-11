@@ -94,6 +94,34 @@ def normalize_execution_queue(
     return _QUEUE_ALIASES.get(alias, stripped_value), alias in _LEGACY_DOCKER_QUEUES
 
 
+def _extra_sbatch_flag(option: str) -> str:
+    if (
+        not isinstance(option, str)
+        or option != option.strip()
+        or "\n" in option
+        or "\r" in option
+    ):
+        raise ValueError(
+            "extra_options entries must be #SBATCH arguments starting with '--', "
+            f"got {option!r}"
+        )
+    token = option.split(None, 1)[0]
+    flag, separator, value = token.partition("=")
+    if separator and value == "":
+        raise ValueError(f"extra slurm option {option!r} has an empty value")
+    if len(flag) < 3 or not flag.startswith("--") or not flag[2].isalpha():
+        raise ValueError(
+            "extra_options entries must be #SBATCH arguments starting with '--', "
+            f"got {option!r}"
+        )
+    if not all(character.isalnum() or character == "-" for character in flag[2:]):
+        raise ValueError(
+            "extra_options entries must be #SBATCH arguments starting with '--', "
+            f"got {option!r}"
+        )
+    return flag
+
+
 # TODO Fix Slurm Parameters
 class SlurmParameters(EmbeddedModel):
     # Essential Resource Allocation Parameters
@@ -170,6 +198,13 @@ class SlurmParameters(EmbeddedModel):
     )
 
     # Additional Commands
+    extra_options: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Additional #SBATCH options that have no dedicated field. "
+            "Each entry is the text after #SBATCH, for example '--gres=scratch:100'."
+        ),
+    )
     startup_commands: List[str] = Field(
         default_factory=list, description="Commands to run before main job"
     )
@@ -196,6 +231,13 @@ class SlurmParameters(EmbeddedModel):
     no_requeue: Optional[bool] = Field(
         default=None, description="Prevent job from being requeued"
     )
+
+    @field_validator("extra_options")
+    @classmethod
+    def validate_extra_options(cls, value: List[str]) -> List[str]:
+        for option in value:
+            _extra_sbatch_flag(option)
+        return value
 
     model_config: ClassVar[Dict[str, Any]] = {
         "extra": "forbid",
@@ -308,6 +350,16 @@ class SlurmParameters(EmbeddedModel):
             args.append("--no-requeue")
         if self.nice is not None:
             args.append(f"--nice={self.nice}")
+
+        emitted_flags = {arg.split("=", 1)[0].split()[0] for arg in args}
+        for option in self.extra_options:
+            flag = _extra_sbatch_flag(option)
+            if flag in emitted_flags:
+                raise ValueError(
+                    f"extra slurm option {option!r} repeats {flag}, which is already set"
+                )
+            emitted_flags.add(flag)
+            args.append(option)
 
         return args
 
