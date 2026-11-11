@@ -327,6 +327,10 @@ class SlurmParameters(EmbeddedModel):
 
 class Parameters(EmbeddedModel):
     force_rerun: bool = False
+    separate_cloud_vm: bool = Field(
+        default=False,
+        description="Hand a nested node to a new cloud VM even when the Docker image matches",
+    )
     resource: Resource = Field(default_factory=lambda: Resource(value="self"))
     in_docker: bool = Field(default=False, description="Run in docker")
     queue: str = Field(default="default")
