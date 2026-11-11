@@ -176,6 +176,7 @@ class ResourceConfig:
         node_runner: Optional[Any] = None,
         command: str = "run_command",
         name: Optional[str] = None,
+        env: Optional[Dict[str, str]] = None,
     ) -> bool:
         """
         Executes a command from the program table with optional temporary
@@ -189,6 +190,7 @@ class ResourceConfig:
             command: Key in ``[<resource>.program.<name>]`` whose string is
                 executed. Defaults to ``run_command``. Use e.g.
                 ``define_command`` for a second launcher on the same table.
+            env: Environment overrides for this subprocess only.
             name: Subprocess log name for NodeRunner. Defaults to ``"run"``.
 
         Returns:
@@ -203,6 +205,8 @@ class ResourceConfig:
         if not isinstance(command, str) or not command.strip():
             raise ValueError(f"command must be a non-empty string, got {command!r}")
 
+        # Overrides belong to this invocation, never the global process.
+        env_kwargs = {"env": env} if env is not None else {}
         params = self.get_program(program_name)
         if command not in params:
             raise ValueError(
@@ -252,11 +256,14 @@ class ResourceConfig:
             if node_runner and hasattr(node_runner, "subprocess"):
                 ok = bool(
                     node_runner.subprocess(
-                        subprocess_name, run_command, cwd=str(exec_dir)
+                        subprocess_name, run_command, cwd=str(exec_dir), **env_kwargs
                     )
                 )
             else:
-                subprocess.run(run_command, shell=True, check=True, cwd=exec_dir)
+                subprocess.run(
+                    run_command, shell=True, check=True, cwd=exec_dir,
+                    **({"env": {**os.environ, **env}} if env is not None else {}),
+                )
                 ok = True
 
             # Copy output files back to cwd
