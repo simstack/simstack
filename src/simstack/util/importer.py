@@ -117,7 +117,10 @@ def _lookup_model_cache(
 
 
 async def _find_model_mapping(model_path: str, db: Database) -> Optional[ModelMapping]:
-    _, model_name = model_path.rsplit(".", 1)
+    if "." in model_path:
+        _, model_name = model_path.rsplit(".", 1)
+    else:
+        model_name = model_path
 
     if context.model_mappings is None:
         await context.refresh_mappings(models=True, nodes=False)
@@ -270,7 +273,10 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
 
     try:
         # Split the path into module path and class name
-        module_path, class_name = class_path.rsplit(".", 1)
+        if "." in class_path:
+            module_path, class_name = class_path.rsplit(".", 1)
+        else:
+            module_path, class_name = "", class_path
         model_mapping = await _find_model_mapping(class_path, db)
 
         # If not found by name, try by mapping
@@ -278,8 +284,27 @@ async def import_class(class_path: str, db: Database) -> Type[Model] | None:
             model_mapping = await db.find_one(
                 ModelMapping, ModelMapping.mapping == class_path
             )
-        else:  # when searching by name, the path may have changed
-            module_path, class_name = model_mapping.mapping.rsplit(".", 1)
+        else:
+            # Name fallback may return a mapping whose path changed, or a
+            # bare class name with no module. Keep class_path's module when
+            # mapping has no usable dotted path (rsplit would raise
+            # "not enough values to unpack (expected 2, got 1)").
+            mapped = model_mapping.mapping
+            if "." in mapped:
+                mapped_module, mapped_name = mapped.rsplit(".", 1)
+                if mapped_module:
+                    module_path, class_name = mapped_module, mapped_name
+                else:
+                    class_name = mapped_name
+            else:
+                class_name = mapped
+
+        if not module_path:
+            logger.error(
+                "Error importing class %s: no module path on class_path or ModelMapping.mapping",
+                class_path,
+            )
+            raise LookupError(f"Error finding ModelMapping for {class_name}")
 
         if model_mapping is None:
             try:

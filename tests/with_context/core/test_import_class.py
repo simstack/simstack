@@ -79,6 +79,30 @@ async def test_import_class_from_model_mapping(setup_model_mapping, initialized_
 
 
 @pytest.mark.asyncio
+async def test_import_class_bare_name_mapping_keeps_class_path_module(
+    initialized_context,
+):
+    """Name fallback must not rsplit a mapping that is only the class name."""
+    model_mapping = ModelMapping(
+        name="SampleClass",
+        mapping="SampleClass",
+        collection_name="test_collection_bare",
+    )
+    await context.db.save(model_mapping)
+    await context.refresh_mappings()
+    try:
+        cls = await import_class(
+            "tests.with_context.core.test_import_class.SampleClass",
+            context.db,
+        )
+        assert cls is SampleClass
+        assert cls(value="bare").get_value() == "bare"
+    finally:
+        await context.db.delete(model_mapping)
+        await context.refresh_mappings()
+
+
+@pytest.mark.asyncio
 async def test_import_class_nonexistent(initialized_context):
     """Test importing a non-existent class."""
     # Try to import a non-existent class
