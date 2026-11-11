@@ -88,12 +88,22 @@ async def test_async_main_uses_false_is_default_when_default_resource_init_retur
             self.config = SimpleNamespace(resource=kwargs.get("resource"))
 
     class DummyRunnerManager:
-        def __init__(self, resource, *, detach, no_pull, is_default, with_file_transfer=True):
+        def __init__(
+            self,
+            resource,
+            *,
+            detach,
+            no_pull,
+            is_default,
+            with_file_transfer=True,
+            with_jobs=True,
+        ):
             captured["resource"] = resource
             captured["detach"] = detach
             captured["no_pull"] = no_pull
             captured["is_default"] = is_default
             captured["with_file_transfer"] = with_file_transfer
+            captured["with_jobs"] = with_jobs
 
         async def run_nodes_for_resource(self, polling_interval, *_args, timeout=None):
             captured["polling_interval"] = polling_interval
@@ -115,9 +125,69 @@ async def test_async_main_uses_false_is_default_when_default_resource_init_retur
         connection_string="none",
         config="simstack.toml",
         file_transfer=False,
+        jobs=True,
     )
 
     await runner.async_main(args)
 
     assert captured["is_default"] is False
     assert captured["resource"] == "docker"
+    assert captured["with_jobs"] is True
+    assert captured["with_file_transfer"] is False
+
+
+@pytest.mark.asyncio
+async def test_async_main_passes_with_jobs_false(monkeypatch):
+    captured: dict[str, object] = {}
+
+    class DummyContext:
+        def __init__(self):
+            self.config = SimpleNamespace(resource="cloud")
+
+        async def initialize(self, **kwargs):
+            self.config = SimpleNamespace(resource=kwargs.get("resource"))
+
+    class DummyRunnerManager:
+        def __init__(
+            self,
+            resource,
+            *,
+            detach,
+            no_pull,
+            is_default,
+            with_file_transfer=True,
+            with_jobs=True,
+        ):
+            captured["resource"] = resource
+            captured["with_file_transfer"] = with_file_transfer
+            captured["with_jobs"] = with_jobs
+            captured["no_pull"] = no_pull
+
+        async def run_nodes_for_resource(self, polling_interval, *_args, timeout=None):
+            captured["polling_interval"] = polling_interval
+
+    monkeypatch.setattr(runner, "context", DummyContext())
+    monkeypatch.setattr(
+        runner, "initialize_default_resource", AsyncMock(return_value=None)
+    )
+    monkeypatch.setattr(runner, "RunnerManager", DummyRunnerManager)
+
+    args = SimpleNamespace(
+        resource="cloud",
+        db_name=None,
+        detach=True,
+        pull=False,
+        polling_interval=20,
+        timeout=None,
+        connection_string="none",
+        config="simstack.toml",
+        file_transfer=True,
+        jobs=False,
+    )
+
+    await runner.async_main(args)
+
+    assert captured["with_jobs"] is False
+    assert captured["with_file_transfer"] is True
+    assert captured["no_pull"] is True
+    assert captured["resource"] == "cloud"
