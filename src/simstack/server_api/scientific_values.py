@@ -444,7 +444,10 @@ class ScientificValuesAPI:
         from simstack.server_api.workflow_tasks import WorkflowTasksAPI
         identity = {} if not hasattr(task, "id") else {
             key: value for key, value in WorkflowTasksAPI.execution(task).items()
-            if key != "task_id" and value is not None}
+            if key != "task_id" and value is not None
+            and (key == "generation" or not getattr(task, "_execution_recovery_result", None))}
+        if hasattr(task, "_execution_generation") and task._execution_generation is None:
+            identity["generation"] = "null"
         task_id = task.id if hasattr(task, "id") else task
         response = await self.requests.read(f"/tasks/{task_id}/outputs", **identity)
         return await self.decode_task_inputs(response)

@@ -149,7 +149,7 @@ async def test_make_registry_entry_success(server_storage, initialized_context, 
 
 
 @pytest.mark.asyncio
-async def test_make_registry_entry_inherits_parent_slurm_on_self(server_storage,
+async def test_root_does_not_inherit_unpersisted_parent_kwargs(server_storage,
     initialized_context, setup_mappings, domain_bridge
 ):
     data = FloatData(value=1.0)
@@ -170,10 +170,10 @@ async def test_make_registry_entry_inherits_parent_slurm_on_self(server_storage,
         entry = await n.make_registry_entry("func_hash", "arg_hash")
     try:
         assert entry.parameters.resource == str(context.config.resource)
-        assert entry.parameters.slurm_parameters.cpus_per_task == 4
-        assert entry.parameters.slurm_parameters.tasks == 2
-        assert entry.parameters.slurm_parameters.mem == "8G"
-        assert n.parameters.slurm_parameters.mem == "8G"
+        assert entry.parameters.slurm_parameters.cpus_per_task == 1
+        assert entry.parameters.slurm_parameters.tasks == 1
+        assert entry.parameters.slurm_parameters.mem == "1G"
+        assert n.parameters.slurm_parameters.mem == "1G"
     finally:
         n._inline_launch_reservation.close()
         await server_storage.delete(entry)

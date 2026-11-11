@@ -37,7 +37,7 @@ from simstack.models import Parameters
 from simstack.models import NodeRegistry, NamedDataReference
 from simstack.models.file_list import FileList
 from simstack.models.files import FileStack
-from simstack.models.parameters import Queue, SlurmParameters
+from simstack.models.parameters import Queue
 from simstack.models.simstack_model import is_simstack_model
 from simstack.util.importer import import_function
 from simstack.util.sanitized_output import sanitized_command, sanitized_tail
@@ -299,52 +299,6 @@ def _explicit_cloud_child_needs_own_vm(parameters: Optional[Parameters]) -> bool
     return current_resource == "cloud"
 
 
-def _slurm_parameters_are_unset(slurm: Optional[SlurmParameters]) -> bool:
-    """True when slurm_parameters were omitted (or are an empty default)."""
-    if slurm is None:
-        return True
-    fields_set = getattr(slurm, "model_fields_set", None)
-    if not fields_set:
-        return True
-    for name in fields_set:
-        value = getattr(slurm, name, None)
-        if value is None or value == [] or value == {}:
-            continue
-        return False
-    return True
-
-
-def inherit_parent_slurm_parameters_for_self(
-    parameters: Optional[Parameters],
-    parent_parameters: Optional[Parameters],
-) -> Optional[Parameters]:
-    """Give a self-resource child the parent's slurm_parameters when it has none."""
-    if parameters is None or not isinstance(parent_parameters, Parameters):
-        return parameters
-    if not _is_self_resource(parameters):
-        return parameters
-    if not _slurm_parameters_are_unset(getattr(parameters, "slurm_parameters", None)):
-        return parameters
-
-    parent_slurm = getattr(parent_parameters, "slurm_parameters", None)
-    if not isinstance(parent_slurm, SlurmParameters):
-        return parameters
-    if _slurm_parameters_are_unset(parent_slurm):
-        return parameters
-
-    parameters.slurm_parameters = parent_slurm.model_copy(deep=True)
-    logger.info(
-        "Inherited parent slurm_parameters onto self-resource node: "
-        "cpus_per_task=%s tasks=%s tasks_per_node=%s mem=%s mem_per_cpu=%s",
-        getattr(parameters.slurm_parameters, "cpus_per_task", None),
-        getattr(parameters.slurm_parameters, "tasks", None),
-        getattr(parameters.slurm_parameters, "tasks_per_node", None),
-        getattr(parameters.slurm_parameters, "mem", None),
-        getattr(parameters.slurm_parameters, "mem_per_cpu", None),
-    )
-    return parameters
-
-
 def _parameters_from_node_kwargs(kwargs_node: dict[str, Any]) -> Parameters:
     base_parameters = kwargs_node.get("parameters")
     if isinstance(base_parameters, Parameters):
@@ -397,6 +351,7 @@ class Node:
         self.name = self._func.__name__
         self.is_async = kwargs.pop("is_async")
         self.parent_id = kwargs.pop("parent_id", None)
+        self._recovery_of = kwargs.pop("recovery_of", None)
         self._parent_execution = None
         self.call_path = kwargs.pop("call_path", "") or "." + self.name
         self._arg_hash = kwargs.pop("arg_hash", None)
@@ -428,29 +383,6 @@ class Node:
         self._execution_return_kind: str | None = None
         self._owns_inline_nested_execution = False
 
-    def _parent_parameters_from_kwargs(self) -> Optional[Parameters]:
-        function_kwargs = getattr(self, "_function_kwargs", {})
-        parent_parameters = function_kwargs.get("parent_parameters", None)
-        return parent_parameters if isinstance(parent_parameters, Parameters) else None
-
-    def _apply_parent_slurm_for_self_resource(self) -> bool:
-        """Fill empty slurm_parameters on resource self from the calling parent.
-
-        Resource-assignment rules do not carry Slurm values for self, so this
-        must happen on the node before ``execute_node_locally`` forwards
-        ``self.parameters`` as ``parent_parameters``.
-        """
-        before = getattr(self.parameters, "slurm_parameters", None)
-        inherit_parent_slurm_parameters_for_self(
-            self.parameters, self._parent_parameters_from_kwargs()
-        )
-        after = getattr(self.parameters, "slurm_parameters", None)
-        if after is before:
-            return False
-        if self.registry_entry is not None:
-            self.registry_entry.parameters = self.parameters
-        return True
-
     @property
     def id(self) -> ObjectId | None:
         if self.registry_entry is None:
@@ -476,7 +408,6 @@ class Node:
         for arg in self._args:
             if not isinstance(arg, Model):
                 raise ValueError(f"{type(arg).__name__} is not a SimStack Model")
-        self._apply_parent_slurm_for_self_resource()
         self.parameters.recompute_artifacts = bool(self.recompute_artifacts)
         invocation = {
             "parent_execution": current_execution() if self.parent_id else None,
@@ -491,6 +422,11 @@ class Node:
             "custom_name": self.custom_name,
             "recompute": self.recompute_artifacts,
         }
+        if self._recovery_of is not None:
+            invocation["recovery_of"] = {
+                "task_id": str(self._recovery_of.id),
+                "generation": self._recovery_of._execution_generation,
+            }
         if self.parent_id and not invocation["parent_execution"]:
             raise RuntimeError("A child invocation requires its parent's execution identity")
         self._parent_execution = dict(invocation["parent_execution"]) if self.parent_id else None
@@ -1269,7 +1205,6 @@ class Node:
 
         """
         assert self.registry_entry is not None
-        self._apply_parent_slurm_for_self_resource()
         self.registry_entry.started_at = datetime.now()
         await self.set_status(TaskStatus.RUNNING, process_id=process_id)
         logger.info(
@@ -1287,7 +1222,7 @@ class Node:
                 "call_path": self.call_path,
                 "parent_parameters": self.parameters,  # this must have a name different from parameters, because
                 # otherwise this setting will override all the parameters of
-                # the child nodes. Resource self copies parent slurm first.
+                # the child nodes. Server resolves inherited allocation.
                 "recompute_artifacts": self.recompute_artifacts,
                 "custom_name": self.custom_name,
                 "arg_hash": self._arg_hash,

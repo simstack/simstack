@@ -54,12 +54,37 @@ class WorkflowTasksAPI:
             await self.scientific_values.materialize_references([entry])
         return entry
 
+    async def query_tasks(self, *, status=None, parent_id=None, name=None, call_path=None,
+                          skip=0, limit=None, repository_revision=None):
+        body = {key: value for key, value in {
+            "status": status, "parent_id": str(parent_id) if parent_id is not None else None,
+            "name": name, "call_path": call_path, "skip": skip, "limit": limit,
+            "repository_revision": repository_revision}.items() if value is not None}
+        response = await self.requests.query("/tasks/query", body)
+        entries = [decode_task_response(value) for value in response["tasks"]]
+        await self.scientific_values.materialize_references(entries)
+        return entries
+
+    async def adopt_recovery_result(self, original, source, *, coordinator, request_id=None):
+        response = await self.requests.command(f"/tasks/{original.id}/recovery-result", {
+            "execution": self.execution(coordinator),
+            "original": {"task_id": str(original.id), "generation": original._execution_generation},
+            "source": {"task_id": str(source.id), "generation": source._execution_generation},
+        }, request_id=request_id)
+        return decode_task_response(response["task"])
+
     async def get_outcome(self, entry, *, generation_only=False):
+        # Recovery changes the computation's canonical result, while its exact
+        # timed-out physical attempt remains immutable historical evidence.
+        generation_only = generation_only or bool(getattr(entry, "_execution_recovery_result", None))
+        execution = self.execution(entry)
+        if generation_only and execution["generation"] is None:
+            execution["generation"] = "null"
         result = await self.requests.read(
             f"/tasks/{entry.id}/outcome",
             **{
                 key: value
-                for key, value in self.execution(entry).items()
+                for key, value in execution.items()
                 if key == "generation" or not generation_only and key != "task_id"
             },
         )

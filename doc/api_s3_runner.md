@@ -29,6 +29,50 @@ loaded = await context.server.values.get_value(Energy, result.id)
 
 `workflow.models.Energy` must belong to the approved repository catalogue. Nested workflow calls, task caching, argument/result models, parameters, resource assignments, container settings and error/logging conventions remain supported. Task changes use the task API with their execution identity; a scientific publication cannot rewrite task status or stored errors.
 
+## Preserve workflow behavior when replacing database calls
+
+Keep the numerical algorithm, node graph, concurrency, result models/units, checkpoint selection and resource parameters. Replace persistence calls and imports; do not rename a requested resource just to make it pass validation. Server applies assignment rules before validating the effective target and inheriting its allocation. For example, `Parameters(resource="local", queue="default", in_docker=True)` remains valid when a profile rule maps that request to a configured resource. A child targeting `self` inherits the persisted parent's allocation; an arbitrary `parent_parameters` argument cannot override that Server decision.
+
+Replace `context.db.find_one(Model, Model.id == identity)` with `await context.server.values.get_value(Model, identity)`, and an explicit scientific save with `await context.server.values.publish_value(value)`. Typed queries accept declared nested model fields:
+
+```python
+datasets = await context.server.values.query_records(
+    DataSet,
+    filters=[{"field": "metadata.field_name", "operator": "eq", "value": "simple-set"}],
+    order_by=[{"field": "metadata.field_name", "direction": "asc"}],
+    skip=0,
+    limit=20,
+)
+```
+
+Filters are combined with AND. Supported comparisons are `eq`, `ne`, `lt`, `lte`, `gt`, `gte`, `in` and `not_in`; the last two take lists. Nested paths follow declared embedded fields, not arbitrary MongoDB expressions or joins through scientific references. A reference's declared primary-field path compares its stored identity. Pagination and ordering run on Server. If a required workflow query is unsupported, extend the typed Server contract; do not fetch every scientific record and filter it in Runner or change the scientific model to fit the API.
+
+`NodeRegistry` is task state, not a scientific record. Replace task searches with `context.server.tasks.query_tasks(status=..., parent_id=..., name=..., call_path=..., skip=..., limit=...)`. `call_path` uses the existing resource-rule pattern semantics: `.calculator` matches a suffix, while `.workflow.calculator` matches that complete path. There is no arbitrary task save operation.
+
+Checkpoint recovery keeps its scientific decisions in the workflow. Query timeout tasks, read their scientific snapshots through `.values`, and choose/rebuild the restart input as before. Launch the calculator under the **live coordinator**, adding `recovery_of=original` instead of pretending the timed-out task is still executing:
+
+```python
+tasks = context.server.tasks
+coordinator = await tasks.get_task(node_runner.task_id)
+await calculator(
+    recovery_input,
+    **{**kwargs, "parent_id": coordinator.id, "call_path": original.call_path,
+       "parameters": child_parameters, "recovery_of": original},
+)
+children = await tasks.query_tasks(
+    parent_id=coordinator.id, name="calculator", status="completed",
+)
+source = max(
+    (child for child in children if original.id in child.parent_ids),
+    key=lambda child: child.created_at,
+)
+recovered = await tasks.adopt_recovery_result(original, source, coordinator=coordinator)
+```
+
+Here `calculator`, its catalogue name, `recovery_input` and `child_parameters` are the workflow's existing calculator and restart settings. Server pins the recovery child to the original task's repository revision, creates a fresh calculation, and retains both original/coordinator lineage. If the coordinator uses a different revision, recovery is scheduled through the original revision's prepared executor rather than running inline in the coordinator's interpreter. Adoption accepts only that completed recovery child's immutable result and preserves the original task ID, inputs, custom name and timeout attempt history. A competing rerun, start or cancellation rejects the operation; failed recovery leaves the original timeout unchanged. Fresh task reads expose the adopted computation result, while an already-held exact timeout-attempt DTO still addresses its historical evidence. A later Rerun retains both histories.
+
+For adaptation acceptance, compare scientific values, units, DAG/parallelism, effective placement, result names, file bytes, cache reuse and recovery against the original workflow. A successful Jia run alone is insufficient; include another model/query workflow and a real checkpoint-recovery workflow using the execution backends that repository supports.
+
 A standalone SDK call targeting `self` or the SDK's own resource can execute locally when Server resolves it to the default execution route. Server grants that attempt a separate execution credential; the SDK launches its child process without a resource Runner or database connection. The grant is restricted to that execution tree and is revoked when the attempt is superseded or its user is disabled. It remains valid through long calculations after the SDK's user access token expires. Remote resources, Slurm and cloud routes continue through their scheduled executors. A failed cached task retains its stored error; `force_rerun=True` explicitly requests another calculation.
 
 `FileStack` constructors stage bytes locally. Explicit scientific publication uploads them to S3 through the object API before publishing their metadata, preserving approved subclasses and their scientific fields. User uploads use user authorization, admitted local executions use their execution credential, and Runner uploads use the resource credential. SDK paths are not registered as managed resource copies. File reads prefer an available local copy and otherwise download through a signed object URL. Cleanup removes only expired cached copies; authoritative local files remain available. `content` and `in_memory=True` are rejected when constructing a stored payload; file bytes are never embedded in MongoDB or a scientific value graph.
@@ -52,7 +96,9 @@ Test at least a native workflow, a nested/subworkflow call, scientific publicati
 
 Connect a repository in the UI with its SSH or HTTPS clone URL and selected branch. Private SSH access uses one Ed25519 key per SimStack user: add the public key to the Git service, inspect and explicitly confirm the actual host's fingerprints, then enroll each Runner using its short-lived, one-use installer token over HTTPS. Enrollment installs the same user's private key locally with permissions `0600`; an ordinary Runner API token cannot download it again. Unknown or changed host keys are rejected. Submodules and private Git dependencies need access and trusted host keys for their own hosts as well.
 
-Server loads pinned Git revisions using the existing recursive model/node table builders in isolated temporary runtimes, with SSH credentials available to Git and `uv sync --locked` but excluded from discovery. It retains repository identity, branch, commit/submodule/tag metadata and the catalogue, then removes its temporary source checkout. Later schema, validation, table and artifact operations use the same Git access to restore the required revision temporarily. Removing a commit or revoking access can prevent restoring a missing checkout; Server does not retain persistent source snapshots.
+Server loads pinned Git revisions using the existing recursive model/node table builders in isolated runtimes, with SSH credentials available to Git and `uv sync --locked` but excluded from discovery. Publication retains a prepared Server source/dependency runtime for dynamic UI schema evaluation. Its identity includes the owner, source, extras and installed platform environment. Schema GET reads published JSON Schema and evaluates dynamic `ui_schema()` in a fresh isolated worker using that prepared runtime; it does not clone Git or install dependencies. Missing or incompatible prepared runtimes require an explicit repository refresh, including revisions published before this preparation contract. Dynamic schemas are not permanently cached by revision. Other validation, table and artifact operations continue to restore their pinned runtime through their existing path.
+
+Before enabling this schema read path on an existing installation, prepare every ready revision still needed by historical task views: `POST /workflow-repositories/{revision}/prepare` with JSON body `{"target":"server"}`. This prepares the stored commit, submodules, extras and inspection resource and updates only its Server runtime pointer after success. It does not activate that historical version or change Runner preparation targets. The same operation repairs a missing runtime after replacing Server's environment/work directory. The existing default `target="runner"` operation continues preparing execution resources.
 
 Runner receives version preparation commands through the API control poll and obtains the pinned source directly from Git. It verifies the commit, recursive submodules and tags, runs `uv sync --locked` with its resource extras, and retains a separate source/runtime cache for each revision, extras profile and Core build. Readiness verifies the Core actually loaded by the prepared interpreter. Server admits tasks for that resource only after successful preparation is acknowledged as ready. Preparation waits while persisted tasks show that the resource is busy; existing tasks and children continue using their original versions. Startup inventories verified runtimes without modifying them; missing or broken environments are prepared or repaired through the same control path. Standalone SDK execution verifies its pinned local checkout and uses the SDK environment.
 
