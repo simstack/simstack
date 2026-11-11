@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -272,227 +277,230 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for simstack.core.submit_node</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span></span><span class="sd">&quot;&quot;&quot;Generate a batch wrapper and submit one fenced execution to Slurm.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">stat</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.definitions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskStatus</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeRegistry</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.submit_to_watchdog</span><span class="w"> </span><span class="kn">import</span> <span class="n">submit_to_watchdog</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.node</span><span class="w"> </span><span class="kn">import</span> <span class="n">process_is_in_docker</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.sanitized_output</span><span class="w"> </span><span class="kn">import</span> <span class="n">sanitized_tail</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;submit_node&quot;</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_launch_environment</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">environment</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keep launcher identity independent of Slurm&#39;s user export policy.&quot;&quot;&quot;</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;SIMSTACK_SERVER_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_RUNNER_TOKEN&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_SERVER_TOKEN&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SIMSTACK_RUNNER_CREDENTIALS&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_LOCAL_EXECUTION_TOKEN&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SIMSTACK_REPOSITORY_REVISION&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_MACHINE_CONFIG&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SIMSTACK_RUNNER_WORKDIR&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SIMSTACK_EXECUTION_TASK&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_CLAIM&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SIMSTACK_EXECUTION_START&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_GENERATION&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SIMSTACK_EXECUTION_RESOURCE&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_ACCOUNT_ID&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SIMSTACK_SLURM_SUBMISSION&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_SLURM_SUBMISSION_TASK&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">environment</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">names</span><span class="p">}</span>
+    <span class="c1"># The batch script may be readable by others; credentials remain private.</span>
+    <span class="n">descriptor</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">O_WRONLY</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_CREAT</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_TRUNC</span><span class="p">,</span> <span class="mo">0o600</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">os</span><span class="o">.</span><span class="n">fdopen</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">stream</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">fchmod</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">fileno</span><span class="p">(),</span> <span class="mo">0o600</span><span class="p">)</span>
+        <span class="n">stream</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;unset SIMSTACK_USER_TOKEN &quot;</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">names</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="n">stream</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;export </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">shlex</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_persist_submission_failure</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">error</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.pending_execution_failures</span><span class="w"> </span><span class="kn">import</span> <span class="n">record_failure</span>
+
+    <span class="n">error</span> <span class="o">=</span> <span class="n">sanitized_tail</span><span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">record_failure</span><span class="p">(</span>
+        <span class="n">error</span><span class="p">,</span> <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;submit&quot;</span><span class="p">,</span> <span class="n">execution</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">entry</span><span class="p">),</span> <span class="n">server</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
+        <span class="n">resource</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_resource&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">fail_attempt</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;submit&quot;</span><span class="p">)</span>
+
+
 <div class="viewcode-block" id="make_executable">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.submit_node.make_executable">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">make_executable</span><span class="p">(</span><span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="c1"># Get current permissions</span>
-    <span class="n">current_permissions</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="o">.</span><span class="n">st_mode</span>
-
-    <span class="c1"># Add executable bit for user, group and others</span>
-    <span class="n">executable_mode</span> <span class="o">=</span> <span class="n">current_permissions</span> <span class="o">|</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_IXUSR</span> <span class="o">|</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_IXGRP</span> <span class="o">|</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_IXOTH</span>
-
-    <span class="c1"># Apply new permissions</span>
-    <span class="n">os</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">executable_mode</span><span class="p">)</span></div>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_executable</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">st_mode</span> <span class="o">|</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_IXUSR</span> <span class="o">|</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_IXGRP</span> <span class="o">|</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_IXOTH</span><span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="submit_node">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.submit_node.submit_node">[docs]</a>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">submit_node</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Submit a node to the SLURM queue&quot;&quot;&quot;</span>
-    <span class="n">task_id</span> <span class="o">=</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">submit_node</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.slurm_submission_intents</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">begin_intent</span><span class="p">,</span> <span class="n">forget_intent</span><span class="p">,</span> <span class="n">process_identity</span><span class="p">,</span> <span class="n">update_intent</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">process_is_in_docker</span><span class="p">():</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="s2">&quot;Slurm submission must be performed by the host Runner&quot;</span>
+        <span class="k">await</span> <span class="n">_persist_submission_failure</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
+    <span class="n">submitted</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">submission_id</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Submitting task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> to SLURM queue&quot;</span><span class="p">)</span>
-        <span class="c1"># Implement SLURM submission logic here</span>
-        <span class="n">base_path</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">project_root</span>
-
-        <span class="n">python_path</span> <span class="o">=</span> <span class="s2">&quot;:&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">python_paths</span><span class="p">)</span>
-        <span class="n">work_dir</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span> <span class="o">/</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">name</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-        <span class="n">job_name</span> <span class="o">=</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> workdir </span><span class="si">{</span><span class="n">work_dir</span><span class="si">}</span><span class="s2"> python path </span><span class="si">{</span><span class="n">python_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="c1"># write a slurm script that starts a python script &quot;run_node.py&quot; with the node id as an argument</span>
-
-        <span class="n">original_slurm_parameters</span> <span class="o">=</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">slurm_parameters</span>
-        <span class="k">if</span> <span class="n">original_slurm_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> has no slurm parameters -- failing&quot;</span><span class="p">)</span>
-            <span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
-            <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">)</span>
-            <span class="k">return</span> <span class="kc">False</span>
-        <span class="n">slurm_parameters</span> <span class="o">=</span> <span class="n">original_slurm_parameters</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">work_dir</span><span class="si">}</span><span class="s2">/%j.out&quot;</span>
-        <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">error</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">work_dir</span><span class="si">}</span><span class="s2">/%j.err&quot;</span>
-        <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">job_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">job_name</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">chdir</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">work_dir</span><span class="p">)</span>
-
-        <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;source ~/.bashrc&quot;</span><span class="p">)</span>
-        <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">environment_start</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;export PYTHONPATH=</span><span class="si">{</span><span class="n">python_path</span><span class="si">}</span><span class="s2">:$PYTHONPATH&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.execution_environment</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">task_project_root</span><span class="p">,</span>
+            <span class="n">task_resource_config</span><span class="p">,</span>
+            <span class="n">task_environment</span><span class="p">,</span>
+            <span class="n">task_launch_command</span><span class="p">,</span>
         <span class="p">)</span>
 
-        <span class="n">sync_data_start</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;# 1. Define the rsync function</span>
-<span class="s2">        sync_data() {</span>
-<span class="s2">            echo &quot;=== Time limit approaching! Starting rsync at $(date) ===&quot;</span>
-
-<span class="s2">            # Run rsync safely </span>
-<span class="s2">        &quot;&quot;&quot;</span>
-        <span class="n">sync_data_end</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">            echo &quot;=== Rsync completed at $(date) ===&quot;</span>
-<span class="s2">            exit 0</span>
-<span class="s2">        }        </span>
-<span class="s2">        &quot;&quot;&quot;</span>
-
-        <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">resource_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">program_config</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">resource_config</span><span class="o">.</span><span class="n">get_program</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">program_config</span> <span class="o">=</span> <span class="p">{}</span>
-
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> program_config </span><span class="si">{</span><span class="n">program_config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">program_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;use_tmp&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
-            <span class="n">tmp_dir</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">resource_config</span><span class="o">.</span><span class="n">tmp_dir</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">tmp_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">tmp_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> tmp_dir </span><span class="si">{</span><span class="n">tmp_dir</span><span class="si">}</span><span class="s2"> does not exist or is not a directory -- failing&quot;</span><span class="p">)</span>
-                <span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
-                <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">)</span>
-                <span class="k">return</span> <span class="kc">False</span>
-
-            <span class="n">full_sync_data</span> <span class="o">=</span> <span class="n">sync_data_start</span> <span class="o">+</span> <span class="sa">f</span><span class="s1">&#39;cp -a </span><span class="si">{</span><span class="n">tmp_dir</span><span class="si">}</span><span class="s1">/. </span><span class="si">{</span><span class="n">work_dir</span><span class="si">}</span><span class="s1">/recovery</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">sync_data_end</span>
-
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> full_sync_data </span><span class="si">{</span><span class="n">full_sync_data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">full_sync_data</span><span class="p">)</span>
-            <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;trap &#39;sync_data&#39; SIGUSR1&quot;</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">docker</span><span class="p">:</span>
-            <span class="n">external_work_dir</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">external_workdir</span>
-                <span class="o">/</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">name</span>
-                <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">task_project_root</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">project_root</span><span class="p">)</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">task_resource_config</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span> <span class="k">if</span> <span class="n">resource</span> <span class="o">==</span> <span class="s2">&quot;self&quot;</span> <span class="k">else</span> <span class="n">resource</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">program</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_program</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="n">resource</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">program</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">in_docker</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">program</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;docker_image&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Docker image for </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> not found (resource=</span><span class="si">{</span><span class="n">resource</span><span class="si">}</span><span class="s2">)&quot;</span>
             <span class="p">)</span>
-
-            <span class="n">watcher_file</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">project_root</span>
-                <span class="o">/</span> <span class="s2">&quot;src&quot;</span>
-                <span class="o">/</span> <span class="s2">&quot;simstack&quot;</span>
-                <span class="o">/</span> <span class="s2">&quot;util&quot;</span>
-                <span class="o">/</span> <span class="s2">&quot;queue_watcher.py&quot;</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="s2">&quot;use_tmp&quot;</span> <span class="ow">in</span> <span class="n">program</span>
+            <span class="ow">and</span> <span class="s2">&quot;use_temp&quot;</span> <span class="ow">in</span> <span class="n">program</span>
+            <span class="ow">and</span> <span class="nb">bool</span><span class="p">(</span><span class="n">program</span><span class="p">[</span><span class="s2">&quot;use_tmp&quot;</span><span class="p">])</span> <span class="o">!=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">program</span><span class="p">[</span><span class="s2">&quot;use_temp&quot;</span><span class="p">])</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Conflicting use_tmp and use_temp configuration&quot;</span><span class="p">)</span>
+        <span class="n">use_tmp</span> <span class="o">=</span> <span class="n">program</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;use_tmp&quot;</span><span class="p">,</span> <span class="n">program</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;use_temp&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">slurm_parameters</span>
+        <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> has no Slurm parameters&quot;</span><span class="p">)</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SBATCH_ARRAY_INX&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Slurm job arrays are unsupported; use explicit child tasks or MassRunner&quot;</span><span class="p">)</span>
+        <span class="n">workdir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">entry</span><span class="o">.</span><span class="n">name</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="n">workdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">checkpoint_args</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">use_tmp</span><span class="p">:</span>
+            <span class="n">scratch</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">tmp_dir</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">scratch</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scratch directory does not exist: </span><span class="si">{</span><span class="n">scratch</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">destination</span> <span class="o">=</span> <span class="n">workdir</span> <span class="o">/</span> <span class="s2">&quot;recovery&quot;</span>
+            <span class="n">checkpoint_script</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="s2">&quot;static&quot;</span> <span class="o">/</span> <span class="s2">&quot;slurm_checkpoint.sh&quot;</span>
             <span class="p">)</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">watcher_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-                <span class="n">watcher_content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-            <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;cat &gt; watcher.py &lt;&lt;&#39;EOF&#39;</span><span class="se">\n</span><span class="si">{</span><span class="n">watcher_content</span><span class="si">}</span><span class="se">\n</span><span class="s2">EOF&quot;</span>
-            <span class="p">)</span>
-            <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;python watcher.py &amp;&quot;</span><span class="p">)</span>
-            <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;WATCHER_PID=$!&quot;</span><span class="p">)</span>
-
-            <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;set -euo pipefail&quot;</span><span class="p">)</span>
-            <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="s2">&quot;cleanup() { &quot;</span>
-                <span class="s1">&#39;if [ -n &quot;$</span><span class="si">{WATCHER_PID:-}</span><span class="s1">&quot; ] &amp;&amp; kill -0 &quot;$WATCHER_PID&quot; 2&gt;/dev/null; then &#39;</span>
-                <span class="s1">&#39;  kill &quot;$WATCHER_PID&quot; 2&gt;/dev/null || true; &#39;</span>
-                <span class="s2">&quot;  sleep 2; &quot;</span>
-                <span class="s1">&#39;  kill -9 &quot;$WATCHER_PID&quot; 2&gt;/dev/null || true; &#39;</span>
-                <span class="s2">&quot;fi; &quot;</span>
-                <span class="s2">&quot;}&quot;</span>
-            <span class="p">)</span>
-
-            <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;trap cleanup EXIT INT TERM&quot;</span><span class="p">)</span>
-            <span class="n">toml_path</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;simstack_docker.toml&quot;</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">toml_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> has no simstack.toml file -- failing&quot;</span>
-                <span class="p">)</span>
-                <span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
-                <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">)</span>
-                <span class="k">return</span> <span class="kc">False</span>
-
-            <span class="n">docker_start</span> <span class="o">=</span> <span class="s2">&quot;udocker run &quot;</span>
-            <span class="n">docker_start</span> <span class="o">+=</span> <span class="s2">&quot;-e GIT_TOKEN=XXX&quot;</span>
-            <span class="n">docker_start</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;-e NODE_ID=</span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> &quot;</span>
-            <span class="n">docker_start</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;-e RESOURCE=</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span>
-            <span class="n">docker_start</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;-v </span><span class="si">{</span><span class="n">external_work_dir</span><span class="si">}</span><span class="s2">:/home/appuser/simstack &quot;</span>
-            <span class="n">docker_start</span> <span class="o">+=</span> <span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;-v </span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">external_source_dir</span><span class="si">}</span><span class="s2">:/app/simstack-model &quot;</span>
-            <span class="p">)</span>
-            <span class="n">docker_start</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;-v </span><span class="si">{</span><span class="n">toml_path</span><span class="si">}</span><span class="s2">:/app/simstack-model/simstack.toml &quot;</span>
-            <span class="n">docker_start</span> <span class="o">+=</span> <span class="s2">&quot; simstack-runner&quot;</span>
-            <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">docker_start</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;uv run --directory </span><span class="si">{</span><span class="n">base_path</span><span class="si">}</span><span class="s2"> run_node --node-id </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> --resource </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span><span class="si">}</span><span class="s2"> &amp;&quot;</span>
-            <span class="p">)</span>
-            <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;wait&quot;</span><span class="p">)</span>
-        <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">signal</span> <span class="o">=</span> <span class="s2">&quot;B:SIGUSR1@60&quot;</span>
-
-
-        <span class="n">slurm_script</span> <span class="o">=</span> <span class="n">slurm_parameters</span><span class="o">.</span><span class="n">to_sbatch_header</span><span class="p">()</span>
-
-        <span class="c1"># write the script to a file in the work_dir</span>
-        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">work_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> workdir </span><span class="si">{</span><span class="n">work_dir</span><span class="si">}</span><span class="s2"> python path </span><span class="si">{</span><span class="n">python_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">script_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">work_dir</span><span class="p">,</span> <span class="s2">&quot;slurm_script.sh&quot;</span><span class="p">)</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">script_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">slurm_script</span><span class="p">)</span>
-
-        <span class="n">make_executable</span><span class="p">(</span><span class="n">script_path</span><span class="p">)</span>
-        <span class="c1"># submit the script to the slurm queue</span>
-        <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">docker</span><span class="p">:</span>
-            <span class="n">job_id</span> <span class="o">=</span> <span class="s2">&quot;slurm_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-            <span class="n">queue_dir</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span> <span class="o">/</span> <span class="s2">&quot;queue&quot;</span>
-            <span class="n">result</span> <span class="o">=</span> <span class="n">submit_to_watchdog</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;/usr/bin/sbatch </span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">external_work_dir</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;slurm_script.sh&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                <span class="n">job_id</span><span class="p">,</span>
-                <span class="n">queue_dir</span><span class="p">,</span>
-            <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;/usr/bin/sbatch </span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">work_dir</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;slurm_script.sh&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">checkpoint_args</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="s2">&quot;bash&quot;</span><span class="p">,</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">checkpoint_script</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">scratch</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">destination</span><span class="p">),</span>
+            <span class="p">]</span>
+            <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">signal</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">params</span><span class="o">.</span><span class="n">signal</span> <span class="o">=</span> <span class="s2">&quot;B:SIGUSR1@60&quot;</span>
+        <span class="n">paths</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">base</span><span class="p">),</span> <span class="o">*</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">python_paths</span><span class="p">)]))</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">workdir</span> <span class="o">/</span> <span class="s2">&quot;%j.out&quot;</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">error</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">workdir</span> <span class="o">/</span> <span class="s2">&quot;%j.err&quot;</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">chdir</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;source ~/.bashrc&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">environment_start</span><span class="p">:</span>
+            <span class="n">params</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">environment_start</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">&quot;export PYTHONPATH=&quot;</span>
+            <span class="o">+</span> <span class="n">shlex</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">pathsep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">paths</span><span class="p">))</span>
+            <span class="o">+</span> <span class="s2">&quot;:$</span><span class="si">{PYTHONPATH:-}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="n">command</span> <span class="o">=</span> <span class="n">task_launch_command</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">base</span><span class="p">)</span>
+        <span class="n">script</span> <span class="o">=</span> <span class="n">workdir</span> <span class="o">/</span> <span class="s2">&quot;slurm_script.sh&quot;</span>
+        <span class="n">intent</span> <span class="o">=</span> <span class="n">begin_intent</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">entry</span><span class="p">)</span>
+        <span class="n">submission</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">slurm</span><span class="o">.</span><span class="n">scheduler_submission</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">intent</span><span class="p">[</span><span class="s2">&quot;submission_id&quot;</span><span class="p">])</span>
+        <span class="n">submission_id</span> <span class="o">=</span> <span class="n">submission</span><span class="p">[</span><span class="s2">&quot;submission_id&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">submission_id</span> <span class="o">!=</span> <span class="n">intent</span><span class="p">[</span><span class="s2">&quot;submission_id&quot;</span><span class="p">]:</span>
+            <span class="c1"># Another owner already advanced this launch. Its actual job is</span>
+            <span class="c1"># discovered through the scheduler, never by a second sbatch.</span>
+            <span class="n">update_intent</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">intent</span><span class="p">,</span> <span class="n">submission_id</span><span class="o">=</span><span class="n">submission_id</span><span class="p">,</span> <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;submitting&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">intent</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;accepted&quot;</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">slurm</span><span class="o">.</span><span class="n">scheduler_accepted</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">entry</span><span class="p">),</span>
+                <span class="n">submission_id</span><span class="p">,</span> <span class="n">intent</span><span class="p">[</span><span class="s2">&quot;job_id&quot;</span><span class="p">])</span>
+            <span class="n">forget_intent</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">intent</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">intent</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;submitting&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">job_name</span> <span class="o">=</span> <span class="s2">&quot;ss-&quot;</span> <span class="o">+</span> <span class="n">submission_id</span>
+        <span class="n">environment</span> <span class="o">=</span> <span class="n">task_environment</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">server</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">)</span>
+        <span class="n">environment</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_SLURM_SUBMISSION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">submission_id</span>
+        <span class="n">environment</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_SLURM_SUBMISSION_TASK&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="n">launch_environment</span> <span class="o">=</span> <span class="n">workdir</span> <span class="o">/</span> <span class="p">(</span><span class="s2">&quot;slurm_environment_&quot;</span> <span class="o">+</span> <span class="n">submission_id</span> <span class="o">+</span> <span class="s2">&quot;.sh&quot;</span><span class="p">)</span>
+        <span class="n">_write_launch_environment</span><span class="p">(</span><span class="n">launch_environment</span><span class="p">,</span> <span class="n">environment</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;source &quot;</span> <span class="o">+</span> <span class="n">shlex</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">launch_environment</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot; || exit $?&quot;</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">startup_commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">&quot;exec &quot;</span> <span class="o">+</span> <span class="n">shlex</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="o">*</span><span class="n">checkpoint_args</span><span class="p">,</span> <span class="o">*</span><span class="n">command</span><span class="p">])</span>
+        <span class="p">)</span>
+        <span class="n">script</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">to_sbatch_header</span><span class="p">())</span>
+        <span class="n">make_executable</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+        <span class="c1"># Phase replay is safe while the local journal still says prepared:</span>
+        <span class="c1"># no external process has been created yet.</span>
+        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">slurm</span><span class="o">.</span><span class="n">scheduler_submission</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">submission_id</span><span class="p">,</span> <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;submitting&quot;</span><span class="p">)</span>
+        <span class="n">intent</span> <span class="o">=</span> <span class="n">update_intent</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">intent</span><span class="p">,</span> <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;submitting&quot;</span><span class="p">,</span>
+            <span class="n">process_id</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span> <span class="n">process_birth</span><span class="o">=</span><span class="n">process_identity</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()))</span>
+        <span class="n">submitted</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span>
+                <span class="c1"># Slurm gives environment options precedence over #SBATCH</span>
+                <span class="c1"># directives. The CLI must own our reconciliation identity.</span>
+                <span class="p">[</span><span class="s2">&quot;sbatch&quot;</span><span class="p">,</span> <span class="s2">&quot;--parsable&quot;</span><span class="p">,</span> <span class="s2">&quot;--job-name=&quot;</span> <span class="o">+</span> <span class="n">params</span><span class="o">.</span><span class="n">job_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">script</span><span class="p">)],</span>
+                <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
                 <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                <span class="n">timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>  <span class="c1"># Add timeout to prevent hanging</span>
+                <span class="n">env</span><span class="o">=</span><span class="n">environment</span><span class="p">,</span>
             <span class="p">)</span>
-
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;submitting job task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> returns: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">returncode</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="p">)</span>
-        <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="c1"># Extract job ID using a regex pattern</span>
-            <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;Submitted batch job (\d+)&quot;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
-                <span class="n">job_id</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> job successfully submitted with job_id: </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">&quot;</span>
-                <span class="p">)</span>
-                <span class="n">registry_entry</span><span class="o">.</span><span class="n">job_id</span> <span class="o">=</span> <span class="n">job_id</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> job submitted but could not extract job_id from output: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="si">}</span><span class="s2">&quot;</span>
-                <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;error submitting job for task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> return code: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">returncode</span><span class="si">}</span><span class="s2"> stdout: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">submitted</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># The operating system did not start sbatch.</span>
+            <span class="k">raise</span>
+        <span class="n">intent</span> <span class="o">=</span> <span class="n">update_intent</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">intent</span><span class="p">,</span> <span class="n">process_id</span><span class="o">=</span><span class="n">process</span><span class="o">.</span><span class="n">pid</span><span class="p">,</span>
+            <span class="n">process_birth</span><span class="o">=</span><span class="n">process_identity</span><span class="p">(</span><span class="n">process</span><span class="o">.</span><span class="n">pid</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">:</span>
+            <span class="n">process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
+            <span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+            <span class="k">raise</span>
+        <span class="n">stdout</span> <span class="o">=</span> <span class="n">sanitized_tail</span><span class="p">(</span><span class="n">stdout</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">stderr</span> <span class="o">=</span> <span class="n">sanitized_tail</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">_persist_submission_failure</span><span class="p">(</span>
+                <span class="n">entry</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;sbatch failed with exit </span><span class="si">{</span><span class="n">process</span><span class="o">.</span><span class="n">returncode</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;submitting job for task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> stderr: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
-            <span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
-            <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">)</span>
+            <span class="n">forget_intent</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">intent</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">False</span>
-        <span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SLURM_QUEUED</span>
-        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">)</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;(\d+)(?:;[^\s]+)?&quot;</span><span class="p">,</span> <span class="n">stdout</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Slurm accepted submission </span><span class="si">%s</span><span class="s2"> but its job identity is indeterminate&quot;</span><span class="p">,</span>
+                <span class="n">submission_id</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="n">intent</span> <span class="o">=</span> <span class="n">update_intent</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">intent</span><span class="p">,</span> <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;accepted&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="o">=</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">slurm</span><span class="o">.</span><span class="n">scheduler_accepted</span><span class="p">(</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">entry</span><span class="p">),</span> <span class="n">submission_id</span><span class="p">,</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">forget_intent</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">intent</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">True</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;fatal error in submitting task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
-        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="n">sanitized_tail</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="k">if</span> <span class="n">submitted</span><span class="p">:</span>
+            <span class="c1"># Neither a timeout nor a lost API reply proves sbatch did not apply.</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Submission </span><span class="si">%s</span><span class="s2"> requires scheduler reconciliation: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">submission_id</span><span class="p">,</span>
+                <span class="n">error</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">await</span> <span class="n">_persist_submission_failure</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">submission_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">forget_intent</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">intent</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">False</span></div>
 
 </pre></div>
@@ -531,6 +539,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-10 13:23:18 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

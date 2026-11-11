@@ -1,4 +1,4 @@
-from typing import List, Union, Literal, Optional, Dict, Any
+from typing import List, Union, Literal, Optional, Dict, Any, ClassVar
 
 from simstack.models.document import EmbeddedModel, Field, Model, ObjectId
 
@@ -17,6 +17,7 @@ class AGChartSeriesBase(EmbeddedModel):
         default=True, description="Whether series is visible"
     )
     showInLegend: Optional[bool] = Field(default=True, description="Show in legend")
+    legendItemName: Optional[str] = Field(default=None, description="Legend name shared by grouped series")
     title: Optional[str] = Field(default=None, description="Series title")
     # Chart data
     data: List[Dict[str, Any]] = Field(default_factory=list, description="Chart data")
@@ -304,6 +305,8 @@ class AGChartFrameConfig(EmbeddedModel):
 @simstack_model
 class ChartArtifactModel(Model):
     """AG-Charts configuration model."""
+
+    __simstack_artifact_kind__: ClassVar[str] = "chart"
 
     parent_id: Optional[ObjectId] = None
 

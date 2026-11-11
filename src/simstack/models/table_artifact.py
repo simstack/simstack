@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, ClassVar
 
 from simstack.models.document import EmbeddedModel, Field, Model, ObjectId
 
@@ -60,6 +60,7 @@ class AGGridColumnDef(EmbeddedModel):
 
 @simstack_model
 class TableArtifactModel(Model):
+    __simstack_artifact_kind__: ClassVar[str] = "table"
     parent_id: Optional[ObjectId] = Field(default=None, description="ID of the node registry")
     columns_defs: List[AGGridColumnDef] = Field(
         default_factory=list, description="AG-Grid column definitions"

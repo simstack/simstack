@@ -38,6 +38,15 @@ jobs:
             exit 1
           fi
           echo "Tag ${{ github.ref_name }} is from main branch - proceeding with build"
+      - name: Build current package documentation
+        run: |
+          uv python install 3.12
+          uv sync --python 3.12 --all-extras --dev --frozen
+          uv run --no-sync python -c 'from importlib.metadata import version; print("SETUPTOOLS_SCM_PRETEND_VERSION_FOR_SIMSTACK=" + version("simstack"))' >> "$GITHUB_ENV"
+          uv run sphinx-apidoc -o doc/source/simstack/modules src/simstack -f
+          rm -rf src/simstack/static/docs
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          uv run sphinx-build -b html -d "$RUNNER_TEMP/simstack-docs-doctrees" doc/source src/simstack/static/docs
       - name: Build
         id: build
         run: |

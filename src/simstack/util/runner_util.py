@@ -87,7 +87,7 @@ async def graceful_shutdown(resource_name):
         hostname=hostname,
         message=f"Graceful shutdown of {pid} by {current_user}",
     )
-    await context.db.save(runner_event)
+    await context.server.resource.event(runner_event)
 
     # Cancel all remaining tasks
     for task in asyncio.all_tasks():
@@ -134,7 +134,7 @@ async def restart(resource_name):
         event=RunnerEventEnum.RESTART,
         message=message,
     )
-    await context.db.save(runner_event)
+    await context.server.resource.event(runner_event)
     # Exit current process
     logger.info(f"Restarted node runner for resource: {resource_name}")
     # await graceful_shutdown(resource_name)
@@ -156,7 +156,6 @@ async def schedule_restart(resource_name, restart_minutes):
         #             runner_entry = RunnerEvent(resource=resource_name, runner_type=RunnerType.RESOURCE_RUNNER,
         #                                        event=RunnerEventEnum.CRONTAB_GONE,
         #                                        message="Crontab entry for resource runner was not found")
-        #             await context.db.save(runner_entry)
         # except Exception as e:
         #     logger.error("Something went wrong for crontab")
         await restart(resource_name)

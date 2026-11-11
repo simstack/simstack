@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -272,32 +277,558 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for simstack.core.run_docker</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeRegistry</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.definitions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskStatus</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">platform</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">locale</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">platform</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.definitions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskStatus</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.run_node_protocol</span><span class="w"> </span><span class="kn">import</span> <span class="n">RESULT_PREFIX</span><span class="p">,</span> <span class="n">parse_run_node_result</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeRegistry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.output_permissions</span><span class="w"> </span><span class="kn">import</span> <span class="n">docker_harmonize_command</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.sanitized_output</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">sanitized_command</span><span class="p">,</span>
+    <span class="n">sanitized_tail</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;DockerRunner&quot;</span><span class="p">)</span>
 
-<div class="viewcode-block" id="run_docker">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.run_docker">[docs]</a>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_docker</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-    <span class="n">resource</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span>
-    <span class="n">parameters</span> <span class="o">=</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">parameters</span>
+<span class="n">_DOCKER_HUB_LIBRARY_PREFIX</span> <span class="o">=</span> <span class="s2">&quot;docker.io/library/&quot;</span>
+<span class="n">_pull_locks</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Lock</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="c1"># In-container alias for the host resource workdir (not scratch). Must already</span>
+<span class="c1"># exist in typical images. Nested /tmp/simstack is hidden by Apptainer&#39;s default</span>
+<span class="c1"># host-/tmp bind; do not overlay container /tmp.</span>
+<span class="n">CONTAINER_WORKDIR</span> <span class="o">=</span> <span class="s2">&quot;/mnt&quot;</span>
+<span class="c1"># Images built before CONTAINER_WORKDIR moved still initialize --in-docker at</span>
+<span class="c1"># /tmp/simstack. Bind the host workdir there too; --no-mount tmp keeps the</span>
+<span class="c1"># image mkdir visible.</span>
+<span class="n">LEGACY_CONTAINER_WORKDIR</span> <span class="o">=</span> <span class="s2">&quot;/tmp/simstack&quot;</span>
+<span class="n">_DOCKER_CIDFILE_NAME</span> <span class="o">=</span> <span class="s2">&quot;.docker_cid&quot;</span>
+<span class="n">_SIGKILL_RC</span> <span class="o">=</span> <span class="mi">137</span>
+<span class="n">_SIGSEGV_RC</span> <span class="o">=</span> <span class="mi">139</span>
+<span class="n">_SLURM_MEMORY_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^(\d+(?:\.\d+)?)\s*([MGmg])B?$&quot;</span><span class="p">)</span>
 
 
-    <span class="n">program_config</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">resource_config</span><span class="o">.</span><span class="n">get_program</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-    <span class="n">image</span><span class="o">=</span> <span class="n">program_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;docker_image&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Docker image not found for task_id=</span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
-        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">)</span>
+<div class="viewcode-block" id="DockerRunResult">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.DockerRunResult">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DockerRunResult</span><span class="p">:</span>
+    <span class="n">success</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">return_kind</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">error</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="docker_execution_name">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.docker_execution_name">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">docker_execution_name</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">execution</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Docker names identify one account&#39;s original external launch, not its PID.&quot;&quot;&quot;</span>
+    <span class="n">account</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">bootstrap_data</span><span class="p">[</span><span class="s2">&quot;account_id&quot;</span><span class="p">]</span>
+    <span class="n">identity</span> <span class="o">=</span> <span class="p">[</span><span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">server_url</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">),</span> <span class="n">account</span><span class="p">,</span> <span class="n">execution</span><span class="p">]</span>
+    <span class="k">return</span> <span class="s2">&quot;simstack-&quot;</span> <span class="o">+</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">identity</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="inspect_docker_execution">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.inspect_docker_execution">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">inspect_docker_execution</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return exact execution evidence; daemon/query failure is never absence.&quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;docker&quot;</span><span class="p">,</span> <span class="s2">&quot;inspect&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">],</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;No such object:&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">stderr</span> <span class="ow">or</span> <span class="s2">&quot;No such container:&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Docker execution observation is unavailable&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">value</span><span class="p">,</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Status&quot;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span>
+                <span class="s2">&quot;created&quot;</span><span class="p">,</span> <span class="s2">&quot;running&quot;</span><span class="p">,</span> <span class="s2">&quot;paused&quot;</span><span class="p">,</span> <span class="s2">&quot;restarting&quot;</span><span class="p">,</span> <span class="s2">&quot;removing&quot;</span><span class="p">,</span> <span class="s2">&quot;exited&quot;</span><span class="p">,</span> <span class="s2">&quot;dead&quot;</span><span class="p">}</span>
+                <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ExitCode&quot;</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="s2">&quot;[0-9a-f]</span><span class="si">{64}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;Id&quot;</span><span class="p">])):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">&quot;Config&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Labels&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;simstack.execution&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Docker returned malformed execution evidence&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">if</span> <span class="n">label</span> <span class="o">!=</span> <span class="n">name</span> <span class="ow">or</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">name</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Docker container does not belong to this execution&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">value</span></div>
+
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_persist_post_launch_failure</span><span class="p">(</span>
+    <span class="n">launch_entry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">error</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">diagnostics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">returncode</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">return_kind</span><span class="o">=</span><span class="s2">&quot;exception&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Report the original launch; a child error or competing start wins on Server.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.pending_execution_failures</span><span class="w"> </span><span class="kn">import</span> <span class="n">record_failure</span>
+    <span class="n">termination</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;exit_code&quot;</span><span class="p">:</span> <span class="n">returncode</span> <span class="k">if</span> <span class="n">returncode</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">returncode</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;signal&quot;</span><span class="p">:</span> <span class="o">-</span><span class="n">returncode</span> <span class="k">if</span> <span class="n">returncode</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">returncode</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">record_failure</span><span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;container&quot;</span><span class="p">,</span> <span class="n">execution</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">),</span>
+        <span class="n">server</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="s2">&quot;_execution_resource&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="n">return_kind</span><span class="o">=</span><span class="n">return_kind</span><span class="p">,</span> <span class="o">**</span><span class="n">termination</span><span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.server_api.http_transport</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnerAPIError</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">fail_attempt</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;container&quot;</span><span class="p">,</span> <span class="n">diagnostics</span><span class="o">=</span><span class="n">diagnostics</span><span class="p">,</span>
+                <span class="n">return_kind</span><span class="o">=</span><span class="n">return_kind</span><span class="p">,</span> <span class="o">**</span><span class="n">termination</span><span class="p">)</span>
+            <span class="k">break</span>
+        <span class="k">except</span> <span class="n">RunnerAPIError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="s2">&quot;_execution_owner&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">exc</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">exc</span><span class="o">.</span><span class="n">status_code</span> <span class="o">&lt;</span> <span class="mi">500</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Container failure retained for task </span><span class="si">%s</span><span class="s2"> reconciliation&quot;</span><span class="p">,</span> <span class="n">launch_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="k">break</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Local execution owner awaits its stopped-container outcome&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Container failure retained for task </span><span class="si">%s</span><span class="s2"> reconciliation&quot;</span><span class="p">,</span> <span class="n">launch_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">break</span>
+
+
+<div class="viewcode-block" id="launcher_owner_ids">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.launcher_owner_ids">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">launcher_owner_ids</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Uid and gid of the process that launches the container.&quot;&quot;&quot;</span>
+    <span class="n">getuid</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">os</span><span class="p">,</span> <span class="s2">&quot;getuid&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">getgid</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">os</span><span class="p">,</span> <span class="s2">&quot;getgid&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">getuid</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">getgid</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;launcher uid and gid are required to harmonize task output&quot;</span><span class="p">)</span>
+    <span class="n">uid</span> <span class="o">=</span> <span class="n">getuid</span><span class="p">()</span>
+    <span class="n">gid</span> <span class="o">=</span> <span class="n">getgid</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">uid</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">gid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;launcher uid and gid are required to harmonize task output&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">uid</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">gid</span><span class="p">)</span></div>
+
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_harmonize_docker_task_dir</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">task_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">uid</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">gid</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">docker_harmonize_command</span><span class="p">(</span>
+        <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">task_dir</span><span class="o">=</span><span class="n">task_dir</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="n">uid</span><span class="p">,</span> <span class="n">gid</span><span class="o">=</span><span class="n">gid</span>
+    <span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="s2">&quot;harmonizing task directory </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2">:</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">task_dir</span><span class="p">,</span>
+        <span class="n">uid</span><span class="p">,</span>
+        <span class="n">gid</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">process</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_subprocess_exec</span><span class="p">(</span>
+        <span class="o">*</span><span class="n">command</span><span class="p">,</span>
+        <span class="n">stdout</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+        <span class="n">stderr</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">stdout_b</span><span class="p">,</span> <span class="n">stderr_b</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="p">(</span><span class="n">stderr_b</span> <span class="ow">or</span> <span class="n">stdout_b</span> <span class="ow">or</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;harmonize task directory </span><span class="si">{</span><span class="n">task_dir</span><span class="si">}</span><span class="s2"> failed rc=</span><span class="si">{</span><span class="n">process</span><span class="o">.</span><span class="n">returncode</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">detail</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_positive_int</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">value</span> <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="mi">1</span> <span class="k">else</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_slurm_task_count</span><span class="p">(</span><span class="n">slurm</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">tasks</span> <span class="o">=</span> <span class="n">_positive_int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">slurm</span><span class="p">,</span> <span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">tasks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">tasks</span>
+    <span class="n">tasks_per_node</span> <span class="o">=</span> <span class="n">_positive_int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">slurm</span><span class="p">,</span> <span class="s2">&quot;tasks_per_node&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">tasks_per_node</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">tasks_per_node</span>
+    <span class="k">return</span> <span class="mi">1</span>
+
+
+<div class="viewcode-block" id="docker_cpu_limit">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.docker_cpu_limit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">docker_cpu_limit</span><span class="p">(</span><span class="n">slurm</span><span class="p">:</span> <span class="nb">object</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Docker/Apptainer CPU count: cpus_per_task * tasks (or tasks_per_node).&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">slurm</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">cpus_per_task</span> <span class="o">=</span> <span class="n">_positive_int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">slurm</span><span class="p">,</span> <span class="s2">&quot;cpus_per_task&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="n">tasks</span> <span class="o">=</span> <span class="n">_positive_int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">slurm</span><span class="p">,</span> <span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="n">tasks_per_node</span> <span class="o">=</span> <span class="n">_positive_int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">slurm</span><span class="p">,</span> <span class="s2">&quot;tasks_per_node&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">cpus_per_task</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">tasks</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">tasks_per_node</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">cpus_per_task</span> <span class="ow">or</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">_slurm_task_count</span><span class="p">(</span><span class="n">slurm</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_slurm_memory</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">_SLURM_MEMORY_PATTERN</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)),</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_format_container_memory</span><span class="p">(</span><span class="n">amount</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">uppercase</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">formatted_amount</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">amount</span><span class="p">))</span> <span class="k">if</span> <span class="n">amount</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span>
+    <span class="n">formatted_unit</span> <span class="o">=</span> <span class="n">unit</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">if</span> <span class="n">uppercase</span> <span class="k">else</span> <span class="n">unit</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">formatted_amount</span><span class="si">}{</span><span class="n">formatted_unit</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<div class="viewcode-block" id="docker_memory_limit">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.docker_memory_limit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">docker_memory_limit</span><span class="p">(</span><span class="n">slurm</span><span class="p">:</span> <span class="nb">object</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">uppercase</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Container memory from Slurm ``mem``, or ``mem_per_cpu`` times CPU count.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">slurm</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">mem</span> <span class="o">=</span> <span class="n">_parse_slurm_memory</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">slurm</span><span class="p">,</span> <span class="s2">&quot;mem&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">mem</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">amount</span><span class="p">,</span> <span class="n">unit</span> <span class="o">=</span> <span class="n">mem</span>
+        <span class="k">return</span> <span class="n">_format_container_memory</span><span class="p">(</span><span class="n">amount</span><span class="p">,</span> <span class="n">unit</span><span class="p">,</span> <span class="n">uppercase</span><span class="o">=</span><span class="n">uppercase</span><span class="p">)</span>
+
+    <span class="n">mem_per_cpu</span> <span class="o">=</span> <span class="n">_parse_slurm_memory</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">slurm</span><span class="p">,</span> <span class="s2">&quot;mem_per_cpu&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">mem_per_cpu</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">cpu_count</span> <span class="o">=</span> <span class="n">docker_cpu_limit</span><span class="p">(</span><span class="n">slurm</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">1</span>
+    <span class="n">amount</span><span class="p">,</span> <span class="n">unit</span> <span class="o">=</span> <span class="n">mem_per_cpu</span>
+    <span class="k">return</span> <span class="n">_format_container_memory</span><span class="p">(</span><span class="n">amount</span> <span class="o">*</span> <span class="n">cpu_count</span><span class="p">,</span> <span class="n">unit</span><span class="p">,</span> <span class="n">uppercase</span><span class="o">=</span><span class="n">uppercase</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="container_resource_args">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.container_resource_args">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">container_resource_args</span><span class="p">(</span><span class="n">docker_cmd</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">slurm</span><span class="p">:</span> <span class="nb">object</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Runtime flags that pin CPU and memory for docker.</span>
+
+<span class="sd">    Apptainer ``--cpus`` / ``--memory`` need cgroups v2 unified mode, which HPC</span>
+<span class="sd">    nodes (Justus) do not provide. Slurm already enforces the job&#39;s CPU and memory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">docker_cmd</span> <span class="o">==</span> <span class="s2">&quot;apptainer&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">args</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">cpu_limit</span> <span class="o">=</span> <span class="n">docker_cpu_limit</span><span class="p">(</span><span class="n">slurm</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cpu_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;--cpus&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">cpu_limit</span><span class="p">)])</span>
+
+    <span class="n">memory_limit</span> <span class="o">=</span> <span class="n">docker_memory_limit</span><span class="p">(</span><span class="n">slurm</span><span class="p">,</span> <span class="n">uppercase</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">memory_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;--memory&quot;</span><span class="p">,</span> <span class="n">memory_limit</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">args</span></div>
+
+
+
+<div class="viewcode-block" id="docker_cidfile_path">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.docker_cidfile_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">docker_cidfile_path</span><span class="p">(</span><span class="n">task_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">task_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">_DOCKER_CIDFILE_NAME</span></div>
+
+
+
+<div class="viewcode-block" id="prepare_docker_cidfile">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.prepare_docker_cidfile">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">prepare_docker_cidfile</span><span class="p">(</span><span class="n">task_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a cidfile path Docker can create. Docker errors if the file already exists.&quot;&quot;&quot;</span>
+    <span class="n">cidfile</span> <span class="o">=</span> <span class="n">docker_cidfile_path</span><span class="p">(</span><span class="n">task_dir</span><span class="p">)</span>
+    <span class="n">cidfile</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cidfile</span></div>
+
+
+
+<div class="viewcode-block" id="read_container_id">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.read_container_id">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_container_id</span><span class="p">(</span><span class="n">cidfile</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">container_id</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">cidfile</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">container_id</span> <span class="ow">or</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="inspect_docker_oomkilled">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.inspect_docker_oomkilled">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">inspect_docker_oomkilled</span><span class="p">(</span><span class="n">container_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return Docker ``State.OOMKilled``, or None if inspect fails.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="p">[</span><span class="s2">&quot;docker&quot;</span><span class="p">,</span> <span class="s2">&quot;inspect&quot;</span><span class="p">,</span> <span class="s2">&quot;-f&quot;</span><span class="p">,</span> <span class="s2">&quot;{{.State.OOMKilled}}&quot;</span><span class="p">,</span> <span class="n">container_id</span><span class="p">],</span>
+            <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;false&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="format_container_failure_error">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.format_container_failure_error">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">format_container_failure_error</span><span class="p">(</span>
+    <span class="n">returncode</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">oom_killed</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">memory_limit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">docker_cmd</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;docker&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Human-readable task error for a dead docker/apptainer container.&quot;&quot;&quot;</span>
+    <span class="n">rc</span> <span class="o">=</span> <span class="s2">&quot;unknown&quot;</span> <span class="k">if</span> <span class="n">returncode</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">returncode</span>
+    <span class="n">oom_suffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">oom_killed</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">oom_suffix</span> <span class="o">=</span> <span class="s2">&quot;, OOMKilled=true&quot;</span>
+    <span class="k">elif</span> <span class="n">oom_killed</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">oom_suffix</span> <span class="o">=</span> <span class="s2">&quot;, OOMKilled=false&quot;</span>
+
+    <span class="k">if</span> <span class="n">memory_limit</span><span class="p">:</span>
+        <span class="n">mem_hint</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">docker_cmd</span><span class="si">}</span><span class="s2"> --memory was </span><span class="si">{</span><span class="n">memory_limit</span><span class="si">}</span><span class="s2">.&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mem_hint</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">docker_cmd</span><span class="si">}</span><span class="s2"> --memory was not set (Slurm mem/mem_per_cpu unset). &quot;</span>
+            <span class="s2">&quot;Increase mem or mem_per_cpu on the job.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">oom_killed</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Container killed (exit </span><span class="si">{</span><span class="n">rc</span><span class="si">}{</span><span class="n">oom_suffix</span><span class="si">}</span><span class="s2">). Likely out of memory. </span><span class="si">{</span><span class="n">mem_hint</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">returncode</span> <span class="ow">in</span> <span class="p">(</span><span class="n">_SIGKILL_RC</span><span class="p">,</span> <span class="n">_SIGSEGV_RC</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Container killed (exit </span><span class="si">{</span><span class="n">rc</span><span class="si">}{</span><span class="n">oom_suffix</span><span class="si">}</span><span class="s2">). Likely OOM / SIGKILL. </span><span class="si">{</span><span class="n">mem_hint</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="n">extra</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">docker_cmd</span><span class="si">}</span><span class="s2"> --memory was </span><span class="si">{</span><span class="n">memory_limit</span><span class="si">}</span><span class="s2">.&quot;</span> <span class="k">if</span> <span class="n">memory_limit</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Container failed (exit </span><span class="si">{</span><span class="n">rc</span><span class="si">}{</span><span class="n">oom_suffix</span><span class="si">}</span><span class="s2">).</span><span class="si">{</span><span class="n">extra</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_container_oom_killed</span><span class="p">(</span>
+    <span class="n">docker_cmd</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">cidfile</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">docker_cmd</span> <span class="o">!=</span> <span class="s2">&quot;docker&quot;</span> <span class="ow">or</span> <span class="n">cidfile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">container_id</span> <span class="o">=</span> <span class="n">read_container_id</span><span class="p">(</span><span class="n">cidfile</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">container_id</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">inspect_docker_oomkilled</span><span class="p">(</span><span class="n">container_id</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_image_has_registry_host</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;True if the first path component looks like a registry (host:port or host.tld).&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;/&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">image</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">first</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="s2">&quot;:&quot;</span> <span class="ow">in</span> <span class="n">first</span> <span class="ow">or</span> <span class="s2">&quot;.&quot;</span> <span class="ow">in</span> <span class="n">first</span>
+
+
+<div class="viewcode-block" id="resolve_docker_pull_ref">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.resolve_docker_pull_ref">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_docker_pull_ref</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">docker_registry</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Registry ref to ``docker pull``, or None to skip (local / Hub library alias).&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">image</span> <span class="ow">or</span> <span class="n">image</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.sif&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">image</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;docker://&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="n">image</span>
+    <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">_DOCKER_HUB_LIBRARY_PREFIX</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">_DOCKER_HUB_LIBRARY_PREFIX</span><span class="p">)</span> <span class="p">:]</span>
+    <span class="k">elif</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;docker.io/&quot;</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="s2">&quot;docker.io/&quot;</span><span class="p">)</span> <span class="p">:]</span>
+
+    <span class="k">if</span> <span class="n">_image_has_registry_host</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">name</span>
+
+    <span class="k">if</span> <span class="n">docker_registry</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">docker_registry</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_pull_lock</span><span class="p">(</span><span class="n">pull_ref</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Lock</span><span class="p">:</span>
+    <span class="n">lock</span> <span class="o">=</span> <span class="n">_pull_locks</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pull_ref</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">lock</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">lock</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+        <span class="n">_pull_locks</span><span class="p">[</span><span class="n">pull_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">lock</span>
+    <span class="k">return</span> <span class="n">lock</span>
+
+
+<div class="viewcode-block" id="pull_docker_image">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.pull_docker_image">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">pull_docker_image</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">docker_registry</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pull ``image`` when a registry is known. Failure is logged; run still proceeds.&quot;&quot;&quot;</span>
+    <span class="n">safe_image</span> <span class="o">=</span> <span class="n">sanitized_tail</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
+    <span class="n">pull_ref</span> <span class="o">=</span> <span class="n">resolve_docker_pull_ref</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">docker_registry</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pull_ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="s2">&quot;Skipping docker pull for </span><span class="si">%s</span><span class="s2"> (no docker_registry / local tag)&quot;</span><span class="p">,</span> <span class="n">safe_image</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">safe_pull_ref</span> <span class="o">=</span> <span class="n">sanitized_tail</span><span class="p">(</span><span class="n">pull_ref</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">with</span> <span class="n">_pull_lock</span><span class="p">(</span><span class="n">pull_ref</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;docker pull </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">safe_pull_ref</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">process</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_subprocess_exec</span><span class="p">(</span>
+                <span class="s2">&quot;docker&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;pull&quot;</span><span class="p">,</span>
+                <span class="n">pull_ref</span><span class="p">,</span>
+                <span class="n">stdout</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                <span class="n">stderr</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">stdout_b</span><span class="p">,</span> <span class="n">stderr_b</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;docker pull </span><span class="si">%s</span><span class="s2"> failed to start: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">safe_pull_ref</span><span class="p">,</span>
+                <span class="n">sanitized_tail</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span> <span class="kc">None</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">stdout</span> <span class="o">=</span> <span class="n">sanitized_tail</span><span class="p">(</span><span class="n">stdout_b</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">stderr</span> <span class="o">=</span> <span class="n">sanitized_tail</span><span class="p">(</span><span class="n">stderr_b</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;docker pull </span><span class="si">%s</span><span class="s2"> failed rc=</span><span class="si">%s</span><span class="s2"> stderr=</span><span class="si">%s</span><span class="s2"> stdout=</span><span class="si">%s</span><span class="s2">; using local image if present&quot;</span><span class="p">,</span>
+                <span class="n">safe_pull_ref</span><span class="p">,</span>
+                <span class="n">process</span><span class="o">.</span><span class="n">returncode</span><span class="p">,</span>
+                <span class="n">stderr</span><span class="p">,</span>
+                <span class="n">stdout</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">stdout</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;docker pull </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">safe_pull_ref</span><span class="p">,</span> <span class="n">stdout</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">pull_ref</span> <span class="o">!=</span> <span class="n">image</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">tag_process</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_subprocess_exec</span><span class="p">(</span>
+                    <span class="s2">&quot;docker&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;tag&quot;</span><span class="p">,</span>
+                    <span class="n">pull_ref</span><span class="p">,</span>
+                    <span class="n">image</span><span class="p">,</span>
+                    <span class="n">stdout</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                    <span class="n">stderr</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;docker tag </span><span class="si">%s</span><span class="s2"> -&gt; </span><span class="si">%s</span><span class="s2"> failed to start: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">safe_pull_ref</span><span class="p">,</span>
+                    <span class="n">safe_image</span><span class="p">,</span>
+                    <span class="n">sanitized_tail</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span> <span class="kc">None</span><span class="p">),</span>
+                <span class="p">)</span>
+                <span class="k">return</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">tag_err</span> <span class="o">=</span> <span class="k">await</span> <span class="n">tag_process</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">tag_process</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;docker tag </span><span class="si">%s</span><span class="s2"> -&gt; </span><span class="si">%s</span><span class="s2"> failed rc=</span><span class="si">%s</span><span class="s2"> stderr=</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">safe_pull_ref</span><span class="p">,</span>
+                    <span class="n">safe_image</span><span class="p">,</span>
+                    <span class="n">tag_process</span><span class="o">.</span><span class="n">returncode</span><span class="p">,</span>
+                    <span class="n">sanitized_tail</span><span class="p">(</span><span class="n">tag_err</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;docker tag </span><span class="si">%s</span><span class="s2"> -&gt; </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">safe_pull_ref</span><span class="p">,</span> <span class="n">safe_image</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="host_project_file_mounts">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.host_project_file_mounts">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">host_project_file_mounts</span><span class="p">(</span><span class="n">project_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Host project files bind-mounted at ``/app`` inside the container.</span>
+
+<span class="sd">    Images do not COPY ``config.toml`` (it is host-specific). Nested docker</span>
+<span class="sd">    dispatch looks up ``docker_image`` from that file via ResourceConfig.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span>
+    <span class="n">mounts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;simstack.toml&quot;</span><span class="p">,</span> <span class="s2">&quot;config.toml&quot;</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">name</span>
+        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="n">mounts</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;/app/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Not mounting </span><span class="si">%s</span><span class="s2"> into container; file missing: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mounts</span></div>
+
+
+
+<div class="viewcode-block" id="ensure_host_task_workdir">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.ensure_host_task_workdir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ensure_host_task_workdir</span><span class="p">(</span><span class="n">workdir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="n">node_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">node_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create the task directory as the host user before Docker/Apptainer runs.</span>
+
+<span class="sd">    Containers default to root. If they mkdir ``{workdir}/{node_name}/{id}`` on a</span>
+<span class="sd">    bind-mounted volume, the node-type directory becomes root-owned mode 755 and</span>
+<span class="sd">    the runner user can no longer create later task dirs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">node_name</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span>
+    <span class="n">path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">path</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_reload_resource_config</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Re-read config.toml so docker_image assignments from git pull are visible.&quot;&quot;&quot;</span>
+    <span class="n">resource_config</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">resource_config</span>
+    <span class="k">if</span> <span class="n">resource_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">resource_config</span><span class="o">.</span><span class="n">reload</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Reloaded resource config from </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">resource_config</span><span class="o">.</span><span class="n">_config_path</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_docker_program_config</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">resource_config</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Look up ``[resource.program.&lt;node&gt;]`` after config.toml has been reloaded.</span>
+
+<span class="sd">    ``self`` means the resource on which this runner is currently executing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">resource_config</span> <span class="o">=</span> <span class="n">resource_config</span> <span class="k">if</span> <span class="n">resource_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">context</span><span class="o">.</span><span class="n">resource_config</span>
+    <span class="n">task_resource</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span>
+    <span class="n">lookup_resource</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span> <span class="k">if</span> <span class="n">task_resource</span> <span class="o">==</span> <span class="s2">&quot;self&quot;</span> <span class="k">else</span> <span class="n">task_resource</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">program_config</span> <span class="o">=</span> <span class="n">resource_config</span><span class="o">.</span><span class="n">get_program</span><span class="p">(</span>
+            <span class="n">registry_entry</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="n">lookup_resource</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">program_config</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">return</span> <span class="n">program_config</span><span class="p">,</span> <span class="n">lookup_resource</span>
+
+
+<div class="viewcode-block" id="run_docker_with_outcome">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.run_docker_with_outcome">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_docker_with_outcome</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DockerRunResult</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.execution_environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">task_project_root</span><span class="p">,</span> <span class="n">task_resource_config</span><span class="p">,</span> <span class="n">task_environment</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.launch_claims</span><span class="w"> </span><span class="kn">import</span> <span class="n">task_execution</span><span class="p">,</span> <span class="n">current_execution</span>
+    <span class="n">launch_entry</span> <span class="o">=</span> <span class="n">registry_entry</span>
+    <span class="n">local_owner</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="s2">&quot;_execution_owner&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="s2">&quot;_execution_local&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span>
+            <span class="ow">not</span> <span class="n">local_owner</span> <span class="ow">or</span> <span class="n">local_owner</span><span class="p">[</span><span class="s2">&quot;process_id&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A local container must be launched by its admitted physical owner&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">task_execution</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">):</span>
+        <span class="n">execution</span> <span class="o">=</span> <span class="n">current_execution</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">execution</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;A container launch requires its claim identity&quot;</span><span class="p">)</span>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="s2">&quot;_execution_start_id&quot;</span><span class="p">,</span> <span class="n">execution</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">])</span>
+    <span class="n">_reload_resource_config</span><span class="p">()</span>
+    <span class="n">resource_config</span> <span class="o">=</span> <span class="n">task_resource_config</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+    <span class="n">program_config</span><span class="p">,</span> <span class="n">lookup_resource</span> <span class="o">=</span> <span class="n">_docker_program_config</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">,</span> <span class="n">resource_config</span><span class="p">)</span>
+
+    <span class="n">image</span> <span class="o">=</span> <span class="n">program_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;docker_image&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Docker image for </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> not found for task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> (looked up resource=</span><span class="si">{</span><span class="n">lookup_resource</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Docker image for </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> not found (resource=</span><span class="si">{</span><span class="n">lookup_resource</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="k">await</span> <span class="n">_persist_post_launch_failure</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">DockerRunResult</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
     <span class="n">docker_cmd</span> <span class="o">=</span> <span class="n">program_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;docker_cmd&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">docker_cmd</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">docker_cmd</span> <span class="o">=</span> <span class="s2">&quot;docker&quot;</span>
@@ -307,82 +838,315 @@
              <span class="n">image</span> <span class="o">+=</span> <span class="s2">&quot;.sif&quot;</span>
 
     <span class="n">workdir</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span>
-    <span class="n">host_simstack_toml</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;simstack.toml&quot;</span>
-
+    <span class="n">task_dir</span> <span class="o">=</span> <span class="n">ensure_host_task_workdir</span><span class="p">(</span><span class="n">workdir</span><span class="p">,</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">))</span>
+    <span class="n">cidfile</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="n">docker_cmd</span> <span class="o">==</span> <span class="s2">&quot;docker&quot;</span><span class="p">:</span>
-        <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="s2">&quot;docker&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;-e&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;SIMSTACK_DB_DATABASE=</span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">db_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;-e&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;SIMSTACK_DB_TEST_DATABASE=</span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">db_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;-e&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;SIMSTACK_DB_CONNECTION_STRING=</span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">connection_string</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;-v&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">workdir</span><span class="si">}</span><span class="s2">:/tmp/simstack&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;-v&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">host_simstack_toml</span><span class="si">}</span><span class="s2">:/app/simstack.toml&quot;</span><span class="p">,</span>
-            <span class="n">image</span><span class="p">,</span>
-            <span class="s2">&quot;--node-id&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">),</span> <span class="s2">&quot;--resource&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">resource</span><span class="p">),</span> <span class="s2">&quot;--project-root&quot;</span><span class="p">,</span> <span class="s2">&quot;/app&quot;</span>
-        <span class="p">]</span>
-    <span class="k">elif</span> <span class="n">docker_cmd</span> <span class="o">==</span> <span class="s2">&quot;apptainer&quot;</span><span class="p">:</span>
-        <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="s2">&quot;apptainer&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;--env&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;SIMSTACK_DB_DATABASE=</span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">db_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;--env&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;SIMSTACK_DB_TEST_DATABASE=</span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">db_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;--env&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;SIMSTACK_DB_CONNECTION_STRING=</span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">connection_string</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;--bind&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">workdir</span><span class="si">}</span><span class="s2">:/tmp/simstack&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;--bind&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">host_simstack_toml</span><span class="si">}</span><span class="s2">:/app/simstack.toml&quot;</span><span class="p">,</span>
-            <span class="n">image</span><span class="p">,</span>
-            <span class="s2">&quot;--node-id&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
-            <span class="s2">&quot;--resource&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">resource</span><span class="p">),</span>
-            <span class="s2">&quot;--project-root&quot;</span><span class="p">,</span> <span class="s2">&quot;/app&quot;</span><span class="p">,</span>
-        <span class="p">]</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported command </span><span class="si">{</span><span class="n">docker_cmd</span><span class="si">}</span><span class="s2"> for task_id=</span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
-        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">)</span>
-        <span class="k">return</span> <span class="kc">False</span>
-
-    <span class="c1"># Use platform specific flags to ensure the process survives if runner is killed</span>
-    <span class="n">creationflags</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Windows&quot;</span><span class="p">:</span>
-        <span class="n">creationflags</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CREATE_NEW_PROCESS_GROUP</span> <span class="o">|</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">DETACHED_PROCESS</span>
-
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">process</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_subprocess_exec</span><span class="p">(</span>
-            <span class="o">*</span><span class="n">cmd</span><span class="p">,</span>
-            <span class="n">stdout</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
-            <span class="n">stderr</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
-            <span class="n">creationflags</span><span class="o">=</span><span class="n">creationflags</span><span class="p">,</span>
-            <span class="n">start_new_session</span><span class="o">=</span><span class="kc">True</span> <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">!=</span> <span class="s2">&quot;Windows&quot;</span> <span class="k">else</span> <span class="kc">False</span>
+        <span class="n">cidfile</span> <span class="o">=</span> <span class="n">docker_cidfile_path</span><span class="p">(</span><span class="n">task_dir</span><span class="p">)</span>
+    <span class="n">project_file_mounts</span> <span class="o">=</span> <span class="n">host_project_file_mounts</span><span class="p">(</span><span class="n">task_project_root</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">project_root</span><span class="p">))</span>
+    <span class="n">container_project_root</span> <span class="o">=</span> <span class="s2">&quot;/app&quot;</span>
+    <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">bootstrap_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">bootstrap</span><span class="p">()</span>
+    <span class="n">container_environment</span> <span class="o">=</span> <span class="n">task_environment</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">,</span> <span class="n">server</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">)</span>
+    <span class="n">container_environment</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_PENDING_FAILURE_DIR&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">CONTAINER_WORKDIR</span><span class="si">}</span><span class="s2">/.pending-execution-failures&quot;</span>
+    <span class="n">container_auth_args</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">container_environment</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_MACHINE_CONFIG&quot;</span><span class="p">):</span>
+        <span class="n">machine_config</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">container_environment</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_MACHINE_CONFIG&quot;</span><span class="p">])</span>
+        <span class="n">project_file_mounts</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">machine_config</span><span class="p">,</span> <span class="s2">&quot;/simstack-machine-config.toml:ro&quot;</span><span class="p">))</span>
+        <span class="n">container_environment</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_MACHINE_CONFIG&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;/simstack-machine-config.toml&quot;</span>
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">,</span> <span class="s2">&quot;repository_revision&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span> <span class="k">as</span> <span class="n">RuntimePath</span>
+        <span class="n">core_root</span> <span class="o">=</span> <span class="n">RuntimePath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">project_file_mounts</span><span class="o">.</span><span class="n">extend</span><span class="p">([(</span><span class="n">task_project_root</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">project_root</span><span class="p">),</span> <span class="s2">&quot;/simstack-source:ro&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">core_root</span><span class="p">,</span> <span class="s2">&quot;/simstack-core/simstack:ro&quot;</span><span class="p">)])</span>
+        <span class="n">container_project_root</span> <span class="o">=</span> <span class="s2">&quot;/simstack-source&quot;</span>
+        <span class="n">container_environment</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_REPOSITORY_ROOT&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">container_project_root</span>
+        <span class="n">container_environment</span><span class="p">[</span><span class="s2">&quot;PYTHONPATH&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;/simstack-core:/simstack-source/src:/simstack-source&quot;</span>
+    <span class="k">if</span> <span class="n">container_environment</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_RUNNER_CREDENTIALS&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">docker_cmd</span> <span class="o">==</span> <span class="s2">&quot;docker&quot;</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.runner_credentials</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONTAINER_CREDENTIAL_PATH</span><span class="p">,</span> <span class="n">CONTAINER_CREDENTIAL_TMPFS</span>
+            <span class="n">container_environment</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_RUNNER_CREDENTIALS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">CONTAINER_CREDENTIAL_PATH</span>
+            <span class="n">container_auth_args</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;--tmpfs&quot;</span><span class="p">,</span> <span class="n">CONTAINER_CREDENTIAL_TMPFS</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">credentials_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">container_environment</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_RUNNER_CREDENTIALS&quot;</span><span class="p">])</span>
+            <span class="n">project_file_mounts</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">credentials_path</span><span class="p">,</span> <span class="s2">&quot;/simstack-runner-credentials.json:ro&quot;</span><span class="p">))</span>
+            <span class="n">container_environment</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_RUNNER_CREDENTIALS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;/simstack-runner-credentials.json&quot;</span>
+    <span class="n">slurm_parameters</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span> <span class="s2">&quot;slurm_parameters&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">resource_args</span> <span class="o">=</span> <span class="n">container_resource_args</span><span class="p">(</span><span class="n">docker_cmd</span><span class="p">,</span> <span class="n">slurm_parameters</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">resource_args</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">&quot;task_id: </span><span class="si">%s</span><span class="s2"> applying container resource limits from slurm_parameters: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="n">shlex</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">resource_args</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">docker_cmd</span> <span class="o">==</span> <span class="s2">&quot;apptainer&quot;</span> <span class="ow">and</span> <span class="p">(</span>
+        <span class="n">docker_cpu_limit</span><span class="p">(</span><span class="n">slurm_parameters</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="ow">or</span> <span class="n">docker_memory_limit</span><span class="p">(</span><span class="n">slurm_parameters</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">&quot;task_id: </span><span class="si">%s</span><span class="s2"> omitting apptainer --cpus/--memory (need cgroups v2); &quot;</span>
+            <span class="s2">&quot;Slurm already limits the job&quot;</span><span class="p">,</span>
+            <span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
         <span class="p">)</span>
 
-        <span class="n">stdout_b</span><span class="p">,</span> <span class="n">stderr_b</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+    <span class="c1"># Prefer the task resource inside the container (self -&gt; local for image/workdir lookups).</span>
+    <span class="n">container_resource</span> <span class="o">=</span> <span class="n">lookup_resource</span>
+    <span class="n">container_name</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">replay_container</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">docker_cmd</span> <span class="o">==</span> <span class="s2">&quot;docker&quot;</span><span class="p">:</span>
+        <span class="n">docker_registry</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">resource_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">docker_registry</span> <span class="o">=</span> <span class="n">resource_config</span><span class="o">.</span><span class="n">get_docker_registry</span><span class="p">(</span><span class="n">lookup_resource</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">pull_docker_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">docker_registry</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cidfile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;docker cidfile was not prepared&quot;</span><span class="p">)</span>
+        <span class="n">container_name</span> <span class="o">=</span> <span class="n">docker_execution_name</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">execution</span><span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.launch_claims</span><span class="w"> </span><span class="kn">import</span> <span class="n">record_container_launch</span>
+        <span class="n">replay_container</span> <span class="o">=</span> <span class="n">record_container_launch</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">launch_entry</span><span class="p">,</span> <span class="n">container_name</span><span class="p">)</span>
+        <span class="n">project_mount_args</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">host_path</span><span class="p">,</span> <span class="n">dest</span> <span class="ow">in</span> <span class="n">project_file_mounts</span><span class="p">:</span>
+            <span class="n">project_mount_args</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;-v&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">host_path</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">dest</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;docker&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--name&quot;</span><span class="p">,</span> <span class="n">container_name</span><span class="p">,</span>
+            <span class="s2">&quot;--label&quot;</span><span class="p">,</span> <span class="s2">&quot;simstack.execution=&quot;</span> <span class="o">+</span> <span class="n">container_name</span><span class="p">,</span>
+            <span class="s2">&quot;--cidfile&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">cidfile</span><span class="p">),</span>
+            <span class="o">*</span><span class="n">container_auth_args</span><span class="p">,</span>
+            <span class="o">*</span><span class="n">resource_args</span><span class="p">,</span>
+            <span class="o">*</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;SIMSTACK_SERVER_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_USER_TOKEN&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_LOCAL_EXECUTION_TOKEN&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_RUNNER_TOKEN&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_RUNNER_CREDENTIALS&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_REPOSITORY_REVISION&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_REPOSITORY_ROOT&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_MACHINE_CONFIG&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_TASK&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_GENERATION&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_CLAIM&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_START&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_RESOURCE&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_ACCOUNT_ID&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_PENDING_FAILURE_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;PYTHONPATH&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">container_environment</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;-e&quot;</span><span class="p">,</span> <span class="n">key</span><span class="p">)]</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;-v&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">workdir</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">CONTAINER_WORKDIR</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;-v&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">workdir</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">LEGACY_CONTAINER_WORKDIR</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="o">*</span><span class="n">project_mount_args</span><span class="p">,</span>
+            <span class="n">image</span><span class="p">,</span>
+            <span class="s2">&quot;--node-id&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+            <span class="s2">&quot;--resource&quot;</span><span class="p">,</span> <span class="n">container_resource</span><span class="p">,</span>
+            <span class="s2">&quot;--project-root&quot;</span><span class="p">,</span> <span class="n">container_project_root</span><span class="p">,</span>
+            <span class="s2">&quot;--in-docker&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+    <span class="k">elif</span> <span class="n">docker_cmd</span> <span class="o">==</span> <span class="s2">&quot;apptainer&quot;</span><span class="p">:</span>
+        <span class="n">bind_args</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;--no-mount&quot;</span><span class="p">,</span> <span class="s2">&quot;tmp&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--bind&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">workdir</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">CONTAINER_WORKDIR</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--bind&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">workdir</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">LEGACY_CONTAINER_WORKDIR</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="n">scratch</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SCRATCH&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">scratch</span><span class="p">:</span>
+            <span class="n">scratch_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">scratch</span><span class="p">)</span>
+            <span class="n">scratch_root</span> <span class="o">=</span> <span class="n">scratch_path</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+            <span class="n">mount_roots</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">Path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="k">for</span> <span class="n">root</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;/tmp&quot;</span><span class="p">,</span> <span class="s2">&quot;/scratch&quot;</span><span class="p">,</span> <span class="s2">&quot;/ramdisk&quot;</span><span class="p">)</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="n">scratch_root</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">mount_roots</span> <span class="ow">and</span> <span class="n">scratch_path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                <span class="n">bind_args</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;--bind&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">scratch_path</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">scratch_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">host_path</span><span class="p">,</span> <span class="n">dest</span> <span class="ow">in</span> <span class="n">project_file_mounts</span><span class="p">:</span>
+            <span class="n">bind_args</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;--bind&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">host_path</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">dest</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;apptainer&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span>
+            <span class="o">*</span><span class="n">resource_args</span><span class="p">,</span>
+            <span class="o">*</span><span class="n">bind_args</span><span class="p">,</span>
+            <span class="n">image</span><span class="p">,</span>
+            <span class="s2">&quot;--node-id&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+            <span class="s2">&quot;--resource&quot;</span><span class="p">,</span> <span class="n">container_resource</span><span class="p">,</span>
+            <span class="s2">&quot;--project-root&quot;</span><span class="p">,</span> <span class="n">container_project_root</span><span class="p">,</span>
+            <span class="s2">&quot;--in-docker&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Unsupported command </span><span class="si">{</span><span class="n">docker_cmd</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">await</span> <span class="n">_persist_post_launch_failure</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">DockerRunResult</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
 
-        <span class="n">enc</span> <span class="o">=</span> <span class="n">locale</span><span class="o">.</span><span class="n">getpreferredencoding</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;utf-8&quot;</span>
-        <span class="n">stdout</span> <span class="o">=</span> <span class="p">(</span><span class="n">stdout_b</span> <span class="ow">or</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">enc</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-        <span class="n">stderr</span> <span class="o">=</span> <span class="p">(</span><span class="n">stderr_b</span> <span class="ow">or</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">enc</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">docker_cmd</span> <span class="o">==</span> <span class="s2">&quot;apptainer&quot;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;SIMSTACK_SERVER_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_USER_TOKEN&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_LOCAL_EXECUTION_TOKEN&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_RUNNER_TOKEN&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_RUNNER_CREDENTIALS&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_REPOSITORY_REVISION&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_REPOSITORY_ROOT&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_MACHINE_CONFIG&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_TASK&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_GENERATION&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_CLAIM&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_START&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_RESOURCE&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_EXECUTION_ACCOUNT_ID&quot;</span><span class="p">,</span> <span class="s2">&quot;SIMSTACK_PENDING_FAILURE_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;PYTHONPATH&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">container_environment</span><span class="p">:</span>
+                <span class="n">container_environment</span><span class="p">[</span><span class="s2">&quot;APPTAINERENV_&quot;</span> <span class="o">+</span> <span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">container_environment</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
 
-        <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                <span class="s2">&quot;docker run failed for task_id=</span><span class="si">%s</span><span class="s2"> rc=</span><span class="si">%s</span><span class="s2"> stderr=</span><span class="si">%s</span><span class="s2"> stdout=</span><span class="si">%s</span><span class="s2"> cmd=</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
-                <span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span><span class="p">,</span> <span class="n">stderr</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">cmd</span>
-            <span class="p">)</span>
-            <span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
-            <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">)</span>
-            <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">sanitized_cmd</span> <span class="o">=</span> <span class="n">sanitized_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">stdout</span><span class="p">:</span>
-            <span class="c1"># For `docker run` without -d, stdout is the actual output of the command</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Docker container output for task_id=</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">stdout</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="s2">&quot;starting docker for task_id: </span><span class="si">%s</span><span class="s2"> full docker command: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+        <span class="n">shlex</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sanitized_cmd</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="c1"># DETACHED_PROCESS opens a console on Windows. CREATE_NO_WINDOW hides it.</span>
+    <span class="n">creationflags</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Windows&quot;</span><span class="p">:</span>
+        <span class="n">creationflags</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">subprocess</span><span class="p">,</span> <span class="s2">&quot;CREATE_NEW_PROCESS_GROUP&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="nb">getattr</span><span class="p">(</span>
+            <span class="n">subprocess</span><span class="p">,</span> <span class="s2">&quot;CREATE_NO_WINDOW&quot;</span><span class="p">,</span> <span class="mh">0x08000000</span>
+        <span class="p">)</span>
+
+    <span class="n">process_started</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">canonical</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">child_outcome</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">exit_code</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">failure_cause</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">observe_container</span><span class="p">():</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span><span class="n">inspect_docker_execution</span><span class="p">,</span> <span class="n">container_name</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Task </span><span class="si">%s</span><span class="s2"> awaits Docker execution evidence&quot;</span><span class="p">,</span> <span class="n">launch_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.launch_claims</span><span class="w"> </span><span class="kn">import</span> <span class="n">inherit_launch_reservation</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">actual_command</span> <span class="o">=</span> <span class="n">cmd</span>
+            <span class="k">if</span> <span class="n">docker_cmd</span> <span class="o">==</span> <span class="s2">&quot;docker&quot;</span><span class="p">:</span>
+                <span class="n">observed</span> <span class="o">=</span> <span class="k">await</span> <span class="n">observe_container</span><span class="p">()</span> <span class="k">if</span> <span class="n">replay_container</span> <span class="k">else</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">observed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">prepare_docker_cidfile</span><span class="p">(</span><span class="n">task_dir</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">action</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">,</span> <span class="s2">&quot;--attach&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">observed</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">][</span><span class="s2">&quot;Status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;created&quot;</span> <span class="k">else</span> <span class="p">[</span><span class="s2">&quot;logs&quot;</span><span class="p">,</span> <span class="s2">&quot;--follow&quot;</span><span class="p">]</span>
+                    <span class="n">actual_command</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;docker&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">action</span><span class="p">,</span> <span class="n">container_name</span><span class="p">]</span>
+            <span class="k">with</span> <span class="n">inherit_launch_reservation</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="s2">&quot;_launch_reservation&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="n">container_environment</span><span class="p">)</span> <span class="k">as</span> <span class="n">ownership</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">process</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_subprocess_exec</span><span class="p">(</span>
+                        <span class="o">*</span><span class="n">actual_command</span><span class="p">,</span>
+                        <span class="n">stdout</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                        <span class="n">stderr</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                        <span class="n">creationflags</span><span class="o">=</span><span class="n">creationflags</span><span class="p">,</span>
+                        <span class="n">start_new_session</span><span class="o">=</span><span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">!=</span> <span class="s2">&quot;Windows&quot;</span><span class="p">,</span>
+                        <span class="n">env</span><span class="o">=</span><span class="n">container_environment</span><span class="p">,</span>
+                        <span class="o">**</span><span class="n">ownership</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">docker_cmd</span> <span class="o">!=</span> <span class="s2">&quot;docker&quot;</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">replay_container</span><span class="p">:</span>
+                        <span class="k">raise</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Task </span><span class="si">%s</span><span class="s2"> awaits attachment to its Docker execution&quot;</span><span class="p">,</span> <span class="n">launch_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="k">continue</span>
+            <span class="n">process_started</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.launch_claims</span><span class="w"> </span><span class="kn">import</span> <span class="n">record_spawn</span>
+            <span class="n">record_spawn</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">launch_entry</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span> <span class="k">if</span> <span class="n">local_owner</span> <span class="k">else</span> <span class="n">process</span><span class="o">.</span><span class="n">pid</span><span class="p">)</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.task_termination</span><span class="w"> </span><span class="kn">import</span> <span class="n">record_process_id</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">local_owner</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="n">record_process_id</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="n">process</span><span class="o">.</span><span class="n">pid</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Task </span><span class="si">%s</span><span class="s2"> process report awaits reconciliation&quot;</span><span class="p">,</span> <span class="n">launch_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">local_owner</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.task_termination</span><span class="w"> </span><span class="kn">import</span> <span class="n">monitor_task_process</span>
+                <span class="n">stdout_b</span><span class="p">,</span> <span class="n">stderr_b</span> <span class="o">=</span> <span class="k">await</span> <span class="n">monitor_task_process</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="n">process</span><span class="p">,</span> <span class="n">server</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
+                    <span class="n">workdir</span><span class="o">=</span><span class="n">workdir</span><span class="p">,</span> <span class="n">runner_pid</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">())</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">stdout_b</span><span class="p">,</span> <span class="n">stderr_b</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+            <span class="n">exit_code</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span>
+            <span class="n">child_outcome</span> <span class="o">=</span> <span class="n">parse_run_node_result</span><span class="p">(</span><span class="n">sanitized_tail</span><span class="p">(</span><span class="n">stdout_b</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">docker_cmd</span> <span class="o">==</span> <span class="s2">&quot;docker&quot;</span> <span class="ow">and</span> <span class="p">(</span><span class="n">replay_container</span> <span class="ow">or</span> <span class="n">exit_code</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">observed</span> <span class="o">=</span> <span class="k">await</span> <span class="n">observe_container</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">observed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">observed</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">][</span><span class="s2">&quot;Status&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;exited&quot;</span><span class="p">,</span> <span class="s2">&quot;dead&quot;</span><span class="p">}:</span>
+                        <span class="n">replay_container</span> <span class="o">=</span> <span class="kc">True</span>
+                        <span class="k">continue</span>
+                    <span class="n">exit_code</span> <span class="o">=</span> <span class="n">observed</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">][</span><span class="s2">&quot;ExitCode&quot;</span><span class="p">]</span>
+                <span class="k">elif</span> <span class="n">exit_code</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="c1"># A killed CLI cannot tell whether its create committed.</span>
+                    <span class="c1"># Repeating the same Docker name cannot create a second job.</span>
+                    <span class="n">replay_container</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">exit_code</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">failure_cause</span> <span class="o">=</span> <span class="n">format_container_failure_error</span><span class="p">(</span><span class="n">exit_code</span><span class="p">,</span> <span class="n">docker_cmd</span><span class="o">=</span><span class="n">docker_cmd</span><span class="p">)</span>
+            <span class="n">canonical</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_outcome</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">local_owner</span> <span class="ow">and</span> <span class="n">canonical</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">canonical</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">TERMINATING</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.task_termination</span><span class="w"> </span><span class="kn">import</span> <span class="n">stop_task_execution</span><span class="p">,</span> <span class="n">TaskTerminationError</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.server_api.http_transport</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnerAPIError</span>
+                <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="k">await</span> <span class="n">stop_task_execution</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="n">server</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">runner_pid</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span>
+                            <span class="n">workdir</span><span class="o">=</span><span class="n">workdir</span><span class="p">,</span> <span class="n">local_process</span><span class="o">=</span><span class="n">process</span><span class="p">)</span>
+                        <span class="n">canonical</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">termination_confirmed</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="n">canonical</span><span class="o">.</span><span class="n">error</span> <span class="ow">or</span> <span class="s2">&quot;Terminated by user&quot;</span><span class="p">)</span>
+                        <span class="k">break</span>
+                    <span class="k">except</span> <span class="p">(</span><span class="n">RunnerAPIError</span><span class="p">,</span> <span class="n">TaskTerminationError</span><span class="p">):</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Task </span><span class="si">%s</span><span class="s2"> retains its container until stop is acknowledged&quot;</span><span class="p">,</span> <span class="n">launch_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">break</span>
+        <span class="n">stdout</span> <span class="o">=</span> <span class="n">sanitized_tail</span><span class="p">(</span><span class="n">stdout_b</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">stderr</span> <span class="o">=</span> <span class="n">sanitized_tail</span><span class="p">(</span><span class="n">stderr_b</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">canonical</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Container task outcome is unavailable&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">canonical</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
+            <span class="c1"># A launcher/cleanup failure cannot revoke a committed result.</span>
+            <span class="n">outcome</span> <span class="o">=</span> <span class="n">DockerRunResult</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">canonical</span><span class="o">.</span><span class="n">return_kind</span> <span class="ow">or</span> <span class="p">(</span>
+                <span class="n">child_outcome</span><span class="o">.</span><span class="n">return_kind</span> <span class="k">if</span> <span class="n">child_outcome</span> <span class="k">else</span> <span class="s2">&quot;none&quot;</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">exit_code</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">child_outcome</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">child_outcome</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+            <span class="n">base_error</span> <span class="o">=</span> <span class="n">format_container_failure_error</span><span class="p">(</span><span class="n">exit_code</span><span class="p">,</span>
+                <span class="n">oom_killed</span><span class="o">=</span><span class="n">_container_oom_killed</span><span class="p">(</span><span class="n">docker_cmd</span><span class="p">,</span> <span class="n">cidfile</span><span class="p">),</span>
+                <span class="n">memory_limit</span><span class="o">=</span><span class="n">docker_memory_limit</span><span class="p">(</span><span class="n">slurm_parameters</span><span class="p">)</span> <span class="k">if</span> <span class="n">docker_cmd</span> <span class="o">==</span> <span class="s2">&quot;docker&quot;</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">docker_cmd</span><span class="o">=</span><span class="n">docker_cmd</span><span class="p">)</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">canonical</span><span class="o">.</span><span class="n">error</span> <span class="ow">or</span> <span class="p">(</span><span class="n">child_outcome</span><span class="o">.</span><span class="n">error</span> <span class="k">if</span> <span class="n">child_outcome</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">base_error</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">sanitized_tail</span><span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="n">visible_stdout</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">line</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">stdout</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">RESULT_PREFIX</span><span class="p">))</span>
+            <span class="n">diagnostics</span> <span class="o">=</span> <span class="p">[</span><span class="n">base_error</span><span class="p">,</span> <span class="o">*</span><span class="p">(</span><span class="n">part</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="p">(</span><span class="n">visible_stdout</span><span class="p">,</span> <span class="n">stderr</span><span class="p">)</span> <span class="k">if</span> <span class="n">part</span><span class="p">)]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Container task_id: </span><span class="si">%s</span><span class="s2"> failed: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">launch_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">_persist_post_launch_failure</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">diagnostics</span><span class="o">=</span><span class="n">diagnostics</span><span class="p">,</span> <span class="n">returncode</span><span class="o">=</span><span class="n">exit_code</span><span class="p">,</span>
+                <span class="n">return_kind</span><span class="o">=</span><span class="n">canonical</span><span class="o">.</span><span class="n">return_kind</span> <span class="ow">or</span> <span class="p">(</span><span class="n">child_outcome</span><span class="o">.</span><span class="n">return_kind</span> <span class="k">if</span> <span class="n">child_outcome</span> <span class="k">else</span> <span class="s2">&quot;exception&quot;</span><span class="p">))</span>
+            <span class="n">outcome</span> <span class="o">=</span> <span class="n">DockerRunResult</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">child_outcome</span><span class="o">.</span><span class="n">return_kind</span> <span class="k">if</span> <span class="n">child_outcome</span> <span class="k">else</span> <span class="s2">&quot;exception&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Docker container spawned for task_id=</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">stderr</span><span class="p">:</span>
-            <span class="c1"># Some Docker setups warn on stderr even on success</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;docker run stderr for task_id=</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">stderr</span><span class="p">)</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">canonical</span><span class="o">.</span><span class="n">error</span> <span class="ow">or</span> <span class="s2">&quot;Container exited without completing its task&quot;</span>
+            <span class="k">await</span> <span class="n">_persist_post_launch_failure</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">returncode</span><span class="o">=</span><span class="n">exit_code</span><span class="p">,</span> <span class="n">return_kind</span><span class="o">=</span><span class="n">child_outcome</span><span class="o">.</span><span class="n">return_kind</span><span class="p">)</span>
+            <span class="n">outcome</span> <span class="o">=</span> <span class="n">DockerRunResult</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">child_outcome</span><span class="o">.</span><span class="n">return_kind</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">process_started</span> <span class="ow">and</span> <span class="p">(</span><span class="n">local_owner</span> <span class="ow">or</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.task_termination</span><span class="w"> </span><span class="kn">import</span> <span class="n">stop_task_execution</span><span class="p">,</span> <span class="n">TaskTerminationError</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.server_api.http_transport</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnerAPIError</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="n">stop_task_execution</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="n">server</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">runner_pid</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span>
+                        <span class="n">workdir</span><span class="o">=</span><span class="n">workdir</span><span class="p">,</span> <span class="n">extra_pids</span><span class="o">=</span><span class="p">(</span><span class="n">process</span><span class="o">.</span><span class="n">pid</span><span class="p">,),</span> <span class="n">local_process</span><span class="o">=</span><span class="n">process</span> <span class="k">if</span> <span class="n">local_owner</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+                    <span class="k">await</span> <span class="n">process</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+                    <span class="k">break</span>
+                <span class="k">except</span> <span class="p">(</span><span class="n">RunnerAPIError</span><span class="p">,</span> <span class="n">TaskTerminationError</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">local_owner</span><span class="p">:</span>
+                        <span class="k">raise</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Task </span><span class="si">%s</span><span class="s2"> retains its container until cleanup is verified&quot;</span><span class="p">,</span> <span class="n">launch_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">local_owner</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">child_outcome</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">child_outcome</span><span class="o">.</span><span class="n">success</span><span class="p">):</span>
+                <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">canonical</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_outcome</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">canonical</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">canonical</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">TERMINATING</span><span class="p">:</span>
+                            <span class="n">canonical</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">termination_confirmed</span><span class="p">(</span>
+                                <span class="n">launch_entry</span><span class="p">,</span> <span class="n">canonical</span><span class="o">.</span><span class="n">error</span> <span class="ow">or</span> <span class="s2">&quot;Terminated by user&quot;</span><span class="p">)</span>
+                        <span class="k">break</span>
+                    <span class="k">except</span> <span class="n">RunnerAPIError</span> <span class="k">as</span> <span class="n">failure</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">failure</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">failure</span><span class="o">.</span><span class="n">status_code</span> <span class="o">&lt;</span> <span class="mi">500</span><span class="p">:</span>
+                            <span class="k">break</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Task </span><span class="si">%s</span><span class="s2"> awaits its stopped-container outcome&quot;</span><span class="p">,</span> <span class="n">launch_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="n">sanitized_tail</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Container launch for task </span><span class="si">%s</span><span class="s2"> failed: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">launch_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">canonical</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">canonical</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
+            <span class="n">outcome</span> <span class="o">=</span> <span class="n">DockerRunResult</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">canonical</span><span class="o">.</span><span class="n">return_kind</span> <span class="ow">or</span> <span class="s2">&quot;none&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">child_outcome</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">child_outcome</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+            <span class="c1"># The child only reports success after Server accepts completion.</span>
+            <span class="c1"># A subsequent read outage is supplemental launcher diagnostics.</span>
+            <span class="n">outcome</span> <span class="o">=</span> <span class="n">DockerRunResult</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">child_outcome</span><span class="o">.</span><span class="n">return_kind</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">primary</span> <span class="o">=</span> <span class="p">(</span><span class="n">canonical</span><span class="o">.</span><span class="n">error</span> <span class="k">if</span> <span class="n">canonical</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">canonical</span><span class="o">.</span><span class="n">error</span> <span class="k">else</span>
+                <span class="p">(</span><span class="n">child_outcome</span><span class="o">.</span><span class="n">error</span> <span class="k">if</span> <span class="n">child_outcome</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">failure_cause</span> <span class="ow">or</span> <span class="n">error</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">_persist_post_launch_failure</span><span class="p">(</span><span class="n">launch_entry</span><span class="p">,</span> <span class="n">primary</span><span class="p">,</span> <span class="n">returncode</span><span class="o">=</span><span class="n">exit_code</span><span class="p">,</span>
+                <span class="n">return_kind</span><span class="o">=</span><span class="p">(</span><span class="n">canonical</span><span class="o">.</span><span class="n">return_kind</span> <span class="k">if</span> <span class="n">canonical</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="p">(</span><span class="n">child_outcome</span><span class="o">.</span><span class="n">return_kind</span> <span class="k">if</span> <span class="n">child_outcome</span> <span class="k">else</span> <span class="s2">&quot;exception&quot;</span><span class="p">))</span>
+            <span class="n">outcome</span> <span class="o">=</span> <span class="n">DockerRunResult</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;exception&quot;</span><span class="p">,</span> <span class="n">primary</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="kc">True</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;fatal error in running docker task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
-        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">)</span>
-        <span class="k">return</span> <span class="kc">False</span></div>
+    <span class="k">if</span> <span class="n">process_started</span> <span class="ow">and</span> <span class="n">docker_cmd</span> <span class="o">==</span> <span class="s2">&quot;docker&quot;</span> <span class="ow">and</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">!=</span> <span class="s2">&quot;Windows&quot;</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">owner_uid</span><span class="p">,</span> <span class="n">owner_gid</span> <span class="o">=</span> <span class="n">launcher_owner_ids</span><span class="p">()</span>
+            <span class="k">await</span> <span class="n">_harmonize_docker_task_dir</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">task_dir</span><span class="p">,</span> <span class="n">owner_uid</span><span class="p">,</span> <span class="n">owner_gid</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Task </span><span class="si">%s</span><span class="s2"> output ownership cleanup failed: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">launch_entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="n">sanitized_tail</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">outcome</span></div>
+
+
+
+<div class="viewcode-block" id="run_docker">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.run_docker.run_docker">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_docker</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run a container while preserving the existing boolean API.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="k">await</span> <span class="n">run_docker_with_outcome</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">))</span><span class="o">.</span><span class="n">success</span></div>
 
 </pre></div>
         </article>
@@ -420,6 +1184,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

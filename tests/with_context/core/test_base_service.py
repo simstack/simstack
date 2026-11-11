@@ -1,3 +1,4 @@
+from server import storage_criteria
 import asyncio
 import pytest
 from simstack.core.context import context
@@ -28,8 +29,8 @@ class FailingService(BaseService):
 
 
 @pytest.mark.asyncio
-async def test_base_service_waits_between_failed_executions(monkeypatch):
-    resource = Resource(value="self")
+async def test_base_service_waits_between_failed_executions(monkeypatch, server_storage):
+    resource = Resource(value="test")
     service = FailingService("FailingService", resource, interval=60)
     wait_timeouts = []
     original_wait_for = asyncio.wait_for
@@ -52,8 +53,8 @@ async def test_base_service_waits_between_failed_executions(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_base_service_lifecycle(initialized_context):
-    resource = Resource(value="self")
+async def test_base_service_lifecycle(initialized_context, server_storage):
+    resource = Resource(value="test")
     interval = 1
     service = MockService("TestService", resource, interval)
     
@@ -72,38 +73,38 @@ async def test_base_service_lifecycle(initialized_context):
     assert service._stop_event.is_set()
 
 @pytest.mark.asyncio
-async def test_base_service_write_resource_event(initialized_context):
-    resource = Resource(value="self")
+async def test_base_service_write_resource_event(initialized_context, server_storage):
+    resource = Resource(value="test")
     service = MockService("TestService", resource, 60)
     
     await service.write_resource_event(RunnerEventEnum.ALIVE, message="Test Message")
     
     # Check if event was saved
-    event = await context.db.find_one(
+    event = await server_storage.find_one(
         RunnerEvent,
-        (RunnerEvent.runner_type == RunnerType.RESOURCE_RUNNER)
-        & (RunnerEvent.resource == resource)
-        & (RunnerEvent.event == RunnerEventEnum.ALIVE)
+        (storage_criteria.field(RunnerEvent, 'runner_type') == RunnerType.RESOURCE_RUNNER)
+        & (storage_criteria.field(RunnerEvent, 'resource') == resource)
+        & (storage_criteria.field(RunnerEvent, 'event') == RunnerEventEnum.ALIVE)
     )
     assert event is not None
     # We don't check the exact uptime string as it can be 0 or 1s
     assert event.message.startswith("Uptime: ")
 
 @pytest.mark.asyncio
-async def test_base_service_write_node_event(initialized_context):
+async def test_base_service_write_node_event(initialized_context, server_storage):
     from simstack.models.document import ObjectId
-    resource = Resource(value="self")
+    resource = Resource(value="test")
     service = MockService("TestService", resource, 60)
     node_id = ObjectId()
     
     await service.write_node_event(RunnerEventEnum.NODE_STARTED, node_id, message="Node Started")
     
     # Check if event was saved
-    event = await context.db.find_one(
+    event = await server_storage.find_one(
         RunnerEvent,
-        (RunnerEvent.runner_type == RunnerType.NODE_RUNNER)
-        & (RunnerEvent.node_id == node_id)
-        & (RunnerEvent.event == RunnerEventEnum.NODE_STARTED)
+        (storage_criteria.field(RunnerEvent, 'runner_type') == RunnerType.NODE_RUNNER)
+        & (storage_criteria.field(RunnerEvent, 'node_id') == node_id)
+        & (storage_criteria.field(RunnerEvent, 'event') == RunnerEventEnum.NODE_STARTED)
     )
     assert event is not None
     assert event.message == "Node Started"

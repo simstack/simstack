@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -273,7 +278,7 @@
         <article role="main" id="furo-main-content">
           <h1>Source code for simstack.core.process_results</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">Model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">Model</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.simstack_result</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimstackResult</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">BooleanData</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.files</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileStack</span>
@@ -307,7 +312,7 @@
             <span class="n">boolean_data</span> <span class="o">=</span> <span class="n">BooleanData</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">result</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">boolean_data</span> <span class="o">=</span> <span class="n">result</span>
-        <span class="n">result_model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">boolean_data</span><span class="p">)</span>
+        <span class="n">result_model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">publish_value</span><span class="p">(</span><span class="n">boolean_data</span><span class="p">)</span>
         <span class="n">result_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result_model</span><span class="p">)</span>
         <span class="n">results_references</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">NamedDataReference</span><span class="o">.</span><span class="n">from_variable</span><span class="p">(</span>
             <span class="n">boolean_data</span><span class="p">,</span>
@@ -336,7 +341,7 @@
                     <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> saving file is NONE&quot;</span><span class="p">)</span>
                     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;saving file is NONE&quot;</span><span class="p">)</span>
 
-            <span class="n">saved</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">file_list_model</span><span class="p">)</span>
+            <span class="n">saved</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">publish_value</span><span class="p">(</span><span class="n">file_list_model</span><span class="p">)</span>
             <span class="n">results_references</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">NamedDataReference</span><span class="o">.</span><span class="n">from_variable</span><span class="p">(</span>
                 <span class="n">saved</span><span class="p">,</span>
                 <span class="n">variable_name</span><span class="o">=</span><span class="s2">&quot;files&quot;</span><span class="p">,</span>
@@ -355,7 +360,11 @@
                 <span class="ow">and</span> <span class="n">is_simstack_model</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
             <span class="p">):</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Model</span><span class="p">):</span>
-                    <span class="n">result_model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">result_model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">publish_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> cannot save model: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">raise</span> <span class="n">e</span>
                     <span class="n">result_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result_model</span><span class="p">)</span>
                     <span class="n">results_references</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">NamedDataReference</span><span class="o">.</span><span class="n">from_variable</span><span class="p">(</span>
                         <span class="n">result_model</span><span class="p">,</span>
@@ -367,7 +376,7 @@
                         <span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> cannot save model: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> is not a model&quot;</span>
                     <span class="p">)</span>
     <span class="k">elif</span> <span class="n">is_simstack_model</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">Model</span><span class="p">):</span>
-        <span class="n">result_model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="n">result_model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">publish_value</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
         <span class="n">result_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result_model</span><span class="p">)</span>
         <span class="n">results_references</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">NamedDataReference</span><span class="o">.</span><span class="n">from_variable</span><span class="p">(</span>
             <span class="n">result_model</span><span class="p">,</span>
@@ -413,6 +422,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

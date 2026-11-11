@@ -233,7 +233,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -284,14 +289,10 @@
 <p class="admonition-title">Note</p>
 <p>This section is intended for node-developers.</p>
 </div>
-<p>Simstack persists data using a MongoDB database, which is exposed via the
-fast-api server to a web-frontend. Each user has a dedicated database
-on a MongoDB server which is configured in the configuration file
-(<a class="reference internal" href="installation.html#configuration-file"><span class="std std-ref">Create simstack.toml</span></a>).</p>
-<p>To facilitate access to the database in the python workflows, Simstack II uses the odmantic
-package to provide an object-oriented access to the data via odmantic
-Models. Odmantic Models are drived from pydantic (V2) classes and developers
-of nodes (<a class="reference internal" href="workflows.html#workflows"><span class="std std-ref">Workflows</span></a>) can define their own classes deriving from Model.</p>
+<p>SimStack Server owns scientific records, task history and object storage.
+Workflow code uses Pydantic domain models from <code class="docutils literal notranslate"><span class="pre">simstack.models.document</span></code>
+and explicit HTTP operations through <code class="docutils literal notranslate"><span class="pre">context.server.values</span></code>. Runner and SDK
+have no database engine, persistence facade or implicit database loading.</p>
 <p>To customize the appearance of the models in the UI, the model definition
 should be decorated by <code class="docutils literal notranslate"><span class="pre">&#64;simstack_model</span></code>
 (<code class="xref py py-func docutils literal notranslate"><span class="pre">simstack.core.simstack_model.simstack_model()</span></code>)
@@ -299,11 +300,12 @@ which provides ui-related functionality discussed below
 (<a class="reference internal" href="#model-appearance"><span class="std std-ref">Model Appearance in the GUI</span></a>)</p>
 <section id="model-definitions">
 <h2>Model Definitions<a class="headerlink" href="#model-definitions" title="Link to this heading">¶</a></h2>
-<p>For detailed information on odmantic models, consult the odmantic
-documentation.</p>
+<p>Domain models use Pydantic validation. <code class="docutils literal notranslate"><span class="pre">Reference</span></code> marks an explicit scientific
+record reference; nested models without it are independent snapshots.</p>
 <p>A basic model definition look like:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">EmbeddedModel</span><span class="p">,</span> <span class="n">Field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">EmbeddedModel</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">Reference</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.simstack_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span>
 
 <span class="nd">@simstack_model</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">OtherModel</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
@@ -311,27 +313,24 @@ documentation.</p>
      <span class="nb">max</span><span class="p">:</span> <span class="nb">float</span>
 
 <span class="nd">@simstack_model</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">SmallData</span><span class="p">(</span><span class="n">EmbeddedModel</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SmallData</span><span class="p">(</span><span class="n">EmbeddedModel</span><span class="p">):</span>
      <span class="n">number</span><span class="p">:</span> <span class="nb">int</span>
 
 <span class="nd">@simstack_model</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">ComplexData</span><span class="p">(</span><span class="n">Model</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComplexData</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
      <span class="n">counter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
      <span class="n">limit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-     <span class="n">other_model</span><span class="p">:</span> <span class="n">OtherModel</span> <span class="o">=</span> <span class="n">Reference</span><span class="p">()</span> <span class="c1"># this defines a reference to the</span>
-                                           <span class="c1"># other table in the db</span>
-                                           <span class="c1"># loading ComplexData will load</span>
-                                           <span class="c1"># the other model too</span>
-     <span class="n">small_data</span><span class="p">:</span> <span class="n">SmallData</span> <span class="c1"># directly stored in the complex_data table</span>
+     <span class="n">other_model</span><span class="p">:</span> <span class="n">OtherModel</span> <span class="o">=</span> <span class="n">Reference</span><span class="p">()</span>
+     <span class="n">small_data</span><span class="p">:</span> <span class="n">SmallData</span>  <span class="c1"># independent embedded value</span>
 </pre></div>
 </div>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
 <ul class="simple">
-<li><p>The node developer does not have explicitly save models to the db, the
-&#64;node decorator will take care of this.</p></li>
-<li><p>There is <strong>no Model inheritance</strong>, which is a real pain.</p></li>
-<li><p>ODMantic Issue #484: <a class="reference external" href="https://github.com/art049/odmantic/issues/484">https://github.com/art049/odmantic/issues/484</a></p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">&#64;node</span></code> decorator publishes scientific inputs and outputs through Server.
+Outside node execution, use <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">context.server.values.publish_value(value)</span></code>.</p></li>
+<li><p>Resolve records explicitly with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">context.server.values.get_value(ModelType,</span> <span class="pre">id)</span></code>.
+Constructing a model or reading a field performs no network I/O.</p></li>
 </ul>
 </div>
 <div class="admonition note">
@@ -407,11 +406,11 @@ compatible with the json-schema. 8</p>
 </tr>
 <tr class="row-odd"><td><p>from_dict</p></td>
 <td><p>create model instance from dict</p></td>
-<td><p>odmantic func</p></td>
+<td><p>domain model</p></td>
 </tr>
 <tr class="row-even"><td><p>from_model</p></td>
 <td><p>copy constructor</p></td>
-<td><p>odmantic default</p></td>
+<td><p>model copy</p></td>
 </tr>
 </tbody>
 </table>
@@ -540,6 +539,6 @@ compatible with the json-schema. 8</p>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

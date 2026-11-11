@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -277,13 +282,11 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">DocumentParsingError</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">EmbeddedModel</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelMapping</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.simstack_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_simstack_model</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">Database</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.tables.catalogue</span><span class="w"> </span><span class="kn">import</span> <span class="n">CatalogueCollector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.path_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">path_manager</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.tables.table_builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">TableBuilderBase</span>
 
@@ -297,20 +300,13 @@
 <span class="sd">    Helper class to build the model table without passing around many parameters.</span>
 
 <span class="sd">    Usage:</span>
-<span class="sd">        creator = CreateModelTable(db)</span>
+<span class="sd">        creator = CreateModelTable(catalogue)</span>
 <span class="sd">        await creator.make_model_table()</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">logger</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">logger</span>
-
-<div class="viewcode-block" id="CreateModelTable.build">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.model_table.CreateModelTable.build">[docs]</a>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">refresh_mappings</span><span class="p">(</span><span class="n">models</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nodes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
-
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_process_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_models_from_module</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">drops</span><span class="p">)</span>
@@ -320,20 +316,17 @@
         <span class="n">classes</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">class_name</span><span class="p">,</span> <span class="n">new_class</span> <span class="ow">in</span> <span class="n">classes</span><span class="p">:</span>
-            <span class="c1"># this is required because of the Odmantic Metaclass Model</span>
-            <span class="c1"># subclass does not work even if applied to the imported classes</span>
-            <span class="c1"># this is a bug in importlib</span>
             <span class="n">bases</span> <span class="o">=</span> <span class="p">[</span><span class="n">base</span><span class="o">.</span><span class="vm">__name__</span> <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">new_class</span><span class="o">.</span><span class="vm">__bases__</span><span class="p">]</span>
             <span class="n">is_ui_model</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="s2">&quot;UIModel&quot;</span> <span class="ow">in</span> <span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">)</span> <span class="ow">or</span> <span class="n">is_simstack_model</span><span class="p">(</span>
                 <span class="n">new_class</span>
             <span class="p">)</span>
-            <span class="n">is_model</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">s</span> <span class="o">==</span> <span class="s2">&quot;Model&quot;</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">)</span>
+            <span class="n">is_model</span> <span class="o">=</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">new_class</span><span class="p">,</span> <span class="n">Model</span><span class="p">)</span>
 
-            <span class="n">is_embedded_model</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">s</span> <span class="o">==</span> <span class="s2">&quot;EmbeddedModel&quot;</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">)</span>
+            <span class="n">is_embedded_model</span> <span class="o">=</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">new_class</span><span class="p">,</span> <span class="n">EmbeddedModel</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">is_model</span> <span class="ow">or</span> <span class="n">is_ui_model</span> <span class="ow">or</span> <span class="n">is_embedded_model</span><span class="p">):</span>
                 <span class="k">continue</span>
-            <span class="k">if</span> <span class="n">class_name</span> <span class="o">==</span> <span class="s2">&quot;Model&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">new_class</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">EmbeddedModel</span><span class="p">):</span>
                 <span class="k">continue</span>
             <span class="k">if</span> <span class="n">new_class</span><span class="o">.</span><span class="vm">__module__</span> <span class="o">!=</span> <span class="n">module</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span>
                 <span class="k">continue</span>
@@ -354,54 +347,14 @@
             <span class="n">full_mapping</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">new_modules</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">class_name</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Class: </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2"> Model Mapping: </span><span class="si">{</span><span class="n">full_mapping</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-            <span class="c1"># Remove any existing ModelMapping entry for this class</span>
-
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">existing_entries</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
-                    <span class="n">ModelMapping</span><span class="p">,</span> <span class="n">ModelMapping</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">class_name</span>
-                <span class="p">)</span>
-            <span class="k">except</span> <span class="p">(</span><span class="n">ValidationError</span><span class="p">,</span> <span class="ne">NameError</span><span class="p">,</span> <span class="n">DocumentParsingError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Error finding existing ModelMapping for </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
-                <span class="p">)</span>
-                <span class="n">existing_entries</span> <span class="o">=</span> <span class="p">[]</span>
-
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="n">error_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Fatal error: Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">)</span><span class="si">}</span><span class="s2"> ModelMapping entries for class_name &#39;</span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">&#39;. Expected at most one.&quot;</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
-                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
-
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="n">existing_mapping</span> <span class="o">=</span> <span class="n">existing_entries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mapping</span>
-                <span class="k">if</span> <span class="n">existing_mapping</span> <span class="o">!=</span> <span class="n">full_mapping</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Replacing ModelMapping entry for </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">: &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;old mapping &#39;</span><span class="si">{</span><span class="n">existing_mapping</span><span class="si">}</span><span class="s2">&#39; -&gt; new mapping &#39;</span><span class="si">{</span><span class="n">full_mapping</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
-                    <span class="p">)</span>
-
-                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Deleted ModelMapping entry for </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-            <span class="c1"># EmbeddedModels have no collection by may be simstack_models. They are never saved/retrieved</span>
-            <span class="n">collection_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">new_class</span><span class="p">,</span> <span class="s2">&quot;__collection__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">collection_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">is_embedded_model</span><span class="p">:</span>
-                    <span class="n">collection_name</span> <span class="o">=</span> <span class="s2">&quot;EmbeddedModel&quot;</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No collection specified for </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
             <span class="c1"># Create the new ModelMapping entry (pickle functionality removed)</span>
             <span class="k">if</span> <span class="n">is_ui_model</span><span class="p">:</span>
                 <span class="n">model_entry</span> <span class="o">=</span> <span class="n">ModelMapping</span><span class="p">(</span>
                     <span class="n">name</span><span class="o">=</span><span class="n">class_name</span><span class="p">,</span>
                     <span class="n">mapping</span><span class="o">=</span><span class="n">full_mapping</span><span class="p">,</span>
-                    <span class="n">collection_name</span><span class="o">=</span><span class="n">collection_name</span><span class="p">,</span>
                     <span class="n">json_schema</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">new_class</span><span class="o">.</span><span class="n">json_schema</span><span class="p">()),</span>
                     <span class="n">ui_schema</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">new_class</span><span class="o">.</span><span class="n">ui_schema</span><span class="p">()),</span>
                     <span class="n">route</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;SimStack Model: </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2"> Mapping: </span><span class="si">{</span><span class="n">full_mapping</span><span class="si">}</span><span class="s2"> Collection: </span><span class="si">{</span><span class="n">collection_name</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
                 <span class="c1"># open a file in a subdirectory of the current file schema/model.json</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_schema</span><span class="p">:</span>
@@ -419,13 +372,12 @@
                 <span class="n">model_entry</span> <span class="o">=</span> <span class="n">ModelMapping</span><span class="p">(</span>
                     <span class="n">name</span><span class="o">=</span><span class="n">class_name</span><span class="p">,</span>
                     <span class="n">mapping</span><span class="o">=</span><span class="n">full_mapping</span><span class="p">,</span>
-                    <span class="n">collection_name</span><span class="o">=</span><span class="n">collection_name</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Model: </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2"> Mapping: </span><span class="si">{</span><span class="n">full_mapping</span><span class="si">}</span><span class="s2"> Collection: </span><span class="si">{</span><span class="n">collection_name</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
 
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model_entry</span><span class="p">)</span>
+            <span class="n">model_entry</span><span class="o">.</span><span class="n">value_schema</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">new_class</span><span class="o">.</span><span class="n">model_json_schema</span><span class="p">())</span>
+            <span class="k">if</span> <span class="n">model_entry</span><span class="o">.</span><span class="n">json_schema</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">model_entry</span><span class="o">.</span><span class="n">json_schema</span> <span class="o">=</span> <span class="n">model_entry</span><span class="o">.</span><span class="n">value_schema</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">catalogue</span><span class="o">.</span><span class="n">register_model</span><span class="p">(</span><span class="n">model_entry</span><span class="p">,</span> <span class="n">model_class</span><span class="o">=</span><span class="n">new_class</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_make_models_for_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Build model mappings for all Python files under a configured path.&quot;&quot;&quot;</span>
@@ -441,17 +393,16 @@
 <div class="viewcode-block" id="CreateModelTable.clear_table">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.model_table.CreateModelTable.clear_table">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">clear_table</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Clearing ModelMapping collection&quot;</span><span class="p">)</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">ModelMapping</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Clearing discovered model descriptors&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">catalogue</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
 </div>
 
 
 
-<span class="c1"># Public API preserved for existing callers (e.g. tests)</span>
 <div class="viewcode-block" id="make_model_table">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.model_table.make_model_table">[docs]</a>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">make_model_table</span><span class="p">(</span>
-    <span class="n">db</span> <span class="p">:</span> <span class="n">Database</span><span class="p">,</span>
+    <span class="n">catalogue</span><span class="p">:</span> <span class="n">CatalogueCollector</span><span class="p">,</span>
     <span class="n">dirs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
     <span class="n">write_schema</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -460,11 +411,9 @@
     <span class="n">ignore_entrypoints</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Rebuild the model table using the given database.</span>
-
-<span class="sd">    This is a thin wrapper around CreateModelTable for backward compatibility.</span>
+<span class="sd">    Collect model descriptors from the prepared environment.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">creator</span> <span class="o">=</span> <span class="n">CreateModelTable</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">write_schema</span><span class="o">=</span><span class="n">write_schema</span><span class="p">,</span> <span class="n">project_root</span><span class="o">=</span><span class="n">project_root</span><span class="p">)</span>
+    <span class="n">creator</span> <span class="o">=</span> <span class="n">CreateModelTable</span><span class="p">(</span><span class="n">catalogue</span><span class="p">,</span> <span class="n">write_schema</span><span class="o">=</span><span class="n">write_schema</span><span class="p">,</span> <span class="n">project_root</span><span class="o">=</span><span class="n">project_root</span><span class="p">)</span>
     <span class="k">await</span> <span class="n">creator</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">dirs</span><span class="o">=</span><span class="n">dirs</span><span class="p">,</span> <span class="n">drops</span><span class="o">=</span><span class="n">drops</span><span class="p">,</span> <span class="n">clear</span><span class="o">=</span><span class="n">clear</span><span class="p">,</span> <span class="n">ignore_entrypoints</span><span class="o">=</span><span class="n">ignore_entrypoints</span><span class="p">)</span></div>
 
 
@@ -514,6 +463,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

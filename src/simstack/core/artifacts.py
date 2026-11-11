@@ -1,7 +1,6 @@
 import inspect
 import logging
-import re
-from typing import Any, Callable, Optional, List
+from typing import Any, Callable, List
 
 from simstack.models.document import ObjectId
 
@@ -11,8 +10,8 @@ from simstack.models.charts_artifact import ChartArtifactModel
 from simstack.models.images2d import Image2DArtifactModel
 from simstack.models.node_registry import find_child_nodes, NodeRegistry
 from simstack.models.table_artifact import TableArtifactModel
-from simstack.util.db import Database
-from simstack.util.importer import import_function
+from simstack.util.importer import import_artifact_generator
+from simstack.server_api.http_transport import RunnerAPIError
 
 logger = logging.getLogger("artifacts")
 
@@ -40,70 +39,22 @@ class ArtifactArguments:
             setattr(self, param_name, arg_value)
 
 
-async def find_artifact_mappings(
-    node_registry_path: str, db: Database, task_id: Optional[str] = None
-) -> List[ArtifactMapping]:
-    logger.debug(
-        f"task_id: {task_id} Loading artifacts with regex pattern: {node_registry_path} "
-    )
-    all_mappings = await db.find(ArtifactMapping)
-
-    # Filter them manually to find those whose patterns match your path
-    matching_mappings = [
-        mapping
-        for mapping in all_mappings
-        if re.match(mapping.regex_pattern, node_registry_path)
-    ]
-
-    for mapping in matching_mappings:
-        logger.debug(
-            f"task_id: {task_id} Artifact found: {mapping.name} with path: {mapping.regex_pattern}"
-        )
-    return matching_mappings
+async def find_artifact_mappings(node_registry_path: str, api=None, task_id=None):
+    return await (api or context.server.values).artifact_mappings(node_registry_path)
 
 
-async def register_artifact_mapping(
-    artifact_mapping: ArtifactMapping,
-) -> ArtifactMapping:
-    # Check if an artifact with the same name already exists
-    existing = await context.db.find_one(
-        ArtifactMapping, ArtifactMapping.name == artifact_mapping.name
-    )
-    if existing:
-        logger.warning(
-            f"Replacing existing artifact mapping '{artifact_mapping.name}' already exists with path: {existing.regex_pattern}"
-        )
-        existing.set_values(artifact_mapping)
-        artifact_mapping = await context.db.save(existing)
-
-    # Check if the function_mapping is specified and not CODE
-    if (
-        artifact_mapping.function_mapping
-        and artifact_mapping.function_mapping != "CODE"
-    ):
-        try:
-            # Import the function to verify it exists
-            func = await import_function(
-                artifact_mapping.function_mapping, context.db, task_id=None
-            )
-            if not func:
-                logger.warning(
-                    "Could not import function {artifact_mapping.function_mapping}"
-                )
-        except Exception as e:
-            logger.error(
-                f"Error processing function {artifact_mapping.function_mapping}: {e}"
-            )
-    return await context.db.save(artifact_mapping)
+async def register_artifact_mapping(artifact_mapping: ArtifactMapping) -> ArtifactMapping:
+    if artifact_mapping.function_mapping and artifact_mapping.function_mapping != "CODE":
+        await import_artifact_generator(artifact_mapping)
+    return await context.server.values.register_artifact_mapping(artifact_mapping)
 
 
-async def find_all_artifacts(
-    node_registry: NodeRegistry, db: Database
-) -> List[ArtifactModel]:
-    return [
-        await db.find_one(ArtifactModel, ArtifactModel.id == artifact_id)
-        for artifact_id in node_registry.artifact_ids
-    ]
+async def find_all_artifacts(node_registry: NodeRegistry, api=None):
+    client = api or context.server.values
+    return await client.resolve_values([
+        {"mapping": "simstack.models.artifact_models.ArtifactModel", "id": str(identity)}
+        for identity in node_registry.artifact_ids
+    ])
 
 
 async def create_artifacts(
@@ -115,7 +66,7 @@ async def create_artifacts(
         log_string = f"create artifacts for task_id: {task_id} for {call_path}"
 
         artifact_mappings_list = await find_artifact_mappings(
-            call_path, context.db, task_id=task_id
+            call_path, context.server.values, task_id=task_id
         )
 
         child_nodes = await find_child_nodes(task_id)
@@ -125,19 +76,20 @@ async def create_artifacts(
         # Concatenate artifacts from all child nodes
         child_artifacts: list[ArtifactModel] = []
         for child_node in child_nodes:
-            loaded_artifacts = await find_all_artifacts(child_node, context.db)
+            loaded_artifacts = await find_all_artifacts(child_node, context.server.values)
             if len(loaded_artifacts) == 1:
                 child_artifacts.extend(loaded_artifacts)
             elif len(loaded_artifacts) > 1:
                 # If multiple artifacts, consolidate them into a list
                 consolidated_artifact = ArtifactModel(
                     name=child_node.name,
+                    parent_id=node_registry.id,
                     path=call_path,
                     data={
                         node_registry.name: loaded_artifacts
                     },  # Store all artifacts in a single field
                 )
-                await context.db.save(consolidated_artifact)
+                await context.server.values.publish_value(consolidated_artifact)
                 child_artifacts.append(consolidated_artifact)
 
         # child_artifacts = consolidate_artifacts(child_artifacts, call_path, task_id)
@@ -157,16 +109,7 @@ async def create_artifacts(
                 )
                 logging.info(log_string_mapping)
                 if artifact_mapping.function_mapping != "CODE":
-                    func = await import_function(
-                        artifact_mapping.function_mapping,
-                        context.db,
-                        artifact_arguments.task_id,
-                    )
-                    if not func:
-                        logger.error(
-                            f"{log_string_mapping} Function {artifact_mapping.function_mapping} not found for artifact mapping."
-                        )
-                        continue
+                    func = await import_artifact_generator(artifact_mapping, task=node_registry)
                     logger.info(
                         f"{log_string_mapping} Executing function {artifact_mapping.function_mapping} for artifact mapping."
                     )
@@ -202,7 +145,7 @@ async def create_artifacts(
                         artifact.parent_id = node_registry.id
                         if isinstance(artifact, ArtifactModel):
                             artifact.path = call_path
-                        saved_artifact = await context.db.save(artifact)
+                        saved_artifact = await context.server.values.publish_value(artifact)
                         if isinstance(artifact, ArtifactModel):
                             artifact_list.append(saved_artifact)
                         logger.debug(
@@ -216,6 +159,8 @@ async def create_artifacts(
             artifact_list = child_artifacts
             logger.debug(f"{log_string} passing child artifacts")
         return [artifact.id for artifact in artifact_list]
+    except RunnerAPIError:
+        raise
     except Exception as e:
         logger.exception(f"Error creating artifacts for node {node_registry.name}: {e}")
         return []
@@ -225,89 +170,10 @@ async def save_artifact_model(artifact: ArtifactModel) -> ArtifactModel:
     """Persist a polymorphic artifact through the neutral model API."""
     if getattr(artifact, "type", None) == "list":
         artifact.items = [await save_artifact_model(item) for item in artifact.items]
-    return await context.db.save(artifact)
+    return await context.server.values.publish_value(artifact)
 
 
 async def find_artifacts(model_class: type[ArtifactModel], **kwargs: Any) -> List[ArtifactModel]:
-    from simstack.persistence.criteria import eq
     if model_class != ArtifactModel and "artifact_type" in model_class.model_fields:
         kwargs["artifact_type"] = model_class.model_fields["artifact_type"].default
-    criteria = [eq(field, value) for field, value in kwargs.items()]
-    return await context.db.find(model_class, *criteria)
-
-
-# async def find_one_artifact(artifact_id: ObjectId) -> Optional[ArtifactModel]:
-#     """
-#     Find an artifact by ID and return it as the appropriate subclass instance
-#     based on its artifact_type field.
-#
-#     Args:
-#         artifact_id: The ObjectId of the item to find
-#
-#     Returns:
-#         An instance of the appropriate ArtifactModel subclass, or None if not found
-#     """
-#     # Find the document by ID
-#     doc = await collection.find_one({"_id": artifact_id})
-#
-#     if doc is None:
-#         return None
-#
-#     # Determine the appropriate class based on artifact_type
-#     artifact_type = doc.get("artifact_type")
-#
-#     # Map artifact_type values to their respective classes
-#     type_to_class = {
-#         "int": IntArtifactModel,
-#         "float": FloatArtifactModel,
-#         "str": StringArtifactModel,
-#         "list": List,
-#         # Add more mappings as you add more subclasses
-#     }
-#
-#     # Get the appropriate class, defaulting to base ArtifactModel if the type is unknown
-#     model_class = type_to_class.get(artifact_type, ArtifactModel)
-#
-#     # For List type, we need special handling to load items
-#     if artifact_type == "list":
-#         # Store item_ids temporarily
-#         item_ids = doc.get("items", [])
-#         # Remove items field for now to allow validation
-#         doc["items"] = []
-#
-#         # Create the List instance without items first
-#         item = model_class.model_validate(doc)
-#
-#         # load all referenced items
-#         loaded_items = []
-#         for artifact_id in item_ids:
-#             nested_item = await context.db.find_one(ArtifactModel, ArtifactModel.id == artifact_id)
-#             if nested_item:
-#                 loaded_items.append(nested_item)
-#
-#         # Now assign the loaded items
-#         item.items = loaded_items
-#     else:
-#         # For non-List types, normal validation is fine
-#         item = model_class.model_validate(doc)
-#
-#
-#     return item
-
-#
-# async def load_list_items(list_item: List) -> List[ArtifactModel]:
-#     """
-#     Load all items in a List type and return them as a Python list.
-#     This is now a simple accessor since items are already ArtifactModel objects.
-#
-#     Args:
-#         list_item: A List instance
-#
-#     Returns:
-#         A list of ArtifactModel instances
-#     """
-#     if not isinstance(list_item, List):
-#         raise TypeError("Expected a List instance")
-#
-#     return list_item.items
-#
+    return await context.server.values.query_artifacts(model_class, **kwargs)

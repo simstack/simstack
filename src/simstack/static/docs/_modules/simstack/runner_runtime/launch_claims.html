@@ -1,0 +1,952 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>simstack.runner_runtime.launch_claims - SimStack II documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/cobalt2-theme.css?v=2d651046" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/docs-build-badge.css?v=803faff8" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">SimStack II  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ui_documentation.html">Graphical User Interface</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../developer_guide.html">Developer Guide</a><input aria-label="Toggle navigation of Developer Guide" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../data.html">Persisting and Visualizing Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../lists.html">List Mixins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../array_lists.html">Array Lists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tables.html">Tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../files.html">File Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resource_config.html">Program Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../mass_runner.html">MassRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../fire_and_forget_runner.html">FireAndForgetRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../database_migrations.html">Database Migrations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../ci_pipeline.html">CI Pipeline and Documentation Artifacts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Simstack II Setup</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for simstack.runner_runtime.launch_claims</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Durable claim receipts and execution identity for API workers.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextvars</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContextVar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">uuid</span><span class="w"> </span><span class="kn">import</span> <span class="n">uuid4</span>
+
+<span class="n">_execution</span> <span class="o">=</span> <span class="n">ContextVar</span><span class="p">(</span><span class="s2">&quot;simstack_execution&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;NodeRunner&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_actor</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="n">requests</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span>
+    <span class="n">resource</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">resource</span>
+    <span class="n">bootstrap</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">bootstrap_data</span>
+    <span class="n">account_id</span> <span class="o">=</span> <span class="n">bootstrap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;account_id&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">bootstrap</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">account_id</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">resource</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A launch receipt requires a bootstrapped account and resource&quot;</span><span class="p">)</span>
+    <span class="n">actor</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;server_url&quot;</span><span class="p">:</span> <span class="n">requests</span><span class="o">.</span><span class="n">server_url</span><span class="p">,</span>
+        <span class="s2">&quot;account_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">account_id</span><span class="p">),</span>
+        <span class="s2">&quot;resource&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">resource</span><span class="p">),</span>
+        <span class="s2">&quot;authorization&quot;</span><span class="p">:</span> <span class="n">requests</span><span class="o">.</span><span class="n">authorization</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">requests</span><span class="o">.</span><span class="n">authorization</span> <span class="o">==</span> <span class="s2">&quot;local&quot;</span><span class="p">:</span>
+        <span class="n">actor</span><span class="p">[</span><span class="s2">&quot;credential_fingerprint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">requests</span><span class="o">.</span><span class="n">token</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">actor</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_directory</span><span class="p">(</span><span class="n">server_url</span><span class="p">):</span>
+    <span class="n">workdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_RUNNER_WORKDIR&quot;</span><span class="p">)</span>
+    <span class="n">credentials</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_RUNNER_CREDENTIALS&quot;</span><span class="p">)</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">workdir</span>
+        <span class="k">else</span> <span class="n">Path</span><span class="p">(</span><span class="n">credentials</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span>
+        <span class="k">if</span> <span class="n">credentials</span>
+        <span class="k">else</span> <span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;.local/state/simstack&quot;</span>
+    <span class="p">)</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">server_url</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">16</span><span class="p">]</span>
+    <span class="n">directory</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="s2">&quot;.claims&quot;</span> <span class="o">/</span> <span class="n">key</span>
+    <span class="n">directory</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="mo">0o700</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">directory</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="n">temporary</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span> <span class="o">+</span> <span class="s2">&quot;.tmp&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">temporary</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+        <span class="n">temporary</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="mo">0o600</span><span class="p">)</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">handle</span><span class="p">)</span>
+        <span class="n">handle</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">fsync</span><span class="p">(</span><span class="n">handle</span><span class="o">.</span><span class="n">fileno</span><span class="p">())</span>
+    <span class="n">temporary</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_receipt_path</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">task_id</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">task_id</span><span class="p">))</span> <span class="o">!=</span> <span class="mi">24</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
+        <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="s2">&quot;0123456789abcdef&quot;</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid claim task identity&quot;</span><span class="p">)</span>
+    <span class="n">account</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">_actor</span><span class="p">(</span><span class="n">api</span><span class="p">)[</span><span class="s2">&quot;account_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">16</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">_directory</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">server_url</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">account</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.json&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="reserve_launch">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.reserve_launch">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">reserve_launch</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">task_id</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reserve the launch until the last owner, including its child, closes it.&quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">_receipt_path</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">task_id</span><span class="p">)</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.launch&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_reserve_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_reserve_path</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Acquire an inheritable process-lifetime lease at an existing scope.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;nt&quot;</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">ctypes</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ctypes</span><span class="w"> </span><span class="kn">import</span> <span class="n">wintypes</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">msvcrt</span>
+
+        <span class="c1"># An exclusive file handle survives its launcher&#39;s death when inherited.</span>
+        <span class="c1"># Windows byte-range locks, unlike Unix flock, do not have that property.</span>
+        <span class="n">create</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">WinDLL</span><span class="p">(</span><span class="s2">&quot;kernel32&quot;</span><span class="p">,</span> <span class="n">use_last_error</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">CreateFileW</span>
+        <span class="n">create</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="p">(</span><span class="n">wintypes</span><span class="o">.</span><span class="n">LPCWSTR</span><span class="p">,</span> <span class="n">wintypes</span><span class="o">.</span><span class="n">DWORD</span><span class="p">,</span> <span class="n">wintypes</span><span class="o">.</span><span class="n">DWORD</span><span class="p">,</span>
+                           <span class="n">wintypes</span><span class="o">.</span><span class="n">LPVOID</span><span class="p">,</span> <span class="n">wintypes</span><span class="o">.</span><span class="n">DWORD</span><span class="p">,</span> <span class="n">wintypes</span><span class="o">.</span><span class="n">DWORD</span><span class="p">,</span> <span class="n">wintypes</span><span class="o">.</span><span class="n">HANDLE</span><span class="p">)</span>
+        <span class="n">create</span><span class="o">.</span><span class="n">restype</span> <span class="o">=</span> <span class="n">wintypes</span><span class="o">.</span><span class="n">HANDLE</span>
+        <span class="n">generic_read_write</span><span class="p">,</span> <span class="n">open_always</span><span class="p">,</span> <span class="n">normal_file</span> <span class="o">=</span> <span class="mh">0xC0000000</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mh">0x80</span>
+        <span class="n">handle</span> <span class="o">=</span> <span class="n">create</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="n">generic_read_write</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">open_always</span><span class="p">,</span> <span class="n">normal_file</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">handle</span> <span class="o">==</span> <span class="n">wintypes</span><span class="o">.</span><span class="n">HANDLE</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">get_last_error</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">error</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">32</span><span class="p">,</span> <span class="mi">33</span><span class="p">}:</span>  <span class="c1"># Sharing or lock violation: another launch owns it.</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">raise</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">WinError</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">fdopen</span><span class="p">(</span><span class="n">msvcrt</span><span class="o">.</span><span class="n">open_osfhandle</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">O_RDWR</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_BINARY</span><span class="p">),</span> <span class="s2">&quot;a+b&quot;</span><span class="p">)</span>
+
+    <span class="kn">import</span><span class="w"> </span><span class="nn">fcntl</span>
+
+    <span class="n">handle</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;a+b&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">fcntl</span><span class="o">.</span><span class="n">flock</span><span class="p">(</span><span class="n">handle</span><span class="o">.</span><span class="n">fileno</span><span class="p">(),</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">LOCK_EX</span> <span class="o">|</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">LOCK_NB</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">BlockingIOError</span><span class="p">:</span>
+        <span class="n">handle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">handle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">raise</span>
+    <span class="c1"># Do not explicitly LOCK_UN: that would also unlock the child&#39;s inherited fd.</span>
+    <span class="k">return</span> <span class="n">handle</span>
+
+
+<div class="viewcode-block" id="inherit_launch_reservation">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.inherit_launch_reservation">[docs]</a>
+<span class="nd">@contextmanager</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">inherit_launch_reservation</span><span class="p">(</span><span class="n">reservation</span><span class="p">,</span> <span class="n">environment</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transfer the live launch reservation atomically with subprocess creation.&quot;&quot;&quot;</span>
+    <span class="n">inherited</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_LAUNCH_RESERVATION&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">reservation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># A run_node process can hand the same launch to Docker/Apptainer before</span>
+        <span class="c1"># its own start. Never pass a parent&#39;s handle to a different execution.</span>
+        <span class="n">identity</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;TASK&quot;</span><span class="p">,</span> <span class="s2">&quot;GENERATION&quot;</span><span class="p">,</span> <span class="s2">&quot;CLAIM&quot;</span><span class="p">,</span> <span class="s2">&quot;START&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">inherited</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_EXECUTION_&quot;</span> <span class="o">+</span> <span class="n">field</span><span class="p">)</span>
+                                    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;TASK&quot;</span><span class="p">,</span> <span class="s2">&quot;CLAIM&quot;</span><span class="p">,</span> <span class="s2">&quot;START&quot;</span><span class="p">))</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
+            <span class="n">environment</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_EXECUTION_&quot;</span> <span class="o">+</span> <span class="n">field</span><span class="p">)</span> <span class="o">!=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_EXECUTION_&quot;</span> <span class="o">+</span> <span class="n">field</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">identity</span>
+        <span class="p">):</span>
+            <span class="n">environment</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_LAUNCH_RESERVATION&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="p">{}</span>
+            <span class="k">return</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="s2">&quot;nt&quot;</span><span class="p">:</span>
+        <span class="n">descriptor</span> <span class="o">=</span> <span class="n">reservation</span><span class="o">.</span><span class="n">fileno</span><span class="p">()</span> <span class="k">if</span> <span class="n">reservation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">inherited</span><span class="p">)</span>
+        <span class="n">environment</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_LAUNCH_RESERVATION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">descriptor</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;pass_fds&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">descriptor</span><span class="p">,)}</span>
+        <span class="k">return</span>
+
+    <span class="kn">import</span><span class="w"> </span><span class="nn">msvcrt</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+
+    <span class="n">handle</span> <span class="o">=</span> <span class="n">msvcrt</span><span class="o">.</span><span class="n">get_osfhandle</span><span class="p">(</span><span class="n">reservation</span><span class="o">.</span><span class="n">fileno</span><span class="p">())</span> <span class="k">if</span> <span class="n">reservation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">inherited</span><span class="p">)</span>
+    <span class="n">environment</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_LAUNCH_RESERVATION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
+    <span class="n">startup</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">STARTUPINFO</span><span class="p">()</span>
+    <span class="n">startup</span><span class="o">.</span><span class="n">lpAttributeList</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;handle_list&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">handle</span><span class="p">]}</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">set_handle_inheritable</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;startupinfo&quot;</span><span class="p">:</span> <span class="n">startup</span><span class="p">}</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">set_handle_inheritable</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="receipt">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.receipt">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">receipt</span><span class="p">(</span>
+    <span class="n">api</span><span class="p">,</span>
+    <span class="n">task_id</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">begin</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">revision</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">generation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">inline</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">publication</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">request_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">claim_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">recovered_local</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">actor</span> <span class="o">=</span> <span class="n">_actor</span><span class="p">(</span><span class="n">api</span><span class="p">)</span> <span class="k">if</span> <span class="n">begin</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">_receipt_path</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">task_id</span><span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.runner_credentials</span><span class="w"> </span><span class="kn">import</span> <span class="n">credential_lock</span>
+
+    <span class="k">with</span> <span class="p">(</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.lock&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;a+&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">lock</span><span class="p">,</span>
+        <span class="n">credential_lock</span><span class="p">(</span><span class="n">lock</span><span class="p">,</span> <span class="n">exclusive</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span> <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">begin</span>
+            <span class="ow">and</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;generation&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">generation</span>
+            <span class="ow">and</span> <span class="p">(</span><span class="n">claim_id</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;claim_id&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">claim_id</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;journal_version&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;actor&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">actor</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="ow">not</span> <span class="n">recovered_local</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Existing launch receipt does not match its caller&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">begin</span> <span class="ow">and</span> <span class="p">(</span>
+            <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="ow">or</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;generation&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">generation</span>
+            <span class="ow">or</span> <span class="p">(</span><span class="n">claim_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;claim_id&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">claim_id</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="p">(</span><span class="n">recovered_local</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;actor&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">actor</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;journal_version&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s2">&quot;actor&quot;</span><span class="p">:</span> <span class="n">actor</span><span class="p">,</span>
+                <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">task_id</span><span class="p">),</span>
+                <span class="s2">&quot;claim_id&quot;</span><span class="p">:</span> <span class="n">claim_id</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid4</span><span class="p">()),</span>
+                <span class="s2">&quot;revision&quot;</span><span class="p">:</span> <span class="n">revision</span><span class="p">,</span>
+                <span class="s2">&quot;generation&quot;</span><span class="p">:</span> <span class="n">generation</span><span class="p">,</span>
+                <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;pending&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="n">recovered_local</span><span class="p">:</span>
+                <span class="n">value</span><span class="p">[</span><span class="s2">&quot;recovered_local&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">inline</span><span class="p">:</span>
+                <span class="n">value</span><span class="p">[</span><span class="s2">&quot;inline&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">publication</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">value</span><span class="p">[</span><span class="s2">&quot;publication&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">publication</span>
+                <span class="n">value</span><span class="p">[</span><span class="s2">&quot;request_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">request_id</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid4</span><span class="p">())</span>
+            <span class="n">_write</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">value</span></div>
+
+
+
+<div class="viewcode-block" id="finish">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.finish">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">finish</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">claimed</span><span class="p">):</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">_receipt_path</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;task_id&quot;</span><span class="p">])</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.runner_credentials</span><span class="w"> </span><span class="kn">import</span> <span class="n">credential_lock</span>
+
+    <span class="k">with</span> <span class="p">(</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.lock&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;a+&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">lock</span><span class="p">,</span>
+        <span class="n">credential_lock</span><span class="p">(</span><span class="n">lock</span><span class="p">,</span> <span class="n">exclusive</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="p">):</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span> <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">current</span> <span class="ow">and</span> <span class="n">current</span><span class="p">[</span><span class="s2">&quot;claim_id&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;claim_id&quot;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">claimed</span><span class="p">:</span>
+                <span class="n">_write</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="p">{</span><span class="o">**</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;claimed&quot;</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">path</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="pending">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.pending">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pending</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">_directory</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">server_url</span><span class="p">)</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.json&quot;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Unreadable launch journal </span><span class="si">%s</span><span class="s2"> retained&quot;</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Unknown launch journal </span><span class="si">%s</span><span class="s2"> retained&quot;</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;pending&quot;</span><span class="p">,</span> <span class="s2">&quot;claimed&quot;</span><span class="p">}:</span>
+            <span class="k">yield</span> <span class="n">value</span></div>
+
+
+
+<div class="viewcode-block" id="record_spawn">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.record_spawn">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">record_spawn</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">entry</span><span class="p">,</span> <span class="n">process_id</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remember the local child before any network acknowledgement.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.runner_credentials</span><span class="w"> </span><span class="kn">import</span> <span class="n">credential_lock</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">_receipt_path</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.lock&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;a+&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">lock</span><span class="p">,</span> <span class="n">credential_lock</span><span class="p">(</span><span class="n">lock</span><span class="p">,</span> <span class="n">exclusive</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+        <span class="n">_write</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="p">{</span><span class="o">**</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;process_id&quot;</span><span class="p">:</span> <span class="n">process_id</span><span class="p">,</span>
+            <span class="s2">&quot;start_id&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_start_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)})</span></div>
+
+
+
+<div class="viewcode-block" id="record_container_launch">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.record_container_launch">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">record_container_launch</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">entry</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Persist external identity before Docker can accept an indeterminate run.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.runner_credentials</span><span class="w"> </span><span class="kn">import</span> <span class="n">credential_lock</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">_receipt_path</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="n">execution</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.lock&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;a+&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">lock</span><span class="p">,</span> <span class="n">credential_lock</span><span class="p">(</span><span class="n">lock</span><span class="p">,</span> <span class="n">exclusive</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span> <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">)</span> <span class="o">!=</span> <span class="n">execution</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+                                <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;generation&quot;</span><span class="p">,</span> <span class="s2">&quot;claim_id&quot;</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Container launch requires its original claim receipt&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;container_name&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">&quot;container_name&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">name</span> <span class="ow">or</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_id&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">execution</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Container launch differs from its recorded execution&quot;</span><span class="p">)</span>
+        <span class="n">recorded</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;container_name&quot;</span><span class="p">))</span>
+        <span class="n">_write</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="p">{</span><span class="o">**</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;container_name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="s2">&quot;start_id&quot;</span><span class="p">:</span> <span class="n">execution</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">]})</span>
+        <span class="k">return</span> <span class="n">recorded</span></div>
+
+
+
+<div class="viewcode-block" id="acquire_work">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.acquire_work">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">acquire_work</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">capacity</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Persist one acquisition identity until its reply is safely recorded.&quot;&quot;&quot;</span>
+    <span class="n">actor</span> <span class="o">=</span> <span class="n">_actor</span><span class="p">(</span><span class="n">server</span><span class="p">)</span>
+    <span class="n">directory</span> <span class="o">=</span> <span class="n">_directory</span><span class="p">(</span><span class="n">server</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">server_url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">directory</span> <span class="o">/</span> <span class="s2">&quot;work-acquisition.json&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Unscoped work acquisition journal retained&quot;</span><span class="p">)</span>
+    <span class="n">scope</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">actor</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">16</span><span class="p">]</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">directory</span> <span class="o">/</span> <span class="p">(</span><span class="s2">&quot;work-acquisition-&quot;</span> <span class="o">+</span> <span class="n">scope</span> <span class="o">+</span> <span class="s2">&quot;.json&quot;</span><span class="p">)</span>
+    <span class="c1"># One process owns the entire intent/reply/receipt transaction. Holding a</span>
+    <span class="c1"># nonblocking lease across HTTP also avoids blocking another event loop.</span>
+    <span class="n">reservation</span> <span class="o">=</span> <span class="n">_reserve_path</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.acquire&quot;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">reservation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">intent</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+            <span class="k">else</span> <span class="p">{</span>
+                <span class="s2">&quot;journal_version&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s2">&quot;actor&quot;</span><span class="p">:</span> <span class="n">actor</span><span class="p">,</span>
+                <span class="s2">&quot;request_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid4</span><span class="p">()),</span>
+                <span class="s2">&quot;capacity&quot;</span><span class="p">:</span> <span class="n">capacity</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">intent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;journal_version&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">intent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;actor&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">actor</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Work acquisition journal does not match its caller&quot;</span><span class="p">)</span>
+        <span class="n">_write</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">intent</span><span class="p">)</span>
+        <span class="n">tasks</span> <span class="o">=</span> <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">acquire_work</span><span class="p">(</span>
+            <span class="n">intent</span><span class="p">[</span><span class="s2">&quot;capacity&quot;</span><span class="p">],</span> <span class="n">request_id</span><span class="o">=</span><span class="n">intent</span><span class="p">[</span><span class="s2">&quot;request_id&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">receipt</span><span class="p">(</span>
+                <span class="n">server</span><span class="p">,</span>
+                <span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="n">begin</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">revision</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">repository_revision</span><span class="p">,</span>
+                <span class="n">generation</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_generation&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                <span class="n">claim_id</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_claim_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="n">finish</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">claimed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tasks</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">reservation</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="acknowledge_start">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.acknowledge_start">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">acknowledge_start</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">entry</span><span class="p">,</span> <span class="n">started</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retire a launch receipt only after Server acknowledged that start.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">started</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">receipt</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="ow">and</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;claim_id&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">entry</span><span class="p">)[</span><span class="s2">&quot;claim_id&quot;</span><span class="p">]</span>
+    <span class="p">):</span>
+        <span class="n">finish</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">claimed</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">inherited</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_LAUNCH_RESERVATION&quot;</span><span class="p">)</span>
+    <span class="n">execution</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">inherited</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_EXECUTION_&quot;</span> <span class="o">+</span> <span class="n">key</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span> <span class="o">==</span> <span class="n">execution</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">field</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;task&quot;</span><span class="p">,</span> <span class="s2">&quot;task_id&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;claim&quot;</span><span class="p">,</span> <span class="s2">&quot;claim_id&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;start&quot;</span><span class="p">,</span> <span class="s2">&quot;start_id&quot;</span><span class="p">))</span>
+    <span class="p">):</span>
+        <span class="n">descriptor</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_LAUNCH_RESERVATION&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;nt&quot;</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">msvcrt</span>
+            <span class="n">descriptor</span> <span class="o">=</span> <span class="n">msvcrt</span><span class="o">.</span><span class="n">open_osfhandle</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">O_RDWR</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_BINARY</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">descriptor</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="reconcile_claim">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.reconcile_claim">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">reconcile_claim</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;recovered_local&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">recover_local_launch</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">prepared_submission</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">entry</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">entry</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">queue</span> <span class="o">!=</span> <span class="s2">&quot;slurm-queue&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.slurm_submission_intents</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_intent</span>
+        <span class="n">intent</span> <span class="o">=</span> <span class="n">read_intent</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">intent</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">intent</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;prepared&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+        <span class="n">planned</span> <span class="o">=</span> <span class="n">intent</span><span class="p">[</span><span class="s2">&quot;execution&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nb">any</span><span class="p">(</span><span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">!=</span> <span class="n">planned</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">,</span> <span class="s2">&quot;generation&quot;</span><span class="p">,</span> <span class="s2">&quot;claim_id&quot;</span><span class="p">))</span>
+                <span class="ow">or</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_id&quot;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="kc">None</span><span class="p">,</span> <span class="n">planned</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_id&quot;</span><span class="p">)}):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="c1"># A lost reservation reply may leave Server without its planned start</span>
+        <span class="c1"># yet. Resume that same intent; allocating another ID would race it.</span>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_start_id&quot;</span><span class="p">,</span> <span class="n">planned</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">container_launch</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;container_name&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">entry</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;claimed&quot;</span><span class="p">,</span> <span class="s2">&quot;recoverable&quot;</span><span class="p">}:</span>
+            <span class="k">return</span> <span class="n">state</span>
+        <span class="n">execution</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">execution</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">state</span>
+        <span class="n">execution</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">]</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.run_docker</span><span class="w"> </span><span class="kn">import</span> <span class="n">docker_execution_name</span><span class="p">,</span> <span class="n">inspect_docker_execution</span>
+        <span class="k">if</span> <span class="n">docker_execution_name</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">execution</span><span class="p">)</span> <span class="o">!=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;container_name&quot;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Container journal does not match its original execution&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+            <span class="n">observation</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span><span class="n">inspect_docker_execution</span><span class="p">,</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;container_name&quot;</span><span class="p">])</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Docker launch </span><span class="si">%s</span><span class="s2"> awaits execution evidence&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;task_id&quot;</span><span class="p">],</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;pending&quot;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">observation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">observation</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">][</span><span class="s2">&quot;Status&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;created&quot;</span><span class="p">,</span> <span class="s2">&quot;exited&quot;</span><span class="p">,</span> <span class="s2">&quot;dead&quot;</span><span class="p">}:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;pending&quot;</span><span class="p">}</span>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_start_id&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">observation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">observation</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">][</span><span class="s2">&quot;Status&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;exited&quot;</span><span class="p">,</span> <span class="s2">&quot;dead&quot;</span><span class="p">}:</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">observation</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">][</span><span class="s2">&quot;ExitCode&quot;</span><span class="p">]</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.server_api.http_transport</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnerAPIError</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">fail_attempt</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Container exited before recording its outcome (code </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+                    <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;container&quot;</span><span class="p">,</span> <span class="n">exit_code</span><span class="o">=</span><span class="n">status</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">RunnerAPIError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">exc</span><span class="o">.</span><span class="n">status_code</span> <span class="o">!=</span> <span class="mi">409</span><span class="p">:</span>
+                    <span class="k">raise</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;terminal&quot;</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">state</span>
+
+    <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;publication&quot;</span><span class="p">):</span>
+        <span class="n">known</span> <span class="o">=</span> <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_request</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">&quot;request_id&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">known</span><span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;rejected&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;rejected&quot;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">known</span><span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;applied&quot;</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">known</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">publish</span> <span class="o">=</span> <span class="p">(</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">create_child</span> <span class="k">if</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;publication&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parent_execution&quot;</span><span class="p">)</span>
+                       <span class="k">else</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">submit_root</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">publish</span><span class="p">(</span>
+                <span class="n">value</span><span class="p">[</span><span class="s2">&quot;publication&quot;</span><span class="p">],</span> <span class="n">request_id</span><span class="o">=</span><span class="n">value</span><span class="p">[</span><span class="s2">&quot;request_id&quot;</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;disposition&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;launch_inline&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;terminal&quot;</span>
+                <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;disposition&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;reused_complete&quot;</span>
+                <span class="k">else</span> <span class="s2">&quot;stale&quot;</span>
+            <span class="p">}</span>
+        <span class="c1"># A replayed publication is historical; only its current claim can launch.</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_task</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">current</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;publication_pending&quot;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s2">&quot;_execution_claim_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">getattr</span><span class="p">(</span>
+            <span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_claim_id&quot;</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s2">&quot;_execution_generation&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">getattr</span><span class="p">(</span>
+            <span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_generation&quot;</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;stale&quot;</span><span class="p">}</span>
+        <span class="n">prepared</span> <span class="o">=</span> <span class="n">prepared_submission</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s2">&quot;_execution_start_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s2">&quot;_execution_submission_state&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;prepared&quot;</span>
+                <span class="ow">and</span> <span class="ow">not</span> <span class="n">prepared</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;active&quot;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">current</span><span class="o">.</span><span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;retrieved&quot;</span><span class="p">,</span> <span class="s2">&quot;submitted&quot;</span><span class="p">}:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;terminal&quot;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;local_execution_token&quot;</span><span class="p">):</span>
+            <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s2">&quot;_execution_token&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;local_execution_token&quot;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">container_launch</span><span class="p">({</span><span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;claimed&quot;</span><span class="p">,</span> <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="n">current</span><span class="p">})</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">reconcile_attempts</span><span class="p">(</span><span class="n">claims</span><span class="o">=</span><span class="p">[</span><span class="n">value</span><span class="p">],</span> <span class="n">outcomes</span><span class="o">=</span><span class="p">[])</span>
+    <span class="n">states</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;claims&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">states</span> <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;pending&quot;</span><span class="p">}</span>
+    <span class="n">prepared</span> <span class="o">=</span> <span class="n">prepared_submission</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task&quot;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;active&quot;</span> <span class="ow">and</span> <span class="n">prepared</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="o">**</span><span class="n">state</span><span class="p">,</span> <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;claimed&quot;</span><span class="p">}</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">container_launch</span><span class="p">(</span><span class="n">state</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="recover_launches">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.recover_launches">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">recover_launches</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recover abandoned publications without releasing the executor&#39;s lock.&quot;&quot;&quot;</span>
+    <span class="n">recovered</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">actor</span> <span class="o">=</span> <span class="n">_actor</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">pending</span><span class="p">(</span><span class="n">api</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">task_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">str</span><span class="p">(</span><span class="n">task_id</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;journal_version&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;actor&quot;</span><span class="p">),</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Unscoped or unknown launch journal for </span><span class="si">%s</span><span class="s2"> retained&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">))</span>
+            <span class="k">continue</span>
+        <span class="n">foreign</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;actor&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">actor</span>
+        <span class="c1"># Only Server can transfer a shared local publication after its original</span>
+        <span class="c1"># physical parent stopped. Never replay another actor&#39;s command journal.</span>
+        <span class="n">transferable</span> <span class="o">=</span> <span class="p">(</span><span class="n">foreign</span> <span class="ow">and</span> <span class="n">actor</span><span class="p">[</span><span class="s2">&quot;authorization&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">}</span>
+            <span class="ow">and</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;actor&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;authorization&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">}</span>
+            <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;inline&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;recovered_local&quot;</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;publication&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parent_execution&quot;</span><span class="p">))</span>
+            <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">&quot;actor&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">==</span> <span class="n">actor</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;server_url&quot;</span><span class="p">,</span> <span class="s2">&quot;account_id&quot;</span><span class="p">,</span> <span class="s2">&quot;resource&quot;</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="n">foreign</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">transferable</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;publication&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;publication&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parent_execution&quot;</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">authorization</span> <span class="o">!=</span> <span class="s2">&quot;user&quot;</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">reservation</span> <span class="o">=</span> <span class="n">reserve_launch</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;task_id&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">reservation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">transferable</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.server_api.http_transport</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnerAPIError</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">api</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">recover_local_launch</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">RunnerAPIError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">exc</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">401</span><span class="p">,</span> <span class="mi">403</span><span class="p">,</span> <span class="mi">404</span><span class="p">,</span> <span class="mi">409</span><span class="p">}:</span>
+                        <span class="k">continue</span>
+                    <span class="k">raise</span>
+                <span class="c1"># A different actor cannot retire the original owner&#39;s receipt.</span>
+                <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;claimed&quot;</span><span class="p">:</span>
+                    <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">reconcile_claim</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;pending&quot;</span><span class="p">,</span> <span class="s2">&quot;publication_pending&quot;</span><span class="p">}:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;active&quot;</span><span class="p">,</span> <span class="s2">&quot;terminal&quot;</span><span class="p">,</span> <span class="s2">&quot;stale&quot;</span><span class="p">,</span> <span class="s2">&quot;rejected&quot;</span><span class="p">}:</span>
+                <span class="n">finish</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">claimed</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">entry</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;claimed&quot;</span><span class="p">,</span> <span class="s2">&quot;recoverable&quot;</span><span class="p">}:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="nb">bool</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_local&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span> <span class="o">!=</span> <span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">authorization</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">}):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span> <span class="o">!=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;task_id&quot;</span><span class="p">]:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Recovered launch does not match its publication identity&quot;</span>
+                <span class="p">)</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">receipt</span><span class="p">(</span>
+                <span class="n">api</span><span class="p">,</span>
+                <span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="n">begin</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">revision</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;repository_revision&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;revision&quot;</span><span class="p">)),</span>
+                <span class="n">generation</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span>
+                    <span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_generation&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;generation&quot;</span><span class="p">)</span>
+                <span class="p">),</span>
+                <span class="n">claim_id</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_claim_id&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;claim_id&quot;</span><span class="p">]),</span>
+                <span class="n">inline</span><span class="o">=</span><span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;inline&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+                <span class="n">publication</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">transferable</span> <span class="k">else</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;publication&quot;</span><span class="p">),</span>
+                <span class="n">request_id</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">transferable</span> <span class="k">else</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;request_id&quot;</span><span class="p">),</span>
+                <span class="n">recovered_local</span><span class="o">=</span><span class="n">transferable</span> <span class="ow">or</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;recovered_local&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="n">finish</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">claimed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;local_execution_token&quot;</span><span class="p">):</span>
+                <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_token&quot;</span><span class="p">,</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;local_execution_token&quot;</span><span class="p">])</span>
+            <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_launch_reservation&quot;</span><span class="p">,</span> <span class="n">reservation</span><span class="p">)</span>
+            <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_launch_receipt&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="n">recovered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+            <span class="n">reservation</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># ownership passes to the executor, including its queue</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">reservation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">reservation</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">recovered</span> <span class="ow">and</span> <span class="n">observed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">observed</span><span class="p">,</span> <span class="s2">&quot;_execution_recoverable_local&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="c1"># Another host may never have seen the dead publisher&#39;s local journal.</span>
+        <span class="c1"># The Server transfer marker and current execution are sufficient proof.</span>
+        <span class="n">reservation</span> <span class="o">=</span> <span class="n">reserve_launch</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">observed</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">reservation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.server_api.http_transport</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnerAPIError</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">api</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">recover_local_launch</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">observed</span><span class="p">))</span>
+                <span class="k">except</span> <span class="n">RunnerAPIError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">exc</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">401</span><span class="p">,</span> <span class="mi">403</span><span class="p">,</span> <span class="mi">404</span><span class="p">,</span> <span class="mi">409</span><span class="p">}:</span>
+                        <span class="c1"># Another surviving consumer may own the handoff; this</span>
+                        <span class="c1"># waiter retains its dependency without launching it.</span>
+                        <span class="k">return</span> <span class="n">recovered</span>
+                    <span class="k">raise</span>
+                <span class="n">current</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;claimed&quot;</span> <span class="ow">and</span> <span class="n">current</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">receipt</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">current</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">begin</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inline</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">recovered_local</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">revision</span><span class="o">=</span><span class="n">current</span><span class="o">.</span><span class="n">repository_revision</span><span class="p">,</span>
+                        <span class="n">generation</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s2">&quot;_execution_generation&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                        <span class="n">claim_id</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s2">&quot;_execution_claim_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+                    <span class="n">finish</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">claimed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s2">&quot;_execution_token&quot;</span><span class="p">,</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;local_execution_token&quot;</span><span class="p">])</span>
+                    <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s2">&quot;_launch_reservation&quot;</span><span class="p">,</span> <span class="n">reservation</span><span class="p">)</span>
+                    <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s2">&quot;_launch_receipt&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                    <span class="n">recovered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
+                    <span class="n">reservation</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">reservation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">reservation</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">recovered</span></div>
+
+
+
+<div class="viewcode-block" id="adopt_execution">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.adopt_execution">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">adopt_execution</span><span class="p">(</span><span class="n">execution</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Install Server&#39;s admitted incarnation within the current worker scope.&quot;&quot;&quot;</span>
+    <span class="n">_execution</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">execution</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="current_execution">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.current_execution">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">current_execution</span><span class="p">():</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">_execution</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">value</span>
+    <span class="n">task_id</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_EXECUTION_TASK&quot;</span><span class="p">)</span>
+    <span class="n">claim_id</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_EXECUTION_CLAIM&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">task_id</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">claim_id</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span> <span class="s2">&quot;claim_id&quot;</span><span class="p">:</span> <span class="n">claim_id</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_EXECUTION_GENERATION&quot;</span><span class="p">):</span>
+        <span class="n">value</span><span class="p">[</span><span class="s2">&quot;generation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_EXECUTION_GENERATION&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_EXECUTION_START&quot;</span><span class="p">):</span>
+        <span class="n">value</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_EXECUTION_START&quot;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">value</span></div>
+
+
+
+<div class="viewcode-block" id="task_execution">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.launch_claims.task_execution">[docs]</a>
+<span class="nd">@contextmanager</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">task_execution</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+    <span class="n">existing</span> <span class="o">=</span> <span class="n">current_execution</span><span class="p">()</span>
+    <span class="n">claim_id</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_claim_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+            <span class="s2">&quot;claim_id&quot;</span><span class="p">:</span> <span class="n">claim_id</span><span class="p">,</span>
+            <span class="s2">&quot;generation&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_generation&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">claim_id</span>
+        <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">existing</span> <span class="ow">and</span> <span class="n">existing</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">existing</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">and</span> <span class="s2">&quot;start_id&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+        <span class="n">start_id</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_start_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid4</span><span class="p">())</span>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_start_id&quot;</span><span class="p">,</span> <span class="n">start_id</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;start_id&quot;</span><span class="p">:</span> <span class="n">start_id</span><span class="p">}</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">_execution</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">_execution</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">token</span><span class="p">)</span></div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, Wolfgang Wenzel
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script data-docs-built-at="2026-11-10 13:23:18 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    </body>
+</html>

@@ -93,13 +93,9 @@ This command:
 - Maps port 27017 to your localhost
 - Sets up basic authentication with username `admin` and password `yourpassword`
 
-**Important**: Replace `yourpassword` with a secure password and update your `simstack.toml` connection string
-accordingly:
-
-```toml
-connection_string = "mongodb://admin:yourpassword@localhost:27017/"
-```
-You can then create databases and collections in the MongoDB instance with the `mongo` CLI.
+**Important**: MongoDB is configured only in the Server deployment. Set its
+`CONNECTION_STRING` environment variable to the administration database URI.
+Runner and workflow configuration must contain no MongoDB credentials.
 
 ### Starting the SimStack II Server
 
@@ -217,9 +213,10 @@ Simstack II reads a single **TOML** file (`simstack.toml`) to learn
 #######################################
 [parameters.common]
 resources        = ["local", "int-nano", "horeka", "justus", "self", "exchange", "uploads"]
-database         = "celso_data"                    # default DB
-test_database    = "celso_test_data"               # used by `simstack selftest`
-connection_string = "mongodb://<user>:<pass>@<host>:27017/"  # ⬚ change!
+
+[parameters.server]
+url = "https://<simstack-server>"
+# Runner authentication comes from SIMSTACK_RUNNER_TOKEN, set by enrollment.
 
 #######################################
 # Host-specific overrides
@@ -313,53 +310,34 @@ scp set_pythonpath.sh user@int-nano.int.kit.edu:~/simstack/
 
 ## 4. Ready, Set, Workflow! 🏁
 
-**Mission**: prime Simstack II so your very first workflow launches without a hiccup—DB seeded, nodes known, runner humming.
+Publish the workflow catalogue and prepare Runner before submitting work.
 
-### 🥇 Step 1 — Initialize the database
+### 🥇 Step 1 — Connect the repository
 
-Simstack keeps its model and node catalogue in MongoDB. Populate (or refresh) the tables whenever you pull a new commit:
+Connect the workflow repository and its branch in the UI. Server discovers the
+model/node catalogue for the selected commit and stores it on the Server side.
+Local table-builder commands inspect descriptors without writing a database.
 
-```python!
-# from the repo root
-cd src/simstack/utils        # ⇢ utility scripts live here
-python model_table.py       # 🚀 inserts/updates the “Models” collection
-python node_table.py         # 🚀 inserts/updates the “Nodes”  collection
-```
-### 🥈 Step 2 — Re‑register nodes (WaNos) 🔄
+### 🥈 Step 2 — Prepare the revision
 
-Any time you change a **node definition**—be it locally or on an HPC cluster—you must (re)announce it to the control plane:
-
-```python!
-# ▸ Local workstation
-python src/simstack/core/node.py  # instantaneous
-
-# ▸ On int‑nano (or another cluster head node)
-ssh user@int-nano.int.kit.edu
-python ~/simstack/src/simstack/core/node.py
-```
-
-Why **WaNos**?  Workflow Aware Nodes—nodes that tell Simstack exactly what they’re capable of.
+After a code update, publish its repository revision through Server. Runner
+receives the preparation command, checks out the pinned source, runs
+`uv sync --locked` with its resource extras, and reports readiness. Existing
+tasks and their children retain their original revision.
 
 ### 🥉 Step 3 — Fire up the runner on int‑nano 🚀
 
-```python!
-ssh user@int-nano.int.kit.edu           # 1️⃣ log in
-source ~/simstack/set_pythonpath.sh  # 2️⃣ expose src/ to PYTHONPATH
-python src/simstack/core/runner.py --resource int-nano  # 3️⃣ start runner
+Use the resource's enrollment command from the UI, then start its installed
+Runner with the enrolled Server URL and resource token:
+
+```bash
+simstack_runner --resource int-nano
 ```
 
-You should see something like:
-```bash!
-2025-04-24 11:26:58 - ConfigReader - INFO - Initializing ConfigReader with resource: local on database celso_data
-2025-04-24 11:26:58 - ConfigReader - INFO - workdir: /home/celso/Desktop/Project/KIT/simstack/Files/simstack_workflows
-```
-
-The runner now listens for jobs assigned to the int-nano resource and inherits the correct PYTHONPATH so your code imports flawlessly.
-
-```bash!
-[Runner‑int‑nano] ⚡️  connected to broker
-[Runner‑int‑nano] 💤  waiting for tasks (Ctrl‑C to exit)
-```
+Runner validates the API protocol, resource credentials and catalogue before
+accepting work. MongoDB or object storage credentials are not required on the
+resource. See the [Runner/workflow adjustment guide](doc/api_s3_runner.md) for
+user SDK initialization and explicit scientific publication.
 
 ### 5. Hands‑On: binary_operations.py 🧮
 

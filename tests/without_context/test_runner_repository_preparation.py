@@ -9,8 +9,9 @@ from simstack.core.services.runner_control_service import RunnerControlService
 
 def control(monkeypatch, json):
     manager = SimpleNamespace(_resource="machine-a", _claiming_paused=asyncio.Event())
-    monkeypatch.setattr("simstack.core.services.runner_control_service.RunnerAPIClient.from_environment",
-                        lambda: SimpleNamespace(json=json))
+    from simstack.server_api import ServerAPI
+    server = ServerAPI(SimpleNamespace(json=json))
+    monkeypatch.setattr("simstack.core.services.runner_control_service.context", SimpleNamespace(server=server))
     service = RunnerControlService(manager)
     monkeypatch.setattr(service, "refresh_container_credentials", AsyncMock())
     return service
@@ -43,7 +44,8 @@ async def test_control_acknowledges_ready_only_after_successful_preparation(monk
             return {"status": "preparing"}
         assert calls[-2] == ("prepared", descriptor)
         return {"acknowledged": True}
-    async def prepare(api, payload):
+    async def prepare(api, payload, *, repair_runtime):
+        assert repair_runtime is True
         assert payload is descriptor
         calls.append(("prepared", payload))
     monkeypatch.setattr("simstack.util.repository_runtime.prepare_repository", prepare)

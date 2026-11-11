@@ -233,7 +233,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -280,12 +285,6 @@
         <article role="main" id="furo-main-content">
           <section id="miscellaneous">
 <h1>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Link to this heading">¶</a></h1>
-<section id="bugs">
-<h2>BUGS:<a class="headerlink" href="#bugs" title="Link to this heading">¶</a></h2>
-<p>Optional fields in embedded models are not handled correctly</p>
-<p><a class="reference external" href="https://github.com/art049/odmantic/issues/370">https://github.com/art049/odmantic/issues/370</a>
-<a class="reference external" href="https://github.com/art049/odmantic/issues/484">https://github.com/art049/odmantic/issues/484</a></p>
-</section>
 <section id="references">
 <h2>References<a class="headerlink" href="#references" title="Link to this heading">¶</a></h2>
 <p>The challenge in Simstack II is to exploit the features of Next-JS frontend
@@ -311,10 +310,26 @@ data analysis and data visualization using three main mechanisms:</p>
 <p class="admonition-title">Note</p>
 <p>General information about Simstack models</p>
 </div>
-<p>Simstack models are built on top of <cite>odmantic</cite>, which uses <cite>pydantic</cite> for data validation.
+<p>Simstack models use <cite>pydantic</cite> for data validation; Server owns their persistence.
 By decorating a class with <cite>&#64;simstack_model</cite>, you enable additional UI-related features.
 You can customize how a model appears in the GUI by implementing <cite>json_schema</cite> and <cite>ui_schema</cite> methods.
 Refer to <a class="reference internal" href="data.html#persisting-data"><span class="std std-ref">Persisting and Visualizing Data</span></a> for more details.</p>
+<section id="scientific-publication-and-resolution">
+<h3>Scientific publication and resolution<a class="headerlink" href="#scientific-publication-and-resolution" title="Link to this heading">¶</a></h3>
+<p>Use <code class="docutils literal notranslate"><span class="pre">context.server.values.publish_value(value)</span></code> and <code class="docutils literal notranslate"><span class="pre">get_value(ModelType,</span> <span class="pre">id)</span></code>
+to publish and resolve scientific records through HTTP. Custom models may implement
+<code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span> <span class="pre">prepare_publication(self)</span></code> to normalize scientific fields before
+publication, and <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span> <span class="pre">after_resolution(self)</span></code> to rebuild local derived
+state after their referenced values have been resolved. These methods receive no
+database handle. Mark derived runtime fields with <code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code> when
+they should not be stored. Hooks run on the client executing the workflow and
+must be safe to repeat on subsequent publication or resolution.</p>
+<p><code class="docutils literal notranslate"><span class="pre">query_records(ModelType,</span> <span class="pre">filters=[{&quot;field&quot;:</span> <span class="pre">&quot;energy&quot;,</span> <span class="pre">&quot;operator&quot;:</span> <span class="pre">&quot;lt&quot;,</span>
+<span class="pre">&quot;value&quot;:</span> <span class="pre">0}],</span> <span class="pre">order_by=[{&quot;field&quot;:</span> <span class="pre">&quot;energy&quot;,</span> <span class="pre">&quot;direction&quot;:</span> <span class="pre">&quot;asc&quot;}],</span> <span class="pre">skip=0,</span>
+<span class="pre">limit=20)</span></code> selects scientific records before they are resolved. Filters are
+combined with AND; supported comparisons are <code class="docutils literal notranslate"><span class="pre">eq</span></code>, <code class="docutils literal notranslate"><span class="pre">ne</span></code>, <code class="docutils literal notranslate"><span class="pre">lt</span></code>, <code class="docutils literal notranslate"><span class="pre">lte</span></code>,
+<code class="docutils literal notranslate"><span class="pre">gt</span></code>, <code class="docutils literal notranslate"><span class="pre">gte</span></code>, <code class="docutils literal notranslate"><span class="pre">in</span></code> and <code class="docutils literal notranslate"><span class="pre">not_in</span></code>. Field names are declared model fields;
+Server resolves storage names. Omitting <code class="docutils literal notranslate"><span class="pre">limit</span></code> returns all matching records.</p>
 <p>Running the above code as a workflow we would like to achieve the following:</p>
 <ul class="simple">
 <li><p>code can be executed on remote resources (possibly in parallel)</p></li>
@@ -324,7 +339,7 @@ Refer to <a class="reference internal" href="data.html#persisting-data"><span cl
 <li><p>(workflows can be created from existing components in a GUI)</p></li>
 </ul>
 <p>To address the first points, all data must be serializable. This can be achieved by pickling the inputs/outputs but
-then the data is hidden in the pickled string and not searchable. Here we have chosen odmantic classes to persist the
+then the data is hidden in the pickled string and not searchable. Here we have chosen Pydantic domain classes to persist the
 data in a database. See: <span class="xref std std-ref">persisting-results-section</span>. This has the charm that routes to access this data can be
 automatically generated.</p>
 <p>Overall we need four “servers” to run the workflow:</p>
@@ -354,7 +369,7 @@ a directory as workdir/node_name/node_id which is unique to the node.</p></li>
 <p><strong>Allowed Arguments</strong></p>
 <ul class="simple">
 <li><p>All <strong>positional</strong> arguments of the wrapped function (my_node) must be
-<strong>registered</strong> odmantic Models. These arguments are automatically persisted
+<strong>registered</strong> SimStack domain Models. These arguments are automatically persisted
 in the database.</p></li>
 <li><p>The my_node function must have **kwargs even if they are not used in the
 function.</p></li>
@@ -372,6 +387,7 @@ which are different from the function is called.</p></li>
 <p>While it is easy to check whether the variables
 passed to nodes can be persisted in the database, this can be checked for
 results only in post-processing.</p>
+</section>
 </section>
 </section>
 
@@ -431,9 +447,11 @@ results only in post-processing.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Miscellaneous</a><ul>
-<li><a class="reference internal" href="#bugs">BUGS:</a></li>
 <li><a class="reference internal" href="#references">References</a></li>
-<li><a class="reference internal" href="#customizing-simstack-models">Customizing Simstack Models</a></li>
+<li><a class="reference internal" href="#customizing-simstack-models">Customizing Simstack Models</a><ul>
+<li><a class="reference internal" href="#scientific-publication-and-resolution">Scientific publication and resolution</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -449,6 +467,6 @@ results only in post-processing.</p>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

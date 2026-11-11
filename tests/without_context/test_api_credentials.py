@@ -9,10 +9,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from simstack.runner_api.credentials import (
+from simstack.runner_runtime.runner_credentials import (
     CONTAINER_CREDENTIAL_WRITER, CONTAINER_CREDENTIAL_PATH, CONTAINER_CREDENTIAL_TMPFS, credential_lock,
 )
-from simstack.runner_api.transport import RunnerAPIClient
+from simstack.server_api.http_transport import RunnerAPIClient
 from simstack.util.file_transfer_client import FileTransferClient
 
 
@@ -95,7 +95,7 @@ def test_container_credential_copy_stays_outside_workflow_data(tmp_path):
 
 
 def test_container_copy_keeps_secrets_out_of_exec_arguments(monkeypatch):
-    from simstack.runner_api.credentials import copy_container_credentials
+    from simstack.runner_runtime.runner_credentials import copy_container_credentials
     observed = []
     def run(command, **kwargs):
         observed.append((command, kwargs))
@@ -109,7 +109,7 @@ def test_container_copy_keeps_secrets_out_of_exec_arguments(monkeypatch):
 
 
 def test_restart_restores_git_paths_and_explicit_server_host_trust(tmp_path, monkeypatch):
-    from simstack.runner_api.credentials import configure_git_credentials, update_known_hosts
+    from simstack.runner_runtime.runner_credentials import configure_git_credentials, update_known_hosts
     key = tmp_path / "git" / "id_ed25519"
     hosts = tmp_path / "git" / "known_hosts"
     monkeypatch.delenv("SIMSTACK_GIT_SSH_KEY", raising=False)

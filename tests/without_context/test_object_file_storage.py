@@ -2,6 +2,7 @@ import hashlib
 import threading
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -64,7 +65,8 @@ def test_corrupt_download_never_publishes_cache_file(tmp_path, object_http):
 
 def configure_context(tmp_path, monkeypatch):
     monkeypatch.setattr("simstack.core.context.context",
-        SimpleNamespace(config=SimpleNamespace(workdir=tmp_path, resource=Resource(value="local"))))
+        SimpleNamespace(config=SimpleNamespace(workdir=tmp_path, resource=Resource(value="local")),
+                        server=SimpleNamespace(requests=SimpleNamespace(authorization="runner"))))
 
 
 def test_existing_local_file_never_requests_api(tmp_path, monkeypatch):
@@ -91,6 +93,8 @@ def test_file_constructors_preserve_workflow_api_without_bson_payload(tmp_path, 
     configure_context(tmp_path, monkeypatch)
     checksum = hashlib.sha256(b"data").hexdigest()
     class Client:
+        object_api_prefix = "/runner/objects"
+
         def publish(self, file_stack, path):
             assert path.read_bytes() == b"data"
             return FileInstance(path="key", resource="__s3__", created_at=datetime.now(), location_type="s3",
@@ -106,6 +110,109 @@ def test_file_constructors_preserve_workflow_api_without_bson_payload(tmp_path, 
     document = json.dumps(value.model_dump_doc()).encode()
     assert b"data" not in document
     assert all(location.checksum_sha256 == checksum for location in value.locations)
+
+
+@pytest.mark.parametrize("secure_source", [False, True])
+@pytest.mark.parametrize("source_change", ["overwrite", "remove"])
+def test_local_file_snapshot_survives_source_changes_until_publication(tmp_path, monkeypatch, secure_source, source_change):
+    configure_context(tmp_path, monkeypatch)
+    source = tmp_path / "output.txt"
+    source.write_bytes(b"first result")
+    value = FileStack.from_local_file(source, secure_source=secure_source)
+    staged = Path(value._staging_directory)
+    if source_change == "overwrite":
+        source.write_bytes(b"second result")
+    else:
+        source.unlink()
+    checksum = hashlib.sha256(b"first result").hexdigest()
+
+    class Client:
+        object_api_prefix = "/runner/objects"
+
+        def publish(self, file_stack, path):
+            assert path.read_bytes() == b"first result"
+            assert file_stack.hash == checksum and file_stack.size == len(b"first result")
+            return FileInstance(path="key", resource="__s3__", created_at=datetime.now(), location_type="s3",
+                bucket="bucket", object_key="key", checksum_sha256=checksum, size_bytes=len(b"first result")).model_dump()
+
+    value.ensure_uploaded(client=Client())
+    assert not staged.exists()
+    assert all(location.location_type == "s3" for location in value.locations)
+    assert value.content is None and value.in_memory is False
+
+
+@pytest.mark.parametrize("constructor", ["default_local", "secure_local", "string"])
+def test_snapshot_materializes_independent_copy_in_requested_directory(tmp_path, monkeypatch, constructor):
+    configure_context(tmp_path, monkeypatch)
+    source = tmp_path / "input.txt"
+    source.write_text("original input")
+    value = (FileStack.from_string("original input", source.name) if constructor == "string"
+             else FileStack.from_local_file(source, secure_source=constructor == "secure_local"))
+    source.unlink()
+    target = tmp_path / "materialized"
+    downloaded = value.get_raw(Resource(value="local"), target)
+    assert downloaded == target / "input.txt"
+    assert downloaded.read_text() == "original input"
+    downloaded.write_text("modified by application")
+    assert value.get(tmp_path / "second").read_text() == "original input"
+
+
+@pytest.mark.parametrize("constructor", ["default_local", "secure_local", "string"])
+def test_node_runner_stages_actual_snapshot_into_scratch(tmp_path, monkeypatch, constructor):
+    from simstack.core.node_runner import NodeRunner
+    from simstack.util.resource_config import ResourceConfig
+
+    configure_context(tmp_path, monkeypatch)
+    from simstack.core.context import context
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(f'[local.setup]\ntmp_base_dir = "{(tmp_path / "scratch").as_posix()}"\n')
+    context.initialized = True
+    context.resource_config = ResourceConfig(config_file, "local")
+    source = tmp_path / "input.txt"
+    source.write_text("original input")
+    value = (FileStack.from_string("original input", source.name) if constructor == "string"
+             else FileStack.from_local_file(source, secure_source=constructor == "secure_local"))
+    source.unlink()
+    runner = NodeRunner("program", "task")
+    scratch = runner.stage(input_files=[value])
+    assert (scratch / "input.txt").read_text() == "original input"
+    (scratch / "input.txt").write_text("modified in scratch")
+    assert value.get(tmp_path / "second").read_text() == "original input"
+
+
+def test_explicit_local_source_keeps_existing_path_contract(tmp_path, monkeypatch):
+    configure_context(tmp_path, monkeypatch)
+    source = tmp_path / "permanent.txt"
+    source.write_text("permanent input")
+    value = FileStack.from_local_file(source, in_memory=False, secure_source=True)
+    requested = tmp_path / "unused"
+    assert value.get_raw(Resource(value="local"), requested) == source
+    assert not requested.exists()
+    assert getattr(value, "_staging_directory", None) is None
+
+
+@pytest.mark.parametrize("constructor", ["local", "string"])
+def test_failed_publication_keeps_snapshot_copy_and_hash_unchanged(tmp_path, monkeypatch, constructor):
+    configure_context(tmp_path, monkeypatch)
+    source = tmp_path / "input.txt"
+    source.write_text("original input")
+    value = (FileStack.from_string("original input", source.name) if constructor == "string"
+             else FileStack.from_local_file(source))
+    original_hash = value.hash
+
+    class Unavailable:
+        object_api_prefix = "/runner/objects"
+
+        def publish(self, file_stack, path):
+            raise FileTransferError("Object API returned HTTP 503")
+
+    with pytest.raises(FileTransferError, match="503"):
+        value.ensure_uploaded(client=Unavailable())
+    target = value.get(tmp_path / "scratch")
+    assert target == tmp_path / "scratch" / source.name
+    target.write_text("application modified its input")
+    assert value.get(tmp_path / "second").read_text() == "original input"
+    assert value.hash == original_hash
 
 
 @pytest.mark.parametrize("payload", [{"content": b"x"}, {"in_memory": True}])
@@ -201,3 +308,42 @@ def test_mutated_multipart_source_is_not_published(tmp_path, monkeypatch):
     with pytest.raises(FileTransferError, match="Source changed"):
         client.publish(value, path)
     assert all(not endpoint.endswith("/complete") for endpoint in calls)
+
+
+@pytest.mark.parametrize("copy_source", [False, True])
+def test_concurrent_publication_consumes_staging_or_copy_only_once(tmp_path, monkeypatch, copy_source):
+    from concurrent.futures import ThreadPoolExecutor
+    import time
+
+    configure_context(tmp_path, monkeypatch)
+    value = FileStack.from_string("shared input", "input.txt")
+    if copy_source:
+        object.__setattr__(value, "_copy_source_file_id", "source-id")
+    calls = []
+
+    class Client:
+        object_api_prefix = "/runner/objects"
+
+        def publish(self, file_stack, path):
+            calls.append("upload")
+            time.sleep(0.03)
+            assert path.read_bytes() == b"shared input"
+            return self.location()
+
+        def copy_file(self, file_stack, source):
+            calls.append(source)
+            time.sleep(0.03)
+            return self.location()
+
+        def location(self):
+            return FileInstance(path="key", resource="__s3__", created_at=datetime.now(),
+                location_type="s3", bucket="files", object_key="key").model_dump()
+
+    barrier = threading.Barrier(2)
+    def publish():
+        barrier.wait()
+        value.ensure_uploaded(client=Client())
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        list(pool.map(lambda _: publish(), range(2)))
+    assert calls == (["source-id"] if copy_source else ["upload"])
+    assert len([item for item in value.locations if item.location_type == "s3"]) == 1

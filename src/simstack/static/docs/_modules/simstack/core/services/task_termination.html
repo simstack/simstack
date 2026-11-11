@@ -1,0 +1,815 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../genindex.html"><link rel="search" title="Search" href="../../../../search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>simstack.core.services.task_termination - SimStack II documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/cobalt2-theme.css?v=2d651046" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/docs-build-badge.css?v=803faff8" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../../index.html"><div class="brand">SimStack II  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../../index.html">
+  
+  
+</a><form class="sidebar-search-container" method="get" action="../../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../ui_documentation.html">Graphical User Interface</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../developer_guide.html">Developer Guide</a><input aria-label="Toggle navigation of Developer Guide" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../data.html">Persisting and Visualizing Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../lists.html">List Mixins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../array_lists.html">Array Lists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../tables.html">Tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../files.html">File Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../resource_config.html">Program Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../mass_runner.html">MassRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../fire_and_forget_runner.html">FireAndForgetRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../database_migrations.html">Database Migrations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../ci_pipeline.html">CI Pipeline and Documentation Artifacts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../installation.html">Simstack II Setup</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for simstack.core.services.task_termination</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">platform</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.definitions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskStatus</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeRegistry</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;NodeRunner&quot;</span><span class="p">)</span>
+
+<span class="n">TERMINATED_BY_USER</span> <span class="o">=</span> <span class="s2">&quot;Terminated by user&quot;</span>
+
+
+<div class="viewcode-block" id="TaskTerminationError">
+<a class="viewcode-back" href="../../../../simstack/modules/simstack.core.services.html#simstack.core.services.task_termination.TaskTerminationError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TaskTerminationError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A task could not be confirmed stopped.&quot;&quot;&quot;</span></div>
+
+
+
+<span class="n">_local_processes</span> <span class="o">=</span> <span class="p">{}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_launch_key</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.server_api.workflow_tasks</span><span class="w"> </span><span class="kn">import</span> <span class="n">WorkflowTasksAPI</span>
+    <span class="n">execution</span> <span class="o">=</span> <span class="n">WorkflowTasksAPI</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">execution</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">,</span> <span class="s2">&quot;generation&quot;</span><span class="p">,</span> <span class="s2">&quot;claim_id&quot;</span><span class="p">,</span> <span class="s2">&quot;start_id&quot;</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="track_local_process">
+<a class="viewcode-back" href="../../../../simstack/modules/simstack.core.services.html#simstack.core.services.task_termination.track_local_process">[docs]</a>
+<span class="nd">@contextmanager</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">track_local_process</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">process</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">server</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keep physical ownership only while this launcher&#39;s handle is live.&quot;&quot;&quot;</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">_launch_key</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">server</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">process</span><span class="o">.</span><span class="n">_simstack_execution_server</span> <span class="o">=</span> <span class="n">server</span>
+    <span class="n">_local_processes</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">process</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">_local_processes</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="owned_local_process">
+<a class="viewcode-back" href="../../../../simstack/modules/simstack.core.services.html#simstack.core.services.task_termination.owned_local_process">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">owned_local_process</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A task ID or resource name alone cannot authorize process termination.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_local_processes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_launch_key</span><span class="p">(</span><span class="n">entry</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="record_process_id">
+<a class="viewcode-back" href="../../../../simstack/modules/simstack.core.services.html#simstack.core.services.task_termination.record_process_id">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">record_process_id</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">,</span> <span class="n">process_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">api</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Report a spawned job PID without saving its task document.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;task identity is required&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">process_id</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span> <span class="ow">or</span> <span class="n">process_id</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;process_id must be a positive int, got </span><span class="si">{</span><span class="n">process_id</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">api</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">record_process</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">,</span> <span class="n">process_id</span><span class="p">)</span>
+    <span class="n">registry_entry</span><span class="o">.</span><span class="n">process_id</span> <span class="o">=</span> <span class="n">process_id</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_kill_process_tree</span><span class="p">(</span><span class="n">process_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">protected_pids</span><span class="o">=</span><span class="nb">frozenset</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Kill a process and its children. Does not kill the process session.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">process_id</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span> <span class="ow">or</span> <span class="n">process_id</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;process_id must be a positive int, got </span><span class="si">{</span><span class="n">process_id</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">process_id</span> <span class="ow">in</span> <span class="n">protected_pids</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Windows&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">protected_pids</span><span class="p">:</span>
+        <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="p">[</span><span class="s2">&quot;taskkill&quot;</span><span class="p">,</span> <span class="s2">&quot;/PID&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">process_id</span><span class="p">),</span> <span class="s2">&quot;/T&quot;</span><span class="p">,</span> <span class="s2">&quot;/F&quot;</span><span class="p">],</span>
+            <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">check</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+    <span class="k">for</span> <span class="n">child_pid</span> <span class="ow">in</span> <span class="n">_child_pids</span><span class="p">(</span><span class="n">process_id</span><span class="p">):</span>
+        <span class="n">_kill_process_tree</span><span class="p">(</span><span class="n">child_pid</span><span class="p">,</span> <span class="n">protected_pids</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Windows&quot;</span><span class="p">:</span>
+        <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;taskkill&quot;</span><span class="p">,</span> <span class="s2">&quot;/PID&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">process_id</span><span class="p">),</span> <span class="s2">&quot;/F&quot;</span><span class="p">],</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="n">process_id</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="s2">&quot;SIGKILL&quot;</span><span class="p">,</span> <span class="mi">9</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">ProcessLookupError</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not kill process </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">process_id</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_child_pids</span><span class="p">(</span><span class="n">process_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">command</span> <span class="o">=</span> <span class="p">([</span><span class="s2">&quot;powershell&quot;</span><span class="p">,</span> <span class="s2">&quot;-NoProfile&quot;</span><span class="p">,</span> <span class="s2">&quot;-Command&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Get-CimInstance Win32_Process | Where-Object ParentProcessId -eq &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">process_id</span><span class="p">)</span>
+                    <span class="o">+</span> <span class="s2">&quot; | ForEach-Object ProcessId&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Windows&quot;</span>
+                   <span class="k">else</span> <span class="p">[</span><span class="s2">&quot;ps&quot;</span><span class="p">,</span> <span class="s2">&quot;-axo&quot;</span><span class="p">,</span> <span class="s2">&quot;pid=,ppid=&quot;</span><span class="p">])</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="n">command</span><span class="p">,</span>
+            <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">check</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not list children of </span><span class="si">{</span><span class="n">process_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not list children of </span><span class="si">{</span><span class="n">process_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Windows&quot;</span><span class="p">:</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="ow">not</span> <span class="n">value</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">or</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;Unexpected response while listing process children&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span>
+    <span class="n">children</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">field</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">int</span><span class="p">(</span><span class="n">fields</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="n">process_id</span><span class="p">:</span>
+            <span class="n">children</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">children</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_run_command</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">process</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_subprocess_exec</span><span class="p">(</span>
+            <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+            <span class="n">stdout</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+            <span class="n">stderr</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">stdout_b</span><span class="p">,</span> <span class="n">stderr_b</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">(),</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TimeoutError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
+            <span class="k">await</span> <span class="n">process</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> timed out while stopping the task&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not run </span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">stderr</span> <span class="o">=</span> <span class="n">stderr_b</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> exited </span><span class="si">{</span><span class="n">process</span><span class="o">.</span><span class="n">returncode</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">stdout_b</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_slurm_job_present</span><span class="p">(</span><span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="c1"># A job-specific squeue query may fail when the job has already vanished.</span>
+    <span class="c1"># %F reports the numeric base ID for both ordinary jobs and array elements.</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="k">await</span> <span class="n">_run_command</span><span class="p">([</span>
+        <span class="s2">&quot;squeue&quot;</span><span class="p">,</span> <span class="s2">&quot;--noheader&quot;</span><span class="p">,</span> <span class="s2">&quot;--me&quot;</span><span class="p">,</span> <span class="s2">&quot;--all&quot;</span><span class="p">,</span> <span class="s2">&quot;--local&quot;</span><span class="p">,</span> <span class="s2">&quot;--states=all&quot;</span><span class="p">,</span> <span class="s2">&quot;--format=</span><span class="si">%F</span><span class="s2">|%T&quot;</span><span class="p">,</span>
+    <span class="p">])</span>
+    <span class="n">terminal</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;COMPLETED&quot;</span><span class="p">,</span> <span class="s2">&quot;CANCELLED&quot;</span><span class="p">,</span> <span class="s2">&quot;FAILED&quot;</span><span class="p">,</span> <span class="s2">&quot;TIMEOUT&quot;</span><span class="p">,</span> <span class="s2">&quot;NODE_FAIL&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;BOOT_FAIL&quot;</span><span class="p">,</span> <span class="s2">&quot;OUT_OF_MEMORY&quot;</span><span class="p">,</span> <span class="s2">&quot;PREEMPTED&quot;</span><span class="p">,</span> <span class="s2">&quot;DEADLINE&quot;</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">output</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;|&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">fields</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;Unexpected response while checking Slurm cancellation&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">job_id</span> <span class="ow">and</span> <span class="n">fields</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">terminal</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<div class="viewcode-block" id="shared_launch_process">
+<a class="viewcode-back" href="../../../../simstack/modules/simstack.core.services.html#simstack.core.services.task_termination.shared_launch_process">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">shared_launch_process</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">server</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Identify the original local launch before allowing its parent to stop.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.launch_claims</span><span class="w"> </span><span class="kn">import</span> <span class="n">_actor</span><span class="p">,</span> <span class="n">receipt</span>
+
+    <span class="n">parent_execution</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="s2">&quot;_execution_parent&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="n">parent_execution</span>
+            <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="s2">&quot;_execution_launch_kind&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;inline&quot;</span>
+            <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="s2">&quot;_execution_resource&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="s2">&quot;_execution_resource&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)):</span>
+        <span class="c1"># A cached task launched by another process/resource is not in this tree.</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">original</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
+    <span class="n">actor</span> <span class="o">=</span> <span class="n">_actor</span><span class="p">(</span><span class="n">server</span><span class="p">)</span>
+    <span class="k">while</span> <span class="n">child</span><span class="o">.</span><span class="n">status</span> <span class="ow">in</span> <span class="p">{</span><span class="n">TaskStatus</span><span class="o">.</span><span class="n">SUBMITTED</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">RETRIEVED</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">,</span>
+                           <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SLURM_QUEUED</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SLURM_RUNNING</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">TERMINATING</span><span class="p">}:</span>
+        <span class="n">owner</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="s2">&quot;_execution_owner&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">owner</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">owner</span><span class="p">[</span><span class="s2">&quot;execution&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">original</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;Physical owner differs from its original local launch&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">owner</span><span class="p">[</span><span class="s2">&quot;process_id&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">child</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">in_docker</span> <span class="ow">and</span> <span class="n">child</span><span class="o">.</span><span class="n">process_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">child</span><span class="o">.</span><span class="n">_execution_start_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">child</span><span class="o">.</span><span class="n">process_id</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">intent</span> <span class="o">=</span> <span class="n">receipt</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">child</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;Could not read the shared child launch receipt&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">if</span> <span class="n">intent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">expected_actor</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">actor</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="s2">&quot;credential_fingerprint&quot;</span><span class="p">}</span>
+            <span class="n">recorded_actor</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">intent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;actor&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="s2">&quot;credential_fingerprint&quot;</span><span class="p">}</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">recorded_actor</span> <span class="o">!=</span> <span class="n">expected_actor</span>
+                    <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">intent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">!=</span> <span class="n">original</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;generation&quot;</span><span class="p">,</span> <span class="s2">&quot;claim_id&quot;</span><span class="p">))</span>
+                    <span class="ow">or</span> <span class="n">intent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;publication&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parent_execution&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">parent_execution</span>
+                    <span class="ow">or</span> <span class="n">child</span><span class="o">.</span><span class="n">_execution_start_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="kc">None</span><span class="p">,</span> <span class="n">intent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_id&quot;</span><span class="p">)}):</span>
+                <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;Cannot verify the original shared child launch&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">intent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;process_id&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">intent</span><span class="p">[</span><span class="s2">&quot;process_id&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">in_docker</span> <span class="ow">and</span> <span class="n">child</span><span class="o">.</span><span class="n">status</span> <span class="ow">in</span> <span class="p">{</span><span class="n">TaskStatus</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SLURM_RUNNING</span><span class="p">}:</span>
+            <span class="c1"># The daemon-owned container has started; its PID is not a host PID.</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="c1"># The publisher remains alive until its queued/preparing child has a</span>
+        <span class="c1"># physical handle. Killing it now would leave a shared claim unlaunchable.</span>
+        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">.05</span><span class="p">)</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_task</span><span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">current</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">current</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">!=</span> <span class="n">original</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                                  <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">,</span> <span class="s2">&quot;generation&quot;</span><span class="p">,</span> <span class="s2">&quot;claim_id&quot;</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">original</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_id&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">current</span><span class="o">.</span><span class="n">_execution_start_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="kc">None</span><span class="p">,</span> <span class="n">original</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">]}):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">child</span> <span class="o">=</span> <span class="n">current</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="protected_child_processes">
+<a class="viewcode-back" href="../../../../simstack/modules/simstack.core.services.html#simstack.core.services.task_termination.protected_child_processes">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">protected_child_processes</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">server</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ask Server to detach stopped consumers before killing a physical tree.&quot;&quot;&quot;</span>
+    <span class="n">active</span> <span class="o">=</span> <span class="p">{</span><span class="n">TaskStatus</span><span class="o">.</span><span class="n">SUBMITTED</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">RETRIEVED</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">,</span>
+              <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SLURM_QUEUED</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">SLURM_RUNNING</span><span class="p">}</span>
+    <span class="n">pending</span><span class="p">,</span> <span class="n">parents</span><span class="p">,</span> <span class="n">children</span> <span class="o">=</span> <span class="p">[</span><span class="n">entry</span><span class="p">],</span> <span class="p">{},</span> <span class="p">{}</span>
+    <span class="k">while</span> <span class="n">pending</span><span class="p">:</span>
+        <span class="n">parent</span> <span class="o">=</span> <span class="n">pending</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">parent</span><span class="o">.</span><span class="n">id</span><span class="p">)</span> <span class="ow">in</span> <span class="n">parents</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">parents</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">parent</span><span class="o">.</span><span class="n">id</span><span class="p">)]</span> <span class="o">=</span> <span class="n">parent</span>
+        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">children</span><span class="p">(</span><span class="n">parent</span><span class="p">):</span>
+            <span class="n">cancelled</span> <span class="o">=</span> <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">cancel_child</span><span class="p">(</span><span class="n">parent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">parent</span><span class="p">),</span> <span class="n">child</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">error</span> <span class="ow">or</span> <span class="n">TERMINATED_BY_USER</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cancelled</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>  <span class="c1"># Server retired the observed generation; do not touch its replacement.</span>
+            <span class="n">children</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">cancelled</span><span class="o">.</span><span class="n">id</span><span class="p">)]</span> <span class="o">=</span> <span class="n">cancelled</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">cancelled</span><span class="o">.</span><span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">active</span>
+                    <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cancelled</span><span class="p">,</span> <span class="s2">&quot;_execution_parent&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">parent</span><span class="p">)):</span>
+                <span class="c1"># A reused subtree can belong to another local root. Its owner</span>
+                <span class="c1"># observes cancellation; this launcher cannot mutate its children.</span>
+                <span class="n">pending</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cancelled</span><span class="p">)</span>
+    <span class="n">protected</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">children</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">active</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">TERMINATING</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="s2">&quot;_execution_owner&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)):</span>
+            <span class="k">continue</span>
+        <span class="c1"># Detach every stopped consumer before deciding which launches survive.</span>
+        <span class="c1"># A reused dependency may be reached before its original launch parent.</span>
+        <span class="n">parent</span> <span class="o">=</span> <span class="n">parents</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="nb">getattr</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="s2">&quot;_execution_parent&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">parent</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">process_id</span> <span class="o">=</span> <span class="k">await</span> <span class="n">shared_launch_process</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">server</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">process_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">process_id</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span> <span class="ow">or</span> <span class="n">process_id</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;Shared child launch has an invalid process identity&quot;</span><span class="p">)</span>
+            <span class="n">protected</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">process_id</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">protected</span></div>
+
+
+
+<div class="viewcode-block" id="monitor_task_process">
+<a class="viewcode-back" href="../../../../simstack/modules/simstack.core.services.html#simstack.core.services.task_termination.monitor_task_process">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">monitor_task_process</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">process</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">server</span><span class="p">,</span> <span class="n">workdir</span><span class="p">,</span> <span class="n">runner_pid</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retain the owned process until it exits or its exact attempt is stopped.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.server_api.http_transport</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnerAPIError</span>
+
+    <span class="n">execution</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+    <span class="n">communication</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">())</span>
+    <span class="n">stopped_reason</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">communication</span><span class="o">.</span><span class="n">done</span><span class="p">()</span> <span class="ow">or</span> <span class="n">stopped_reason</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">stopped_reason</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">termination_confirmed</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">stopped_reason</span><span class="p">)</span>
+                    <span class="n">stopped_reason</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">except</span> <span class="n">RunnerAPIError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">exc</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">exc</span><span class="o">.</span><span class="n">status_code</span> <span class="o">&lt;</span> <span class="mi">500</span><span class="p">:</span>
+                        <span class="k">break</span>  <span class="c1"># A superseded attempt cannot acknowledge its replacement.</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Task </span><span class="si">%s</span><span class="s2"> awaits its stopped-process acknowledgement&quot;</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">communication</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
+                    <span class="k">break</span>
+            <span class="n">done</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait</span><span class="p">({</span><span class="n">communication</span><span class="p">},</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">current</span> <span class="o">=</span> <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_outcome</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">current</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">observed</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span><span class="nb">any</span><span class="p">(</span><span class="n">observed</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">!=</span> <span class="n">execution</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">,</span> <span class="s2">&quot;generation&quot;</span><span class="p">,</span> <span class="s2">&quot;claim_id&quot;</span><span class="p">))</span>
+                        <span class="ow">or</span> <span class="n">observed</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_id&quot;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="kc">None</span><span class="p">,</span> <span class="n">execution</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_id&quot;</span><span class="p">)}):</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">current</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">TERMINATING</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="n">stop_task_execution</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">server</span><span class="o">=</span><span class="n">server</span><span class="p">,</span> <span class="n">runner_pid</span><span class="o">=</span><span class="n">runner_pid</span><span class="p">,</span>
+                        <span class="n">workdir</span><span class="o">=</span><span class="n">workdir</span><span class="p">,</span> <span class="n">local_process</span><span class="o">=</span><span class="n">process</span><span class="p">)</span>
+                    <span class="n">stopped_reason</span> <span class="o">=</span> <span class="n">current</span><span class="o">.</span><span class="n">error</span> <span class="ow">or</span> <span class="n">TERMINATED_BY_USER</span>
+            <span class="k">except</span> <span class="p">(</span><span class="n">RunnerAPIError</span><span class="p">,</span> <span class="n">TaskTerminationError</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Task </span><span class="si">%s</span><span class="s2"> awaits verified process cancellation&quot;</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">communication</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="c1"># Unexpected observation/decoding errors are infrastructure failures,</span>
+        <span class="c1"># but cannot turn a still-running owned worker into a terminal task.</span>
+        <span class="k">while</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">stop_task_execution</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">server</span><span class="o">=</span><span class="n">server</span><span class="p">,</span> <span class="n">runner_pid</span><span class="o">=</span><span class="n">runner_pid</span><span class="p">,</span>
+                    <span class="n">workdir</span><span class="o">=</span><span class="n">workdir</span><span class="p">,</span> <span class="n">local_process</span><span class="o">=</span><span class="n">process</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Task </span><span class="si">%s</span><span class="s2"> retains its worker until physical cleanup is verified&quot;</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">raise</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">communication</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
+            <span class="n">communication</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">communication</span><span class="p">,</span> <span class="n">return_exceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="stop_task_execution">
+<a class="viewcode-back" href="../../../../simstack/modules/simstack.core.services.html#simstack.core.services.task_termination.stop_task_execution">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stop_task_execution</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">server</span><span class="p">,</span> <span class="n">runner_pid</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">workdir</span><span class="p">,</span> <span class="n">extra_pids</span><span class="o">=</span><span class="p">(),</span> <span class="n">local_process</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stop the scheduler job, or use the existing local cleanup path.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">runner_pid</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span> <span class="ow">or</span> <span class="n">runner_pid</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;runner_pid must be a positive int&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_local&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="n">local_process</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;A local user execution must be stopped by its owning launcher&quot;</span><span class="p">)</span>
+    <span class="n">owner</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_owner&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">owner</span> <span class="ow">and</span> <span class="n">local_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">local_process</span><span class="o">.</span><span class="n">pid</span> <span class="o">==</span> <span class="n">owner</span><span class="p">[</span><span class="s2">&quot;process_id&quot;</span><span class="p">]:</span>
+        <span class="c1"># A caller may stop its owned session or exact container directly; it</span>
+        <span class="c1"># must not wait forever for an unresponsive controller to acknowledge.</span>
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">local_process</span><span class="p">,</span> <span class="s2">&quot;_simstack_process_group&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">local_process</span><span class="p">,</span> <span class="s2">&quot;_simstack_windows_job&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">entry</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">in_docker</span><span class="p">):</span>
+            <span class="k">await</span> <span class="n">local_process</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            <span class="n">recorded</span> <span class="o">=</span> <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_outcome</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">recorded</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">recorded</span><span class="o">.</span><span class="n">status</span> <span class="ow">in</span> <span class="p">{</span><span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">TIMEOUT</span><span class="p">}:</span>
+                <span class="k">return</span>
+            <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;The controller exited without verifiable scientific process ownership&quot;</span><span class="p">)</span>
+    <span class="n">job_id</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">job_id</span>
+    <span class="n">queue</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;parameters&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="s2">&quot;queue&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">queue</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">queue</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="n">queue</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">local_process</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;_execution_launch_kind&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;inline&quot;</span> <span class="ow">and</span> <span class="n">queue</span> <span class="o">==</span> <span class="s2">&quot;slurm-queue&quot;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;An inline Slurm child must be stopped by its launching process&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">local_process</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">job_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">queue</span> <span class="o">==</span> <span class="s2">&quot;slurm-queue&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">job_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">job_id</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;Cannot stop a Slurm task without a valid job ID&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="n">_slurm_job_present</span><span class="p">(</span><span class="n">job_id</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="k">await</span> <span class="n">_run_command</span><span class="p">([</span><span class="s2">&quot;scancel&quot;</span><span class="p">,</span> <span class="n">job_id</span><span class="p">])</span>
+        <span class="k">if</span> <span class="k">await</span> <span class="n">_slurm_job_present</span><span class="p">(</span><span class="n">job_id</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Slurm job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2"> is still stopping&quot;</span><span class="p">)</span>
+        <span class="c1"># Compute-node PIDs and container IDs are not local Runner handles.</span>
+        <span class="k">return</span>
+
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s2">&quot;parameters&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="s2">&quot;in_docker&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">workdir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;runner workdir is not configured&quot;</span><span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.run_docker</span><span class="w"> </span><span class="kn">import</span> <span class="n">docker_cidfile_path</span><span class="p">,</span> <span class="n">docker_execution_name</span><span class="p">,</span> <span class="n">inspect_docker_execution</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.launch_claims</span><span class="w"> </span><span class="kn">import</span> <span class="n">receipt</span>
+
+        <span class="n">execution</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+        <span class="n">intent</span> <span class="o">=</span> <span class="n">receipt</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="n">same_claim</span> <span class="o">=</span> <span class="n">intent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">intent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">)</span> <span class="o">==</span> <span class="n">execution</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+                                               <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;generation&quot;</span><span class="p">,</span> <span class="s2">&quot;claim_id&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">execution</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">same_claim</span> <span class="ow">and</span> <span class="n">intent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;container_name&quot;</span><span class="p">):</span>
+            <span class="n">execution</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">intent</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">]</span>
+        <span class="n">cidfile</span> <span class="o">=</span> <span class="n">docker_cidfile_path</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">entry</span><span class="o">.</span><span class="n">name</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">execution</span><span class="p">[</span><span class="s2">&quot;start_id&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">cidfile</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="ow">or</span> <span class="n">same_claim</span> <span class="ow">and</span> <span class="n">intent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;container_name&quot;</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="n">owner</span> <span class="ow">and</span> <span class="n">local_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">local_process</span><span class="o">.</span><span class="n">pid</span> <span class="o">==</span> <span class="n">owner</span><span class="p">[</span><span class="s2">&quot;process_id&quot;</span><span class="p">]):</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">docker_execution_name</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">execution</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">observed</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span><span class="n">inspect_docker_execution</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;Cannot verify this task&#39;s Docker execution&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+            <span class="k">if</span> <span class="n">observed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="n">observed</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">][</span><span class="s2">&quot;Status&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;created&quot;</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="n">_run_command</span><span class="p">([</span><span class="s2">&quot;docker&quot;</span><span class="p">,</span> <span class="s2">&quot;rm&quot;</span><span class="p">,</span> <span class="n">observed</span><span class="p">[</span><span class="s2">&quot;Id&quot;</span><span class="p">]])</span>
+                <span class="k">elif</span> <span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;exited&quot;</span><span class="p">,</span> <span class="s2">&quot;dead&quot;</span><span class="p">}:</span>
+                    <span class="k">await</span> <span class="n">_run_command</span><span class="p">([</span><span class="s2">&quot;docker&quot;</span><span class="p">,</span> <span class="s2">&quot;kill&quot;</span><span class="p">,</span> <span class="n">observed</span><span class="p">[</span><span class="s2">&quot;Id&quot;</span><span class="p">]])</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">remaining</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span><span class="n">inspect_docker_execution</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;Docker stop is not yet verified&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+                <span class="k">if</span> <span class="n">remaining</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">remaining</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">][</span><span class="s2">&quot;Status&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;exited&quot;</span><span class="p">,</span> <span class="s2">&quot;dead&quot;</span><span class="p">}:</span>
+                    <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;The Docker execution is still stopping&quot;</span><span class="p">)</span>
+    <span class="n">pids</span> <span class="o">=</span> <span class="p">([</span><span class="n">local_process</span><span class="o">.</span><span class="n">pid</span><span class="p">]</span> <span class="k">if</span> <span class="n">local_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">local_process</span><span class="o">.</span><span class="n">returncode</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">local_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="p">[</span><span class="n">pid</span> <span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">process_id</span><span class="p">,</span> <span class="o">*</span><span class="n">extra_pids</span><span class="p">)</span> <span class="k">if</span> <span class="n">pid</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">])</span>
+    <span class="n">protected</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protected_child_processes</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">server</span><span class="p">)</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="n">runner_pid</span> <span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="n">pids</span><span class="p">)</span> <span class="k">else</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">local_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">local_process</span><span class="p">,</span> <span class="s2">&quot;_simstack_windows_job&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Shared SDK children have their own Jobs. An exact Job handle drains</span>
+        <span class="c1"># science without relying on a PID tree, which can lose or misidentify</span>
+        <span class="c1"># descendants after controller death.</span>
+        <span class="k">await</span> <span class="n">stop_owned_process_group</span><span class="p">(</span><span class="n">local_process</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">local_process</span><span class="o">.</span><span class="n">returncode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">local_process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>  <span class="c1"># A local controller itself is outside its science Job.</span>
+        <span class="k">await</span> <span class="n">local_process</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">return</span>
+    <span class="k">for</span> <span class="n">process_id</span> <span class="ow">in</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">pids</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">process_id</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span> <span class="ow">or</span> <span class="n">process_id</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;process_id must be a positive int&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">process_id</span> <span class="o">==</span> <span class="n">runner_pid</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Task task_id: </span><span class="si">%s</span><span class="s2"> process_id is the Runner; not killing it&quot;</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">protected</span><span class="p">:</span>
+                <span class="n">_kill_process_tree</span><span class="p">(</span><span class="n">process_id</span><span class="p">,</span> <span class="n">protected</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">_kill_process_tree</span><span class="p">(</span><span class="n">process_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">local_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">local_process</span><span class="o">.</span><span class="n">returncode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">local_process</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">await</span> <span class="n">stop_owned_process_group</span><span class="p">(</span><span class="n">local_process</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="stop_owned_process_group">
+<a class="viewcode-back" href="../../../../simstack/modules/simstack.core.services.html#simstack.core.services.task_termination.stop_owned_process_group">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stop_owned_process_group</span><span class="p">(</span><span class="n">process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Verify an owned Job/session, including children orphaned by process death.&quot;&quot;&quot;</span>
+    <span class="n">windows_job</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">process</span><span class="p">,</span> <span class="s2">&quot;_simstack_windows_job&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">windows_job</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">windows_job</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+        <span class="k">return</span>
+    <span class="n">whole_group</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">process</span><span class="p">,</span> <span class="s2">&quot;_simstack_process_group&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">pid</span> <span class="k">if</span> <span class="n">whole_group</span> <span class="k">else</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">process</span><span class="p">,</span> <span class="s2">&quot;_simstack_science_group&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">group</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">whole_group</span> <span class="ow">and</span> <span class="p">(</span><span class="n">group</span> <span class="o">!=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getpgrp</span><span class="p">()</span> <span class="o">!=</span> <span class="n">group</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;Scientific process group is not owned by this controller&quot;</span><span class="p">)</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">observed</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">,</span>
+            <span class="p">[</span><span class="s2">&quot;ps&quot;</span><span class="p">,</span> <span class="s2">&quot;-axo&quot;</span><span class="p">,</span> <span class="s2">&quot;pid=,pgid=,stat=&quot;</span><span class="p">],</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">check</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">start_new_session</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">observed</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">TaskTerminationError</span><span class="p">(</span><span class="s2">&quot;Cannot verify the stopped scientific process group&quot;</span><span class="p">)</span>
+        <span class="n">members</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">observed</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+                   <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span> <span class="o">:=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">())</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span>
+                   <span class="ow">and</span> <span class="n">fields</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="nb">str</span><span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">fields</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Z&quot;</span><span class="p">)</span>
+                   <span class="ow">and</span> <span class="p">(</span><span class="n">whole_group</span> <span class="ow">or</span> <span class="nb">int</span><span class="p">(</span><span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">!=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">())]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">members</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">whole_group</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">killpg</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIGKILL</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ProcessLookupError</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># The controller must survive to publish the stopped outcome. Its</span>
+            <span class="c1"># nested SDK children own other sessions, so they remain independent.</span>
+            <span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="n">members</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIGKILL</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">ProcessLookupError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">.05</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="terminate_task">
+<a class="viewcode-back" href="../../../../simstack/modules/simstack.core.services.html#simstack.core.services.task_termination.terminate_task">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">terminate_task</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">:</span> <span class="n">NodeRegistry</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">runner_pid</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stop a terminating task and mark it failed.</span>
+
+<span class="sd">    Slurm jobs are cancelled with ``scancel``. Docker containers are killed</span>
+<span class="sd">    from the task cidfile. A recorded job pid is killed with its children.</span>
+<span class="sd">    The runner process itself is never killed. A task with nothing left</span>
+<span class="sd">    running is still marked failed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">runner_pid</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span> <span class="ow">or</span> <span class="n">runner_pid</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;runner_pid must be a positive int, got </span><span class="si">{</span><span class="n">runner_pid</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">fresh</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_task</span><span class="p">(</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">fresh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task task_id: </span><span class="si">{</span><span class="n">registry_entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> could not be reloaded&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">fresh</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">TERMINATING</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;_execution_generation&quot;</span><span class="p">,</span> <span class="s2">&quot;_execution_claim_id&quot;</span><span class="p">,</span> <span class="s2">&quot;_execution_start_id&quot;</span><span class="p">):</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">registry_entry</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">expected</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">expected</span> <span class="o">!=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">fresh</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">return</span>
+
+    <span class="k">await</span> <span class="n">stop_task_execution</span><span class="p">(</span>
+        <span class="n">fresh</span><span class="p">,</span> <span class="n">server</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">runner_pid</span><span class="o">=</span><span class="n">runner_pid</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;workdir&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">updated</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">termination_confirmed</span><span class="p">(</span>
+        <span class="n">fresh</span><span class="p">,</span> <span class="n">fresh</span><span class="o">.</span><span class="n">error</span> <span class="ow">or</span> <span class="n">TERMINATED_BY_USER</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">updated</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">registry_entry</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">updated</span><span class="o">.</span><span class="n">status</span>
+    <span class="n">registry_entry</span><span class="o">.</span><span class="n">error</span> <span class="o">=</span> <span class="n">updated</span><span class="o">.</span><span class="n">error</span>
+    <span class="n">registry_entry</span><span class="o">.</span><span class="n">completed_at</span> <span class="o">=</span> <span class="n">updated</span><span class="o">.</span><span class="n">completed_at</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.fail_children</span><span class="w"> </span><span class="kn">import</span> <span class="n">fail_and_terminate_children</span>
+    <span class="k">await</span> <span class="n">fail_and_terminate_children</span><span class="p">(</span><span class="n">fresh</span><span class="p">,</span> <span class="n">runner_pid</span><span class="o">=</span><span class="n">runner_pid</span><span class="p">)</span></div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, Wolfgang Wenzel
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script data-docs-built-at="2026-11-10 13:31:53 UTC" src="../../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    </body>
+</html>

@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -273,14 +278,11 @@
         <article role="main" id="furo-main-content">
           <h1>Source code for simstack.util.object_list_mixin</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">TypeVar</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">Model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">Model</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.generic_list_mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">GenericListMixin</span>
-
-<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">Database</span>
 
 <span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
 
@@ -360,18 +362,6 @@
            <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">element</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="ObjectListMixin.save">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.object_list_mixin.ObjectListMixin.save">[docs]</a>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="s2">&quot;Database&quot;</span><span class="p">):</span>
-        <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">()</span>
-        <span class="c1"># Save each element first (this might trigger their own custom saves)</span>
-        <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">cache</span><span class="p">:</span>
-            <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Model</span><span class="p">):</span>  <span class="c1"># embedded models are save with the parent</span>
-            <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">save_unchecked</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span></div>
-
-
 <div class="viewcode-block" id="ObjectListMixin.insert">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.object_list_mixin.ObjectListMixin.insert">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">element</span><span class="p">:</span> <span class="n">T</span><span class="p">):</span>
@@ -408,7 +398,7 @@
 <div class="viewcode-block" id="ObjectListMixin.get">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.object_list_mixin.ObjectListMixin.get">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get an element by index, loading it from DB if necessary.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get a locally materialized element by index.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">index</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">elements</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s2">&quot;list index out of range&quot;</span><span class="p">)</span>
 
@@ -531,46 +521,15 @@
 
 
 
-<div class="viewcode-block" id="ObjectListMixin.db_find_postprocess">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.object_list_mixin.ObjectListMixin.db_find_postprocess">[docs]</a>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">db_find_postprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="s2">&quot;Database&quot;</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Instance-level post-processing&quot;&quot;&quot;</span>
-        <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">()</span>
-        <span class="n">model_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_model_class</span><span class="p">()</span>
-        <span class="c1"># Identify which IDs are missing from the cache</span>
-        <span class="n">missing_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj_id</span> <span class="k">for</span> <span class="n">obj_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">elements</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="n">obj_id</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">cache</span><span class="p">)]</span>
-
-        <span class="k">if</span> <span class="n">missing_ids</span><span class="p">:</span>
-            <span class="c1"># Load all missing elements at once</span>
-            <span class="n">query</span> <span class="o">=</span> <span class="n">model_class</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">in_</span><span class="p">(</span><span class="n">missing_ids</span><span class="p">)</span>
-            <span class="c1"># engine.find might return a cursor or a list</span>
-            <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">model_class</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span>
-
-            <span class="c1"># Map results by ID for efficient lookup</span>
-            <span class="n">loaded_map</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
-                <span class="c1"># Recursively unwrap nested collections (mock DB behavior)</span>
-                <span class="n">it</span> <span class="o">=</span> <span class="n">obj</span>
-                <span class="k">while</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">it</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">it</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">it</span> <span class="o">=</span> <span class="n">it</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
-                <span class="c1"># Check for Model or duck-typed object</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">it</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">):</span>
-                    <span class="n">loaded_map</span><span class="p">[</span><span class="n">it</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">it</span>
-
-            <span class="c1"># Update cache maintaining the order of self.elements</span>
-            <span class="n">new_cache</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">obj_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">elements</span><span class="p">:</span>
-                <span class="c1"># Find in existing cache</span>
-                <span class="n">existing</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">cache</span> <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="n">obj_id</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">existing</span><span class="p">:</span>
-                    <span class="n">new_cache</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">existing</span><span class="p">)</span>
-                <span class="k">elif</span> <span class="n">obj_id</span> <span class="ow">in</span> <span class="n">loaded_map</span><span class="p">:</span>
-                    <span class="n">new_cache</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">loaded_map</span><span class="p">[</span><span class="n">obj_id</span><span class="p">])</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not load object </span><span class="si">{</span><span class="n">obj_id</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="n">model_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_set_cache</span><span class="p">(</span><span class="n">new_cache</span><span class="p">)</span>
+<div class="viewcode-block" id="ObjectListMixin.materialize">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.object_list_mixin.ObjectListMixin.materialize">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">materialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">T</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Install explicitly resolved members without performing I/O.&quot;&quot;&quot;</span>
+        <span class="n">by_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">value</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">}</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">identity</span> <span class="k">for</span> <span class="n">identity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">elements</span> <span class="k">if</span> <span class="n">identity</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">by_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing scientific list members: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_cache</span><span class="p">([</span><span class="n">by_id</span><span class="p">[</span><span class="n">identity</span><span class="p">]</span> <span class="k">for</span> <span class="n">identity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">elements</span><span class="p">])</span>
         <span class="k">return</span> <span class="bp">self</span></div>
 
 
@@ -644,6 +603,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

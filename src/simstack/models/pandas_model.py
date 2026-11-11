@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
-from simstack.models.document import Model
+from simstack.models.document import Field, Model
 
 from simstack.core.context import context
 from simstack.models import simstack_model
@@ -50,9 +50,7 @@ def _format_datetime_columns(df):
 
 @simstack_model
 class PandasModel(Model):
-    model_config = {"indexes": [("field_name", {"unique": True})]}
-
-    field_name: str = "pandas_model"
+    field_name: str = Field(default="pandas_model", unique=True)
     content_: bytes = b""
     file_stack: Optional[FileStack] = None
 
@@ -227,11 +225,9 @@ async def main():
     model = PandasModel.from_data_frame(df)
 
     pprint(await model.custom_model_dump())
-    saved_model = await context.db.save(model)
+    saved_model = await context.server.values.publish_value(model)
 
-    retrieved_model = await context.db.find_one(
-        PandasModel, PandasModel.id == saved_model.id
-    )
+    retrieved_model = await context.server.values.get_value(PandasModel, saved_model.id)
     print("Retrieved Model", retrieved_model)
 
 

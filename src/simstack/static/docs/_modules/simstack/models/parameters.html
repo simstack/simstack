@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -274,7 +279,7 @@
           <h1>Source code for simstack.models.parameters</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">EmbeddedModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">EmbeddedModel</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.resources</span><span class="w"> </span><span class="kn">import</span> <span class="n">allowed_resources</span>
@@ -284,6 +289,8 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Validate the value against allowed resources when it is read.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;__s3__&quot;</span><span class="p">,</span> <span class="s2">&quot;__pending__&quot;</span><span class="p">}:</span>
+        <span class="k">return</span> <span class="n">v</span>  <span class="c1"># File location markers are not execution resources.</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">allowed_resources</span><span class="o">.</span><span class="n">has_resource</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
         <span class="n">allowed_str</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">allowed_resources</span><span class="o">.</span><span class="n">get_resources</span><span class="p">())</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid resource value: </span><span class="si">{</span><span class="n">v</span><span class="si">!r}</span><span class="s2">. Allowed values are: </span><span class="si">{</span><span class="n">allowed_str</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -341,10 +348,73 @@
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.parameters.Queue">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Queue</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
     <span class="n">DEFAULT</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span>
-    <span class="n">SLURM_QUEUE</span> <span class="o">=</span> <span class="s2">&quot;slurm-queue&quot;</span>
-    <span class="n">DOCKER</span> <span class="o">=</span> <span class="s2">&quot;docker&quot;</span>
-    <span class="n">SLURM_DOCKER</span> <span class="o">=</span> <span class="s2">&quot;slurm-docker&quot;</span></div>
+    <span class="n">SLURM_QUEUE</span> <span class="o">=</span> <span class="s2">&quot;slurm-queue&quot;</span></div>
 
+
+
+<span class="n">_QUEUE_ALIASES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="n">Queue</span><span class="o">.</span><span class="n">DEFAULT</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+    <span class="s2">&quot;cloud&quot;</span><span class="p">:</span> <span class="n">Queue</span><span class="o">.</span><span class="n">DEFAULT</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+    <span class="s2">&quot;docker&quot;</span><span class="p">:</span> <span class="n">Queue</span><span class="o">.</span><span class="n">DEFAULT</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+    <span class="s2">&quot;slurm&quot;</span><span class="p">:</span> <span class="n">Queue</span><span class="o">.</span><span class="n">SLURM_QUEUE</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+    <span class="s2">&quot;slurm-queue&quot;</span><span class="p">:</span> <span class="n">Queue</span><span class="o">.</span><span class="n">SLURM_QUEUE</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+    <span class="s2">&quot;slurm_queue&quot;</span><span class="p">:</span> <span class="n">Queue</span><span class="o">.</span><span class="n">SLURM_QUEUE</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+    <span class="s2">&quot;slurm-docker&quot;</span><span class="p">:</span> <span class="n">Queue</span><span class="o">.</span><span class="n">SLURM_QUEUE</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+    <span class="s2">&quot;slurm_docker&quot;</span><span class="p">:</span> <span class="n">Queue</span><span class="o">.</span><span class="n">SLURM_QUEUE</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">_LEGACY_DOCKER_QUEUES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;docker&quot;</span><span class="p">,</span> <span class="s2">&quot;slurm-docker&quot;</span><span class="p">,</span> <span class="s2">&quot;slurm_docker&quot;</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="normalize_execution_queue">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.parameters.normalize_execution_queue">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">normalize_execution_queue</span><span class="p">(</span>
+    <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Queue</span><span class="o">.</span><span class="n">DEFAULT</span><span class="o">.</span><span class="n">value</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical queue and whether a legacy queue implied Docker.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">default</span><span class="p">,</span> <span class="kc">False</span>
+
+    <span class="n">raw_value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Queue</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="n">stripped_value</span> <span class="o">=</span> <span class="n">raw_value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stripped_value</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">default</span><span class="p">,</span> <span class="kc">False</span>
+
+    <span class="n">alias</span> <span class="o">=</span> <span class="n">stripped_value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">_QUEUE_ALIASES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">alias</span><span class="p">,</span> <span class="n">stripped_value</span><span class="p">),</span> <span class="n">alias</span> <span class="ow">in</span> <span class="n">_LEGACY_DOCKER_QUEUES</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_extra_sbatch_flag</span><span class="p">(</span><span class="n">option</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">option</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">option</span> <span class="o">!=</span> <span class="n">option</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="ow">or</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="n">option</span>
+        <span class="ow">or</span> <span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="n">option</span>
+    <span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;extra_options entries must be #SBATCH arguments starting with &#39;--&#39;, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">option</span><span class="si">!r}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
+    <span class="k">for</span> <span class="n">argument</span> <span class="ow">in</span> <span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">option</span><span class="p">):</span>
+        <span class="n">flag</span> <span class="o">=</span> <span class="n">argument</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">flag</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;-a&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">flag</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;--&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;--array&quot;</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">flag</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Slurm job arrays are unsupported; use explicit child tasks or MassRunner&quot;</span><span class="p">)</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">option</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">flag</span><span class="p">,</span> <span class="n">separator</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">token</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">separator</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;extra slurm option </span><span class="si">{</span><span class="n">option</span><span class="si">!r}</span><span class="s2"> has an empty value&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">flag</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;--&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">flag</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">isalpha</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;extra_options entries must be #SBATCH arguments starting with &#39;--&#39;, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">option</span><span class="si">!r}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">character</span><span class="o">.</span><span class="n">isalnum</span><span class="p">()</span> <span class="ow">or</span> <span class="n">character</span> <span class="o">==</span> <span class="s2">&quot;-&quot;</span> <span class="k">for</span> <span class="n">character</span> <span class="ow">in</span> <span class="n">flag</span><span class="p">[</span><span class="mi">2</span><span class="p">:]):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;extra_options entries must be #SBATCH arguments starting with &#39;--&#39;, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">option</span><span class="si">!r}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">flag</span>
 
 
 <span class="c1"># TODO Fix Slurm Parameters</span>
@@ -416,15 +486,19 @@
     <span class="n">exclusive</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Exclusive node access&quot;</span><span class="p">)</span>
     <span class="n">nice</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Adjust scheduling priority&quot;</span><span class="p">)</span>
 
-    <span class="c1"># Dependency and Array Parameters</span>
+    <span class="c1"># Dependency Parameters</span>
     <span class="n">dependency</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Job dependencies (e.g., &#39;afterok:jobid&#39;)&quot;</span>
     <span class="p">)</span>
-    <span class="n">array</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
-        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Job arrays (e.g., &#39;1-100&#39;, &#39;1-10:2&#39;)&quot;</span>
-    <span class="p">)</span>
 
     <span class="c1"># Additional Commands</span>
+    <span class="n">extra_options</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">&quot;Additional #SBATCH options that have no dedicated field. &quot;</span>
+            <span class="s2">&quot;Each entry is the text after #SBATCH, for example &#39;--gres=scratch:100&#39;.&quot;</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
     <span class="n">startup_commands</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Commands to run before main job&quot;</span>
     <span class="p">)</span>
@@ -451,6 +525,16 @@
     <span class="n">no_requeue</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Prevent job from being requeued&quot;</span>
     <span class="p">)</span>
+
+<div class="viewcode-block" id="SlurmParameters.validate_extra_options">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.parameters.SlurmParameters.validate_extra_options">[docs]</a>
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;extra_options&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_extra_options</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">option</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+            <span class="n">_extra_sbatch_flag</span><span class="p">(</span><span class="n">option</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span></div>
+
 
     <span class="n">model_config</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;extra&quot;</span><span class="p">:</span> <span class="s2">&quot;forbid&quot;</span><span class="p">,</span>
@@ -533,7 +617,6 @@
             <span class="s2">&quot;reservation&quot;</span><span class="p">:</span> <span class="s2">&quot;--reservation&quot;</span><span class="p">,</span>
             <span class="s2">&quot;constraint&quot;</span><span class="p">:</span> <span class="s2">&quot;--constraint&quot;</span><span class="p">,</span>
             <span class="s2">&quot;dependency&quot;</span><span class="p">:</span> <span class="s2">&quot;--dependency&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;array&quot;</span><span class="p">:</span> <span class="s2">&quot;--array&quot;</span><span class="p">,</span>
             <span class="s2">&quot;chdir&quot;</span><span class="p">:</span> <span class="s2">&quot;--chdir&quot;</span><span class="p">,</span>
             <span class="s2">&quot;export&quot;</span><span class="p">:</span> <span class="s2">&quot;--export&quot;</span><span class="p">,</span>
             <span class="s2">&quot;signal&quot;</span><span class="p">:</span> <span class="s2">&quot;--signal&quot;</span><span class="p">,</span>
@@ -554,6 +637,8 @@
                 <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Slurm </span><span class="si">{</span><span class="n">field_name</span><span class="si">}</span><span class="s2"> must fit on one directive line&quot;</span><span class="p">)</span>
                 <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sbatch_param</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="c1"># Add boolean flags</span>
@@ -565,6 +650,16 @@
             <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--no-requeue&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nice</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--nice=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nice</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">emitted_flags</span> <span class="o">=</span> <span class="p">{</span><span class="n">arg</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">option</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">extra_options</span><span class="p">:</span>
+            <span class="n">flag</span> <span class="o">=</span> <span class="n">_extra_sbatch_flag</span><span class="p">(</span><span class="n">option</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">flag</span> <span class="ow">in</span> <span class="n">emitted_flags</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;extra slurm option </span><span class="si">{</span><span class="n">option</span><span class="si">!r}</span><span class="s2"> repeats </span><span class="si">{</span><span class="n">flag</span><span class="si">}</span><span class="s2">, which is already set&quot;</span>
+                <span class="p">)</span>
+            <span class="n">emitted_flags</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">option</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">args</span></div>
 
@@ -579,7 +674,8 @@
             <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;#SBATCH </span><span class="si">{</span><span class="n">arg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">startup_commands</span><span class="p">:</span>
-            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="c1"># End Slurm&#39;s directive section before user shell commands.</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
             <span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">startup_commands</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
@@ -591,14 +687,16 @@
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.parameters.Parameters">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Parameters</span><span class="p">(</span><span class="n">EmbeddedModel</span><span class="p">):</span>
     <span class="n">force_rerun</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">separate_cloud_vm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Hand a nested node to a new cloud VM even when the Docker image matches&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">resource</span><span class="p">:</span> <span class="n">Resource</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Resource</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="s2">&quot;self&quot;</span><span class="p">))</span>
+    <span class="n">in_docker</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Run in docker&quot;</span><span class="p">)</span>
     <span class="n">queue</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;default&quot;</span><span class="p">)</span>
     <span class="n">recompute_artifacts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Recompute artifacts for this node&quot;</span>
     <span class="p">)</span>
-    <span class="n">docker_image</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Docker image to use&quot;</span><span class="p">)</span>
-    <span class="n">other_value</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;other&quot;</span><span class="p">)</span>
-    <span class="n">test_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;test&quot;</span><span class="p">:</span> <span class="s2">&quot;value&quot;</span><span class="p">})</span>
 
     <span class="n">slurm_parameters</span><span class="p">:</span> <span class="n">SlurmParameters</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
     <span class="c1"># slurm_parameters_data: Dict[str, Any] = Field(default_factory=dict)</span>
@@ -620,11 +718,30 @@
         <span class="p">},</span>
     <span class="p">}</span>
 
-<div class="viewcode-block" id="Parameters.migrate_slurm_parameters">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.parameters.Parameters.migrate_slurm_parameters">[docs]</a>
+<div class="viewcode-block" id="Parameters.migrate_parameters">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.parameters.Parameters.migrate_parameters">[docs]</a>
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">migrate_slurm_parameters</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">migrate_parameters</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">data</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="c1"># Remove legacy fields if they exist in the incoming data</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;test_dict&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;other_value&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;docker_image&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="n">queue</span><span class="p">,</span> <span class="n">legacy_queue_implied_docker</span> <span class="o">=</span> <span class="n">normalize_execution_queue</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;queue&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;queue&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">queue</span>
+        <span class="k">if</span> <span class="n">legacy_queue_implied_docker</span><span class="p">:</span>
+            <span class="c1"># Docker is an execution flag, not a queue. Preserve an explicit</span>
+            <span class="c1"># false while recovering the intent of legacy queue-only records.</span>
+            <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;in_docker&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">data</span><span class="p">[</span><span class="s2">&quot;in_docker&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
         <span class="k">if</span> <span class="s2">&quot;slurm_parameters_data&quot;</span> <span class="ow">in</span> <span class="n">data</span> <span class="ow">and</span> <span class="s2">&quot;slurm_parameters&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
             <span class="n">data</span><span class="p">[</span><span class="s2">&quot;slurm_parameters&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SlurmParameters</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;slurm_parameters_data&quot;</span><span class="p">])</span>
             <span class="k">del</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;slurm_parameters_data&quot;</span><span class="p">]</span>
@@ -734,6 +851,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-10 13:23:18 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

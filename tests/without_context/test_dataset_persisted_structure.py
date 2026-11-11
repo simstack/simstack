@@ -14,7 +14,8 @@ def test_collect_structure_uses_persisted_section_data_without_cache():
         sections={"input": section},
     )
 
-    assert section._get_cache() == {}
+    assert "_cache" not in vars(section)
     assert dataset.collect_structure() == {
         "input": {"curve": "ArrayStorage"},
     }
+    assert "_cache" not in vars(section)

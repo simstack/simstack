@@ -2,6 +2,8 @@ import pytest
 
 from simstack.core.node import node
 from simstack.core.node_runner import NodeRunner
+from simstack.core.definitions import TaskStatus
+from simstack.core.simstack_result import SimstackResult
 from simstack.models.files import FileStack
 
 import logging
@@ -33,11 +35,17 @@ async def test_file_rerun(caplog, test_file_stack):
     with caplog.at_level(logging.INFO):
         result1 = run_file_argument(test_file_stack)
         assert "Processing file stack" in caplog.text
-        assert isinstance(result1, StringData)
-        run_id = result1.value
+        assert isinstance(result1, SimstackResult)
+        assert result1.status == TaskStatus.COMPLETED
+        assert isinstance(result1.value, StringData)
+        run_id = result1.value.value
 
         caplog.clear()
         result2 = run_file_argument(test_file_stack)
         assert "Processing file stack" not in caplog.text
-        assert isinstance(result2, StringData)
-        assert result2.value == run_id
+        assert isinstance(result2, SimstackResult)
+        assert result2.status == TaskStatus.COMPLETED
+        assert isinstance(result2.value, StringData)
+        assert result2.value.value == run_id
+        assert result2.value.id == result1.value.id
+        assert result2.message == result1.message

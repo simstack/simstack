@@ -109,6 +109,8 @@ class FileInstance(EmbeddedModel):
             `FileInstance` from the specified local file.
         """
         source_path = path if isinstance(path, Path) else Path(path)
+        if not source_path.is_file():
+            raise FileNotFoundError(f"Source file not found: {source_path}")
 
         # Prepare the content field if in_memory is True
         resolved_path = Path(path).resolve()

@@ -4,18 +4,15 @@ from unittest.mock import AsyncMock
 import pytest
 
 from simstack.core.context import GlobalState
-from simstack.core.definitions import DBType
 from simstack.models.resource_definition import ResourceDefinition
-from simstack.runner_api.repository import HTTPRepository
-from simstack.runner_api.transport import RunnerAPIClient, RunnerAPIError
+from simstack.server_api.http_transport import RunnerAPIClient, RunnerAPIError
 
 
 @pytest.mark.asyncio
 async def test_api_bootstrap_opens_no_mongo_connection_and_erases_db_env(
     tmp_path, monkeypatch
 ):
-    import simstack.util.db as db_module
-    import simstack.runner_api.logging as api_logging
+    import simstack.server_api.log_upload as api_logging
     from simstack.core.resources import allowed_resources
 
     monkeypatch.setattr(allowed_resources, "_initialized", False)
@@ -30,10 +27,12 @@ async def test_api_bootstrap_opens_no_mongo_connection_and_erases_db_env(
     )
     calls = []
 
-    async def json(self, method, path, body=None):
+    async def json(self, method, path, body=None, **kwargs):
         calls.append((method, path))
-        if path == "/runner/bootstrap":
+        if path == "/runner/v3/bootstrap":
             return {
+                "account_id": "test-account",
+                "protocol_version": 3,
                 "resource": "cluster",
                 "resource_definition": resource.model_dump(mode="json"),
                 "resources": ["cluster"],
@@ -42,13 +41,12 @@ async def test_api_bootstrap_opens_no_mongo_connection_and_erases_db_env(
         if path == "/runner/repositories/reconcile":
             assert body == {"prepared": []}
             return {"reconciled": True}
-        return {"documents": []}
+        return {"graph": {"roots": [], "nodes": []}}
 
     def forbidden(*args, **kwargs):
         raise AssertionError("A runner opened a MongoDB client")
 
     monkeypatch.setattr(RunnerAPIClient, "json", json)
-    assert not hasattr(db_module, "AsyncIOMotorClient")
     monkeypatch.setattr(api_logging, "setup_runner_logging", lambda *args: None)
     monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", "")
     monkeypatch.setenv("SIMSTACK_SERVER_URL", "https://example.test/api")
@@ -56,20 +54,18 @@ async def test_api_bootstrap_opens_no_mongo_connection_and_erases_db_env(
     monkeypatch.setenv("SIMSTACK_DB_CONNECTION_STRING", "mongodb://must-not-be-used")
     monkeypatch.setenv("MONGODB_URI", "mongodb://must-not-be-used")
     monkeypatch.setattr("simstack.util.repository_runtime.prepared_repositories", lambda: [])
-    await state.initialize(project_root=tmp_path, api_only=True, resource="cluster")
-    assert state.db.databae_type == DBType.API
-    assert isinstance(state.db.core_engine, HTTPRepository)
-    with pytest.raises(RuntimeError, match="Runner"):
-        _ = state.db.client
-    assert state.config.connection_string is None
-    assert state.config.db_name is None
+    await state.initialize(project_root=tmp_path, resource="cluster")
+    assert not hasattr(state, "db")
+    assert not hasattr(state, "store")
+    assert not hasattr(state.config, "connection_string")
+    assert not hasattr(state.config, "db_name")
     assert state.config.workdir == tmp_path / "configured-shared-work"
     assert state.config.workdir.is_dir()
     import os
 
     assert "SIMSTACK_DB_CONNECTION_STRING" not in os.environ
     assert "MONGODB_URI" not in os.environ
-    assert calls[0] == ("GET", "/runner/bootstrap")
+    assert calls[0] == ("GET", "/runner/v3/bootstrap")
     assert calls[1] == ("POST", "/runner/repositories/reconcile")
 
 
@@ -77,12 +73,9 @@ async def test_api_bootstrap_opens_no_mongo_connection_and_erases_db_env(
 async def test_runner_rejects_explicit_database_credentials(tmp_path, monkeypatch):
     from simstack.core import runner
 
-    context = SimpleNamespace(initialize=AsyncMock())
-    monkeypatch.setattr(runner, "context", context)
-    args = SimpleNamespace(db_name="private-db", connection_string="mongodb://secret")
-    with pytest.raises(ValueError, match="no longer supported"):
-        await runner.async_main(args)
-    context.initialize.assert_not_called()
+    state = GlobalState()
+    with pytest.raises(ValueError, match="database configuration"):
+        await state.initialize(db_name="private-db", connection_string="mongodb://secret")
 
 
 @pytest.mark.asyncio
@@ -113,7 +106,7 @@ async def test_initial_control_failure_stays_paused_and_retries(tmp_path, monkey
     from simstack.core.services import runner_manager, runner_control_service
     from simstack.core.services.base_service import BaseService
 
-    context = SimpleNamespace(config=SimpleNamespace(workdir=tmp_path), db=SimpleNamespace(databae_type=DBType.API))
+    context = SimpleNamespace(config=SimpleNamespace(workdir=tmp_path))
     monkeypatch.setattr(runner_manager, "context", context)
 
     class Idle(BaseService):
@@ -134,7 +127,8 @@ async def test_initial_control_failure_stays_paused_and_retries(tmp_path, monkey
         manager._services[0]._stop_event.set()
         asyncio.get_running_loop().call_soon(manager._shutdown_event.set)
         return {"paused": False, "commands": []}
-    monkeypatch.setattr(runner_control_service.RunnerAPIClient, "from_environment", lambda: SimpleNamespace(json=json))
+    from simstack.server_api import ServerAPI
+    monkeypatch.setattr(runner_control_service, "context", SimpleNamespace(server=ServerAPI(SimpleNamespace(json=json))))
     original = runner_control_service.RunnerControlService
     def control(active):
         service = original(active)
@@ -147,7 +141,7 @@ async def test_initial_control_failure_stays_paused_and_retries(tmp_path, monkey
 
 
 def test_explicit_machine_config_survives_pinned_project_selection(tmp_path, monkeypatch):
-    from simstack.runner_api.runtime import task_resource_config, task_environment
+    from simstack.runner_runtime.execution_environment import task_resource_config, task_environment
     from simstack.util.resource_config import ResourceConfig
     machine = tmp_path/"machine.toml"
     machine.write_text('[test.programs.fixture]\ndocker_image="machine-image"\n')
@@ -158,4 +152,6 @@ def test_explicit_machine_config_survives_pinned_project_selection(tmp_path, mon
     entry = SimpleNamespace(id="0"*24, repository_revision="a"*64, _repository_project_root=source)
     context = SimpleNamespace(config=SimpleNamespace(project_root=tmp_path, resource="test"), resource_config=ResourceConfig(machine,"test"))
     assert task_resource_config(entry, context)._config_path == machine
-    assert task_environment(entry)["SIMSTACK_MACHINE_CONFIG"] == str(machine)
+    api = SimpleNamespace(requests=SimpleNamespace(server_url="https://example.test/api", authorization="runner",
+        resource="test", bootstrap_data={"account_id": "test-account"}))
+    assert task_environment(entry, server=api)["SIMSTACK_MACHINE_CONFIG"] == str(machine)

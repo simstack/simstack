@@ -9,9 +9,8 @@ from pydantic.fields import FieldInfo
 
 REFERENCE_SCHEMA_KEY = "x-simstack-reference"
 REFERENCE_MODEL_SCHEMA_KEY = "x-simstack-reference-model"
-REFERENCE_COLLECTION_SCHEMA_KEY = "x-simstack-reference-collection"
 PAYLOAD_SCHEMA_KEY = "x-simstack-payload"
-INDEX_SCHEMA_KEY = "x-simstack-index"
+UNIQUE_SCHEMA_KEY = "x-simstack-unique"
 PRIMARY_SCHEMA_KEY = "x-simstack-primary"
 
 
@@ -20,15 +19,16 @@ def Field(
     *,
     key_name: str | None = None,
     primary_field: bool = False,
-    index: bool = False,
     unique: bool = False,
     **kwargs: Any,
 ) -> FieldInfo:
-    """Keep declaration compatibility; Server alone interprets index metadata."""
+    """Declare scientific field aliases, identity and domain uniqueness."""
+    if "index" in kwargs:
+        raise TypeError("Database indexes are declared by Server storage")
     extra = kwargs.get("json_schema_extra")
     additions = {}
-    if index or unique:
-        additions[INDEX_SCHEMA_KEY] = {"unique": bool(unique)}
+    if unique:
+        additions[UNIQUE_SCHEMA_KEY] = True
     if primary_field:
         additions[PRIMARY_SCHEMA_KEY] = True
     if key_name is not None:
@@ -36,7 +36,7 @@ def Field(
     if additions:
         if extra is not None and not isinstance(extra, dict):
             raise TypeError(
-                "Indexed/reference fields require mapping json_schema_extra"
+                "Identity and unique fields require mapping json_schema_extra"
             )
         kwargs["json_schema_extra"] = {**(extra or {}), **additions}
     return PydanticField(default, **kwargs)
@@ -58,8 +58,7 @@ __all__ = [
     "Reference",
     "REFERENCE_SCHEMA_KEY",
     "REFERENCE_MODEL_SCHEMA_KEY",
-    "REFERENCE_COLLECTION_SCHEMA_KEY",
     "PAYLOAD_SCHEMA_KEY",
-    "INDEX_SCHEMA_KEY",
+    "UNIQUE_SCHEMA_KEY",
     "PRIMARY_SCHEMA_KEY",
 ]

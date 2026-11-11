@@ -9,6 +9,112 @@ from pydantic import BaseModel, PrivateAttr
 from simstack.core.simstack_result import SimstackResult
 from simstack.models.artifact_models import ArtifactModel
 from simstack.util.model_copy import model_copy
+from simstack.util.object_transfer import ObjectFileClient
+
+_OBJECT_CLIENT_FROM_CONTEXT = ObjectFileClient.from_context
+
+
+@pytest.mark.parametrize("deep,preserve_ids,copy_references", [
+    (True, False, True), (True, True, True), (True, False, False), (False, False, True),
+])
+@pytest.mark.parametrize("partial", [False, True])
+def test_object_list_copy_keeps_ids_aligned_with_its_materialized_members(deep, preserve_ids, copy_references, partial):
+    from simstack.models import StringData
+    from simstack.models.base_lists import StringDataList
+    members = [StringData(value="first"), StringData(value="second")]
+    original = StringDataList(elements=members)
+    if partial:
+        original._set_cache(members[:1])
+    copied = model_copy(original, deep=deep, preserve_ids=preserve_ids, copy_references=copy_references)
+    for index, member in enumerate(copied._get_cache()):
+        assert copied.elements[index] == member.id
+        assert copied[index] is member
+        changed = deep and copy_references and not preserve_ids
+        assert (member.id != members[index].id) == changed
+    assert original.elements == [member.id for member in members]
+    if partial:
+        assert copied.elements[1] == members[1].id
+
+
+def test_staged_copy_serializes_with_upload_cleanup(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from datetime import datetime
+    from pathlib import Path
+    import shutil
+    import threading
+    from types import SimpleNamespace
+    from simstack.core.context import context
+    from simstack.models.files import FileStack
+    from simstack.models.file_instance import FileInstance
+
+    monkeypatch.setattr(context, "_config", SimpleNamespace(workdir=tmp_path, resource="local"))
+    source = FileStack.from_string("shared scientific bytes", "input.txt")
+    entered, resume, upload_started = threading.Event(), threading.Event(), threading.Event()
+    original = shutil.copyfile
+    def paused(*args, **kwargs):
+        entered.set()
+        assert resume.wait(5)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(shutil, "copyfile", paused)
+    class Client:
+        object_api_prefix = "/runner/objects"
+        def publish(self, value, path):
+            assert path.read_text() == "shared scientific bytes"
+            return FileInstance(path="object", resource="__s3__", created_at=datetime.now(),
+                location_type="s3", bucket="files", object_key="object").model_dump()
+    def upload():
+        upload_started.set()
+        source.ensure_uploaded(client=Client())
+    with ThreadPoolExecutor(2) as executor:
+        copying = executor.submit(model_copy, source)
+        try:
+            assert entered.wait(5)
+            uploading = executor.submit(upload)
+            assert upload_started.wait(5)
+            assert not uploading.done()
+        finally:
+            resume.set()
+        copied = copying.result(timeout=5)
+        uploading.result(timeout=5)
+    assert Path(copied.locations[0].path).read_text() == "shared scientific bytes"
+
+
+@pytest.mark.parametrize("deep", [False, True])
+@pytest.mark.parametrize("preserve_ids", [False, True])
+@pytest.mark.parametrize("constructor", ["local", "string"])
+def test_file_snapshot_copies_own_their_bytes_across_publication(tmp_path, monkeypatch, deep, preserve_ids, constructor):
+    from datetime import datetime
+    from pathlib import Path
+    from types import SimpleNamespace
+    from simstack.core.context import context
+    from simstack.models.files import FileStack
+    from simstack.models.file_instance import FileInstance
+
+    monkeypatch.setattr(context, "_config", SimpleNamespace(workdir=tmp_path, resource="local"))
+    source = tmp_path / "input.txt"
+    source.write_text("original input")
+    original = (FileStack.from_string("original input", source.name) if constructor == "string"
+                else FileStack.from_local_file(source))
+    copied = model_copy(original, deep=deep, preserve_ids=preserve_ids)
+    original_staging, copied_staging = Path(original._staging_directory), Path(copied._staging_directory)
+    assert original_staging != copied_staging
+    assert (original.id == copied.id) is preserve_ids
+    source.unlink()
+
+    class Uploaded:
+        object_api_prefix = "/runner/objects"
+
+        def publish(self, file_stack, path):
+            assert path.read_text() == "original input"
+            return FileInstance(path=str(file_stack.id), resource="__s3__", created_at=datetime.now(),
+                location_type="s3", bucket="bucket", object_key=str(file_stack.id),
+                checksum_sha256=file_stack.hash, size_bytes=file_stack.size).model_dump()
+
+    original.ensure_uploaded(client=Uploaded())
+    assert not original_staging.exists() and copied_staging.exists()
+    assert copied.get_raw("local", tmp_path / "copied").read_text() == "original input"
+    copied.ensure_uploaded(client=Uploaded())
+    assert not copied_staging.exists()
 
 
 class CopyReference(Model):
@@ -210,24 +316,52 @@ def test_copy_does_not_silently_fill_missing_required_values(original):
         model_copy(original)
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize("copy_references", [False, True])
-async def test_repository_saves_copied_models_and_references(
-    original, monkeypatch, copy_references
-):
-    from simstack.persistence.memory import InMemoryRepository
+def test_published_file_copy_is_local_and_failed_publication_retains_version(monkeypatch):
+    from datetime import datetime
+    from simstack.models.files import FileStack
+    from simstack.models.file_instance import FileInstance
+    from simstack.util.object_transfer import ObjectFileClient
 
-    engine = InMemoryRepository()
-    await engine.save(original)
-    copied = model_copy(original, copy_references=copy_references)
-    copied.embedded.values.append(9)
-    await engine.save(copied)
+    original = FileStack(name="input.txt", locations=[FileInstance(path="source-key", resource="__s3__",
+        created_at=datetime.now(), location_type="s3", bucket="files", object_key="source-key")])
+    before = original.model_dump()
+    class Client:
+        def copy_file(self, copied, source):
+            assert copied.id != original.id and source == original.id
+            raise RuntimeError("source disappeared during copy")
+    monkeypatch.setattr(ObjectFileClient, "from_context", lambda: Client())
+    copied = model_copy(original)
+    assert copied._copy_source_file_id == original.id
+    with pytest.raises(RuntimeError, match="source disappeared"):
+        copied.ensure_uploaded()
+    assert copied._copy_source_file_id == original.id
+    assert original.model_dump() == before
+    assert model_copy(original, preserve_ids=True).id == original.id
 
-    source_doc = await engine.find_one(CopyRoot, CopyRoot.id == original.id)
-    copied_doc = await engine.find_one(CopyRoot, CopyRoot.id == copied.id)
-    assert source_doc.embedded.values == [1]
-    assert copied_doc.embedded.values == [1, 9]
-    assert copied_doc.first.id == copied_doc.second.id == copied.first.id
-    assert await engine.find_one(CopyReference, CopyReference.id == copied.first.id) is not None
-    assert len(await engine.find(CopyRoot)) == 2
-    assert len(await engine.find(CopyReference)) == (2 if copy_references else 1)
+
+@pytest.mark.parametrize("bound", ["user", "runner", "local"])
+@pytest.mark.parametrize("ambient", [False, True])
+def test_published_file_copy_never_performs_implicit_api_writes(monkeypatch, bound, ambient):
+    from datetime import datetime
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from simstack.core.context import context
+    from simstack.models.files import FileStack
+    from simstack.models.file_instance import FileInstance
+
+    location = FileInstance(path="source-key", resource="__s3__", created_at=datetime.now(),
+        location_type="s3", bucket="files", object_key="source-key")
+    source = FileStack(name="input.txt", locations=[location])
+    source_requests = SimpleNamespace(authorization=bound)
+    current_requests = SimpleNamespace(authorization="local")
+    object.__setattr__(source, "_object_requests", source_requests)
+    monkeypatch.setattr(context, "_server", SimpleNamespace(requests=current_requests) if ambient else None)
+    monkeypatch.setattr(ObjectFileClient, "from_context", _OBJECT_CLIENT_FROM_CONTEXT)
+    selected = Mock(return_value=SimpleNamespace(copy_file=lambda *args: location.model_dump()))
+    monkeypatch.setattr(ObjectFileClient, "for_api", selected)
+    copied = model_copy(source)
+    assert copied.id != source.id
+    assert copied._copy_source_file_id == source.id
+    assert copied._object_requests is source_requests
+    selected.assert_not_called()
+    assert source._object_requests is source_requests

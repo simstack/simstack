@@ -3,13 +3,11 @@ import json
 import logging
 from pathlib import Path
 
-from simstack.models.document import DocumentParsingError, Model, EmbeddedModel
-from pydantic import ValidationError
+from simstack.models.document import Model, EmbeddedModel
 
-from simstack.core.context import context
 from simstack.models.models import ModelMapping
 from simstack.models.simstack_model import is_simstack_model
-from simstack.util.db import Database
+from simstack.tables.catalogue import CatalogueCollector
 from simstack.util.path_manager import path_manager
 from simstack.tables.table_builder import TableBuilderBase
 
@@ -21,17 +19,13 @@ class CreateModelTable(TableBuilderBase):
     Helper class to build the model table without passing around many parameters.
 
     Usage:
-        creator = CreateModelTable(db)
+        creator = CreateModelTable(catalogue)
         await creator.make_model_table()
     """
 
     @property
     def logger(self) -> logging.Logger:
         return logger
-
-    async def build(self, *args, **kwargs) -> None:
-        await super().build(*args, **kwargs)
-        await context.refresh_mappings(models=True, nodes=False)
 
     async def _process_module(self, module, drops: str) -> None:
         await self._create_models_from_module(module, drops)
@@ -72,56 +66,14 @@ class CreateModelTable(TableBuilderBase):
             full_mapping = ".".join(new_modules) + "." + class_name
             logger.debug(f"    Class: {class_name} Model Mapping: {full_mapping}")
 
-            # Remove any existing ModelMapping entry for this class
-
-            try:
-                existing_entries = await self.db.find(
-                    ModelMapping, ModelMapping.name == class_name
-                )
-            except (ValidationError, NameError, DocumentParsingError) as e:
-                logger.error(
-                    f"Error finding existing ModelMapping for {class_name}: {e}"
-                )
-                existing_entries = []
-
-            if len(existing_entries) > 0:
-                if len(existing_entries) > 1:
-                    logger.warning(
-                        f"Found {len(existing_entries)} ModelMapping entries for class_name '{class_name}'. "
-                        f"Expected at most one. Deleting all existing entries."
-                    )
-                else:
-                    existing_mapping = existing_entries[0].mapping
-                    if existing_mapping != full_mapping:
-                        logger.warning(
-                            f"Replacing ModelMapping entry for {class_name}: "
-                            f"old mapping '{existing_mapping}' -> new mapping '{full_mapping}'"
-                        )
-
-                for entry in existing_entries:
-                    await self.db.delete(entry)
-                    logger.debug(f"Deleted ModelMapping entry for {class_name} ({entry.mapping})")
-
-            # EmbeddedModels have no collection by may be simstack_models. They are never saved/retrieved
-            collection_name = getattr(new_class, "__collection__", None)
-            if collection_name is None:
-                if is_embedded_model:
-                    collection_name = "EmbeddedModel"
-                else:
-                    logger.error(f"No collection specified for {class_name}")
-
             # Create the new ModelMapping entry (pickle functionality removed)
             if is_ui_model:
                 model_entry = ModelMapping(
                     name=class_name,
                     mapping=full_mapping,
-                    collection_name=collection_name,
                     json_schema=json.dumps(new_class.json_schema()),
                     ui_schema=json.dumps(new_class.ui_schema()),
                     route="",
-                )
-                logger.debug(
-                    f"SimStack Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}"
                 )
                 # open a file in a subdirectory of the current file schema/model.json
                 if self.write_schema:
@@ -139,13 +91,12 @@ class CreateModelTable(TableBuilderBase):
                 model_entry = ModelMapping(
                     name=class_name,
                     mapping=full_mapping,
-                    collection_name=collection_name,
-                )
-                logger.debug(
-                    f"Model: {class_name} Mapping: {full_mapping} Collection: {collection_name}"
                 )
 
-            await self.db.save(model_entry)
+            model_entry.value_schema = json.dumps(new_class.model_json_schema())
+            if model_entry.json_schema is None:
+                model_entry.json_schema = model_entry.value_schema
+            self.catalogue.register_model(model_entry, model_class=new_class)
 
     async def _make_models_for_path(self, path_name: str):
         """Build model mappings for all Python files under a configured path."""
@@ -159,13 +110,12 @@ class CreateModelTable(TableBuilderBase):
             await self._create_model_models_from_file(file_path, drops)
 
     async def clear_table(self) -> None:
-        self.logger.info("Clearing ModelMapping collection")
-        await self.db.get_collection(ModelMapping).drop()
+        self.logger.info("Clearing discovered model descriptors")
+        self.catalogue.models.clear()
 
 
-# Public API preserved for existing callers (e.g. tests)
 async def make_model_table(
-    db : Database,
+    catalogue: CatalogueCollector,
     dirs: list[str] = None,
     drops: str = "",
     write_schema: bool = False,
@@ -174,11 +124,9 @@ async def make_model_table(
     ignore_entrypoints: bool = False,
 ):
     """
-    Rebuild the model table using the given database.
-
-    This is a thin wrapper around CreateModelTable for backward compatibility.
+    Collect model descriptors from the prepared environment.
     """
-    creator = CreateModelTable(db, write_schema=write_schema, project_root=project_root)
+    creator = CreateModelTable(catalogue, write_schema=write_schema, project_root=project_root)
     await creator.build(dirs=dirs, drops=drops, clear=clear, ignore_entrypoints=ignore_entrypoints)
 
 

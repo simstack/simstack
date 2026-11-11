@@ -7,14 +7,15 @@ from types import UnionType
 from typing import Annotated, Any, ClassVar, Union, get_args, get_origin
 from weakref import WeakValueDictionary
 
-from pydantic import BaseModel, ConfigDict, Field as PydanticField, model_validator
-
-from simstack.persistence.criteria import FieldPath
+from pydantic import BaseModel, ConfigDict, Field as PydanticField, PrivateAttr, model_validator
 
 from .codec import DocumentParsingError, decode_document_value, encode_document_value
 from .fields import PRIMARY_SCHEMA_KEY, REFERENCE_SCHEMA_KEY
 from .identity import ObjectId
-from .schema import annotate_document_schema, default_collection_name
+from .schema import (annotate_document_schema, annotate_nested_plain_schemas,
+                     escaped_identity_fields, escaped_computed_identity_fields,
+                     scientific_computed_names, scientific_core_schema, scientific_field_names,
+                     validate_scientific_document)
 
 SUBTYPE_KEY = "__simstack_model__"
 _MODEL_TYPES: WeakValueDictionary[str, type] = WeakValueDictionary()
@@ -63,16 +64,6 @@ def _unwrap_annotation(annotation):
 
 
 class _DomainMeta(type(BaseModel)):
-    def __getattribute__(cls, name):
-        if name == "id":
-            try:
-                primary = super().__getattribute__("__primary_field__")
-            except AttributeError:
-                primary = "id"
-            if primary != "id":
-                return FieldPath("id")
-        return super().__getattribute__(name)
-
     def __new__(mcls, name, bases, namespace, **kwargs):
         # Custom primary keys are ordinary validated fields. The neutral `id`
         # accessor points to that field, retaining its public constructor name.
@@ -95,21 +86,6 @@ class _DomainMeta(type(BaseModel)):
             )
             namespace["__primary_field__"] = key
         return super().__new__(mcls, name, bases, namespace, **kwargs)
-
-    def __getattr__(cls, name):
-        try:
-            return super().__getattr__(name)
-        except AttributeError:
-            fields = cls.__dict__.get("__pydantic_fields__", {})
-            if name in fields:
-                field = fields[name]
-                primary = getattr(cls, "__primary_field__", "id")
-                return FieldPath(
-                    "id"
-                    if name == primary
-                    else field.serialization_alias or field.alias or name
-                )
-            raise
 
 
 def _selection(selection, field):
@@ -181,10 +157,11 @@ def _dump_value(value, annotation=None, *, reference=False, include=None, exclud
             else identity
         )
     if isinstance(value, BaseModel):
+        escaped = escaped_identity_fields(type(value)) or escaped_computed_identity_fields(type(value))
         dumped = BaseModel.model_dump(
             value,
             mode="python",
-            by_alias=True,
+            by_alias=not escaped,
             serialize_as_any=True,
             include=include,
             exclude=exclude,
@@ -199,7 +176,7 @@ def _dump_value(value, annotation=None, *, reference=False, include=None, exclud
             for name in decorator.info.fields
         }
         for name, field in type(value).model_fields.items():
-            key = field.serialization_alias or field.alias or name
+            key = name if escaped else field.serialization_alias or field.alias or name
             if key not in dumped:
                 continue
             if name in values and name not in serialized_fields:
@@ -212,20 +189,17 @@ def _dump_value(value, annotation=None, *, reference=False, include=None, exclud
                     include=_selection(include, name),
                     exclude=_selection(exclude, name),
                 )
-        if isinstance(value, Model):
+        if escaped:
+            names = scientific_field_names(type(value))
+            names.update(scientific_computed_names(type(value)))
+            dumped = {names.get(key, key): item for key, item in dumped.items()}
+        elif isinstance(value, Model):
             primary = type(value).__primary_field__
             primary_field = type(value).model_fields[primary]
             key = primary_field.serialization_alias or primary_field.alias or primary
             if key in dumped:
                 dumped["id"] = dumped.pop(key)
-        shared_collection_subtype = isinstance(value, Model) and any(
-            isinstance(base, type)
-            and issubclass(base, Model)
-            and getattr(base, "__collection__", None) == type(value).__collection__
-            for base in type(value).__mro__[1:]
-            if base is not Model
-        )
-        if subtype or shared_collection_subtype:
+        if subtype:
             dumped[SUBTYPE_KEY] = _type_name(type(value))
         return dumped
     origin, args = get_origin(annotation), get_args(annotation)
@@ -290,7 +264,9 @@ class _DomainValue(BaseModel, metaclass=_DomainMeta):
     @model_validator(mode="wrap")
     @classmethod
     def _validate_domain_type(cls, value, handler):
-        if isinstance(value, Mapping) and SUBTYPE_KEY in value:
+        declared_marker = any(SUBTYPE_KEY in (name, field.alias, field.validation_alias, field.serialization_alias)
+                              for name, field in cls.model_fields.items())
+        if isinstance(value, Mapping) and SUBTYPE_KEY in value and not declared_marker:
             actual = resolve_document_type(cls, value)
             value = {key: item for key, item in value.items() if key != SUBTYPE_KEY}
             if actual is not cls:
@@ -299,14 +275,17 @@ class _DomainValue(BaseModel, metaclass=_DomainMeta):
 
     @classmethod
     def __get_pydantic_json_schema__(cls, core_schema, handler):
-        return annotate_document_schema(
-            cls, super().__get_pydantic_json_schema__(core_schema, handler)
+        schema = annotate_document_schema(
+            cls, super().__get_pydantic_json_schema__(scientific_core_schema(cls, core_schema), handler),
+            mode=cls.model_config.get("json_schema_mode_override") or handler.mode,
+            by_alias=handler.generate_json_schema.by_alias,
         )
+        return annotate_nested_plain_schemas(cls, schema, handler, _DomainValue)
 
     @classmethod
     def model_validate_doc(cls, value: Any):
         try:
-            return cls.model_validate(decode_document_value(value))
+            return validate_scientific_document(cls, decode_document_value(value))
         except DocumentParsingError:
             raise
         except (TypeError, ValueError) as exc:
@@ -329,31 +308,19 @@ class EmbeddedModel(_DomainValue):
 class Model(_DomainValue):
     """Pydantic domain record with neutral string identity and schema metadata."""
 
-    __collection__: ClassVar[str]
     __primary_field__: ClassVar[str] = "id"
-    id: ObjectId = PydanticField(
-        default_factory=ObjectId, alias="_id", serialization_alias="id"
-    )
-
-    @classmethod
-    def __pydantic_init_subclass__(cls, **kwargs):
-        super().__pydantic_init_subclass__(**kwargs)
-        cls.__collection__ = str(
-            cls.model_config.get("collection") or default_collection_name(cls.__name__)
-        )
+    _scientific_revision: str | None = PrivateAttr(default=None)
+    _scientific_reference: tuple[str, str] | None = PrivateAttr(default=None)
+    id: ObjectId = PydanticField(default_factory=ObjectId)
 
     @model_validator(mode="before")
     @classmethod
-    def _identity_alias(cls, value):
-        if isinstance(value, Mapping):
+    def _primary_identity(cls, value):
+        if cls.__primary_field__ != "id" and isinstance(value, Mapping):
             value = dict(value)
-            identity = value.pop("_id", value.get("id", None))
-            if cls.__primary_field__ != "id":
-                value.pop("id", None)
-                if identity is not None:
-                    value.setdefault(cls.__primary_field__, identity)
-            elif identity is not None:
-                value["id"] = identity
+            identity = value.pop("id", None)
+            if identity is not None:
+                value.setdefault(cls.__primary_field__, identity)
         return value
 
 

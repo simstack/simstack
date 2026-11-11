@@ -5,7 +5,6 @@ import base64
 import json
 import logging
 import os
-import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,17 +28,7 @@ class DownloadResult:
 
 
 class FileTransferClient:
-    """
-    Small standard-library HTTP client for runner-to-server file transfer.
-
-    It intentionally avoids adding a mandatory requests/httpx dependency to the
-    runner environment while still streaming upload and download bodies.
-    Uploads larger than the configured chunk size (or that receive HTTP 413)
-    are sent as sequential Content-Range requests so reverse proxies with a
-    small client_max_body_size can still accept Gaussian-sized FileStack files.
-    """
-
-    chunk_size = 1024 * 1024
+    """Coordinate resource transfers; file bytes travel directly to object storage."""
 
     def __init__(
         self,
@@ -47,10 +36,14 @@ class FileTransferClient:
         server_url: str,
         runner_token: str,
         timeout_seconds: int = 60,
+        rotate_credentials: bool = True,
+        account_id: str | None = None,
     ) -> None:
         self.server_url = server_url.rstrip("/")
         self._runner_token = runner_token
         self.timeout_seconds = timeout_seconds
+        self.rotate_credentials = rotate_credentials
+        self.account_id = account_id
         parsed = urlparse(self.server_url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError(f"Invalid SIMSTACK_SERVER_URL: {server_url!r}")
@@ -74,12 +67,11 @@ class FileTransferClient:
         server_url = (
             os.environ.get("SIMSTACK_SERVER_URL")
             or getattr(config, "server_url", None)
-            or getattr(config, "simstack_server_url", None)
         )
         runner_token = (
             os.environ.get("SIMSTACK_RUNNER_TOKEN")
+            or os.environ.get("SIMSTACK_SERVER_TOKEN")
             or getattr(config, "server_token", None)
-            or getattr(config, "simstack_runner_token", None)
         )
         timeout_seconds = int(
             os.environ.get("SIMSTACK_FILE_TRANSFER_REQUEST_TIMEOUT_SECONDS", "60")
@@ -97,6 +89,7 @@ class FileTransferClient:
             server_url=str(server_url),
             runner_token=str(runner_token),
             timeout_seconds=timeout_seconds,
+            account_id=os.environ.get("SIMSTACK_EXECUTION_ACCOUNT_ID") or getattr(config, "account_id", None),
         )
 
     def create_transfer(
@@ -107,6 +100,7 @@ class FileTransferClient:
         source_resource_name: str | None,
         target_resource_name: str,
         request_type: str = "runner_to_runner",
+        source_object_key: str | None = None,
     ) -> Dict[str, Any]:
         return self._json_request(
             "POST",
@@ -117,6 +111,7 @@ class FileTransferClient:
                 "source_resource_name": source_resource_name,
                 "target_resource_name": target_resource_name,
                 "request_type": request_type,
+                **({"source_object_key": source_object_key} if source_object_key else {}),
             },
         )
 
@@ -181,116 +176,25 @@ class FileTransferClient:
             f"Timed out waiting for transfer {transfer_id} to upload; last status was {last_status}."
         )
 
-    def upload_file(self, transfer_id: str, path: Path) -> Dict[str, Any]:
-        path = Path(path)
-        if not path.is_file():
-            raise FileTransferError(f"Transfer source file does not exist: {path}")
-
-        size_bytes = path.stat().st_size
-        checksum = hash_file(path)
-        raw_chunk = os.environ.get("SIMSTACK_FILE_TRANSFER_UPLOAD_CHUNK_BYTES")
-        if raw_chunk is None:
-            chunk_size = 8 * 1024 * 1024
-        else:
-            try:
-                chunk_size = int(raw_chunk)
-            except ValueError as exc:
-                raise ValueError(
-                    "SIMSTACK_FILE_TRANSFER_UPLOAD_CHUNK_BYTES must be an integer, "
-                    f"got {raw_chunk!r}"
-                ) from exc
-            if chunk_size <= 0:
-                raise ValueError(
-                    "SIMSTACK_FILE_TRANSFER_UPLOAD_CHUNK_BYTES must be positive, "
-                    f"got {chunk_size}"
-                )
-
-        production_floor = 256 * 1024
-        min_chunk_bytes = (
-            production_floor
-            if chunk_size > production_floor
-            else max(1, chunk_size // 2)
-        )
-        send_ranges = size_bytes > chunk_size
-        while True:
-            try:
-                if not send_ranges:
-                    return self._put_upload(
-                        transfer_id,
-                        path,
-                        offset=0,
-                        length=size_bytes,
-                        total_size=size_bytes,
-                        checksum=checksum,
-                        include_content_range=False,
-                    )
-                result: Dict[str, Any] = {}
-                offset = 0
-                while offset < size_bytes:
-                    length = min(chunk_size, size_bytes - offset)
-                    result = self._put_upload(
-                        transfer_id,
-                        path,
-                        offset=offset,
-                        length=length,
-                        total_size=size_bytes,
-                        checksum=checksum,
-                        include_content_range=True,
-                    )
-                    offset += length
-                return result
-            except FileTransferError as exc:
-                if "HTTP 413" not in str(exc):
-                    raise
-                if not send_ranges:
-                    send_ranges = True
-                    chunk_size = min(chunk_size, 512 * 1024)
-                    continue
-                next_chunk = chunk_size // 2
-                if next_chunk < min_chunk_bytes:
-                    raise
-                chunk_size = next_chunk
-
-    def _put_upload(
-        self,
-        transfer_id: str,
-        path: Path,
-        *,
-        offset: int,
-        length: int,
-        total_size: int,
-        checksum: str,
-        include_content_range: bool,
+    def upload_file(
+        self, path: Path, *, file_stack_id: str, source_resource: str
     ) -> Dict[str, Any]:
-        conn = self._connection()
-        try:
-            conn.putrequest(
-                "PUT", self._path(f"/api/file-transfers/{transfer_id}/upload")
-            )
-            for key, value in self._auth_headers().items():
-                conn.putheader(key, value)
-            conn.putheader("Content-Type", "application/octet-stream")
-            conn.putheader("Content-Length", str(length))
-            conn.putheader("X-File-Size", str(total_size))
-            conn.putheader("X-Checksum-SHA256", checksum)
-            if include_content_range:
-                end = offset + length - 1 if length else offset
-                conn.putheader("Content-Range", f"bytes {offset}-{end}/{total_size}")
-            conn.endheaders()
+        """Publish a requested resource-local file through the object API."""
+        from datetime import datetime
+        from simstack.models.file_instance import FileInstance
+        from simstack.models.files import FileStack
+        from simstack.util.object_transfer import ObjectFileClient
 
-            with path.open("rb") as handle:
-                handle.seek(offset)
-                remaining = length
-                while remaining:
-                    chunk = handle.read(min(self.chunk_size, remaining))
-                    if not chunk:
-                        break
-                    conn.send(chunk)
-                    remaining -= len(chunk)
-
-            return self._parse_response(conn.getresponse())
-        finally:
-            conn.close()
+        path = Path(path)
+        size = path.stat().st_size
+        checksum = hash_file(path)
+        value = FileStack(id=file_stack_id, name=path.name, size=size, hash=checksum,
+            locations=[FileInstance(path=str(path.resolve()), resource=source_resource,
+                created_at=datetime.now(), size_bytes=size, checksum_sha256=checksum)])
+        client = ObjectFileClient(server_url=self.server_url, runner_token=self._runner_token,
+            timeout_seconds=self.timeout_seconds, rotate_credentials=self.rotate_credentials,
+            account_id=self.account_id)
+        return client.publish(value, path)
 
     def download_file(self, transfer_id: str, target_path: Path) -> DownloadResult:
         from simstack.util.object_transfer import download_object
@@ -336,8 +240,8 @@ class FileTransferClient:
             try:
                 conn.request(method, self._path(path), body=body, headers=headers)
                 response = conn.getresponse()
-                if response.status == 401 and not attempt:
-                    from simstack.runner_api.credentials import refreshed_token
+                if response.status == 401 and not attempt and self.rotate_credentials:
+                    from simstack.runner_runtime.runner_credentials import refreshed_token
                     replacement = refreshed_token(self.server_url, headers["Authorization"][7:])
                     if replacement is not None:
                         response.read()
@@ -366,11 +270,16 @@ class FileTransferClient:
 
     @property
     def runner_token(self):
-        from simstack.runner_api.credentials import current_token
+        if not self.rotate_credentials:
+            return self._runner_token
+        from simstack.runner_runtime.runner_credentials import current_token
         return current_token(self.server_url, self._runner_token)
 
     def _auth_headers(self) -> Dict[str, str]:
-        return {"Authorization": f"Bearer {self.runner_token}"}
+        headers = {"Authorization": f"Bearer {self.runner_token}"}
+        if self.account_id is not None:
+            headers["X-SimStack-Account"] = self.account_id
+        return headers
 
     def _parse_response(self, response: http.client.HTTPResponse) -> Dict[str, Any]:
         if response.status >= 400:

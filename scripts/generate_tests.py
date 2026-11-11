@@ -9,7 +9,7 @@ from simstack.models.document import ObjectId
 from simstack.core.context import context
 from simstack.models import NamedDataReference
 from simstack.util.custom_model_dump import custom_model_dump
-from simstack.util.importer import import_class
+from simstack.server_api.http_transport import RunnerAPIError
 
 
 async def extract_node_data(node_id_str: str, target_dir_path: Path):
@@ -22,7 +22,12 @@ async def extract_node_data(node_id_str: str, target_dir_path: Path):
 
     # 2. Load NodeRegistry entry
     node_id = ObjectId(node_id_str)
-    node_registry = await context.db.load_task_by_id(node_id)
+    node_registry = None
+    try:
+        node_registry = await context.server.tasks.get_task(node_id)
+    except RunnerAPIError as exc:
+        if exc.status_code != 404:
+            raise
     if not node_registry:
         print(f"Error: NodeRegistry with ID {node_id_str} not found.")
         return
@@ -32,8 +37,7 @@ async def extract_node_data(node_id_str: str, target_dir_path: Path):
     final_target_dir = target_dir_path / node_registry.name / arg_hash
     final_target_dir.mkdir(parents=True, exist_ok=True)
 
-    # 4. Copy files from context.workdir/node_name/id to target_dir/arg_hash
-    # context.workdir returns a Path object
+    # 4. Copy files from the task workdir to its exported snapshot.
     source_dir = context.config.workdir / node_registry.name / node_id_str
     if source_dir.exists() and source_dir.is_dir():
         for item in source_dir.iterdir():
@@ -46,22 +50,20 @@ async def extract_node_data(node_id_str: str, target_dir_path: Path):
         print(f"Warning: Source directory {source_dir} does not exist or is not a directory.")
 
     # 5. Serialize inputs and results
-    async def serialize_references(references: List[NamedDataReference]) -> List[Dict[str, Any]]:
+    async def serialize_references(references: List[NamedDataReference], *, inputs=False) -> List[Dict[str, Any]]:
         serialized = []
-        for ref in references:
-            model_cls = await import_class(ref.variable_mapping, context.db)
-            if model_cls:
-                model_inst = await context.db.find_one(model_cls, model_cls.id == ref.reference)
-                if model_inst:
-                    data = await custom_model_dump(model_inst)
-                    serialized.append({
-                        "name": ref.variable_name,
-                        "mapping": ref.variable_mapping,
-                        "data": data
-                    })
+        values = (await context.server.values.resolve_task_inputs(node_registry.id) if inputs
+                  else await context.server.values.resolve_task_outputs(node_registry))
+        for ref, model_inst in zip(references, values):
+            data = await custom_model_dump(model_inst)
+            serialized.append({
+                "name": ref.variable_name,
+                "mapping": ref.variable_mapping,
+                "data": data
+            })
         return serialized
 
-    inputs_serialized = await serialize_references(node_registry.input_references)
+    inputs_serialized = await serialize_references(node_registry.input_references, inputs=True)
     results_serialized = await serialize_references(node_registry.results_references)
 
     with open(final_target_dir / "inputs.json", "w") as f:

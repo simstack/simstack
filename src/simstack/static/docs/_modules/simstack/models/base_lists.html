@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -272,25 +277,25 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for simstack.models.base_lists</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ObjectId</span>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">TypeVar</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ObjectId</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.base_types</span><span class="w"> </span><span class="kn">import</span> <span class="n">BooleanData</span><span class="p">,</span> <span class="n">StringData</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.simstack_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.generic_list_mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">GenericListMixin</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.object_list_mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectListMixin</span>
-
-<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringData</span>
 
 <span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="StringDataList">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.base_lists.StringDataList">[docs]</a>
 <span class="nd">@simstack_model</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">StringDataList</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">ObjectListMixin</span><span class="p">[</span><span class="s2">&quot;StringData&quot;</span><span class="p">]):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StringDataList</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">ObjectListMixin</span><span class="p">[</span><span class="n">StringData</span><span class="p">]):</span>
     <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;string_data_list&quot;</span>
     <span class="n">elements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;List of StringData ObjectIDs&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="s2">&quot;StringData&quot;</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">StringData</span><span class="p">]:</span>
         <span class="k">return</span> <span class="n">ObjectListMixin</span><span class="o">.</span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
@@ -304,11 +309,11 @@
 <div class="viewcode-block" id="BooleanDataList">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.base_lists.BooleanDataList">[docs]</a>
 <span class="nd">@simstack_model</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">BooleanDataList</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">ObjectListMixin</span><span class="p">[</span><span class="s2">&quot;StringData&quot;</span><span class="p">]):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BooleanDataList</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">ObjectListMixin</span><span class="p">[</span><span class="n">BooleanData</span><span class="p">]):</span>
     <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;boolean_data_list&quot;</span>
     <span class="n">elements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;List of BooleanData ObjectIDs&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="s2">&quot;StringData&quot;</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">BooleanData</span><span class="p">]:</span>
         <span class="k">return</span> <span class="n">ObjectListMixin</span><span class="o">.</span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
@@ -331,7 +336,6 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">elements</span><span class="p">)</span></div>
-
 
 </pre></div>
         </article>
@@ -369,6 +373,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

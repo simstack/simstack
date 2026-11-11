@@ -74,7 +74,7 @@ class TestDataSetSection:
         """Test retrieving items by name."""
         from simstack.core.context import context
         float_data = FloatData(value=42.0)
-        await context.db.save(float_data)
+        await context.server.values.publish_value(float_data)
 
         section = DataSetSection()
         section.add_row({"f": float_data}, name="test_item")
@@ -104,7 +104,7 @@ class TestDataSet:
             data={"description": "Empty test dataset"},
         )
         dataset = DataSet(metadata=metadata)
-        await context.db.save(dataset)
+        await context.server.values.publish_value(dataset)
 
         assert dataset.field_name == "dataset"
         assert len(dataset) == 0
@@ -128,14 +128,14 @@ class TestDataSet:
         dataset = DataSet(metadata=metadata)
         dataset["train"] = section1
         
-        await dataset.save(context.db)
+        await context.server.values.publish_value(dataset)
         
         assert len(dataset) == 1
         assert "train" in dataset
         assert len(dataset["train"]) == 1
         
         # Verify float_data is saved
-        reloaded_float = await context.db.find_one(FloatData, FloatData.id == float_data.id)
+        reloaded_float = await context.server.values.get_value(FloatData, float_data.id)
         assert reloaded_float is not None
         assert reloaded_float.value == 1.0
 
@@ -155,10 +155,10 @@ class TestDataSet:
 
         dataset = DataSet(metadata=metadata)
         dataset["data"] = section
-        await dataset.save(context.db)
+        await context.server.values.publish_value(dataset)
 
         # Reload from DB
-        loaded = await context.db.find_one(DataSet, DataSet.id == dataset.id)
+        loaded = await context.server.values.get_value(DataSet, dataset.id)
         assert loaded is not None
         assert "data" in loaded
         assert len(loaded["data"]) == 1
@@ -275,7 +275,7 @@ class TestDataSetSectionDict:
     @pytest.mark.asyncio
     async def test_load_to_cache(self, initialized_context):
         f1 = FloatData(value=10.0)
-        await context.db.save(f1)
+        await context.server.values.publish_value(f1)
 
         section = DataSetSection()
         # data is synchronized in save, or we can set it manually for this test
@@ -283,9 +283,9 @@ class TestDataSetSectionDict:
         section.data = {"item1": {"f": f1.id}}
 
         # Cache should be empty initially
-        assert "item1" not in section._get_cache()
+        assert "_cache" not in vars(section)
 
-        await section.load_to_cache(context.db)
+        section.materialize({"item1": {"f": await context.server.values.get_value(FloatData, f1.id)}})
 
         assert "item1" in section._get_cache()
         assert section["item1"]["f"].id == f1.id

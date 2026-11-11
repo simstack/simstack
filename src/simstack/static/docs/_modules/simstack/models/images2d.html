@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -272,17 +277,19 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for simstack.models.images2d</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">ClassVar</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">base64</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">ObjectId</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">ObjectId</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.simstack_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span>
 
 <div class="viewcode-block" id="Image2DArtifactModel">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.images2d.Image2DArtifactModel">[docs]</a>
 <span class="nd">@simstack_model</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Image2DArtifactModel</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Model for storing 2D image artifacts in MongoDB.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A rendered image and its scientific presentation metadata.&quot;&quot;&quot;</span>
+
+    <span class="n">__simstack_artifact_kind__</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;image&quot;</span>
 
     <span class="n">parent_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Name of the image artifact&quot;</span><span class="p">)</span>
@@ -345,6 +352,48 @@
             <span class="p">{</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span> <span class="s2">&quot;headerName&quot;</span><span class="p">:</span> <span class="s2">&quot;Format&quot;</span><span class="p">},</span>
             <span class="p">{</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="s2">&quot;headerName&quot;</span><span class="p">:</span> <span class="s2">&quot;Size&quot;</span><span class="p">},</span>
         <span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Image2DArtifactModel.make_table_entries_instance">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.images2d.Image2DArtifactModel.make_table_entries_instance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">make_table_entries_instance</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">max_recursion_level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">drop_id</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">current_level</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">visited</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">field_prefix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_table_entries</span><span class="p">(</span>
+            <span class="n">max_recursion_level</span><span class="o">=</span><span class="n">max_recursion_level</span><span class="p">,</span>
+            <span class="n">drop_id</span><span class="o">=</span><span class="n">drop_id</span><span class="p">,</span>
+            <span class="n">current_level</span><span class="o">=</span><span class="n">current_level</span><span class="p">,</span>
+            <span class="n">visited</span><span class="o">=</span><span class="n">visited</span><span class="p">,</span>
+            <span class="n">field_prefix</span><span class="o">=</span><span class="n">field_prefix</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Image2DArtifactModel.ui_schema">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.images2d.Image2DArtifactModel.ui_schema">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ui_schema</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;ui:table&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;pagination&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;paginationPageSize&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+                <span class="s2">&quot;domLayout&quot;</span><span class="p">:</span> <span class="s2">&quot;autoHeight&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;defaultColDef&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;flex&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;minWidth&quot;</span><span class="p">:</span> <span class="mi">80</span><span class="p">,</span> <span class="s2">&quot;resizable&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+            <span class="p">}</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="Image2DArtifactModel.ui_make_title">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.images2d.Image2DArtifactModel.ui_make_title">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ui_make_title</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">ui_schema</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;ui:table&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ui_schema</span><span class="p">:</span>
+            <span class="n">ui_schema</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">ui_schema</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">ui_schema</span></div>
 </div>
 
 
@@ -442,6 +491,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

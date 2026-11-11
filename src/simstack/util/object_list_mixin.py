@@ -1,12 +1,9 @@
 import re
-from typing import Generic, Optional, List, Iterator, Type, Union, Iterable, TypeVar, TYPE_CHECKING
+from typing import Generic, Optional, List, Iterator, Type, Union, Iterable, TypeVar
 
 from simstack.models.document import ObjectId, Model
 
 from simstack.util.generic_list_mixin import GenericListMixin
-
-if TYPE_CHECKING:
-    from simstack.util.db import Database
 
 T = TypeVar("T")
 
@@ -78,15 +75,6 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
         for element in elements:
            self.append(element)
 
-    async def save(self, db: "Database"):
-        cache = self._get_cache()
-        # Save each element first (this might trigger their own custom saves)
-        for element in cache:
-            await db.save(element)
-        if isinstance(self, Model):  # embedded models are save with the parent
-            await db.save_unchecked(self)
-        return self
-
     def insert(self, index: int, element: T):
         self.elements.insert(index, element.id)
         cache = self._get_cache()
@@ -112,13 +100,17 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
             raise IndexError("Index out of range for cache. Load elements first.")
 
     def get(self, index: int) -> T:
-        """Get an element by index, loading it from DB if necessary."""
+        """Get a locally materialized element by index."""
         if index < 0 or index >= len(self.elements):
             raise IndexError("list index out of range")
 
         cache = self._get_cache()
-        if index < len(cache):
+        identity = self.elements[index]
+        if index < len(cache) and cache[index].id == identity:
             return cache[index]
+        for item in cache:
+            if item.id == identity:
+                return item
 
         raise IndexError("Index out of range for cache. Load elements first.")
 
@@ -148,36 +140,41 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
         self.elements[:] = [obj.id for obj in cache]
 
     def __setitem__(self, index: Union[int, slice], value: Union[T, List[T]]):
+        cache = self._get_cache()
+        elements = list(self.elements)
+        updated_cache = list(cache)
+        materialized = len(cache) == len(elements)
         if isinstance(index, slice):
-            if isinstance(value, Iterable):
-                ids = [v.id for v in value]
-                self.elements[index] = ids
-                cache = self._get_cache()
-                # Slice assignment on cache is only safe if it matches the current loaded state
-                # For simplicity, let's just clear cache or try to update if it fits
-                if index.start is not None and index.stop is not None and index.stop <= len(cache):
-                     cache[index] = list(value)
-                self._set_cache(cache)
-            else:
+            if not isinstance(value, Iterable):
                 raise TypeError("Can only assign an iterable to a slice")
+            value = list(value)
+            elements[index] = [item.id for item in value]
+            if materialized:
+                updated_cache[index] = value
+            else:
+                known = {item.id: item for item in [*cache, *value]}
+                updated_cache = [known[identity] for identity in elements if identity in known]
         else:
-            self.elements[index] = value.id
-            cache = self._get_cache()
-            if index < len(cache):
-                cache[index] = value
-            self._set_cache(cache)
+            elements[index] = value.id
+            if materialized:
+                updated_cache[index] = value
+            else:
+                known = {item.id: item for item in [*cache, value]}
+                updated_cache = [known[identity] for identity in elements if identity in known]
+        # Validate both list operations before changing either representation.
+        self.elements[:] = elements
+        self._set_cache(updated_cache)
 
     def __delitem__(self, index: Union[int, slice]):
-        del self.elements[index]
-        cache = self._get_cache()
-        if isinstance(index, slice):
-            if index.start is not None and index.stop is not None and index.stop <= len(cache):
-                del cache[index]
-            else:
-                raise IndexError("Slice out of range for cache")
+        elements, cache = list(self.elements), list(self._get_cache())
+        materialized = len(cache) == len(elements)
+        del elements[index]
+        if materialized:
+            del cache[index]
         else:
-            if index < len(cache):
-                del cache[index]
+            known = {item.id: item for item in cache}
+            cache = [known[identity] for identity in elements if identity in known]
+        self.elements[:] = elements
         self._set_cache(cache)
 
     def copy(self) -> "ObjectListMixin[T]":
@@ -188,12 +185,19 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
         cache = self._get_cache()
         if isinstance(index, slice):
             if index.start is not None and index.stop is not None and index.stop <= len(cache):
-                return cache[index]
+                selected = cache[index]
+                if [item.id for item in selected] == self.elements[index]:
+                    return selected
             return self.elements[index]
         else:
-            if 0 <= index < len(cache):
-                return cache[index]
-            return self.elements[index]
+            identity = self.elements[index]
+            if index >= 0:
+                if index < len(cache) and cache[index].id == identity:
+                    return cache[index]
+                for item in cache:
+                    if item.id == identity:
+                        return item
+            return identity
 
     def find(self, pattern: str) -> Optional[T]:
         regex = re.compile(pattern)
@@ -213,44 +217,13 @@ class ObjectListMixin(GenericListMixin[ObjectId], Generic[T]):
                 yield obj
 
 
-    async def db_find_postprocess(self, db: "Database"):
-        """Instance-level post-processing"""
-        cache = self._get_cache()
-        model_class = self._get_model_class()
-        # Identify which IDs are missing from the cache
-        missing_ids = [obj_id for obj_id in self.elements if not any(getattr(o, "id", None) == obj_id for o in cache)]
-
-        if missing_ids:
-            # Load all missing elements at once
-            query = model_class.id.in_(missing_ids)
-            # engine.find might return a cursor or a list
-            results = await db.find(model_class, query)
-
-            # Map results by ID for efficient lookup
-            loaded_map = {}
-            for obj in results:
-                # Recursively unwrap nested collections (mock DB behavior)
-                it = obj
-                while isinstance(it, (list, tuple)) and len(it) > 0:
-                    it = it[0]
-
-                # Check for Model or duck-typed object
-                if hasattr(it, "id"):
-                    loaded_map[it.id] = it
-
-            # Update cache maintaining the order of self.elements
-            new_cache = []
-            for obj_id in self.elements:
-                # Find in existing cache
-                existing = next((o for o in cache if getattr(o, "id", None) == obj_id), None)
-                if existing:
-                    new_cache.append(existing)
-                elif obj_id in loaded_map:
-                    new_cache.append(loaded_map[obj_id])
-                else:
-                    import logging
-                    logging.getLogger(__name__).warning(f"Could not load object {obj_id} for {model_class.__name__}")
-            self._set_cache(new_cache)
+    def materialize(self, values: Iterable[T]):
+        """Install explicitly resolved members without performing I/O."""
+        by_id = {value.id: value for value in values}
+        missing = [identity for identity in self.elements if identity not in by_id]
+        if missing:
+            raise ValueError(f"Missing scientific list members: {missing}")
+        self._set_cache([by_id[identity] for identity in self.elements])
         return self
 
     def delete_element(self, element: Union[T, ObjectId]):

@@ -12,13 +12,3 @@ class TaskStatus(str, Enum):
     COMPLETED = "completed"
     RECOVERED = "recovered"
     TERMINATING = "terminating"
-
-
-# TODO: eliminate
-class DBType(str, Enum):
-    API = "api"
-    SQLITE = "sqlite"
-    MONGODB = "mongodb"
-    POSTGRES = "postgres"
-    IN_MEMORY = "in_memory"
-    WITH_PATH = "with_path"

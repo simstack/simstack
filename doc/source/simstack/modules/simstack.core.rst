@@ -52,14 +52,6 @@ simstack.core.definitions module
    :show-inheritance:
    :undoc-members:
 
-simstack.core.engine module
----------------------------
-
-.. automodule:: simstack.core.engine
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 simstack.core.find\_simstack\_modules module
 --------------------------------------------
 
@@ -84,10 +76,10 @@ simstack.core.node module
    :show-inheritance:
    :undoc-members:
 
-simstack.core.node\_claim module
---------------------------------
+simstack.core.node\_code\_version module
+----------------------------------------
 
-.. automodule:: simstack.core.node_claim
+.. automodule:: simstack.core.node_code_version
    :members:
    :show-inheritance:
    :undoc-members:
@@ -112,22 +104,6 @@ simstack.core.recompute\_artifacts module
 -----------------------------------------
 
 .. automodule:: simstack.core.recompute_artifacts
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.core.reset\_db module
-------------------------------
-
-.. automodule:: simstack.core.reset_db
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.core.resource\_assignment module
------------------------------------------
-
-.. automodule:: simstack.core.resource_assignment
    :members:
    :show-inheritance:
    :undoc-members:
@@ -160,6 +136,14 @@ simstack.core.run\_node module
 ------------------------------
 
 .. automodule:: simstack.core.run_node
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.core.run\_node\_protocol module
+----------------------------------------
+
+.. automodule:: simstack.core.run_node_protocol
    :members:
    :show-inheritance:
    :undoc-members:

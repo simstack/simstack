@@ -137,13 +137,11 @@ class TestArtifactModel:
         )
 
         # Save to database
-        saved_artifact = await initialized_context.db.save(original_artifact)
+        saved_artifact = await initialized_context.server.values.publish_value(original_artifact)
         assert saved_artifact.id is not None
 
         # Retrieve from database
-        retrieved_artifact = await initialized_context.db.find_one(
-            ArtifactModel, ArtifactModel.id == saved_artifact.id
-        )
+        retrieved_artifact = await initialized_context.server.values.get_value(ArtifactModel, saved_artifact.id)
 
         # Verify all data was correctly saved and retrieved
         assert retrieved_artifact is not None
@@ -174,12 +172,10 @@ class TestArtifactModel:
         )
 
         # Save to database
-        saved_artifact = await initialized_context.db.save(original_artifact)
+        saved_artifact = await initialized_context.server.values.publish_value(original_artifact)
 
         # Retrieve from database
-        retrieved_artifact = await initialized_context.db.find_one(
-            ArtifactModel, ArtifactModel.id == saved_artifact.id
-        )
+        retrieved_artifact = await initialized_context.server.values.get_value(ArtifactModel, saved_artifact.id)
 
         # Verify all list data was correctly saved and retrieved
         assert retrieved_artifact is not None
@@ -204,7 +200,7 @@ class TestArtifactModel:
         )
 
         # Save initial version
-        saved_artifact = await initialized_context.db.save(artifact)
+        saved_artifact = await initialized_context.server.values.publish_value(artifact)
 
         # Update the data
         saved_artifact.data["counter"] = 2
@@ -212,12 +208,10 @@ class TestArtifactModel:
         saved_artifact.data["new_field"] = "added"
 
         # Save updated version
-        updated_artifact = await initialized_context.db.save(saved_artifact)
+        updated_artifact = await initialized_context.server.values.publish_value(saved_artifact)
 
         # Retrieve and verify updates
-        retrieved_artifact = await initialized_context.db.find_one(
-            ArtifactModel, ArtifactModel.id == updated_artifact.id
-        )
+        retrieved_artifact = await initialized_context.server.values.get_value(ArtifactModel, updated_artifact.id)
 
         assert retrieved_artifact.data["counter"] == 2
         assert retrieved_artifact.data["status"] == "updated"
@@ -234,12 +228,10 @@ class TestArtifactModel:
         )
 
         # Save to database
-        saved_artifact = await initialized_context.db.save(artifact)
+        saved_artifact = await initialized_context.server.values.publish_value(artifact)
 
         # Retrieve from database
-        retrieved_artifact = await initialized_context.db.find_one(
-            ArtifactModel, ArtifactModel.id == saved_artifact.id
-        )
+        retrieved_artifact = await initialized_context.server.values.get_value(ArtifactModel, saved_artifact.id)
 
         assert retrieved_artifact is not None
         assert retrieved_artifact.data == {}
@@ -258,10 +250,8 @@ class TestArtifactModel:
         assert isinstance(artifact.data, dict)
 
         # Test saving and retrieving
-        saved_artifact = await initialized_context.db.save(artifact)
-        retrieved_artifact = await initialized_context.db.find_one(
-            ArtifactModel, ArtifactModel.id == saved_artifact.id
-        )
+        saved_artifact = await initialized_context.server.values.publish_value(artifact)
+        retrieved_artifact = await initialized_context.server.values.get_value(ArtifactModel, saved_artifact.id)
 
         assert retrieved_artifact.data == {}
 
@@ -290,15 +280,13 @@ class TestArtifactModel:
         # Save all artifacts
         saved_artifacts = []
         for artifact in artifacts:
-            saved = await initialized_context.db.save(artifact)
+            saved = await initialized_context.server.values.publish_value(artifact)
             saved_artifacts.append(saved)
 
         # Find artifacts by name pattern (since querying by data content is more complex)
         found_artifacts = []
         for saved in saved_artifacts:
-            retrieved = await initialized_context.db.find_one(
-                ArtifactModel, ArtifactModel.id == saved.id
-            )
+            retrieved = await initialized_context.server.values.get_value(ArtifactModel, saved.id)
             if retrieved and "test" in retrieved.name:
                 found_artifacts.append(retrieved)
 

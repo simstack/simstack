@@ -1,6 +1,5 @@
 import zipfile
 import tarfile
-import os
 from pathlib import Path
 
 from simstack.core.context import context
@@ -37,30 +36,21 @@ async def archive_upload(file_upload: FileStack, **kwargs):
     if local_file_path.suffix == '.zip':
         with zipfile.ZipFile(local_file_path, 'r') as zip_ref:
             node_runner.info(f"Extracting files from {local_file_path} to {extract_dir}")
+            extracted_files = [extract_dir / member.filename for member in zip_ref.infolist() if not member.is_dir()]
             zip_ref.extractall(extract_dir)
-
-        for root, dirs, files in os.walk(extract_dir):
-            for file in files:
-                file_path = Path(root) / file
-                if file_path != local_file_path:
-                    node_runner.info(f"Storing extracted file: {file_path}")
-                    file_stack = FileStack.from_local_file(file_path, in_memory=True, is_hashable=True, secure_source=True)
-                    output_file_list.append(file_stack)
-
     elif local_file_path.suffix == '.tar' or local_file_path.name.endswith('.tar.gz'):
         with tarfile.open(local_file_path, 'r:*') as tar_ref:
             node_runner.info(f"Extracting files from {local_file_path} to {extract_dir}")
+            extracted_files = [extract_dir / member.name for member in tar_ref.getmembers() if not member.isdir()]
             tar_ref.extractall(extract_dir)
-
-        for root, dirs, files in os.walk(extract_dir):
-            for file in files:
-                file_path = Path(root) / file
-                if file_path != local_file_path:
-                    node_runner.info(f"Storing extracted file: {file_path}")
-                    file_stack = FileStack.from_local_file(file_path, in_memory=True, is_hashable=True, secure_source=True)
-                    output_file_list.append(file_stack)
     else:
         output_file_list.append(file_upload)
+        return output_file_list
+
+    for file_path in dict.fromkeys(extracted_files):
+        node_runner.info(f"Storing extracted file: {file_path}")
+        output_file_list.append(FileStack.from_local_file(
+            file_path, is_hashable=True, secure_source=True))
 
     return output_file_list
 

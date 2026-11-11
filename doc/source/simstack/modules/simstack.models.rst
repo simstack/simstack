@@ -1,6 +1,14 @@
 simstack.models package
 =======================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   simstack.models.document
+
 Submodules
 ----------
 
@@ -92,18 +100,18 @@ simstack.models.file\_list module
    :show-inheritance:
    :undoc-members:
 
-simstack.models.fire\_and\_forget\_result module
-------------------------------------------------
-
-.. automodule:: simstack.models.fire_and_forget_result
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 simstack.models.files module
 ----------------------------
 
 .. automodule:: simstack.models.files
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.models.fire\_and\_forget\_result module
+------------------------------------------------
+
+.. automodule:: simstack.models.fire_and_forget_result
    :members:
    :show-inheritance:
    :undoc-members:

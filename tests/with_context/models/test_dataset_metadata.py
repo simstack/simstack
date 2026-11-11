@@ -1,3 +1,4 @@
+from server import storage_criteria
 import pytest
 from datetime import datetime
 from uuid import uuid4
@@ -366,7 +367,7 @@ class TestDataSetMetadataStructureValidation:
 
     @pytest.mark.asyncio
     async def test_first_validation_initializes_structure_for_freeze(
-        self, initialized_context
+        self, initialized_context, server_storage
     ):
         """The first validated structure is immediately available to freeze."""
         field_name = f"first-validation-{uuid4()}"
@@ -374,20 +375,17 @@ class TestDataSetMetadataStructureValidation:
         metadata = DataSetMetadata(field_name=field_name, data={"label": "first"})
 
         try:
-            assert await metadata.validate_dict(structure) is True
+            assert await context.server.values.validate_dataset_metadata(metadata, structure) is True
             assert metadata.structure == structure
-            assert metadata.freeze(structure) is True
+            assert await context.server.values.validate_dataset_metadata(metadata, structure, freeze=True) is True
         finally:
-            template = await context.db.find_one(
-                DataSetMetadataTemplate,
-                DataSetMetadataTemplate.dataset_type == field_name,
-            )
+            template = await server_storage.find_one(DataSetMetadataTemplate, storage_criteria.field(DataSetMetadataTemplate, 'dataset_type') == field_name)
             if template is not None:
-                await context.db.delete(template)
+                await server_storage.delete(template)
 
     @pytest.mark.asyncio
     async def test_new_section_preserves_existing_template_structure(
-        self, initialized_context
+        self, initialized_context, server_storage
     ):
         """Adding a section extends rather than replaces the stored template."""
         field_name = f"additive-section-{uuid4()}"
@@ -398,23 +396,17 @@ class TestDataSetMetadataStructureValidation:
         second = DataSetMetadata(field_name=field_name, data={"label": "second"})
 
         try:
-            assert await first.validate_dict(train) is True
-            assert await second.validate_dict(validation) is True
+            assert await context.server.values.validate_dataset_metadata(first, train) is True
+            assert await context.server.values.validate_dataset_metadata(second, validation) is True
 
-            template = await context.db.find_one(
-                DataSetMetadataTemplate,
-                DataSetMetadataTemplate.dataset_type == field_name,
-            )
+            template = await server_storage.find_one(DataSetMetadataTemplate, storage_criteria.field(DataSetMetadataTemplate, 'dataset_type') == field_name)
             assert template is not None
             assert template.structure == expected
             assert second.structure == expected
         finally:
-            template = await context.db.find_one(
-                DataSetMetadataTemplate,
-                DataSetMetadataTemplate.dataset_type == field_name,
-            )
+            template = await server_storage.find_one(DataSetMetadataTemplate, storage_criteria.field(DataSetMetadataTemplate, 'dataset_type') == field_name)
             if template is not None:
-                await context.db.delete(template)
+                await server_storage.delete(template)
 
     @pytest.mark.asyncio
     async def test_same_structure_different_names_succeed(self):

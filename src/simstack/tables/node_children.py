@@ -102,14 +102,14 @@ def normalize_text(s: str) -> str:
     # round-trip as UTF-8 so the dump file never raises UnicodeEncodeError.
     return s.translate(_UNICODE_DASHES).encode("utf-8", errors="replace").decode("utf-8")
 
-async def update_node_children(database, drops: str) -> None:
+async def update_node_children(catalogue, drops: str) -> None:
     """
     1) Read all registered nodes from NodeModel.
     2) For each node, import its function and extract called functions.
     3) Keep only those calls that correspond to nodes in the table.
     4) Update the NodeModel.called_nodes of the original function with a list of *function_mapping* strings.
     """
-    node_models: List[NodeModel] = await database.find(NodeModel)
+    node_models: List[NodeModel] = list(catalogue.nodes.values())
 
     # Build lookup tables to resolve extracted names -> NodeModel.function_mapping
     mapping_by_node_name: Dict[str, str] = { nm.name: nm.function_mapping for nm in node_models}
@@ -117,7 +117,9 @@ async def update_node_children(database, drops: str) -> None:
 
     for nm in node_models:
         try:
-            func = await import_function(nm.function_mapping, database)
+            func = _import_callable_from_mapping(nm.function_mapping)
+            if func is None:
+                continue
         except (Exception, SystemExit) as exc:
             logger.warning(
                 "Preserving NodeModel id=%s name=%s mapping=%s after import failure: %s",
@@ -176,7 +178,7 @@ async def update_node_children(database, drops: str) -> None:
         nm.called_nodes = sorted(resolved)
 
         
-        await database.save(nm)
+        catalogue.register_node(nm)
 
     with open("node_models.txt", "w", encoding="utf-8") as outfile:
         for nm in node_models:

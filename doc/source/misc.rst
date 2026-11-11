@@ -2,14 +2,6 @@ Miscellaneous
 ==============
 
 
-BUGS:
------
-
-Optional fields in embedded models are not handled correctly
-
-https://github.com/art049/odmantic/issues/370
-https://github.com/art049/odmantic/issues/484
-
 References
 ----------
 
@@ -36,10 +28,29 @@ Customizing Simstack Models
 
 .. note:: General information about Simstack models
 
-Simstack models are built on top of `odmantic`, which uses `pydantic` for data validation.
+Simstack models use `pydantic` for data validation; Server owns their persistence.
 By decorating a class with `@simstack_model`, you enable additional UI-related features.
 You can customize how a model appears in the GUI by implementing `json_schema` and `ui_schema` methods.
 Refer to :ref:`persisting_data` for more details.
+
+Scientific publication and resolution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``context.server.values.publish_value(value)`` and ``get_value(ModelType, id)``
+to publish and resolve scientific records through HTTP. Custom models may implement
+``async def prepare_publication(self)`` to normalize scientific fields before
+publication, and ``async def after_resolution(self)`` to rebuild local derived
+state after their referenced values have been resolved. These methods receive no
+database handle. Mark derived runtime fields with ``Field(exclude=True)`` when
+they should not be stored. Hooks run on the client executing the workflow and
+must be safe to repeat on subsequent publication or resolution.
+
+``query_records(ModelType, filters=[{"field": "energy", "operator": "lt",
+"value": 0}], order_by=[{"field": "energy", "direction": "asc"}], skip=0,
+limit=20)`` selects scientific records before they are resolved. Filters are
+combined with AND; supported comparisons are ``eq``, ``ne``, ``lt``, ``lte``,
+``gt``, ``gte``, ``in`` and ``not_in``. Field names are declared model fields;
+Server resolves storage names. Omitting ``limit`` returns all matching records.
 
 
 
@@ -52,7 +63,7 @@ Running the above code as a workflow we would like to achieve the following:
 * (workflows can be created from existing components in a GUI)
 
 To address the first points, all data must be serializable. This can be achieved by pickling the inputs/outputs but
-then the data is hidden in the pickled string and not searchable. Here we have chosen odmantic classes to persist the
+then the data is hidden in the pickled string and not searchable. Here we have chosen Pydantic domain classes to persist the
 data in a database. See: :ref:`persisting-results-section`. This has the charm that routes to access this data can be
 automatically generated.
 
@@ -85,7 +96,7 @@ Overall we need four "servers" to run the workflow:
 **Allowed Arguments**
 
 - All **positional** arguments of the wrapped function (my_node) must be
-  **registered** odmantic Models. These arguments are automatically persisted
+  **registered** SimStack domain Models. These arguments are automatically persisted
   in the database.
 - The my_node function must have \*\*kwargs even if they are not used in the
   function.

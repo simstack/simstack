@@ -6,15 +6,10 @@ Persisting and Visualizing Data
 .. note::
     This section is intended for node-developers.
 
-Simstack persists data using a MongoDB database, which is exposed via the
-fast-api server to a web-frontend. Each user has a dedicated database
-on a MongoDB server which is configured in the configuration file
-(:ref:`configuration-file`).
-
-To facilitate access to the database in the python workflows, Simstack II uses the odmantic
-package to provide an object-oriented access to the data via odmantic
-Models. Odmantic Models are drived from pydantic (V2) classes and developers
-of nodes (:ref:`workflows`) can define their own classes deriving from Model.
+SimStack Server owns scientific records, task history and object storage.
+Workflow code uses Pydantic domain models from ``simstack.models.document``
+and explicit HTTP operations through ``context.server.values``. Runner and SDK
+have no database engine, persistence facade or implicit database loading.
 
 To customize the appearance of the models in the UI, the model definition
 should be decorated by ``@simstack_model``
@@ -25,15 +20,16 @@ which provides ui-related functionality discussed below
 Model Definitions
 ~~~~~~~~~~~~~~~~~~
 
-For detailed information on odmantic models, consult the odmantic
-documentation.
+Domain models use Pydantic validation. ``Reference`` marks an explicit scientific
+record reference; nested models without it are independent snapshots.
 
 A basic model definition look like:
 
 .. code-block:: python
 
    from typing import Optional, List
-   from odmantic import Model, EmbeddedModel, Field
+   from simstack.models.document import Model, EmbeddedModel, Field, Reference
+   from simstack.core.simstack_model import simstack_model
 
    @simstack_model
    class OtherModel(Model):
@@ -41,26 +37,24 @@ A basic model definition look like:
         max: float
 
    @simstack_model
-   class SmallData(EmbeddedModel)
+   class SmallData(EmbeddedModel):
         number: int
 
    @simstack_model
-   class ComplexData(Model)
+   class ComplexData(Model):
         counter: int = Field(default=1)
         limit: Optional[int] = None
-        other_model: OtherModel = Reference() # this defines a reference to the
-                                              # other table in the db
-                                              # loading ComplexData will load
-                                              # the other model too
-        small_data: SmallData # directly stored in the complex_data table
+        other_model: OtherModel = Reference()
+        small_data: SmallData  # independent embedded value
+
 
 
 
 .. important::
-   - The node developer does not have explicitly save models to the db, the
-     @node decorator will take care of this.
-   - There is **no Model inheritance**, which is a real pain.
-   - ODMantic Issue #484: https://github.com/art049/odmantic/issues/484
+   - The ``@node`` decorator publishes scientific inputs and outputs through Server.
+     Outside node execution, use ``await context.server.values.publish_value(value)``.
+   - Resolve records explicitly with ``await context.server.values.get_value(ModelType, id)``.
+     Constructing a model or reading a field performs no network I/O.
 
 .. note::
     Even though its formally allowed do not use Dict[str,Any] in models,
@@ -130,9 +124,9 @@ compatible with the json-schema. 8
 +---------------+-------------------------------------+------------------+
 | ui_make_title | title for the model in ui           | class name       |
 +---------------+-------------------------------------+------------------+
-| from_dict     | create model instance from dict     | odmantic func    |
+| from_dict     | create model instance from dict     | domain model     |
 +---------------+-------------------------------------+------------------+
-| from_model    | copy constructor                    | odmantic default |
+| from_model    | copy constructor                    | model copy       |
 +---------------+-------------------------------------+------------------+
 
 **Instance Functions**

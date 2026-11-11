@@ -2,10 +2,11 @@
 import numpy as np
 import pytest
 from simstack.models.array_storage import ArrayStorage
+from simstack.core.context import context
 
 
 @pytest.mark.asyncio
-async def test_create_array_storage(document_repository):
+async def test_create_array_storage(initialized_context):
     """Test creating and storing a new array."""
     # Create a test array
     test_array = np.array([[1, 2, 3], [4, 5, 6]])
@@ -14,24 +15,22 @@ async def test_create_array_storage(document_repository):
     storage = ArrayStorage(name="test_matrix")
     storage.set_array(test_array)
 
-    await document_repository.save(storage)
+    await context.server.values.publish_value(storage)
     # Check it was stored with an ID
     assert storage.id is not None
 
 
 @pytest.mark.asyncio
-async def test_retrieve_array_storage(document_repository):
+async def test_retrieve_array_storage(initialized_context):
     """Test retrieving a stored array."""
     # Create and store test array
     test_array = np.array([[1, 2, 3], [4, 5, 6]])
     storage = ArrayStorage(name="retrieve_test")
     storage.set_array(test_array)
-    await document_repository.save(storage)
+    await context.server.values.publish_value(storage)
 
     # Retrieve from database
-    retrieved = await document_repository.find_one(
-        ArrayStorage, ArrayStorage.id == storage.id
-    )
+    retrieved = await context.server.values.get_value(ArrayStorage, storage.id)
 
     # Get array back
     reconstructed = retrieved.get_array()
@@ -42,23 +41,21 @@ async def test_retrieve_array_storage(document_repository):
 
 
 @pytest.mark.asyncio
-async def test_update_array_storage(document_repository):
+async def test_update_array_storage(initialized_context):
     """Test updating a stored array."""
     # Create and store initial array
     initial_array = np.array([1, 2, 3])
     storage = ArrayStorage(name="update_test")
     storage.set_array(initial_array)
-    await document_repository.save(storage)
+    await context.server.values.publish_value(storage)
 
     # Update with new array
     new_array = np.array([[4, 5], [6, 7]])
     storage.set_array(new_array)
-    await document_repository.save(storage)
+    await context.server.values.publish_value(storage)
 
     # Retrieve and check
-    retrieved = await document_repository.find_one(
-        ArrayStorage, ArrayStorage.id == storage.id
-    )
+    retrieved = await context.server.values.get_value(ArrayStorage, storage.id)
 
     reconstructed = retrieved.get_array()
 
@@ -67,7 +64,7 @@ async def test_update_array_storage(document_repository):
 
 
 @pytest.mark.asyncio
-async def test_query_by_name(document_repository):
+async def test_query_by_name(initialized_context):
     """Test querying arrays by name."""
     # Create multiple array records
     arrays = [
@@ -80,10 +77,10 @@ async def test_query_by_name(document_repository):
     for arr, name in arrays:
         storage = ArrayStorage(name=name)
         storage.set_array(arr)
-        await document_repository.save(storage)
+        await context.server.values.publish_value(storage)
 
     # Query by name
-    result = await document_repository.find_one(ArrayStorage, ArrayStorage.name == "array2")
+    result = (await context.server.values.query_records(ArrayStorage, "by_name", name="array2"))[0]
 
     # Check correct array was retrieved
     assert result.name == "array2"
@@ -92,7 +89,7 @@ async def test_query_by_name(document_repository):
 
 
 @pytest.mark.asyncio
-async def test_store_complex_array(document_repository):
+async def test_store_complex_array(initialized_context):
     """Test storing and retrieving a complex array."""
     # Create a complex array with different data types
     complex_array = np.array([[1.5, 2.7, 3.1], [4.2, 5.5, 6.9]])
@@ -100,12 +97,10 @@ async def test_store_complex_array(document_repository):
     # Store array
     storage = ArrayStorage(name="complex_array")
     storage.set_array(complex_array)
-    await document_repository.save(storage)
+    await context.server.values.publish_value(storage)
 
     # Retrieve array
-    retrieved = await document_repository.find_one(
-        ArrayStorage, ArrayStorage.id == storage.id
-    )
+    retrieved = await context.server.values.get_value(ArrayStorage, storage.id)
     reconstructed = retrieved.get_array()
 
     # Verify array contents
@@ -114,18 +109,17 @@ async def test_store_complex_array(document_repository):
 
 
 @pytest.mark.asyncio
-async def test_delete_array(document_repository):
+async def test_delete_array(initialized_context):
     """Test deleting an array from storage."""
     # Create and store array
     test_array = np.array([1, 2, 3])
     storage = ArrayStorage(name="delete_me")
     storage.set_array(test_array)
-    await document_repository.save(storage)
+    await context.server.values.publish_value(storage)
 
     # Get ID and delete
     storage_id = storage.id
-    await document_repository.delete(storage)
+    await context.server.values.archive_records([storage])
 
     # Check it's gone
-    result = await document_repository.find_one(ArrayStorage, ArrayStorage.id == storage_id)
-    assert result is None
+    assert await context.server.values.query_records(ArrayStorage, "by_ids", ids=[str(storage_id)]) == []

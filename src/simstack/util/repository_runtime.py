@@ -18,11 +18,14 @@ import time
 import urllib.request
 import urllib.parse
 from pathlib import Path
+from simstack.runner_runtime.core_build import core_build_identity
+from simstack.runner_runtime.project_protocol import verify_workflow_protocol
 
 
 def prepare_environment(source: Path, *, extras: list[str], runtime: Path | None = None,
                         environment: dict[str, str] | None = None) -> Path:
     """Keep uv's locked project/workspace behavior and the installed platform Core."""
+    manifest = verify_workflow_protocol(source)
     runtime = runtime or source / ".venv"
     uv = os.environ.get("UV_EXECUTABLE") or shutil.which("uv") or str(Path.home()/".local/bin/uv")
     env = dict(os.environ if environment is None else environment)
@@ -31,7 +34,7 @@ def prepare_environment(source: Path, *, extras: list[str], runtime: Path | None
     env["GIT_ALLOW_PROTOCOL"] = "https:ssh:file"
     env["UV_PROJECT_ENVIRONMENT"] = str(runtime)
     env["UV_NO_PROGRESS"] = "1"
-    if (source/"pyproject.toml").is_file():
+    if "project" in manifest:
         command = [uv, "sync", "--locked", "--python", sys.executable, "--no-install-package", "simstack"]
         for extra in extras:
             command += ["--extra", extra]
@@ -50,19 +53,16 @@ def prepare_environment(source: Path, *, extras: list[str], runtime: Path | None
     package = Path(simstack.__file__).resolve().parent
     platform = runtime/".simstack-platform"
     platform.mkdir(exist_ok=True)
-    link = platform/"simstack"
-    if not link.exists():
-        if os.name == "nt":
-            shutil.copytree(package, link)
-        else:
-            link.symlink_to(package, target_is_directory=True)
     distribution = importlib.metadata.distribution("simstack")
     metadata = Path(distribution._path)
-    if metadata.exists() and not (platform/metadata.name).exists():
-        if os.name == "nt":
-            shutil.copytree(metadata, platform/metadata.name)
-        else:
-            (platform/metadata.name).symlink_to(metadata, target_is_directory=True)
+    # Keep the selected platform build inside this environment. A link back to
+    # Runner's installation would change old tasks on an in-place Core upgrade.
+    for original in (package, metadata):
+        copied = platform / original.name
+        if copied.is_symlink():
+            copied.unlink()
+        if not copied.exists():
+            shutil.copytree(original, copied, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     Path(sites[0], "simstack-platform.pth").write_text(str(platform)+"\n")
     return python
 
@@ -212,6 +212,16 @@ def runtime_python(root: Path) -> Path:
     return root/".venv"/("Scripts/python.exe" if os.name == "nt" else "bin/python")
 
 
+def verify_runtime_core(root: Path) -> None:
+    """Check the interpreter's actual import, not only its preparation marker."""
+    identity = subprocess.check_output([
+        str(runtime_python(root)), "-I", "-c",
+        "from simstack.runner_runtime.core_build import core_build_identity; print(core_build_identity())",
+    ], cwd=root, text=True, stderr=subprocess.PIPE, timeout=30).strip()
+    if identity != core_build_identity():
+        raise RuntimeError("Prepared environment uses a different Core build; prepare it through Runner control")
+
+
 @contextlib.contextmanager
 def cache_lock(path: Path):
     with path.open("a+b") as handle:
@@ -242,23 +252,52 @@ def cache_lock(path: Path):
             yield
 
 
-def _cache_revision(client, descriptor, *, cache: Path) -> Path:
+def _rebuild_runtime(root: Path, descriptor, environment):
+    """Replace an idle runtime only under explicit Server preparation control."""
+    runtime = root / ".venv"
+    with tempfile.TemporaryDirectory(prefix="runtime-", dir=root.parent) as temporary:
+        backup = Path(temporary) / ".venv"
+        if runtime.exists():
+            runtime.rename(backup)
+        try:
+            prepare_environment(root, extras=descriptor.get("extras", []), environment=environment)
+            verify_runtime_core(root)
+            verify_source(root, descriptor)
+        except BaseException:
+            shutil.rmtree(runtime, ignore_errors=True)
+            if backup.exists():
+                backup.rename(runtime)
+            raise
+
+
+def _cache_revision(client, descriptor, *, cache: Path, repair_runtime=False) -> Path:
     revision = descriptor["repository_revision"]
     if len(revision) != 64 or any(c not in "0123456789abcdef" for c in revision):
         raise ValueError("Invalid repository revision")
     cache.mkdir(parents=True, exist_ok=True)
     profile = hashlib.sha256(json.dumps(descriptor.get("extras", []), sort_keys=True).encode()).hexdigest()[:12]
-    key = revision+"-"+profile
+    core_build = core_build_identity()
+    key = revision+"-"+profile+"-"+core_build[:12]
     root = cache/key
     lock_file = cache/(key+".lock")
     with cache_lock(lock_file):
         marker = root/".simstack-repository.json"
         expected = {"repository_revision": revision, "commit_sha": descriptor["commit_sha"], "submodules": descriptor["submodules"],
-                    "extras": descriptor.get("extras", []), "git_metadata": descriptor.get("git_metadata", [])}
+                    "extras": descriptor.get("extras", []), "git_metadata": descriptor.get("git_metadata", []),
+                    "core_build": core_build}
         if root.exists():
             if not marker.is_file() or json.loads(marker.read_text()) != expected:
                 raise RuntimeError("Repository runtime cache differs from its pin; retain it until its tasks finish")
             verify_source(root, descriptor)
+            verify_workflow_protocol(root)
+            try:
+                verify_runtime_core(root)
+            except (OSError, RuntimeError, subprocess.SubprocessError):
+                if not repair_runtime:
+                    raise
+                url = descriptor.get("clone_url") or ""
+                environment = git_environment(require_key=bool(url and not url.startswith("https://")))
+                _rebuild_runtime(root, descriptor, environment)
             return root
         url = descriptor.get("clone_url")
         from_git = descriptor.get("source_mode") == "git" or bool(url)
@@ -277,11 +316,13 @@ def _cache_revision(client, descriptor, *, cache: Path) -> Path:
                 with tarfile.open(archive, "r:gz") as package:
                     package.extractall(source, filter="data")
             verify_source(source, descriptor)
+            verify_workflow_protocol(source)
             # Virtual environments contain absolute paths, so prepare at the final location.
             source.rename(root)
             try:
                 shutil.rmtree(root/".venv", ignore_errors=True)
                 prepare_environment(root, extras=descriptor.get("extras", []), environment=environment)
+                verify_runtime_core(root)
                 verify_source(root, descriptor)
                 (root/".simstack-repository.json").write_text(json.dumps(expected, sort_keys=True))
             except BaseException:
@@ -312,24 +353,27 @@ def prepared_repositories(*, cache: Path | None = None) -> list[dict]:
         try:
             value = json.loads(marker.read_text())
             revision, extras = value["repository_revision"], value.get("extras", [])
-            if (not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{64}", revision)
+            if (value.get("core_build") != core_build_identity()
+                    or not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{64}", revision)
                     or not isinstance(extras, list) or not all(isinstance(extra, str) for extra in extras)
                     or not runtime_python(root).is_file() or not os.access(runtime_python(root), os.X_OK)):
                 continue
             verify_source(root, value)
+            verify_workflow_protocol(root)
+            verify_runtime_core(root)
             inventory.append({"repository_revision": revision, "extras": sorted(set(extras))})
         except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError):
             continue
     return inventory
 
 
-async def reconcile_prepared_repositories(client):
+async def reconcile_prepared_repositories(resources):
     inventory = await asyncio.to_thread(prepared_repositories)
-    await client.json("POST", "/runner/repositories/reconcile", {"prepared": inventory})
+    await resources.reconcile_repositories(inventory)
 
 
-async def prepare_repository(client, descriptor: dict) -> Path:
-    return await asyncio.to_thread(_cache_revision, client, descriptor, cache=repository_cache())
+async def prepare_repository(client, descriptor: dict, *, repair_runtime=False) -> Path:
+    return await asyncio.to_thread(_cache_revision, client, descriptor, cache=repository_cache(), repair_runtime=repair_runtime)
 
 
 async def prepare_task_runtime(entry) -> Path | None:
@@ -337,13 +381,26 @@ async def prepare_task_runtime(entry) -> Path | None:
     if not revision:
         return None
     mounted = os.environ.get("SIMSTACK_REPOSITORY_ROOT")
+    from simstack.core.context import context
+    if context.server.requests.authorization in {"user", "local"}:
+        root = Path(mounted or context.config.project_root).resolve(strict=True)
+        verify_workflow_protocol(root)
+        if mounted:
+            # The local launcher verified this exact source before mounting it
+            # read-only. Minimal scientific images need not contain Git or uv.
+            if os.environ.get("SIMSTACK_REPOSITORY_REVISION") != revision:
+                raise RuntimeError("Mounted repository does not match the task revision")
+        else:
+            descriptor = await context.server.resource.repository_revision(revision)
+            verify_source(root, descriptor)
+        return root
     if mounted:
         root = Path(mounted).resolve(strict=True)
+        verify_workflow_protocol(root)
         marker = root/".simstack-repository.json"
-        if not marker.is_file() or json.loads(marker.read_text()).get("repository_revision") != revision:
+        value = json.loads(marker.read_text()) if marker.is_file() else {}
+        if value.get("repository_revision") != revision or value.get("core_build") != core_build_identity():
             raise RuntimeError("Mounted repository does not match the task revision")
         return root
-    from simstack.runner_api.transport import RunnerAPIClient
-    client = RunnerAPIClient.from_environment()
-    descriptor = await client.json("GET", "/runner/repositories/"+revision)
-    return await prepare_repository(client, descriptor)
+    descriptor = await context.server.resource.repository_revision(revision)
+    return await prepare_repository(context.server.requests, descriptor)

@@ -11,15 +11,8 @@ from simstack.core.services.node_execution_service import NodeExecutionService
 from simstack.core.services.runner_status_service import RunnerStatusService
 from simstack.core.services.runner_cleanup_service import RunnerCleanupService
 from simstack.core.services.file_transfer_service import FileTransferService
-from simstack.core.services.slurm_status_service import (
-    SlurmStatusService,
-    resource_uses_slurm_queue,
-)
-from simstack.core.services.resource_branch_monitor_service import (
-    ResourceBranchMonitorService,
-)
+from simstack.core.services.slurm_status_service import SlurmStatusService
 from simstack.core.services.stop_check_service import StopCheckService
-from simstack.core.services.git_uv_update_service import GitUvUpdateService
 from simstack.core.services.timeout_restart_service import TimeoutRestartService
 
 logger = logging.getLogger("NodeRunner")
@@ -30,7 +23,7 @@ class RunnerManager:
         self,
         resource: Resource,
         detach: bool = True,
-        no_pull: bool = False,
+        no_pull: bool = True,
         is_default: bool = False,
         with_file_transfer: bool = True,
         with_jobs: bool = True,
@@ -39,9 +32,10 @@ class RunnerManager:
             raise ValueError(
                 "A runner with --jobs false and --file-transfer false has no work to do."
             )
+        if not no_pull:
+            raise ValueError("Runner updates are managed by Server; pulling a runtime is not supported.")
         self._resource = resource
         self._detach = detach
-        self._no_pull = no_pull
         self._pid = os.getpid()
         self._services: list[BaseService] = []
         self._shutdown_event: asyncio.Event = asyncio.Event()
@@ -136,21 +130,19 @@ class RunnerManager:
                     claiming_paused=self._claiming_paused,
                 )
             )
-        from simstack.core.definitions import DBType
-        if context.db.databae_type == DBType.API:
-            from simstack.core.services.runner_control_service import RunnerControlService
-            control_service = RunnerControlService(self)
-            # Do not claim until the first control reply establishes pause state.
-            # The service loop already retries API outages, including startup.
-            self._claiming_paused.set()
-            self._services.append(control_service)
+        from simstack.core.services.runner_control_service import RunnerControlService
+        # Admission waits for the first authoritative pause/control state.
+        self._claiming_paused.set()
+        self._services.append(RunnerControlService(self))
         self._services.extend(
             [
                 RunnerStatusService(self._resource, interval=60),
                 RunnerCleanupService(self._resource, interval=300),
             ]
         )
-        if self._with_jobs and await resource_uses_slurm_queue(self._resource):
+        # Tasks can explicitly select Slurm even when it is not the resource's
+        # default queue. An empty watchlist does not invoke scheduler commands.
+        if self._with_jobs:
             self._services.append(SlurmStatusService(self._resource, interval=60))
         self._services.append(
             StopCheckService(
@@ -166,12 +158,6 @@ class RunnerManager:
                     max_concurrent=2,
                     shutdown_event=None,
                 )
-            )
-
-        if not self._no_pull:
-            self._services.append(GitUvUpdateService(self._resource, interval=60))
-            self._services.append(
-                ResourceBranchMonitorService(self._resource, interval=60)
             )
 
         # Add timeout restart service if timeout is specified

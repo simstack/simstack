@@ -6,13 +6,14 @@ import pytest
 
 from simstack.core.context import context
 from simstack.tables.table_builder import TableBuilderBase
+from simstack.tables.catalogue import CatalogueCollector
 
 
 class RecordingTableBuilder(TableBuilderBase):
     """Concrete TableBuilderBase for tests: records which files were 'processed'."""
 
-    def __init__(self, db=None, write_schema: bool = False):
-        super().__init__(db=db, write_schema=write_schema)
+    def __init__(self, write_schema: bool = False):
+        super().__init__(CatalogueCollector(), write_schema=write_schema)
         self.processed_files: list[Path] = []
 
     @property
@@ -27,6 +28,11 @@ class RecordingTableBuilder(TableBuilderBase):
         # Override to avoid importing modules from files; just record traversal.
         self.processed_files.append(Path(file_path))
 
+    async def clear_table(self):
+        self.catalogue.models.clear()
+        self.catalogue.nodes.clear()
+        self.processed_files.clear()
+
 
 class ImportingTableBuilder(TableBuilderBase):
     @property
@@ -35,6 +41,10 @@ class ImportingTableBuilder(TableBuilderBase):
 
     async def _process_module(self, module, drops: str) -> None:
         return
+
+    async def clear_table(self):
+        self.catalogue.models.clear()
+        self.catalogue.nodes.clear()
 
 
 @pytest.fixture
@@ -115,7 +125,7 @@ async def test_process_file_propagates_broken_user_module_import(tmp_path):
     broken_module.write_text(
         'raise RuntimeError("broken user module")\n', encoding="utf-8"
     )
-    builder = ImportingTableBuilder(db=None, project_root=tmp_path)
+    builder = ImportingTableBuilder(CatalogueCollector(), project_root=tmp_path)
 
     with pytest.raises(RuntimeError, match="broken user module"):
         await builder._process_file(broken_module, drops="")
@@ -127,7 +137,7 @@ async def test_process_file_converts_successful_system_exit_to_failure(tmp_path)
     package.mkdir()
     broken_module = package / "system_exit.py"
     broken_module.write_text("raise SystemExit(0)\n", encoding="utf-8")
-    builder = ImportingTableBuilder(db=None, project_root=tmp_path)
+    builder = ImportingTableBuilder(CatalogueCollector(), project_root=tmp_path)
 
     with pytest.raises(SystemExit) as caught:
         await builder._process_file(broken_module, drops="")
@@ -137,7 +147,7 @@ async def test_process_file_converts_successful_system_exit_to_failure(tmp_path)
 
 @pytest.mark.asyncio
 async def test_installed_module_import_failure_is_not_skipped(monkeypatch):
-    builder = ImportingTableBuilder(db=None)
+    builder = ImportingTableBuilder(CatalogueCollector())
     monkeypatch.setattr(
         "simstack.tables.table_builder.find_simstack_modules",
         lambda: ["broken_installed_nodes"],
@@ -155,7 +165,7 @@ async def test_installed_module_import_failure_is_not_skipped(monkeypatch):
 
 
 def test_installed_module_successful_system_exit_is_failure(monkeypatch):
-    builder = ImportingTableBuilder(db=None)
+    builder = ImportingTableBuilder(CatalogueCollector())
 
     def exit_successfully(module_name):
         raise SystemExit(0)

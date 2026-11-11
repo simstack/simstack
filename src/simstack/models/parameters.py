@@ -107,6 +107,11 @@ def _extra_sbatch_flag(option: str) -> str:
             "extra_options entries must be #SBATCH arguments starting with '--', "
             f"got {option!r}"
         )
+    import shlex
+    for argument in shlex.split(option):
+        flag = argument.split("=", 1)[0]
+        if flag.startswith("-a") or (flag.startswith("--") and "--array".startswith(flag)):
+            raise ValueError("Slurm job arrays are unsupported; use explicit child tasks or MassRunner")
     token = option.split(None, 1)[0]
     flag, separator, value = token.partition("=")
     if separator and value == "":
@@ -191,12 +196,9 @@ class SlurmParameters(EmbeddedModel):
     exclusive: Optional[bool] = Field(default=None, description="Exclusive node access")
     nice: Optional[int] = Field(default=None, description="Adjust scheduling priority")
 
-    # Dependency and Array Parameters
+    # Dependency Parameters
     dependency: Optional[str] = Field(
         default=None, description="Job dependencies (e.g., 'afterok:jobid')"
-    )
-    array: Optional[str] = Field(
-        default=None, description="Job arrays (e.g., '1-100', '1-10:2')"
     )
 
     # Additional Commands
@@ -320,7 +322,6 @@ class SlurmParameters(EmbeddedModel):
             "reservation": "--reservation",
             "constraint": "--constraint",
             "dependency": "--dependency",
-            "array": "--array",
             "chdir": "--chdir",
             "export": "--export",
             "signal": "--signal",
@@ -341,6 +342,8 @@ class SlurmParameters(EmbeddedModel):
                 value = getattr(self, field_name, None)
 
             if value is not None:
+                if "\n" in str(value) or "\r" in str(value):
+                    raise ValueError(f"Slurm {field_name} must fit on one directive line")
                 args.append(f"{sbatch_param}={value}")
 
         # Add boolean flags
@@ -373,7 +376,8 @@ class SlurmParameters(EmbeddedModel):
             lines.append(f"#SBATCH {arg}")
 
         if self.startup_commands:
-            lines.append("")
+            # End Slurm's directive section before user shell commands.
+            lines.append(":")
             lines.extend(self.startup_commands)
 
         return "\n".join(lines)

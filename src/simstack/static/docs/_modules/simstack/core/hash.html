@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -277,7 +282,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Mapping</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectId</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">Model</span>
 
 <span class="n">max_iterable_hash_count</span> <span class="o">=</span> <span class="mi">10000</span>
 
@@ -312,7 +318,7 @@
 <div class="viewcode-block" id="is_primitive_type">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.hash.is_primitive_type">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">is_primitive_type</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">bytearray</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">)))</span></div>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">)))</span></div>
 
 
 
@@ -411,14 +417,16 @@
         <span class="c1"># TODO is __dict__ better than vars ?</span>
         <span class="c1"># dict_hash = self.hash_dict(vars(cls_obj))</span>
 
-        <span class="n">obj_dict</span> <span class="o">=</span> <span class="n">cls_obj</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cls_obj</span><span class="p">,</span> <span class="s2">&quot;__class__&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cls_obj</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="s2">&quot;__bases__&quot;</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">cls_obj</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__bases__</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">base</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;Model&quot;</span> <span class="ow">and</span> <span class="s2">&quot;odmantic.model&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span>
-                    <span class="n">base</span><span class="o">.</span><span class="vm">__module__</span>
-                <span class="p">):</span>
-                    <span class="k">if</span> <span class="s2">&quot;id&quot;</span> <span class="ow">in</span> <span class="n">obj_dict</span><span class="p">:</span>
-                        <span class="k">del</span> <span class="n">obj_dict</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cls_obj</span><span class="p">,</span> <span class="n">BaseModel</span><span class="p">):</span>
+            <span class="c1"># Repository snapshots and private caches describe transport state,</span>
+            <span class="c1"># not scientific inputs. Inspect declared values for every depth of</span>
+            <span class="c1"># inheritance, retaining each concrete subtype&#39;s scientific fields.</span>
+            <span class="n">obj_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">cls_obj</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">type</span><span class="p">(</span><span class="n">cls_obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_fields</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">cls_obj</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">}</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cls_obj</span><span class="p">,</span> <span class="n">Model</span><span class="p">):</span>
+                <span class="n">obj_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">cls_obj</span><span class="p">)</span><span class="o">.</span><span class="n">__primary_field__</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">obj_dict</span> <span class="o">=</span> <span class="n">cls_obj</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
         <span class="n">dict_hash</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hash_dict</span><span class="p">(</span><span class="n">obj_dict</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cls_obj</span><span class="p">,</span> <span class="s2">&quot;model_extra&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">cls_obj</span><span class="o">.</span><span class="n">model_extra</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -434,6 +442,9 @@
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">hash_class_def</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="nb">bytearray</span><span class="p">)):</span>
+            <span class="c1"># hash() of bytes is salted per process (PYTHONHASHSEED).</span>
+            <span class="k">return</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="nb">bytes</span><span class="p">(</span><span class="n">obj</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
         <span class="k">elif</span> <span class="n">is_primitive_type</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
             <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">ObjectId</span><span class="p">):</span>
@@ -523,6 +534,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

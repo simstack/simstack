@@ -3,12 +3,14 @@ from __future__ import annotations
 import logging
 import builtins
 import os
-import zlib
+import threading
+import weakref
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
 
 from simstack.models.document import Model, Field, ObjectId, Reference
+from simstack.models.document.schema import scientific_field_names
 from pydantic import AliasChoices, AliasPath, model_validator
 
 from simstack.models import simstack_model
@@ -20,9 +22,11 @@ from simstack.util.file_transfer_client import (
     path_for_file_instance,
     transfer_resource_name,
 )
-from simstack.util.file_hashing import hash_file, hash_string
+from simstack.util.file_hashing import hash_file
 
 logger = logging.getLogger(__name__)
+_upload_locks = weakref.WeakValueDictionary()
+_upload_locks_guard = threading.Lock()
 
 # MongoDB has a 16MB document size limit
 MONGODB_MAX_DOCUMENT_SIZE = 16 * 1024 * 1024  # 16 MB in bytes
@@ -55,6 +59,11 @@ class FileStack(Model):
         schema["x-simstack-file-fields"] = {
             name: field_paths(name) for name in ("content", "in_memory")
         }
+        wire_names = scientific_field_names(cls)
+        schema["x-simstack-file-storage-fields"] = {
+            name: wire_names[name]
+            for name in ("id", "name", "size", "is_hashable", "hash", "in_memory", "content", "locations")
+        }
         return schema
 
     name: Optional[builtins.str] = Field(description="Name of the file", default=None)
@@ -63,7 +72,7 @@ class FileStack(Model):
         default=False, description="Whether the file stack is hashable"
     )
     hash: Optional[builtins.str] = Field(
-        default=None, description="Hash of the file stack content", index=True
+        default=None, description="Hash of the file stack content"
     )
     in_memory: bool = Field(
         default=False, description="Whether the file stack is in memory"
@@ -116,13 +125,16 @@ class FileStack(Model):
         except (RuntimeError, AttributeError):
             parent = None
         directory = tempfile.mkdtemp(prefix="simstack-file-", dir=parent)
-        import atexit, shutil
+        import atexit
+        import shutil
         atexit.register(shutil.rmtree, directory, ignore_errors=True)
         path = Path(directory) / (Path(file_name).name or "file")
         path.write_text(data_string, encoding="utf-8")
-        value = cls.from_local_file(path, is_hashable=True, secure_source=True)
+        value = cls.from_local_file(path, is_hashable=True, in_memory=False, secure_source=True)
         value.name = file_name
         object.__setattr__(value, "_staging_directory", directory)
+        value.locations[0].path = str(path.resolve())
+        value.locations[0].resource = Resource(value="__pending__")
         return value
 
     @classmethod
@@ -145,7 +157,7 @@ class FileStack(Model):
         :type path: Union[Path, str]
         :param is_hashable: A flag indicating whether the file hash needs to be calculated.
         :type is_hashable: bool
-        :param in_memory: Retained for workflow compatibility; bytes are always stored in S3.
+        :param in_memory: Capture a local snapshot until publication; persistent bytes are stored in S3.
         :type in_memory: bool
 
         :return: A FileStack object containing FileInstances for the file.
@@ -169,6 +181,27 @@ class FileStack(Model):
             logger.error(f"No read permission for file: {path}")
             raise ValueError(f"No read permission for file: {path}")
 
+        try:
+            from simstack.core.context import context
+            config = context.config
+        except (RuntimeError, AttributeError):
+            config = None
+        staging_directory = None
+        if in_memory:
+            import atexit
+            import shutil
+            import tempfile
+
+            parent = (Path(config.workdir) / "file-staging"
+                      if config is not None and getattr(config, "workdir", None) is not None else None)
+            if parent is not None:
+                parent.mkdir(parents=True, exist_ok=True)
+            staging_directory = tempfile.mkdtemp(prefix="simstack-file-", dir=parent)
+            atexit.register(shutil.rmtree, staging_directory, ignore_errors=True)
+            snapshot = Path(staging_directory) / source_path.name
+            shutil.copyfile(source_path, snapshot)
+            source_path = snapshot
+
         file_stack = cls(
             name=source_path.name,
             in_memory=False,
@@ -177,12 +210,9 @@ class FileStack(Model):
             size=source_path.stat().st_size,
             hash=hash_file(source_path) if is_hashable else None,
         )
-        try:
-            from simstack.core.context import context
-            config = context.config
-        except (RuntimeError, AttributeError):
-            config = None
-        if config is not None and getattr(config, "workdir", None) is not None:
+        if staging_directory is not None:
+            object.__setattr__(file_stack, "_staging_directory", staging_directory)
+        if staging_directory is None and config is not None and getattr(config, "workdir", None) is not None:
             location = FileInstance.from_local_file(
                 path=source_path, file_stack_id=file_stack.id,
                 make_copy=not secure_source)
@@ -194,14 +224,35 @@ class FileStack(Model):
         file_stack.locations.append(location)
         return file_stack
 
-    def ensure_uploaded(self):
+    def _publication_lock(self):
+        """Serialize operations that consume or copy disposable staged bytes."""
+        with _upload_locks_guard:
+            return _upload_locks.setdefault(id(self), threading.RLock())
+
+    def ensure_uploaded(self, *, client=None):
         """Publish staged bytes before persistence; constructors remain local."""
+        with self._publication_lock():
+            return self._ensure_uploaded(client=client)
+
+    def _ensure_uploaded(self, *, client=None):
+        copy_source = getattr(self, "_copy_source_file_id", None)
+        if copy_source is not None:
+            from simstack.util.object_transfer import ObjectFileClient
+            if client is None:
+                client = ObjectFileClient.from_context()
+            uploaded = client.copy_file(self, copy_source)
+            self.locations = [FileInstance.model_validate(uploaded)]
+            object.__delattr__(self, "_copy_source_file_id")
+            return
         if any(location.location_type == "s3" and location.status == "available"
                for location in self.locations):
             return
         from simstack.core.context import context
         from simstack.util.object_transfer import ObjectFileClient
-        resource = Resource(value=transfer_resource_name(context.config.resource))
+        if client is None:
+            client = ObjectFileClient.from_context()
+        runner_upload = client.object_api_prefix == "/runner/objects"
+        resource = Resource(value=transfer_resource_name(context.config.resource)) if runner_upload else None
         for location in self.locations:
             if location.location_type != "local_path":
                 continue
@@ -210,11 +261,13 @@ class FileStack(Model):
                 path = Path(context.config.workdir) / path
             if not path.is_file():
                 continue
-            if transfer_resource_name(location.resource) == "__pending__":
-                location.resource = resource
             # API metadata + direct S3 transfer; no content enters a DB write.
-            uploaded = ObjectFileClient.from_context(required=True).publish(self, path)
+            uploaded = client.publish(self, path)
+            if runner_upload and transfer_resource_name(location.resource) == "__pending__":
+                location.resource = resource
             self.locations.append(FileInstance.model_validate(uploaded))
+            if not runner_upload:
+                self.locations = [value for value in self.locations if value.location_type == "s3"]
             staged = getattr(self, "_staging_directory", None)
             if staged:
                 import shutil
@@ -278,23 +331,43 @@ class FileStack(Model):
         # select the best instance
         # first search for an instance with "in_memory" set to True
 
+        explicit_destination = local_dir is not None
         if local_dir is None:
             local_dir = Path.cwd()
 
-        pending = next((value for value in self.locations
-            if transfer_resource_name(value.resource) == "__pending__"
-            and Path(value.path).is_file()), None)
-        if pending is not None:
-            local_dir.mkdir(parents=True, exist_ok=True)
-            target = local_dir / (Path(self.name).name if self.name else Path(pending.path).name)
-            if target.exists():
-                raise FileExistsError(f"File {target} already exists.")
-            import shutil
-            shutil.copyfile(pending.path, target)
-            return target
+        with self._publication_lock():
+            pending = next((value for value in self.locations
+                if transfer_resource_name(value.resource) == "__pending__"
+                and Path(value.path).is_file()), None)
+            if pending is not None:
+                local_dir.mkdir(parents=True, exist_ok=True)
+                target = local_dir / (Path(self.name).name if self.name else Path(pending.path).name)
+                if target.exists():
+                    raise FileExistsError(f"File {target} already exists.")
+                import shutil
+                shutil.copyfile(pending.path, target)
+                return target
+
+        from simstack.core.context import context
+        requests = getattr(self, "_object_requests", None)
+        if requests is None:
+            try:
+                requests = context.server.requests
+            except RuntimeError:
+                requests = None
+        if requests is not None and requests.authorization in {"user", "local"}:
+            from simstack.util.object_transfer import ObjectFileClient
+            target = local_dir / (Path(self.name).name if self.name else str(self.id))
+            snapshot = next((value for value in self.locations
+                if value.location_type == "s3" and value.status == "available"), None)
+            return ObjectFileClient.for_api(requests).materialize_user_file(
+                getattr(self, "_copy_source_file_id", self.id), target,
+                object_key=snapshot.object_key if snapshot else None)
 
         local_resource_name = transfer_resource_name(local_resource)
         local_transfer_resource = Resource(value=local_resource_name)
+        snapshot = next((value for value in self.locations
+            if value.location_type == "s3" and value.status == "available"), None)
 
         # If in-memory instance not found or decompression failed, try finding instance on same resource
         for instance in self.locations:
@@ -307,6 +380,35 @@ class FileStack(Model):
             if not path.is_absolute():
                 path = Path(context.config.workdir) / path
             if path.is_file():
+                if instance.is_cached:
+                    from simstack.runner_runtime.file_cache import pin_cached_file
+                    if not pin_cached_file(path, workdir=context.config.workdir):
+                        continue
+                if snapshot is None and not instance.is_cached:
+                    # Explicit local sources retain their original path until
+                    # publication turns them into immutable snapshots.
+                    instance.last_accessed_at = datetime.now()
+                    return path
+                # A materialized working file may have been edited by science.
+                # Only reuse bytes belonging to the published snapshot, and
+                # honor staging's requested destination even on a cache hit.
+                checksum = ((snapshot.checksum_sha256 or self.hash) if snapshot
+                            else instance.checksum_sha256 if instance.is_cached else None)
+                if snapshot is not None and not checksum:
+                    continue
+                target = local_dir / (Path(self.name).name if self.name else path.name)
+                if not explicit_destination or target.resolve() == path.resolve():
+                    if checksum and hash_file(path) != checksum:
+                        continue
+                else:
+                    import shutil
+                    local_dir.mkdir(parents=True, exist_ok=True)
+                    with path.open("rb") as source, target.open("xb") as destination:
+                        shutil.copyfileobj(source, destination)
+                    if checksum and hash_file(target) != checksum:
+                        target.unlink()
+                        continue
+                    path = target
                 instance.last_accessed_at = datetime.now()
                 return path
 
@@ -337,10 +439,12 @@ class FileStack(Model):
         assert client is not None
 
         transfer = client.create_transfer(
-            file_stack_id=str(self.id),
+            file_stack_id=str(getattr(self, "_copy_source_file_id", self.id)),
             source_file_instance_id=getattr(remote_instance, "id", None),
             source_resource_name=transfer_resource_name(remote_instance.resource),
             target_resource_name=transfer_resource_name(local_resource),
+            **({"source_object_key": remote_instance.object_key}
+               if remote_instance.location_type == "s3" else {}),
         )
         transfer_id = str(transfer["transfer_id"])
         logger.info(
@@ -368,6 +472,9 @@ class FileStack(Model):
         target_path = local_dir / (self.name or Path(str(remote_instance.path)).name)
         if target_path.exists():
             raise FileExistsError(f"File {target_path} already exists.")
+        from simstack.runner_runtime.file_cache import pin_cached_file
+        if not pin_cached_file(target_path, workdir=context.config.workdir, allow_missing=True):
+            raise FileNotFoundError(f"Could not reserve cache path {target_path}")
         try:
             downloaded = client.download_file(transfer_id, target_path)
         except Exception as exc:
@@ -431,7 +538,7 @@ async def main() -> None:
         f.write("Hello World")
     file_stack = FileStack.from_local_file("test.txt", is_hashable=True, in_memory=True)
     print(file_stack)
-    await context.db.save(file_stack)
+    await context.server.values.publish_value(file_stack)
     local_dir = Path(context.config.workdir) / "samira" / str(file_stack.id)
     retrieved = file_stack.get(local_dir=local_dir)
     print("Retrieved file path:", retrieved)

@@ -3,7 +3,6 @@ from typing import Dict, Any, Union, List
 
 from simstack.models.document import EmbeddedModel, Field, Model
 
-from simstack.core.asnyc_helper import async_helper
 from simstack.models import simstack_model
 
 
@@ -58,162 +57,14 @@ class DataSetMetadata(EmbeddedModel):
     def get_json_schema(self):
         return _get_json_schema(self.data)
 
-    async def validate_dict(self, new_structure: Dict[str, Dict[str, str]], dataset_tuple: bool = False) -> bool:
-        """
-        Asynchronously validates and updates the structure of a dataset metadata template based on a provided dictionary.
-
-        This function ensures that the structure of the provided `new_structure` aligns
-        with the pre-existing metadata template stored in the database. If the metadata
-        template does not exist, it initializes a new one. Schema properties and section
-        contents are rigorously compared for consistency, and any mismatches result in
-        an exception being raised. The function also handles updates to the template when
-        new sections or keys are introduced.
-
-        Parameters:
-            new_structure (Dict[str, Dict[str, str]]): A dictionary describing the sections
-                and their respective key-type mappings for the new dataset structure.
-            dataset_tuple (bool, optional): A flag indicating whether the provided structure
-                should be treated as a tuple. Defaults to False.
-
-        Returns:
-            bool: True if the structure is successfully validated or updated.
-
-        Raises:
-            ValueError: If there is a mismatch between the existing and provided schema
-                properties or section content.
-        """
-        from simstack.core.context import context
-        reference_metadata = await context.db.find_one(
-            DataSetMetadataTemplate,
-            DataSetMetadataTemplate.dataset_type == self.field_name,
-        )
-        # remove empty sections without mutating the dict during iteration
-        new_structure = {
-            key: value for key, value in new_structure.items() if value
-        }
-
-        if reference_metadata is None:
-            metadata_template = DataSetMetadataTemplate(
-                dataset_type=self.field_name,
-                model_json=_get_json_schema(self.data),
-                structure=new_structure,
-            )
-            await context.db.save(metadata_template)
-            self.structure = new_structure
-            return True  # first model of this type
-
-        new_data_json = _get_json_schema(self.data)
-
-        # Compare schemas element by element
-        # this section compares whether the data in the metadata is the same
-        ref_props = reference_metadata.model_json.get("properties", {})
-        new_props = new_data_json.get("properties", {})
-
-        # Check if property keys match
-        if set(ref_props.keys()) != set(new_props.keys()):
-            raise ValueError(
-                f"Data schema properties mismatch. Reference keys: {set(ref_props.keys())}, Current keys: {set(new_props.keys())}"
-            )
-
-        # Check each property type, allowing string format differences
-        for key in ref_props.keys():
-            ref_prop = ref_props[key]
-            new_prop = new_props[key]
-
-            ref_type = ref_prop.get("type")
-            new_type = new_prop.get("type")
-
-            if ref_type != new_type:
-                raise ValueError(
-                    f"Property '{key}' type mismatch. Reference: {ref_type}, Current: {new_type}"
-                )
-
-            # For string types, allow the format field to differ or be missing
-            if ref_type == "string":
-                # Compare all fields except 'format'
-                ref_without_format = {k: v for k, v in ref_prop.items() if k != "format"}
-                new_without_format = {k: v for k, v in new_prop.items() if k != "format"}
-                if ref_without_format != new_without_format:
-                    raise ValueError(
-                        f"Property '{key}' schema mismatch (excluding format). Reference: {ref_without_format}, Current: {new_without_format}"
-                    )
-            else:
-                # For non-string types, require exact match
-                if ref_prop != new_prop:
-                    raise ValueError(
-                        f"Property '{key}' schema mismatch. Reference: {ref_prop}, Current: {new_prop}"
-                    )
-
-        # Check if model types in existing sections match, and add new keys
-        save_template = False
-        updated_structure = reference_metadata.structure.copy()
-
-        for section_name, new_section_content in new_structure.items():
-            if section_name in updated_structure:
-                ref_section_content = updated_structure[section_name]
-                # Check if all elements in new_section_content match ref_section_content exactly
-
-                if dataset_tuple: # for tuples the sections must be exactly the same
-                    if ref_section_content != new_section_content:
-                        raise ValueError(
-                            f"Section '{section_name}' content mismatch. Reference: {ref_section_content}, Current: {new_section_content}"
-                        )
-                    continue
-                else:
-                    ref_keys = set(ref_section_content.keys())
-                    new_keys = set(new_section_content.keys())
-
-                    extra_keys = new_keys - ref_keys
-
-                    # Check for type mismatches in common keys
-                    common_keys = ref_keys.intersection(new_keys)
-                    for key in common_keys:
-                        if ref_section_content[key] != new_section_content[key]:
-                            error_msg = f"MetaData Validation failed: Section '{section_name}' has different value for key '{key}'.\n"
-                            error_msg += f"Reference: {ref_section_content[key]}, Current: {new_section_content[key]}\n"
-                            error_msg += f"Reference keys: {ref_keys}\n"
-                            error_msg += f"Current keys: {new_keys}"
-                            raise ValueError(error_msg)
-
-                    if len(extra_keys) > 0:
-                        for key in extra_keys:
-                            updated_structure[section_name][key] = new_section_content[key]
-                            save_template = True
-            else:
-                # Completely new section
-                updated_structure[section_name] = new_section_content
-                save_template = True
-
-        if save_template:
-            reference_metadata.structure = updated_structure
-            await context.db.save(reference_metadata)
-        self.structure = updated_structure
-        return True
-
-    @async_helper
-    async def freeze(self, new_structure: Dict[str, Dict[str, str]]) -> bool:
-        from simstack.core.context import context
-        db = context.db
-        reference_metadata = await db.find_one(
-            DataSetMetadataTemplate,
-            DataSetMetadataTemplate.dataset_type == self.field_name,
-        )
-        if not reference_metadata:
-            raise ValueError("Metadata does not exist")
-        if self.structure != reference_metadata.structure:
-            raise ValueError("Metadata structure has changed in the database")
-        if self.structure == {}:
-            self.structure = new_structure
-            reference_metadata.structure = new_structure
-            await db.save(reference_metadata)
-        # some structure exists already
-        return new_structure == self.structure
+    @property
+    def dataset_type(self) -> str:
+        return self.field_name
 
     @property
     def initialized(self) -> bool:
-        """Check if the model has been fully constructed."""
-        # A simple heuristic: if we have an ID or if type is set, we're initialized
-        return hasattr(self, "dataset_type") and self.field_name is not None
+        """Structural edits are locked only after explicit validation/freeze."""
+        return self.is_validated
 
     # Dict-like behavior methods
     def __getitem__(self, key: str):
@@ -388,3 +239,50 @@ class DataSetMetadata(EmbeddedModel):
             return {"type": "string", "format": "date-time"}
         else:
             return {"type": "string"}
+
+
+def validate_metadata_template(metadata: DataSetMetadata, reference: DataSetMetadataTemplate | None,
+                               structure, *, dataset_tuple=False, freeze=False):
+    """Pure metadata validation; the Server owns loading/persisting its template."""
+    from copy import deepcopy
+    structure = {name: value for name, value in structure.items() if value}
+    if freeze:
+        if reference is None:
+            raise ValueError("Metadata does not exist")
+        if metadata.structure != reference.structure:
+            raise ValueError("Metadata structure has changed")
+        updated = reference.model_copy(deep=True)
+        if not updated.structure:
+            updated.structure = structure
+        return updated, structure == updated.structure
+    if reference is None:
+        return DataSetMetadataTemplate(dataset_type=metadata.field_name,
+            model_json=_get_json_schema(metadata.data), structure=structure), True
+    reference_properties = reference.model_json.get("properties", {})
+    properties = _get_json_schema(metadata.data).get("properties", {})
+    if set(reference_properties) != set(properties):
+        raise ValueError("Data schema properties mismatch")
+    for key, expected in reference_properties.items():
+        actual = properties[key]
+        if expected.get("type") != actual.get("type"):
+            raise ValueError(f"Property '{key}' type mismatch")
+        ignored = {"format"} if expected.get("type") == "string" else set()
+        if {k: v for k, v in expected.items() if k not in ignored} != {
+            k: v for k, v in actual.items() if k not in ignored
+        }:
+            raise ValueError(f"Property '{key}' schema mismatch")
+    updated_structure = deepcopy(reference.structure)
+    for section_name, section in structure.items():
+        expected = updated_structure.get(section_name)
+        if expected is None:
+            updated_structure[section_name] = dict(section)
+        elif dataset_tuple and expected != section:
+            raise ValueError(f"Section '{section_name}' content mismatch")
+        else:
+            for key, value in section.items():
+                if key in expected and expected[key] != value:
+                    raise ValueError(f"Section '{section_name}' has different value for key '{key}'")
+                expected[key] = value
+    updated = reference.model_copy(deep=True)
+    updated.structure = updated_structure
+    return updated, True

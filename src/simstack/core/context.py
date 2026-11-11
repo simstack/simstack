@@ -1,309 +1,226 @@
-import logging
+"""Execution configuration and explicit domain clients; no persistence backend."""
+
+from __future__ import annotations
 import os
-import sys
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
-from typing import TYPE_CHECKING
-from urllib.parse import urlparse, urlunparse
-
-from simstack.util.database_information import DatabaseInformation
-from simstack.util.db import DBType
 from simstack.util.project_root_finder import find_project_root
-from simstack.util.toml_reader import TomlReader
 
-from simstack.util.resource_config import ResourceConfig
-from simstack.util.mappings import ModelMappingTable, NodeMappingTable
-
-if TYPE_CHECKING:
-    from simstack.util.db import Database
+_execution_server = ContextVar("simstack_execution_server", default=None)
 
 
-def remove_password_from_connection_string(connection_string):
-    parsed_url = urlparse(connection_string)
-
-    # Extract username and rebuild netloc without password
-    netloc = parsed_url.hostname
-    if parsed_url.username:
-        netloc = f"{parsed_url.username}@{netloc}"
-    if parsed_url.port:
-        netloc += f":{parsed_url.port}"
-
-    clean_url = parsed_url._replace(netloc=netloc)
-
-    return urlunparse(clean_url)
-
-
-async def initialize_git_list(db: "Database", toml_reader: TomlReader | None):
-    from simstack.models.resource_definition import GitRepo
-    git_list = await db.find_all(GitRepo)
-    if git_list is None and toml_reader is not None:
-        git_list = toml_reader.get("parameters.common.git", [])
-    return git_list
+@contextmanager
+def execution_server(server):
+    """Keep a local root credential within its asynchronous invocation."""
+    if server is None:
+        yield
+        return
+    token = _execution_server.set(server)
+    try:
+        yield
+    finally:
+        _execution_server.reset(token)
 
 
 class GlobalState:
     _instance = None
-    _initialized = False
 
     def __new__(cls, *args, **kwargs):
-        if not cls._instance:
+        if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
-            cls._instance._db = None
-            cls._instance._log_handler = None
-            cls._instance._path_manager = None
-            cls._instance._config = None
-            cls._instance._model_mappings = None
-            cls._instance._node_mappings = None
-            cls._instance._resource_config = None
-            cls._instance._in_docker = False
-            cls._instance._current_node_name = None
         return cls._instance
 
-    def __init__(self, **kwargs):
-        """Initialize GlobalState instance.
-
-        This method only runs once due to the singleton pattern.
-        Use the initialize() method to set up the instance with database settings.
-        """
-        # We don't call self.initialize(**kwargs) here because it is async
-        # and __init__ must be sync. The user should call initialize() explicitly.
-
-        self._db = None
-        self._log_handler = None
-        self._path_manager = None
+    def __init__(self):
+        if "_initialized" in vars(self):
+            return
+        self._initialized = False
+        self._server = None
         self._config = None
+        self._resource_config = None
         self._model_mappings = None
         self._node_mappings = None
-        self._resource_config = None
         self._in_docker = False
         self._current_node_name = None
-
-    def __getattribute__(self, name):
-        # These special attributes should always be accessible
-        if name in (
-            "_initialized",
-            "initialize",
-            "initialized",
-            "_in_docker",
-            "_current_node_name",
-        ):
-            return object.__getattribute__(self, name)
-
-        # For other attributes, check initialization
-        if not object.__getattribute__(self, "_initialized"):
-            raise RuntimeError(
-                "GlobalState must be initialized with database settings before use"
-            )
-
-        return object.__getattribute__(self, name)
+        self._log_handler = None
 
     async def initialize(self, **kwargs):
-        """
-        Initializes the global state with the given configuration parameters.
-
-        Args:
-            **kwargs: Arbitrary keyword arguments for configuration. The following keys are expected:
-                - project_root (str, optional): The project root directory. If not provided, it will be
-                    determined using `find_project_root`.
-                - db_name (str, optional): The name of the database. Required when not using a TOML
-                    configuration.
-                - connection_string (str, optional): The connection string for the database. Required
-                    when not using a TOML configuration.
-                - db_type (DBType, optional): The type of the database. Required when not using a TOML
-                    configuration.
-                - is_test (bool, optional): Indicates whether the initialization is for testing purposes.
-                    Defaults to `False`.
-                - log_level (str, optional): Specifies the logging level. Defaults to `"INFO"`.
-                - resource (str, optional): Specifies the resource identifier for the configuration reader.
-                    Defaults to `"self"`.
-                - config_file (str, optional): Specifies the path to the configuration file, defaults to simstack.toml
-                - in_docker (bool, optional): True when this process is already inside a
-                    container (`run_node --in-docker`). Defaults to `False`.
-
-        Logic:
-            if all values for the DB are provided in the kwargs, use the provided values
-            otherwise the TOML file in the project root is used
-
-            The project root is determined using `find_project_root`, which by default looks for a
-            set of marker files, starting from the directory of find_project root and traversing up the directory tree.
-            In normal runs, it should skip the project root of the simstack package
-            This fails in the tests of the simstack package. The trick is to determine
-            project_root manually outside the call to initialize and pass it as a kwarg.
-
-            The TOML file decides whether the database or the file is used to set the variables
-            for the specific resource
-
-        """
-        is_test = kwargs.get("is_test", False)
-        resource_str = kwargs.get("resource", "self")
-
-        if self._initialized:
-            # If already initialized, we just return if not in test mode,
-            if not is_test:
-                return
-        self._initialized = True  # required because some later functions use context
-        self._in_docker = bool(kwargs.get("in_docker", False))
-        self._current_node_name = None
-
-        project_root = kwargs.get("project_root", find_project_root())
-        if project_root is None:  # maybe None was passed
-            project_root = find_project_root()
-
-
-        project_root = Path(project_root)
-        kwargs["project_root"] = project_root
-
-        api_url = kwargs.get("server_url") or os.environ.get("SIMSTACK_SERVER_URL")
-        api_token = kwargs.get("server_token") or os.environ.get("SIMSTACK_RUNNER_TOKEN") or os.environ.get("SIMSTACK_SERVER_TOKEN")
-        config_path = project_root / "simstack.toml"
-        if config_path.is_file() and not api_token:
-            import tomllib
-            with config_path.open("rb") as source:
-                server_config = tomllib.load(source).get("parameters", {}).get("server", {})
-            api_url = api_url or server_config.get("url")
-            api_token = server_config.get("token")
-        if (kwargs.get("api_only") or (api_token and api_url and not kwargs.get("connection_string"))) and not is_test:
-            await self._initialize_runner(project_root, api_url, api_token, **{k: v for k, v in kwargs.items() if k not in {"project_root", "server_url", "server_token"}})
+        if any(
+            key in kwargs
+            for key in ("db_name", "db_type", "connection_string", "database")
+        ):
+            raise ValueError(
+                "Execution contexts accept API credentials, not database configuration"
+            )
+        if self._initialized and not kwargs.get("is_test", False):
             return
-
-        db_name: str | None = kwargs.get("db_name", None)
-        connection_string: str | None = kwargs.get("connection_string", None)
-        db_type: DBType | None = kwargs.get("db_type", None)
-
-        toml_reader = None
-        if db_name is None or connection_string is None or db_type is None:
-            # use not all info in the kwargs
-            simstack_toml_path = project_root / "simstack.toml"
-            if not simstack_toml_path.exists():
-                raise ValueError(f"simstack.toml not found in {project_root}")
-            toml_reader = TomlReader(project_root, config_file=Path(simstack_toml_path).resolve())
-            db_info = DatabaseInformation.from_config(toml_reader.config, **kwargs)
-        else:
-            db_info = DatabaseInformation(db_name, connection_string, db_type)
-
-        # check that the database can be reached and set logging up
-        self.initialize_database(db_info, is_test)
-        self.initialize_logging(kwargs.get("log_level", "INFO"))
-
-        logger = logging.getLogger("Context")
-        if db_info.connection_string is not None:
-            db_type = DBType.MONGODB.value
-            safe_connection_string = remove_password_from_connection_string(db_info.connection_string)
-            logger.info(f"Database connection to {db_type} {safe_connection_string}/{db_name}")
-        else:
-            logger.info(f"Database connection in_memory {db_type}")
-
-        if not kwargs.get("skip_config", False):
-            await self.initialize_configs(self._db, toml_reader, **kwargs)
-
-        # Initialize memory-loaded mappings
-        await self.refresh_mappings()
-
-        self._initialized = True
-
-    async def _initialize_runner(self, project_root, server_url, server_token, **kwargs):
-        from simstack.models.resource_definition import ResourceDefinition
+        from simstack.server_api import ServerAPI
+        from simstack.server_api.http_transport import (
+            RunnerAPIClient,
+            runner_environment,
+        )
+        from simstack.runner_runtime.runner_credentials import update_known_hosts
+        from simstack.server_api.log_upload import setup_runner_logging
         from simstack.core.resources import allowed_resources
-        from simstack.runner_api.transport import RunnerAPIClient, runner_environment
-        from simstack.runner_api.logging import setup_runner_logging
+        from simstack.models.resource_definition import ResourceDefinition
         from simstack.util.config_reader import ConfigReader
-        from simstack.util.db import Database
         from simstack.util.resource_config import ResourceConfig
+        from simstack.util.transform_file_name import transform_file_name
 
-        if kwargs.get("connection_string") or kwargs.get("db_name"):
-            raise ValueError("API runners cannot receive database credentials")
-        api = RunnerAPIClient(server_url, server_token)
-        bootstrap = await api.json("GET", "/runner/bootstrap")
-        from simstack.runner_api.credentials import update_known_hosts
-        update_known_hosts(bootstrap.get("known_hosts"))
+        self._initialized = False
+        project_root = (
+            Path(kwargs.get("project_root") or find_project_root())
+            .expanduser()
+            .resolve()
+        )
+        server_url = kwargs.get("server_url") or os.environ.get("SIMSTACK_SERVER_URL")
+        token = (
+            kwargs.get("server_token")
+            or os.environ.get("SIMSTACK_RUNNER_TOKEN")
+            or os.environ.get("SIMSTACK_SERVER_TOKEN")
+        )
+        settings_file = project_root / "simstack.toml"
+        if settings_file.is_file() and (not server_url or not token):
+            import tomllib
+
+            with settings_file.open("rb") as source:
+                server_settings = (
+                    tomllib.load(source).get("parameters", {}).get("server", {})
+                )
+            server_url = server_url or server_settings.get("url")
+            token = token or server_settings.get("token")
+        user_token = kwargs.get("user_token") or (
+            os.environ.get("SIMSTACK_USER_TOKEN")
+            if not (kwargs.get("server_token") or os.environ.get("SIMSTACK_RUNNER_TOKEN") or os.environ.get("SIMSTACK_SERVER_TOKEN"))
+            else None
+        )
+        if user_token and kwargs.get("server_token"):
+            raise ValueError("Choose either user or Runner authorization")
+        server = kwargs.get("server")
+        if server is None:
+            local_token = os.environ.get("SIMSTACK_LOCAL_EXECUTION_TOKEN")
+            if local_token:
+                if user_token or kwargs.get("server_token"):
+                    raise ValueError("Choose one execution authorization")
+                server = ServerAPI.for_local_execution(server_url, local_token)
+            elif user_token:
+                server = ServerAPI.for_user(
+                    server_url, user_token, resource=kwargs.get("resource", "self")
+                )
+            else:
+                server = ServerAPI(RunnerAPIClient(server_url, token))
+        bootstrap = await server.resource.bootstrap()
+        account_id = os.environ.get("SIMSTACK_EXECUTION_ACCOUNT_ID")
+        if account_id and account_id != bootstrap.get("account_id"):
+            raise ValueError("Execution credentials belong to a different account")
         resource_name = bootstrap["resource"]
         requested = kwargs.get("resource", "self")
         if requested not in {"self", "local", resource_name}:
             raise ValueError("Runner token is bound to a different resource")
-        if bootstrap.get("repository_reconciliation_required"):
-            from simstack.util.repository_runtime import reconcile_prepared_repositories
-            await reconcile_prepared_repositories(api)
-        allowed_resources.set_resources(list(dict.fromkeys([*bootstrap["resources"], "self"])))
+        from simstack.models.document.codec import decode_document_value
+
+        resource = ResourceDefinition.model_validate(
+            decode_document_value(bootstrap["resource_definition"])
+        )
+        allowed_resources.set_resources(
+            list(dict.fromkeys([*bootstrap["resources"], "self"]))
+        )
+        update_known_hosts(bootstrap.get("known_hosts"))
+        user_mode = server.requests.authorization in {"user", "local"}
+        workdir = kwargs.get("workdir") or (
+            project_root / "work"
+            if user_mode
+            else os.environ.get("SIMSTACK_RUNNER_WORKDIR")
+            or resource.workdir
+            or project_root / "work"
+        )
+        resolved = (
+            transform_file_name(workdir, project_root, require_exists=False)
+            .expanduser()
+            .resolve()
+        )
+        resolved.mkdir(parents=True, exist_ok=True)
+        resource.workdir = str(resolved)
         for key in set(os.environ) - set(runner_environment()):
             os.environ.pop(key, None)
-        os.environ["SIMSTACK_SERVER_URL"] = server_url
-        os.environ["SIMSTACK_RUNNER_TOKEN"] = server_token
-        resource = ResourceDefinition.model_validate(bootstrap["resource_definition"])
-        from simstack.util.transform_file_name import transform_file_name
-        workdir = kwargs.get("workdir") or os.environ.get("SIMSTACK_RUNNER_WORKDIR") or resource.workdir or project_root / "work"
-        resolved_workdir = transform_file_name(workdir, project_root, require_exists=False).expanduser().resolve()
-        resolved_workdir.mkdir(parents=True, exist_ok=True)
-        resource.workdir = str(resolved_workdir)
-        os.environ["SIMSTACK_RUNNER_WORKDIR"] = str(resolved_workdir)
-        info = DatabaseInformation(None, None, DBType.API, server_url, server_token)
-        self._db = Database.from_db_info(info)
-        self._config = ConfigReader(info, resource, project_root=project_root, git_list=[])
+        if not user_mode:
+            os.environ["SIMSTACK_SERVER_URL"] = server.requests.server_url
+            os.environ["SIMSTACK_RUNNER_TOKEN"] = server.requests.token
+        os.environ["SIMSTACK_RUNNER_WORKDIR"] = str(resolved)
         if kwargs.get("config_file"):
-            os.environ["SIMSTACK_MACHINE_CONFIG"] = str(Path(kwargs["config_file"]).expanduser().resolve())
-        config_file = kwargs.get("config_file") or os.environ.get("SIMSTACK_MACHINE_CONFIG") or project_root / "config.toml"
-        self._resource_config = ResourceConfig(Path(config_file), resource_name)
-        self._log_handler = setup_runner_logging(api, kwargs.get("log_level", "INFO"))
-        await self.refresh_mappings()
-
-    async def initialize_configs(self, db, toml_reader, **kwargs):
-        project_root = kwargs["project_root"]
-        resource_str = kwargs.get("resource", "self")
-        is_test = kwargs.get("is_test", False)
-        try:
-            from simstack.util.config_reader import ConfigReader
-            from simstack.util.resource_config import ResourceConfig
-            resource_config_file = kwargs.get("config_file")
-            if resource_config_file is None:
-                resource_config_file = project_root / "config.toml"
-            else:
-                resource_config_file = Path(resource_config_file)
-            self._config = await ConfigReader.create(resource_str, db, toml_reader, **kwargs)
-            self._resource_config = ResourceConfig(resource_config_file, resource_str)
-        except Exception as e:
-            if is_test:
-                logger = logging.getLogger("Context")
-                logger.warning(f"Failed to initialize ConfigReader in test mode: {e}")
-            else:
-                raise e
-
-    async def refresh_mappings(self, *, models: bool = True, nodes: bool = True):
-        if models:
-            self._model_mappings = await ModelMappingTable.load(self._db)
-        if nodes:
-            self._node_mappings = await NodeMappingTable.load(self._db)
-
-    def initialize_logging(self, log_level: str = "INFO"):
-        """Initialize console logging for the local in-memory context."""
-        logging.basicConfig(
-            level=log_level,
-            format="%(asctime)s - %(name)-15s - %(levelname)-10s - %(filename)-20s:%(lineno)4d - %(message)s",
-            stream=sys.stderr,
-            force=True,
+            os.environ["SIMSTACK_MACHINE_CONFIG"] = str(
+                Path(kwargs["config_file"]).expanduser().resolve()
+            )
+        config_file = (
+            kwargs.get("config_file")
+            or os.environ.get("SIMSTACK_MACHINE_CONFIG")
+            or project_root / "config.toml"
         )
-        self._log_handler = logging.getLogger()
-        sys.stdout.flush()
-        sys.stderr.flush()
-
-    def initialize_database(self, db_info: DatabaseInformation, is_test: bool):
-        from simstack.util.db import Database
-
-        try:
-            self._db = Database.from_db_info(db_info)
-
-        except ConnectionError as e:
-            if not is_test:
-                print(f"Could not connect to the database: {e}")
-                sys.exit(-1)
+        self._server = server
+        self._config = ConfigReader(
+            resource,
+            project_root=project_root,
+            server_url=server.requests.server_url,
+            server_token=server.requests.token,
+            account_id=bootstrap["account_id"],
+        )
+        self._resource_config = ResourceConfig(Path(config_file), resource_name)
+        self._in_docker = bool(kwargs.get("in_docker", False))
+        self._current_node_name = None
+        if user_mode:
+            from simstack.runner_runtime.launch_claims import current_execution
+            execution = current_execution()
+            if execution:
+                self._log_handler = setup_runner_logging(server.requests.transport,
+                    kwargs.get("log_level", "INFO"), execution=execution, resource=resource_name,
+                    execution_prefix=server.requests.prefix)
             else:
-                # For tests, continue ignoring the database connection failure
-                print(f"Warning: Database connection failed in test mode: {e}")
+                import logging
+                logging.basicConfig(level=kwargs.get("log_level", "INFO"))
+                self._log_handler = logging.getLogger()
+        else:
+            self._log_handler = setup_runner_logging(
+                server.requests.transport, kwargs.get("log_level", "INFO")
+            )
+        if bootstrap.get("repository_reconciliation_required"):
+            from simstack.util.repository_runtime import reconcile_prepared_repositories
+
+            await reconcile_prepared_repositories(server.resource)
+        if kwargs.get("load_catalogue", True):
+            await self.refresh_mappings()
+        self._initialized = True
+
+    async def refresh_mappings(self, *, models=True, nodes=True):
+        from simstack.util.mappings import ModelMappingTable, NodeMappingTable
+
+        if models:
+            self._model_mappings = ModelMappingTable(
+                await self._server.values.catalogue_models()
+            )
+        if nodes:
+            self._node_mappings = NodeMappingTable(
+                await self._server.values.catalogue_nodes()
+            )
 
     @property
-    def db(self):
-        return self._db
+    def initialized(self):
+        return self._initialized
+
+    @property
+    def server(self):
+        scoped = _execution_server.get()
+        if scoped is not None:
+            return scoped
+        if self._server is None:
+            raise RuntimeError(
+                "Initialize the execution context with API credentials first"
+            )
+        return self._server
 
     @property
     def config(self):
+        if self._config is None:
+            raise RuntimeError("Initialize the execution context first")
         return self._config
 
     @config.setter
@@ -327,29 +244,24 @@ class GlobalState:
         self._node_mappings = value
 
     @property
-    def resource_config(self) -> "ResourceConfig":
+    def resource_config(self):
         return self._resource_config
 
     @property
-    def in_docker(self) -> bool:
-        return bool(self._in_docker)
+    def in_docker(self):
+        return self._in_docker
 
     @in_docker.setter
-    def in_docker(self, value: bool) -> None:
+    def in_docker(self, value):
         self._in_docker = bool(value)
 
     @property
-    def current_node_name(self) -> str | None:
+    def current_node_name(self):
         return self._current_node_name
 
     @current_node_name.setter
-    def current_node_name(self, value: str | None) -> None:
+    def current_node_name(self, value):
         self._current_node_name = value
 
-    @property
-    def initialized(self):
-        return self._initialized
 
-
-# Create the singleton instance, but it's not initialized yet
 context = GlobalState()

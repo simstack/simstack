@@ -23,8 +23,8 @@ class ModelMapping(Model):
     version: Optional[str] = None
     repository_revision: Optional[str] = None
     repository_version: Optional[int] = None
-    collection_name: str
     json_schema: Optional[str] = None
+    value_schema: Optional[str] = None
     ui_schema: Optional[str] = None
 
 
@@ -51,6 +51,5 @@ class NodeModel(Model):
     pickle_function: Optional[FunctionPickle] = None
 
     model_config = {
-        "collection": "node_model",
         "json_encoders": {bytes: lambda b: base64.b64encode(b).decode("ascii")},
     }

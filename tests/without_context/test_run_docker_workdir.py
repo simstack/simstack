@@ -1,4 +1,6 @@
 import logging
+import asyncio
+import os
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -30,7 +32,17 @@ _SUCCESS_PROTOCOL = encode_run_node_result(RunNodeResult(True, "bool")).encode()
 
 
 @pytest.fixture(autouse=True)
-def _runner_owner_ids(monkeypatch):
+def _runner_owner_ids(monkeypatch, tmp_path):
+    monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
+    monkeypatch.setattr("simstack.runner_runtime.launch_claims.record_spawn", lambda *args: None)
+    monkeypatch.setattr("simstack.runner_runtime.launch_claims.record_container_launch", lambda *args, **kwargs: False)
+    monkeypatch.setattr("simstack.runner_runtime.launch_claims.receipt", lambda *args: None)
+    monkeypatch.setattr("simstack.core.run_docker.docker_daemon_identity", lambda: "test-daemon")
+    def observe(name):
+        from simstack.core.run_docker import context
+        return {"Id": "cid123", "State": context.server.tasks.container_state,
+            "Config": {"Labels": {"simstack.execution": name}}}
+    monkeypatch.setattr("simstack.core.run_docker.inspect_docker_execution", observe)
     monkeypatch.setattr(
         "simstack.core.run_docker.launcher_owner_ids",
         lambda: (1000, 1000),
@@ -92,27 +104,50 @@ def _registry_entry(
     return SimpleNamespace(
         id="abc123",
         name=name,
-        parameters=SimpleNamespace(resource=resource, slurm_parameters=slurm_parameters),
-        status=None,
+        parameters=SimpleNamespace(resource=resource, queue=None, slurm_parameters=slurm_parameters),
+        status=TaskStatus.RETRIEVED,
         error=None,
+        return_kind=None,
+        _execution_claim_id="original-claim",
+        _execution_generation="original-generation",
     )
+
+
+class _DomainAPI:
+    app_status = TaskStatus.COMPLETED
+
+    def __init__(self):
+        self.fail_attempt = AsyncMock(side_effect=self._fail)
+        self.record_process = AsyncMock()
+        self.admit_container = AsyncMock()
+        self.termination_confirmed = AsyncMock()
+        self.reconcile_attempts = AsyncMock(return_value={"claims": [], "outcomes": []})
+        self.container_state = {"Status": "exited", "ExitCode": 0}
+
+    def execution(self, entry):
+        return {"task_id": str(entry.id), "claim_id": entry._execution_claim_id,
+            "generation": entry._execution_generation, "start_id": entry._execution_start_id}
+
+    async def get_outcome(self, entry):
+        return SimpleNamespace(**{**vars(entry), "status": self.app_status, "return_kind": None})
+
+    async def children(self, entry):
+        return []
+
+    async def _fail(self, entry, error, **kwargs):
+        entry.status = TaskStatus.FAILED
+        entry.error = entry.error or error
+        return entry
 
 
 def _mock_context(tmp_path: Path, resource_config: ResourceConfig):
     (tmp_path / "simstack.toml").write_text("", encoding="utf-8")
     return SimpleNamespace(
         resource_config=resource_config,
-        config=SimpleNamespace(
-            resource="local",
-            workdir=tmp_path,
-            project_root=tmp_path,
-            connection_string="mongodb://localhost:27017",
-            db_name="test_db",
-        ),
-        db=SimpleNamespace(
-            save=AsyncMock(),
-            task_mutation=AsyncMock(),
-        ),
+        config=SimpleNamespace(resource="local", workdir=tmp_path, project_root=tmp_path),
+        server=SimpleNamespace(tasks=_DomainAPI(), requests=SimpleNamespace(
+            server_url="https://server.example/api", authorization="runner", resource="local",
+            bootstrap_data={"account_id": "unit-test-account"})),
     )
 
 
@@ -271,6 +306,8 @@ async def test_run_docker_apptainer_omits_cpu_and_memory_flags(tmp_path: Path):
     assert command[:2] == ["apptainer", "run"]
     assert "--cpus" not in command
     assert "--memory" not in command
+    assert mock_exec.await_args.kwargs["env"]["APPTAINERENV_SIMSTACK_CONTAINER_BACKEND"] == "apptainer"
+    assert mock_context.server.tasks.record_process.await_args.kwargs["container_backend"] == "apptainer"
 
 
 @pytest.mark.asyncio
@@ -292,7 +329,7 @@ async def test_run_docker_fails_when_reloaded_config_has_no_image(tmp_path: Path
 
     assert result is False
     assert registry_entry.status == TaskStatus.FAILED
-    mock_context.db.save.assert_awaited()
+    mock_context.server.tasks.fail_attempt.assert_awaited()
     assert "docker_image" not in resource_config.get_program("psi4_calculator")
 
 
@@ -349,6 +386,9 @@ def _fake_docker_exec(*, returncode: int = 0, cid: str = "cid123"):
             cidfile = Path(cmd_list[cmd_list.index("--cidfile") + 1])
             cidfile.parent.mkdir(parents=True, exist_ok=True)
             cidfile.write_text(cid + "\n", encoding="utf-8")
+        from simstack.core import run_docker as module
+        module.context.server.tasks.app_status = TaskStatus.COMPLETED if returncode == 0 else TaskStatus.RUNNING
+        module.context.server.tasks.container_state = {"Status": "exited", "ExitCode": returncode}
         proc = AsyncMock(pid=4242)
         proc.returncode = returncode
         stdout = _SUCCESS_PROTOCOL if returncode == 0 else b""
@@ -356,6 +396,43 @@ def _fake_docker_exec(*, returncode: int = 0, cid: str = "cid123"):
         return proc
 
     return _exec
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("command,returncode,expected_exit,expected_signal", [
+    ("docker", 17, 17, None), ("docker", 137, 137, None), ("apptainer", -9, None, 9),
+])
+async def test_container_early_failure_preserves_observed_exit_signal_in_api_and_journal(
+    tmp_path, monkeypatch, command, returncode, expected_exit, expected_signal,
+):
+    from simstack.runner_runtime.pending_execution_failures import pending_failures
+    config = tmp_path / "config.toml"
+    config.write_text('[local.program.psi4_calculator]\ndocker_image="probe-image"\ndocker_cmd="' + command + '"\n')
+    active = _mock_context(tmp_path, ResourceConfig(config, "local"))
+    from simstack.server_api.http_transport import RunnerAPIError
+    active.server.tasks.reconcile_attempts.side_effect = RunnerAPIError("offline", status_code=503)
+    entry = _registry_entry()
+    captured = []
+    execute = _fake_docker_exec(returncode=returncode)
+    async def spawn(*args, **kwargs):
+        captured.append((args, kwargs))
+        return await execute(*args, **kwargs)
+    monkeypatch.setattr("simstack.core.run_docker.context", active)
+    monkeypatch.setattr("simstack.core.run_docker.asyncio.create_subprocess_exec", spawn)
+    monkeypatch.setattr("simstack.core.run_docker.inspect_docker_oomkilled", lambda _: False)
+    assert not (await run_docker_with_outcome(entry)).success
+    failure = active.server.tasks.fail_attempt.await_args
+    assert failure.args[0] is entry
+    assert failure.kwargs["exit_code"] == expected_exit and failure.kwargs["signal"] == expected_signal
+    records = list(pending_failures())
+    assert len(records) == 1
+    assert records[0][1]["exit_code"] == expected_exit and records[0][1]["signal"] == expected_signal
+    assert records[0][1]["actor"]["account_id"] == "unit-test-account"
+    assert captured[0][1]["env"]["SIMSTACK_EXECUTION_ACCOUNT_ID"] == "unit-test-account"
+    if command == "docker":
+        assert "SIMSTACK_EXECUTION_ACCOUNT_ID" in captured[0][0]
+    else:
+        assert captured[0][1]["env"]["APPTAINERENV_SIMSTACK_EXECUTION_ACCOUNT_ID"] == "unit-test-account"
 
 
 @pytest.mark.asyncio
@@ -552,6 +629,7 @@ async def test_run_docker_apptainer_sigkill_uses_exit_code_heuristic(tmp_path: P
     resource_config = ResourceConfig(tmp_path, "local")
     mock_context = _mock_context(tmp_path, resource_config)
     registry_entry = _registry_entry()
+    mock_context.server.tasks.app_status = TaskStatus.RUNNING
 
     proc = AsyncMock(pid=4242)
     proc.returncode = 137
@@ -588,7 +666,8 @@ async def test_run_docker_redacts_and_bounds_database_uri_in_child_errors(
     secret = "mongodb://docker-user:docker-password@db.internal:27017/simstack"
     resource_config = _psi4_image_config(tmp_path)
     mock_context = _mock_context(tmp_path, resource_config)
-    mock_context.config.connection_string = secret
+    mock_context.server.tasks.app_status = TaskStatus.RUNNING
+    mock_context.server.tasks.container_state["ExitCode"] = 1
     registry_entry = _registry_entry()
 
     proc = AsyncMock(pid=4242)
@@ -652,14 +731,14 @@ async def test_run_docker_failure_preserves_child_persisted_metadata(tmp_path: P
         message="child message",
     )
     mutation = AsyncMock()
-    mock_context.db.load_task_by_id = AsyncMock(return_value=child_entry)
-    mock_context.db.task_mutation = mutation
+    mock_context.server.tasks.get_outcome = AsyncMock(return_value=child_entry)
+    mock_context.server.tasks.fail_attempt = mutation
     proc = AsyncMock(pid=4242)
     proc.returncode = 1
     proc.communicate = AsyncMock(
         return_value=(
             encode_run_node_result(
-                RunNodeResult(False, "exception", "child error")
+                RunNodeResult(False, "exception", "different protocol error")
             ).encode(),
             b"container stderr",
         )
@@ -673,13 +752,13 @@ async def test_run_docker_failure_preserves_child_persisted_metadata(tmp_path: P
         result = await run_docker_with_outcome(registry_entry)
 
     assert result.success is False
+    assert result.error == "child error"
     assert child_entry.info_files == ["child-log"]
     assert child_entry.return_kind == "exception"
     assert child_entry.message == "child message"
-    assert mock_context.db.save.await_count == 1
-    assert mutation.await_args.args[1] == "failure"
-    update = mutation.await_args.args[2]
-    assert set(update) == {"status", "error"}
+    assert mutation.await_args.args[0] is registry_entry
+    assert mutation.await_args.args[1] == "child error"
+    assert child_entry.error == "child error"
 
 
 @pytest.mark.asyncio
@@ -689,7 +768,7 @@ async def test_run_docker_redacts_database_uri_from_spawn_exception(
     secret = "mongodb://docker-user:docker-password@db.internal:27017/simstack"
     resource_config = _psi4_image_config(tmp_path)
     mock_context = _mock_context(tmp_path, resource_config)
-    mock_context.config.connection_string = secret
+    mock_context.server.tasks.app_status = TaskStatus.RUNNING
     registry_entry = _registry_entry()
 
     with (
@@ -815,3 +894,204 @@ async def test_run_docker_skips_harmonize_on_windows(tmp_path: Path):
     assert result.success is True
     commands = [list(call.args) for call in mock_exec.await_args_list]
     assert not any("--network" in cmd for cmd in commands)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("returncode", [0, 17])
+async def test_committed_result_survives_launcher_exit_and_cleanup_failure(tmp_path, returncode):
+    mock_context = _mock_context(tmp_path, _psi4_image_config(tmp_path))
+    mock_context.server.tasks.container_state = {"Status": "exited", "ExitCode": returncode}
+    entry = _registry_entry()
+    committed = SimpleNamespace(**{**vars(entry), "status": TaskStatus.COMPLETED,
+        "return_kind": "multiple", "error": None})
+    mock_context.server.tasks.get_outcome = AsyncMock(return_value=committed)
+    process = AsyncMock(pid=4242, returncode=returncode)
+    process.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b"launcher diagnostic"))
+    with patch("simstack.core.run_docker.context", mock_context), \
+         patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)), \
+         patch("simstack.core.run_docker._harmonize_docker_task_dir", AsyncMock(side_effect=PermissionError("denied"))):
+        result = await run_docker_with_outcome(entry)
+    assert result == DockerRunResult(True, "multiple")
+    mock_context.server.tasks.fail_attempt.assert_not_awaited()
+    if returncode:
+        assert mock_context.server.tasks.reconcile_attempts.await_args.kwargs["outcomes"][0]["exit_code"] == returncode
+    else:
+        mock_context.server.tasks.reconcile_attempts.assert_not_awaited()
+    assert committed.status == TaskStatus.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_container_receives_generation_and_shared_failure_directory(tmp_path, monkeypatch):
+    monkeypatch.setenv("SIMSTACK_EXECUTION_GENERATION", "original-generation")
+    mock_context = _mock_context(tmp_path, _psi4_image_config(tmp_path))
+    entry = _registry_entry()
+    process = AsyncMock(pid=4242, returncode=0)
+    process.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
+    with patch("simstack.core.run_docker.context", mock_context), \
+         patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)) as spawn, \
+         patch("simstack.core.run_docker._harmonize_docker_task_dir", AsyncMock()):
+        assert (await run_docker_with_outcome(entry)).success
+    call = spawn.await_args_list[0]
+    assert call.kwargs["env"]["SIMSTACK_EXECUTION_GENERATION"] == "original-generation"
+    assert call.kwargs["env"]["SIMSTACK_PENDING_FAILURE_DIR"] == f"{CONTAINER_WORKDIR}/.pending-execution-failures"
+    assert "SIMSTACK_EXECUTION_GENERATION" in call.args
+    assert "SIMSTACK_PENDING_FAILURE_DIR" in call.args
+
+
+@pytest.mark.asyncio
+async def test_lost_process_report_does_not_fail_running_container(tmp_path):
+    mock_context = _mock_context(tmp_path, _psi4_image_config(tmp_path))
+    mock_context.server.tasks.record_process.side_effect = OSError("API unavailable")
+    entry = _registry_entry()
+    process = AsyncMock(pid=4242, returncode=0)
+    process.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
+    with patch("simstack.core.run_docker.context", mock_context), \
+         patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)), \
+         patch("simstack.core.run_docker._harmonize_docker_task_dir", AsyncMock()):
+        assert (await run_docker_with_outcome(entry)).success
+    process.communicate.assert_awaited_once()
+    mock_context.server.tasks.fail_attempt.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stop_case", ["running", "query_unavailable", "still_running", "cli_already_exited", "receipt_write_failure"])
+async def test_local_docker_owner_confirms_daemon_stop_before_acknowledgement(tmp_path, monkeypatch, stop_case):
+    from simstack.core.services import task_termination
+    from simstack.core.run_docker import docker_execution_name
+
+    active = _mock_context(tmp_path, _psi4_image_config(tmp_path))
+    active.server.requests.authorization = "local"
+    active.server.requests.token = "local-execution-test-token"
+    entry = _registry_entry()
+    from simstack.models.document import ObjectId
+    entry.id = str(ObjectId())
+    entry.parameters.in_docker = True
+    entry.parameters.queue = "default"
+    entry.job_id = None
+    entry._execution_local = True
+    entry._execution_resource = "local"
+    entry._execution_start_id = "original-start"
+    execution = active.server.tasks.execution(entry)
+    entry._execution_owner = {"execution": execution, "process_id": os.getpid()}
+    active.server.tasks.app_status = TaskStatus.TERMINATING
+    active.server.tasks.container_state = {"Status": "running", "ExitCode": 0}
+    entry.error = "Cancelled by final consumer"
+    finished = asyncio.Event()
+    events = []
+
+    class DockerCLI:
+        pid = os.getpid() + 100000
+        returncode = 0 if stop_case == "cli_already_exited" else None
+
+        async def communicate(self):
+            await finished.wait()
+            return b"", b""
+
+        async def wait(self):
+            await finished.wait()
+            return self.returncode
+
+    process = DockerCLI()
+    if process.returncode is not None:
+        finished.set()
+
+    async def spawn(*command, **kwargs):
+        assert command[:2] == ("docker", "run")
+        docker_cidfile_path(tmp_path / entry.name / str(entry.id)).write_text("owned-container")
+        return process
+
+    inspections = 0
+
+    def inspect(name):
+        nonlocal inspections
+        inspections += 1
+        assert name == docker_execution_name(active.server, execution)
+        events.append(("inspect", active.server.tasks.container_state["Status"]))
+        if stop_case == "query_unavailable" and inspections == 1:
+            assert not any(event[0] == "ack" for event in events)
+            raise RuntimeError("Docker daemon temporarily unavailable")
+        return {"Id": "owned-container", "State": dict(active.server.tasks.container_state)}
+
+    kills = 0
+
+    async def command(args):
+        nonlocal kills
+        assert args == ["docker", "kill", "owned-container"]
+        kills += 1
+        events.append(("docker-kill", kills))
+        if stop_case != "still_running" or kills > 1:
+            active.server.tasks.container_state = {"Status": "exited", "ExitCode": 137}
+        return ""
+
+    def kill_cli(pid, *args):
+        assert pid == process.pid
+        assert active.server.tasks.container_state["Status"] == "exited"
+        events.append(("cli-stopped", pid))
+        process.returncode = -9
+        finished.set()
+
+    async def acknowledge(observed, error):
+        assert active.server.tasks.execution(observed) == execution
+        assert error == entry.error
+        assert active.server.tasks.container_state["Status"] == "exited"
+        assert process.returncode is not None and finished.is_set()
+        assert events[-1][0] in {"cli-stopped", "inspect"}
+        events.append(("ack", error))
+        active.server.tasks.app_status = TaskStatus.FAILED
+        return SimpleNamespace(**{**vars(entry), "status": TaskStatus.FAILED})
+
+    active.server.tasks.termination_confirmed = AsyncMock(side_effect=acknowledge)
+    record_spawn = []
+
+    def record_launched_process(server, task, pid):
+        record_spawn.append(pid)
+        if stop_case == "receipt_write_failure":
+            raise OSError("Could not persist the launched process receipt")
+    monkeypatch.setattr("simstack.core.run_docker.context", active)
+    monkeypatch.setattr("simstack.core.run_docker.pull_docker_image", AsyncMock())
+    monkeypatch.setattr("simstack.core.run_docker._harmonize_docker_task_dir", AsyncMock())
+    monkeypatch.setattr("simstack.core.run_docker.asyncio.create_subprocess_exec", spawn)
+    monkeypatch.setattr("simstack.core.run_docker.inspect_docker_execution", inspect)
+    monkeypatch.setattr("simstack.runner_runtime.launch_claims.record_spawn", record_launched_process)
+    monkeypatch.setattr(task_termination, "_run_command", command)
+    monkeypatch.setattr(task_termination, "_kill_process_tree", kill_cli)
+
+    result = await asyncio.wait_for(run_docker_with_outcome(entry), timeout=8)
+    assert not result.success and result.error == entry.error
+    assert record_spawn == [os.getpid()]
+    assert entry._execution_owner == {"execution": execution, "process_id": os.getpid()}
+    active.server.tasks.record_process.assert_awaited_once_with(
+        entry, os.getpid(), host_owner=True, container_backend="docker")
+    assert active.server.tasks.termination_confirmed.await_count >= 1
+    assert kills == (2 if stop_case == "still_running" else 1)
+
+
+@pytest.mark.asyncio
+async def test_parent_handle_verifies_container_after_admitted_owner_exits(tmp_path, monkeypatch):
+    from simstack.core.services import task_termination
+
+    active = _mock_context(tmp_path, _psi4_image_config(tmp_path))
+    from simstack.models.document import ObjectId
+    entry = _registry_entry()
+    entry.id = str(ObjectId())
+    entry._execution_local = True
+    entry.parameters.in_docker = True
+    entry.job_id = None
+    entry.process_id = None
+    entry._execution_start_id = "original-start"
+    entry._execution_owner = {"execution": active.server.tasks.execution(entry), "process_id": 4242}
+    owner = SimpleNamespace(pid=4242, returncode=None)
+    async def exited():
+        owner.returncode = -9
+        return -9
+    owner.wait = AsyncMock(side_effect=exited)
+    commands = AsyncMock()
+    monkeypatch.setattr(task_termination, "_run_command", commands)
+    observations = [{"Id": "owned-container", "State": {"Status": "running"}},
+                    {"Id": "owned-container", "State": {"Status": "exited"}}]
+    with patch("simstack.core.run_docker.inspect_docker_execution", side_effect=observations) as inspect:
+        await task_termination.stop_task_execution(entry, server=active.server,
+            runner_pid=os.getpid(), workdir=tmp_path, local_process=owner)
+    owner.wait.assert_awaited_once()
+    commands.assert_awaited_once_with(["docker", "kill", "owned-container"])
+    assert inspect.call_count == 2

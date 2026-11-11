@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -360,30 +365,53 @@
 
     <span class="k">return</span> <span class="n">called_functions</span>
 
+<span class="n">_UNICODE_DASHES</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">({</span>
+    <span class="s2">&quot;</span><span class="se">\u2010</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span>  <span class="c1"># hyphen</span>
+    <span class="s2">&quot;</span><span class="se">\u2011</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span>  <span class="c1"># non-breaking hyphen</span>
+    <span class="s2">&quot;</span><span class="se">\u2012</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span>  <span class="c1"># figure dash</span>
+    <span class="s2">&quot;</span><span class="se">\u2013</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span>  <span class="c1"># en dash</span>
+    <span class="s2">&quot;</span><span class="se">\u2014</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span>  <span class="c1"># em dash</span>
+    <span class="s2">&quot;</span><span class="se">\u2015</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span>  <span class="c1"># horizontal bar</span>
+    <span class="s2">&quot;</span><span class="se">\u2212</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span>  <span class="c1"># minus sign</span>
+<span class="p">})</span>
+
+
 <div class="viewcode-block" id="normalize_text">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.node_children.normalize_text">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">normalize_text</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span></div>
+    <span class="c1"># Fold punctuation that Windows charmap/cp1252 cannot encode, then</span>
+    <span class="c1"># round-trip as UTF-8 so the dump file never raises UnicodeEncodeError.</span>
+    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">_UNICODE_DASHES</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="update_node_children">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.node_children.update_node_children">[docs]</a>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_node_children</span><span class="p">(</span><span class="n">database</span><span class="p">,</span> <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_node_children</span><span class="p">(</span><span class="n">catalogue</span><span class="p">,</span> <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    1) Read all registered nodes from NodeModel.</span>
 <span class="sd">    2) For each node, import its function and extract called functions.</span>
 <span class="sd">    3) Keep only those calls that correspond to nodes in the table.</span>
 <span class="sd">    4) Update the NodeModel.called_nodes of the original function with a list of *function_mapping* strings.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">node_models</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">NodeModel</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="n">database</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">NodeModel</span><span class="p">)</span>
+    <span class="n">node_models</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">NodeModel</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">catalogue</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
 
     <span class="c1"># Build lookup tables to resolve extracted names -&gt; NodeModel.function_mapping</span>
     <span class="n">mapping_by_node_name</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span> <span class="n">nm</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">nm</span><span class="o">.</span><span class="n">function_mapping</span> <span class="k">for</span> <span class="n">nm</span> <span class="ow">in</span> <span class="n">node_models</span><span class="p">}</span>
     <span class="n">mapping_set</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">nm</span><span class="o">.</span><span class="n">function_mapping</span> <span class="k">for</span> <span class="n">nm</span> <span class="ow">in</span> <span class="n">node_models</span><span class="p">)</span>
 
     <span class="k">for</span> <span class="n">nm</span> <span class="ow">in</span> <span class="n">node_models</span><span class="p">:</span>
-        <span class="n">func</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_function</span><span class="p">(</span><span class="n">nm</span><span class="o">.</span><span class="n">function_mapping</span><span class="p">,</span> <span class="n">database</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">func</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">func</span> <span class="o">=</span> <span class="n">_import_callable_from_mapping</span><span class="p">(</span><span class="n">nm</span><span class="o">.</span><span class="n">function_mapping</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">func</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">Exception</span><span class="p">,</span> <span class="ne">SystemExit</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Preserving NodeModel id=</span><span class="si">%s</span><span class="s2"> name=</span><span class="si">%s</span><span class="s2"> mapping=</span><span class="si">%s</span><span class="s2"> after import failure: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">nm</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="n">nm</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">nm</span><span class="o">.</span><span class="n">function_mapping</span><span class="p">,</span>
+                <span class="n">exc</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="k">continue</span>
 
         <span class="n">parser</span> <span class="o">=</span> <span class="n">DocstringParser</span><span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">getdoc</span><span class="p">(</span><span class="n">func</span><span class="p">))</span>
@@ -408,7 +436,7 @@
             <span class="k">if</span> <span class="n">short</span> <span class="ow">in</span> <span class="n">mapping_by_node_name</span><span class="p">:</span>
                 <span class="n">resolved</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mapping_by_node_name</span><span class="p">[</span><span class="n">short</span><span class="p">])</span>
                 <span class="k">if</span> <span class="n">called_from_docstring</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">short</span> <span class="ow">in</span> <span class="n">called_from_docstring</span><span class="p">:</span>
-                    <span class="k">del</span> <span class="n">called_from_docstring</span><span class="p">[</span><span class="n">short</span><span class="p">]</span>
+                    <span class="n">called_from_docstring</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">short</span><span class="p">)</span>
                 <span class="k">continue</span>
 
         <span class="c1"># go over the leftovers in the docstring</span>
@@ -434,12 +462,9 @@
         <span class="n">nm</span><span class="o">.</span><span class="n">called_nodes</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">resolved</span><span class="p">)</span>
 
         
-        <span class="k">await</span> <span class="n">database</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">NodeModel</span><span class="p">)</span><span class="o">.</span><span class="n">update_one</span><span class="p">(</span>
-            <span class="p">{</span><span class="s2">&quot;_id&quot;</span><span class="p">:</span> <span class="n">nm</span><span class="o">.</span><span class="n">id</span><span class="p">},</span>
-            <span class="p">{</span><span class="s2">&quot;$set&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;called_nodes&quot;</span><span class="p">:</span> <span class="n">nm</span><span class="o">.</span><span class="n">called_nodes</span><span class="p">}},</span>
-        <span class="p">)</span>
+        <span class="n">catalogue</span><span class="o">.</span><span class="n">register_node</span><span class="p">(</span><span class="n">nm</span><span class="p">)</span>
 
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;node_models.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">outfile</span><span class="p">:</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;node_models.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">outfile</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">nm</span> <span class="ow">in</span> <span class="n">node_models</span><span class="p">:</span>
             <span class="n">mapping_set</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">nm</span><span class="o">.</span><span class="n">function_mapping</span><span class="p">)</span>
             <span class="n">mapping_by_node_name</span><span class="p">[</span><span class="n">nm</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">nm</span><span class="o">.</span><span class="n">function_mapping</span>
@@ -533,6 +558,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

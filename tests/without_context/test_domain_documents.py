@@ -22,7 +22,6 @@ from simstack.models.document import (
     decode_document_value,
     encode_document_value,
 )
-from simstack.persistence.criteria import normalize_criteria
 from simstack.util.model_copy import model_copy
 
 
@@ -62,7 +61,7 @@ def test_ids_are_validated_neutral_strings_with_server_schema_metadata():
     assert not ObjectId.is_valid(None)
     with pytest.raises(ValueError):
         ObjectId("not an identity")
-    value = DomainParent.model_validate_doc({"_id": ids[0], "value": 1})
+    value = DomainParent.model_validate_doc({"id": ids[0], "value": 1})
     assert value.id == ids[0]
     assert value.model_dump_doc()["id"] == ids[0]
     schema = DomainParent.model_json_schema()
@@ -70,21 +69,6 @@ def test_ids_are_validated_neutral_strings_with_server_schema_metadata():
     assert "_id" not in schema["properties"]
 
 
-def test_class_fields_are_neutral_criteria_and_inherited_fields_work():
-    criteria = (DomainChild.value >= 2) & DomainChild.scientific_label.in_(["a", "b"])
-    assert normalize_criteria(criteria) == {
-        "op": "and",
-        "items": [
-            {"op": "gte", "field": "value", "value": 2},
-            {"op": "in", "field": "scientific_label", "value": ["a", "b"]},
-        ],
-    }
-    assert DomainChild.value.desc().to_dict() == {"field": "value", "direction": -1}
-    assert DomainGraph.embedded.label.path == "embedded.label"
-    with pytest.raises(ValueError, match="neutral criteria"):
-        normalize_criteria({"value": {"$gte": 2}})
-    with pytest.raises(TypeError, match="Combine criteria"):
-        bool(DomainParent.value == 1)
 
 
 def test_references_embedded_values_subtypes_and_containers_keep_identity():
@@ -115,59 +99,14 @@ def test_references_embedded_values_subtypes_and_containers_keep_identity():
     assert restored.reference.scientific_label == "spectrum"
     schema = DomainGraph.model_json_schema()
     assert (
-        schema["properties"]["reference"]["x-simstack-reference-collection"]
-        == "domain_parent"
+        schema["properties"]["reference"]["x-simstack-reference-model"]
+        == "DomainParent"
     )
+    assert "x-simstack-reference-collection" not in json.dumps(schema)
     assert "x-simstack-reference" not in schema["properties"]["embedded"]
     assert document["id"] == value.id
 
 
-def test_custom_primary_key_alias_metadata_and_serializers_stay_explicit():
-    class Measurement(Model):
-        model_config = {"collection": "measurements"}
-        key: str = Field(primary_field=True)
-        name: str = Field(key_name="display_name", unique=True)
-        value: int
-
-        @field_serializer("value")
-        def value_serializer(self, value):
-            return value + 1
-
-    value = Measurement(key="run-A", name="signal", value=2)
-    assert value.id == "run-A"
-    assert value.model_dump_doc() == {
-        "id": "run-A",
-        "display_name": "signal",
-        "value": 3,
-    }
-    assert Measurement.__collection__ == "measurements"
-    assert (Measurement.key == "run-A").to_dict() == {
-        "op": "eq",
-        "field": "id",
-        "value": "run-A",
-    }
-    assert (Measurement.id == "run-A").to_dict() == {
-        "op": "eq",
-        "field": "id",
-        "value": "run-A",
-    }
-    assert (
-        Measurement.model_fields["name"].json_schema_extra["x-simstack-index"]["unique"]
-        is True
-    )
-    assert Measurement.name.path == "display_name"
-    schema = Measurement.model_json_schema()
-    assert schema["properties"]["id"]["type"] == "string"
-    assert "format" not in schema["properties"]["id"]
-    assert "key" not in schema["properties"]
-    assert schema["x-simstack-primary-field"] == "key"
-    restored = Measurement.model_validate_doc(
-        {"id": "run-A", "display_name": "signal", "value": 2}
-    )
-    assert restored.key == "run-A"
-    assert model_copy(value, preserve_ids=True).id == "run-A"
-    with pytest.raises(ValueError, match="preserve_ids"):
-        model_copy(value)
 
 
 def test_wire_codec_retains_binary_numeric_datetime_and_reserved_user_mapping():
@@ -237,8 +176,10 @@ def test_inherited_scientific_hash_ignores_ids_and_repository_private_state():
     b = model_copy(a)
     assert a.id != b.id
     assert complex_hash_function(a) == complex_hash_function(b)
-    object.__setattr__(a, "_simstack_persisted_document", a.model_dump_doc())
-    object.__setattr__(a, "_simstack_refreshed_fields", {"value"})
+    a._scientific_revision = "opaque scientific version"
+    a._scientific_reference = ("domain_scanner_example.Child", str(a.id))
+    assert "_scientific_revision" not in a.__dict__
+    assert "_scientific_reference" not in a.__dict__
     assert complex_hash_function(a) == complex_hash_function(b)
     b.scientific_label = "different signal"
     assert complex_hash_function(a) != complex_hash_function(b)
@@ -246,9 +187,7 @@ def test_inherited_scientific_hash_ignores_ids_and_repository_private_state():
 
 @pytest.mark.asyncio
 async def test_model_scanner_registers_indirect_document_inheritance():
-    from simstack.persistence.memory import InMemoryRepository
     from simstack.tables.model_table import CreateModelTable
-    from simstack.models.models import ModelMapping
 
     module = types.ModuleType("domain_scanner_example")
     exec(
@@ -257,11 +196,30 @@ async def test_model_scanner_registers_indirect_document_inheritance():
         "class Child(Parent):\n    scientific_label: str\n",
         module.__dict__,
     )
-    store = InMemoryRepository()
-    await CreateModelTable(store)._create_models_from_module(module, "")
-    entries = await store.find(ModelMapping)
+    from simstack.tables.catalogue import CatalogueCollector
+    catalogue = CatalogueCollector()
+    await CreateModelTable(catalogue)._create_models_from_module(module, "")
+    entries = list(catalogue.models.values())
     assert {entry.name for entry in entries} == {"Parent", "Child"}
-    assert {entry.collection_name for entry in entries} == {"parent", "child"}
+    assert all("collection_name" not in entry.model_dump() for entry in entries)
+    assert catalogue.model_types == {
+        "domain_scanner_example.Parent": module.Parent,
+        "domain_scanner_example.Child": module.Child,
+    }
+
+
+def test_domain_models_do_not_expose_physical_storage_or_query_hooks():
+    assert DomainParent.model_fields["id"].alias is None
+    identity = ObjectId()
+    assert DomainParent.model_validate_doc(
+        {"id": identity, "_id": ObjectId(), "value": 1}
+    ).id == identity
+    assert not hasattr(DomainParent, "__collection__")
+    assert not hasattr(DomainParent, "__field_expression_factory__")
+    with pytest.raises(AttributeError):
+        DomainParent.value
+    with pytest.raises(TypeError, match="index"):
+        Field(default=0, index=True)
 
 
 def test_unknown_subtype_is_not_imported_or_accepted():
@@ -270,52 +228,3 @@ def test_unknown_subtype_is_not_imported_or_accepted():
             {"id": ObjectId(), "value": 1, SUBTYPE_KEY: "untrusted.module.Document"}
         )
     assert "incompatible document subtype" in str(error.value.__cause__)
-
-
-@pytest.mark.asyncio
-async def test_explicit_collection_inheritance_retains_type_when_loaded_as_parent():
-    from simstack.persistence.memory import InMemoryRepository
-
-    class SharedParent(Model):
-        model_config = {"collection": "shared_scientific_records"}
-        value: int
-
-    class SharedChild(SharedParent):
-        additional_value: int
-
-    assert SharedChild.__collection__ == SharedParent.__collection__
-    store = InMemoryRepository()
-    original = SharedChild(value=1, additional_value=2)
-    await store.save(original)
-    restored = await store.find_one(SharedParent, SharedParent.id == original.id)
-    assert isinstance(restored, SharedChild)
-    assert restored.additional_value == 2
-    assert restored.id == original.id
-
-
-@pytest.mark.asyncio
-async def test_custom_integer_primary_reference_keeps_its_native_identity():
-    from simstack.persistence.memory import InMemoryRepository
-
-    class IntegerIdentity(Model):
-        key: int = Field(primary_field=True)
-        label: str
-
-    class IntegerReference(Model):
-        item: IntegerIdentity = Reference()
-
-    store = InMemoryRepository()
-    original = IntegerReference(item=IntegerIdentity(key=42, label="sample"))
-    assert original.model_dump_doc()["item"] == 42
-    assert (IntegerIdentity.id == 42).to_dict() == {
-        "op": "eq",
-        "field": "id",
-        "value": 42,
-    }
-    await store.save(original)
-    restored = await store.find_one(
-        IntegerReference, IntegerReference.id == original.id
-    )
-    assert restored.item.id == 42
-    assert restored.item.key == 42
-    assert restored.item.label == "sample"

@@ -4,14 +4,12 @@ Simstack II Setup
 UI Setup
 --------
 
-1. Register at ``simstack.int.kit.edu`` (inside the KIT network). This will create an **inactive** user.
-2. Email the maintainer so your account can be activated and you can receive:
+1. Create an account on your SimStack Server and have it activated by its administrator.
+2. Create or select a resource in the UI and run its enrollment command on that resource.
+3. Connect the workflow repository and select its branch. Server publishes the catalogue and Runner prepares the pinned revision.
 
-   * a database name
-   * a database password
-
-   (This is not automated yet.)
-3. Go to your profile and upload your resources configuration.
+Database credentials are configured by the Server administrator and are never
+issued to Runner or workflow environments.
 
 Example resources configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -128,7 +126,7 @@ Sync dependencies
    source ~/.bashrc
    uv sync --locked
 
-Note: This will install all required dependencies, including ``mongomock`` and ``mongomock-motor``, which are used for in-memory database support during testing.
+Core depends on the Server API rather than a database driver. Storage integration tests run with the sibling Server checkout and its development dependencies.
 
 
 .. _configuration-file:
@@ -140,37 +138,31 @@ Create a ``simstack.toml`` file (placeholders shown below):
 
 .. code-block:: toml
 
-   [parameters]
-   [parameters.general]
-   use_db = true
-   workdir_self = "<PATH_TO_SIMSTACK_DATA_DIR>"
-   # these are parameters for one user for all hosts
+   [parameters.server]
+   url = "https://<SIMSTACK_SERVER>"
 
-   [parameters.db]
-   database = "<NAME>_data"
-   test_database = "<NAME>_test"
-   connection_string = "mongodb://<USER>:<PASSWORD>@<HOST>:27017/"
-   mongodump_path = "<PATH_TO_MONGODUMP_EXE>"
+Runner receives its resource token through enrollment. Set
+``SIMSTACK_RUNNER_TOKEN`` and ``SIMSTACK_RUNNER_WORKDIR`` in its environment;
+MongoDB and S3 credentials belong only to the Server deployment. Do not add a
+``[parameters.db]`` section or a database connection string to workflow or
+Runner configuration.
 
-Where:
-
-* ``<PATH_TO_SIMSTACK_DATA_DIR>`` is the path to the data directory created above (e.g. ``$HOME/simstack``)
-* ``<NAME>`` is your database name (often your first name in lower case)
-* ``<PASSWORD>`` is the database password
-* ``<PATH_TO_MONGODUMP_EXE>`` is the path to the ``mongodump`` executable (required for database backups)
+For a Python user session, initialize ``context`` with ``server_url``,
+``user_token`` and the selected resource, or supply
+``ServerAPI.for_user(server_url, user_token, resource=...)`` as ``server``.
+A user access token is distinct from a Runner resource token.
 
 
 Initialize the system
 ~~~~~~~~~~~~~~~~~~~~~
 
-This will happen automatically when the default runner starts.
+Connect the workflow repository in the UI. Server discovers its model/node
+catalogue and registers the selected revision. Runner prepares that revision
+and reports readiness before tasks are admitted.
 
-.. code-block:: bash
-
-   uv run create_model_table --dir examples --dir applications
-   uv run create_node_table --dir examples --dir applications
-
-Note: this may crash if your database is very old.
+The ``create_model_table`` and ``create_node_table`` commands remain local
+catalogue inspection tools. They collect descriptors and do not write a
+database from Runner.
 
 
 

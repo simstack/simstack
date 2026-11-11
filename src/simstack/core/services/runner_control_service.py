@@ -1,5 +1,5 @@
 from simstack.core.services.base_service import BaseService
-from simstack.runner_api.transport import RunnerAPIClient
+from simstack.core.context import context
 
 
 class RunnerControlService(BaseService):
@@ -8,13 +8,14 @@ class RunnerControlService(BaseService):
     def __init__(self, manager):
         super().__init__("RunnerControl", manager._resource, 5)
         self.manager = manager
-        self.api = RunnerAPIClient.from_environment()
+        self.control = context.server.resource
         self._container_credentials = {}
+        self._pending_restart = None
 
     async def execute(self):
-        state = await self.api.json("GET", "/runner/control")
+        state = await self.control.control_state()
         import os
-        from simstack.runner_api.credentials import configure_git_credentials, read_credentials, update_known_hosts
+        from simstack.runner_runtime.runner_credentials import configure_git_credentials, read_credentials, update_known_hosts
         credentials = os.environ.get("SIMSTACK_RUNNER_CREDENTIALS")
         if credentials:
             configure_git_credentials(read_credentials(credentials))
@@ -24,7 +25,11 @@ class RunnerControlService(BaseService):
             self.manager._claiming_paused.set()
         else:
             self.manager._claiming_paused.clear()
-        for command in state.get("commands", []):
+        commands = list(state.get("commands", []))
+        if self._pending_restart is not None and not any(
+                item["id"] == self._pending_restart["id"] for item in commands):
+            commands.insert(0, self._pending_restart)
+        for command in commands:
             if command["action"] == "prepare_repository":
                 if state.get("busy") or command.get("status") == "deferred_busy":
                     continue
@@ -35,7 +40,10 @@ class RunnerControlService(BaseService):
                 await self.prepare_repository(command, requires_reinstall=requires_reinstall)
                 continue
             if command["action"] == "restart":
-                await self.api.json("POST", f"/runner/control/{command['id']}/ack", {})
+                # ACK is idempotent. Retain the received intent if its committed
+                # response is lost and the next poll no longer returns it.
+                self._pending_restart = command
+                await self.control.acknowledge_control(command["id"], {})
                 self.manager._restart_requested = True
                 self.manager._shutdown_event.set()
                 return
@@ -43,26 +51,25 @@ class RunnerControlService(BaseService):
     async def prepare_repository(self, command, *, requires_reinstall=False):
         from simstack.util.repository_runtime import prepare_repository
 
-        path = f"/runner/control/{command['id']}"
         # The Server checks persisted task states and reserves preparation
         # atomically with claim admission. Never infer this from local processes.
-        state = await self.api.json("POST", path + "/status", {"status": "preparing"})
+        state = await self.control.control_status(command["id"], "preparing")
         if state.get("status") != "preparing":
             return
         if requires_reinstall:
-            await self.api.json("POST", path + "/ack", {
+            await self.control.acknowledge_control(command["id"], {
                 "status": "failed", "error": "Git SSH key was revoked or rotated; rerun the Runner installer",
             })
             return
         try:
-            await prepare_repository(self.api, command["payload"])
+            await prepare_repository(context.server.requests, command["payload"], repair_runtime=True)
         except Exception:
-            await self.api.json("POST", path + "/ack", {
+            await self.control.acknowledge_control(command["id"], {
                 "status": "failed",
                 "error": "Repository preparation failed; check Git host trust, access, pinned revisions, uv.lock and extras",
             })
         else:
-            await self.api.json("POST", path + "/ack", {"status": "ready"})
+            await self.control.acknowledge_control(command["id"], {"status": "ready"})
 
 
     async def refresh_container_credentials(self):
@@ -74,8 +81,7 @@ class RunnerControlService(BaseService):
 
         from simstack.core.context import context
         from simstack.core.run_docker import docker_cidfile_path, read_container_id
-        from simstack.models.node_registry import NodeRegistry
-        from simstack.runner_api.credentials import (
+        from simstack.runner_runtime.runner_credentials import (
             copy_container_credentials,
             read_credentials,
         )
@@ -85,12 +91,7 @@ class RunnerControlService(BaseService):
             return
         credentials = read_credentials(path)
         digest = hashlib.sha256(json.dumps(credentials, sort_keys=True).encode()).digest()
-        from simstack.persistence.criteria import eq
-        tasks = await context.db.find(NodeRegistry,
-            eq("parameters.resource.value", str(self.manager._resource)),
-            eq("parameters.in_docker", True),
-            NodeRegistry.status.in_(["retrieved", "running", "slurm_queued", "slurm_running"]),
-        )
+        tasks = await context.server.resource.active_containers()
         active = set()
         for task in tasks:
             cidfile = docker_cidfile_path(Path(context.config.workdir) / task.name / str(task.id))

@@ -3,15 +3,13 @@ import os
 
 import pytest
 
-from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.node import node
+from simstack.core.node import node, compute_arg_hash
+from simstack.models.document import ObjectId
+from uuid import uuid4
 from simstack.models import (
     FloatData,
-    NamedDataReference,
-    NodeRegistry,
     Parameters,
-    Project,
 )
 
 
@@ -26,34 +24,21 @@ def remote_runner_process_identity(_input: FloatData, **_kwargs) -> FloatData:
 async def test_subprocess_runner_completes_submitted_node(test_runner):
     if test_runner is None:
         pytest.skip(
-            "Set START_LOCAL_RUNNER=true with a real disposable MongoDB to run this gate."
+            "Set START_LOCAL_RUNNER=true to run the local HTTP Server/Runner subprocess gate."
         )
 
-    project = await context.db.save(Project(field_name="runner-completion-project"))
-    input_value = await context.db.save(FloatData(field_name="input", value=1.0))
-    function_mapping = (
-        f"{remote_runner_process_identity.__module__}."
-        f"{remote_runner_process_identity.__name__}"
-    )
-    submitted = await context.db.save(
-        NodeRegistry(
-            name=remote_runner_process_identity.__name__,
-            status=TaskStatus.SUBMITTED,
-            project=project.id,
-            function_hash="NOT INITIALIZED",
-            arg_hash="NOT INITIALIZED",
-            func_mapping=function_mapping,
-            call_path=f".{remote_runner_process_identity.__name__}",
-            input_references=[
-                NamedDataReference(
-                    variable_name="_input",
-                    variable_mapping="simstack.models.base_types.FloatData",
-                    reference=input_value.id,
-                )
-            ],
-            parameters=Parameters(resource="test", force_rerun=True),
-        )
-    )
+    api = test_runner.simstack_user_api
+    input_value = await api.values.publish_value(FloatData(field_name="input", value=1.0))
+    function_mapping = (f"{remote_runner_process_identity.__module__}."
+        f"{remote_runner_process_identity.__name__}")
+    submitted = (await api.tasks.submit_root({
+        "requested_task_id": str(ObjectId()), "invocation_id": str(uuid4()),
+        "name": remote_runner_process_identity.__name__, "function_mapping": function_mapping,
+        "arg_hash": compute_arg_hash([input_value]), "call_path": "." + remote_runner_process_identity.__name__,
+        "input_references": [{"variable_name": "_input", "variable_mapping": "simstack.models.base_types.FloatData",
+            "reference": str(input_value.id)}],
+        "parameters": Parameters(resource="test", force_rerun=True, in_docker=False).model_dump(mode="json"),
+    }, request_id=str(uuid4())))["task"]
 
     deadline = asyncio.get_running_loop().time() + 30
     completed = None
@@ -66,9 +51,7 @@ async def test_subprocess_runner_completes_submitted_node(test_runner):
                 f"{runner_output}"
             )
 
-        current = await context.db.find_one(
-            NodeRegistry, NodeRegistry.id == submitted.id
-        )
+        current = await api.tasks.get_task(submitted.id)
         assert current is not None
         if current.status == TaskStatus.COMPLETED:
             completed = current
@@ -89,9 +72,7 @@ async def test_subprocess_runner_completes_submitted_node(test_runner):
 
     result_reference = completed.results_references[0]
     assert result_reference.variable_mapping == "simstack.models.base_types.FloatData"
-    result = await context.db.find_one(
-        FloatData, FloatData.id == result_reference.reference
-    )
+    result = await api.values.get_value(FloatData, result_reference.reference)
     assert result is not None
     assert result.field_name == "runner_pid"
     assert int(result.value) == test_runner.pid

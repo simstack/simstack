@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -275,13 +280,16 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">builtins</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">zlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">weakref</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">Reference</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">Reference</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">AliasChoices</span><span class="p">,</span> <span class="n">AliasPath</span><span class="p">,</span> <span class="n">model_validator</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.file_instance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileInstance</span>
@@ -292,9 +300,11 @@
     <span class="n">path_for_file_instance</span><span class="p">,</span>
     <span class="n">transfer_resource_name</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.file_hashing</span><span class="w"> </span><span class="kn">import</span> <span class="n">hash_file</span><span class="p">,</span> <span class="n">hash_string</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.file_hashing</span><span class="w"> </span><span class="kn">import</span> <span class="n">hash_file</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="n">_upload_locks</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakValueDictionary</span><span class="p">()</span>
+<span class="n">_upload_locks_guard</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
 
 <span class="c1"># MongoDB has a 16MB document size limit</span>
 <span class="n">MONGODB_MAX_DOCUMENT_SIZE</span> <span class="o">=</span> <span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>  <span class="c1"># 16 MB in bytes</span>
@@ -305,13 +315,45 @@
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.files.FileStack">[docs]</a>
 <span class="nd">@simstack_model</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">FileStack</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
-    <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Name of the file&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;json_schema_extra&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;x-simstack-file&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}}</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__get_pydantic_json_schema__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">core_schema</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="c1"># Storage policy is inherited even when a workflow customizes its schema.</span>
+        <span class="n">schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__get_pydantic_json_schema__</span><span class="p">(</span><span class="n">core_schema</span><span class="p">,</span> <span class="n">handler</span><span class="p">)</span>
+        <span class="n">schema</span><span class="p">[</span><span class="s2">&quot;x-simstack-file&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">field_paths</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+            <span class="n">field</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_fields</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="n">paths</span> <span class="o">=</span> <span class="p">[[</span><span class="n">name</span><span class="p">]]</span>
+            <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">alias</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">alias</span><span class="p">,</span> <span class="n">AliasChoices</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">choice</span> <span class="ow">in</span> <span class="n">alias</span><span class="o">.</span><span class="n">choices</span><span class="p">:</span>
+                        <span class="n">add</span><span class="p">(</span><span class="n">choice</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">alias</span><span class="p">,</span> <span class="n">AliasPath</span><span class="p">):</span>
+                    <span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">alias</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">alias</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                    <span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">alias</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">alias</span> <span class="ow">in</span> <span class="p">(</span><span class="n">field</span><span class="o">.</span><span class="n">alias</span><span class="p">,</span> <span class="n">field</span><span class="o">.</span><span class="n">validation_alias</span><span class="p">,</span> <span class="n">field</span><span class="o">.</span><span class="n">serialization_alias</span><span class="p">):</span>
+                <span class="n">add</span><span class="p">(</span><span class="n">alias</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">))</span>
+        <span class="n">schema</span><span class="p">[</span><span class="s2">&quot;x-simstack-file-fields&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="n">field_paths</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="s2">&quot;in_memory&quot;</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="n">schema</span><span class="p">[</span><span class="s2">&quot;x-simstack-file-storage-fields&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;id&quot;</span> <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="bp">cls</span><span class="o">.</span><span class="n">__primary_field__</span> <span class="k">else</span> <span class="p">(</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="n">model_fields</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">serialization_alias</span> <span class="ow">or</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_fields</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">alias</span> <span class="ow">or</span> <span class="n">name</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="s2">&quot;is_hashable&quot;</span><span class="p">,</span> <span class="s2">&quot;hash&quot;</span><span class="p">,</span> <span class="s2">&quot;in_memory&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="s2">&quot;locations&quot;</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">schema</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">builtins</span><span class="o">.</span><span class="n">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Name of the file&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
     <span class="n">size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Size of the file in bytes&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
     <span class="n">is_hashable</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Whether the file stack is hashable&quot;</span>
     <span class="p">)</span>
-    <span class="nb">hash</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
-        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Hash of the file stack content&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span>
+    <span class="nb">hash</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">builtins</span><span class="o">.</span><span class="n">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Hash of the file stack content&quot;</span>
     <span class="p">)</span>
     <span class="n">in_memory</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Whether the file stack is in memory&quot;</span>
@@ -323,6 +365,15 @@
     <span class="n">locations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FileInstance</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;List of file locations&quot;</span>
     <span class="p">)</span>
+
+<div class="viewcode-block" id="FileStack.require_external_file_content">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.files.FileStack.require_external_file_content">[docs]</a>
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">require_external_file_content</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_memory</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;FileStack bytes must be stored in S3; use from_string or from_local_file&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;FileStack(name=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">, size=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2">, is_hashable=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">is_hashable</span><span class="si">}</span><span class="s2">, in_memory=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">in_memory</span><span class="si">}</span><span class="s2">, locations=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="si">}</span><span class="s2">)&quot;</span>
@@ -355,27 +406,28 @@
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.files.FileStack.from_string">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_string</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data_string</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">file_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FileStack</span><span class="p">:</span>
-        <span class="n">content</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">data_string</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
-        <span class="n">file_hash</span> <span class="o">=</span> <span class="n">hash_string</span><span class="p">(</span><span class="n">data_string</span><span class="p">)</span>
-        <span class="n">size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">MONGODB_MAX_DOCUMENT_SIZE</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Compressed content size </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes exceeds MongoDB limit of </span><span class="si">{</span><span class="n">MONGODB_MAX_DOCUMENT_SIZE</span><span class="si">}</span><span class="s2"> bytes for file </span><span class="si">{</span><span class="n">file_name</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Compressed content size </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes exceeds MongoDB document size limit of </span><span class="si">{</span><span class="n">MONGODB_MAX_DOCUMENT_SIZE</span><span class="si">}</span><span class="s2"> bytes&quot;</span>
-            <span class="p">)</span>
-
-        <span class="n">file_stack</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span>
-            <span class="n">name</span><span class="o">=</span><span class="n">file_name</span><span class="p">,</span>
-            <span class="n">in_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">content</span><span class="o">=</span><span class="n">content</span><span class="p">,</span>
-            <span class="n">is_hashable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span>
-            <span class="nb">hash</span><span class="o">=</span><span class="n">file_hash</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">file_stack</span></div>
+        <span class="c1"># A pure constructor: import-time/default values need no initialized</span>
+        <span class="c1"># context or credentials. File bytes are staged on disk until saved.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
+            <span class="n">parent</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;file-staging&quot;</span>
+            <span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">RuntimeError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">):</span>
+            <span class="n">parent</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">directory</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;simstack-file-&quot;</span><span class="p">,</span> <span class="nb">dir</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">atexit</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+        <span class="n">atexit</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">,</span> <span class="n">directory</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span><span class="o">.</span><span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;file&quot;</span><span class="p">)</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">data_string</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">from_local_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">is_hashable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">in_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">secure_source</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">value</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">file_name</span>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;_staging_directory&quot;</span><span class="p">,</span> <span class="n">directory</span><span class="p">)</span>
+        <span class="n">value</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
+        <span class="n">value</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="n">Resource</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="s2">&quot;__pending__&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span></div>
 
 
 <div class="viewcode-block" id="FileStack.from_local_file">
@@ -400,7 +452,7 @@
 <span class="sd">        :type path: Union[Path, str]</span>
 <span class="sd">        :param is_hashable: A flag indicating whether the file hash needs to be calculated.</span>
 <span class="sd">        :type is_hashable: bool</span>
-<span class="sd">        :param in_memory: Whether to store the compressed file content in memory. Defaults to True.</span>
+<span class="sd">        :param in_memory: Capture a local snapshot until publication; persistent bytes are stored in S3.</span>
 <span class="sd">        :type in_memory: bool</span>
 
 <span class="sd">        :return: A FileStack object containing FileInstances for the file.</span>
@@ -424,67 +476,104 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No read permission for file: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No read permission for file: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="n">content</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="n">file_hash</span> <span class="o">=</span> <span class="n">hash_file</span><span class="p">(</span><span class="n">source_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">is_hashable</span> <span class="k">else</span> <span class="kc">None</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="n">source_path</span><span class="o">.</span><span class="n">name</span>
-        <span class="n">size</span> <span class="o">=</span> <span class="n">source_path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span> <span class="k">if</span> <span class="n">source_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
-
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">RuntimeError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">):</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">staging_directory</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="n">in_memory</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="c1"># Read the file content</span>
-                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">source_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-                    <span class="n">file_content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-                <span class="c1"># Compress the content using zlib</span>
-                <span class="n">content</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">file_content</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">task_id</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Compressed file </span><span class="si">{</span><span class="n">source_path</span><span class="si">}</span><span class="s2"> from </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">file_content</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes to </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes&quot;</span>
-                    <span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> Compressed file </span><span class="si">{</span><span class="n">source_path</span><span class="si">}</span><span class="s2"> from </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">file_content</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes to </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes&quot;</span>
-                    <span class="p">)</span>
-                <span class="c1"># Check if compressed content exceeds MongoDB document size limit</span>
-                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.9</span> <span class="o">*</span> <span class="n">MONGODB_MAX_DOCUMENT_SIZE</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">task_id</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;Compressed content size </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes exceeds MongoDB limit of </span><span class="si">{</span><span class="n">MONGODB_MAX_DOCUMENT_SIZE</span><span class="si">}</span><span class="s2"> bytes for file </span><span class="si">{</span><span class="n">source_path</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="p">)</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;Setting in_memory to False for file </span><span class="si">{</span><span class="n">source_path</span><span class="si">}</span><span class="s2"> and clear content&quot;</span>
-                        <span class="p">)</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> Compressed content size </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes exceeds MongoDB limit of </span><span class="si">{</span><span class="n">MONGODB_MAX_DOCUMENT_SIZE</span><span class="si">}</span><span class="s2"> bytes for file </span><span class="si">{</span><span class="n">source_path</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="p">)</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;task_id: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> Setting in_memory to False for file </span><span class="si">{</span><span class="n">source_path</span><span class="si">}</span><span class="s2"> and clear content&quot;</span>
-                        <span class="p">)</span>
-                    <span class="n">in_memory</span> <span class="o">=</span> <span class="kc">False</span>
-                    <span class="n">content</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to compress file </span><span class="si">{</span><span class="n">source_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">raise</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">atexit</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+
+            <span class="n">parent</span> <span class="o">=</span> <span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;file-staging&quot;</span>
+                      <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;workdir&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">staging_directory</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;simstack-file-&quot;</span><span class="p">,</span> <span class="nb">dir</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
+            <span class="n">atexit</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">,</span> <span class="n">staging_directory</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">snapshot</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">staging_directory</span><span class="p">)</span> <span class="o">/</span> <span class="n">source_path</span><span class="o">.</span><span class="n">name</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">source_path</span><span class="p">,</span> <span class="n">snapshot</span><span class="p">)</span>
+            <span class="n">source_path</span> <span class="o">=</span> <span class="n">snapshot</span>
 
         <span class="n">file_stack</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span>
-            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
-            <span class="n">in_memory</span><span class="o">=</span><span class="n">in_memory</span><span class="p">,</span>
-            <span class="n">content</span><span class="o">=</span><span class="n">content</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">source_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">in_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">content</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">is_hashable</span><span class="o">=</span><span class="n">is_hashable</span><span class="p">,</span>
-            <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span>
-            <span class="nb">hash</span><span class="o">=</span><span class="n">file_hash</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="n">source_path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span><span class="p">,</span>
+            <span class="nb">hash</span><span class="o">=</span><span class="n">hash_file</span><span class="p">(</span><span class="n">source_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">is_hashable</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
         <span class="p">)</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">in_memory</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">staging_directory</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">file_stack</span><span class="p">,</span> <span class="s2">&quot;_staging_directory&quot;</span><span class="p">,</span> <span class="n">staging_directory</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">staging_directory</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;workdir&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">location</span> <span class="o">=</span> <span class="n">FileInstance</span><span class="o">.</span><span class="n">from_local_file</span><span class="p">(</span>
-                <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
-                <span class="n">file_stack_id</span><span class="o">=</span><span class="n">file_stack</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
-                <span class="n">make_copy</span><span class="o">=</span><span class="ow">not</span> <span class="n">secure_source</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">in_memory</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="n">file_stack</span><span class="o">.</span><span class="n">locations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">location</span><span class="p">)</span>
-
+                <span class="n">path</span><span class="o">=</span><span class="n">source_path</span><span class="p">,</span> <span class="n">file_stack_id</span><span class="o">=</span><span class="n">file_stack</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="n">make_copy</span><span class="o">=</span><span class="ow">not</span> <span class="n">secure_source</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="n">FileInstance</span><span class="p">(</span>
+                <span class="n">path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">source_path</span><span class="o">.</span><span class="n">resolve</span><span class="p">()),</span> <span class="n">resource</span><span class="o">=</span><span class="s2">&quot;__pending__&quot;</span><span class="p">,</span>
+                <span class="n">created_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="n">size_bytes</span><span class="o">=</span><span class="n">file_stack</span><span class="o">.</span><span class="n">size</span><span class="p">,</span>
+                <span class="n">checksum_sha256</span><span class="o">=</span><span class="n">hash_file</span><span class="p">(</span><span class="n">source_path</span><span class="p">))</span>
+        <span class="n">file_stack</span><span class="o">.</span><span class="n">locations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">location</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">file_stack</span></div>
 
+
+<div class="viewcode-block" id="FileStack.ensure_uploaded">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.files.FileStack.ensure_uploaded">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ensure_uploaded</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Publish staged bytes before persistence; constructors remain local.&quot;&quot;&quot;</span>
+        <span class="c1"># Publication runs in worker threads. The same scientific input can be</span>
+        <span class="c1"># shared by concurrent nodes, including its single disposable staging file.</span>
+        <span class="k">with</span> <span class="n">_upload_locks_guard</span><span class="p">:</span>
+            <span class="n">lock</span> <span class="o">=</span> <span class="n">_upload_locks</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">())</span>
+        <span class="k">with</span> <span class="n">lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_uploaded</span><span class="p">(</span><span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_uploaded</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">copy_source</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_copy_source_file_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">copy_source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.object_transfer</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectFileClient</span>
+            <span class="k">if</span> <span class="n">client</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">client</span> <span class="o">=</span> <span class="n">ObjectFileClient</span><span class="o">.</span><span class="n">from_context</span><span class="p">()</span>
+            <span class="n">uploaded</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">copy_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy_source</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">locations</span> <span class="o">=</span> <span class="p">[</span><span class="n">FileInstance</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">uploaded</span><span class="p">)]</span>
+            <span class="nb">object</span><span class="o">.</span><span class="fm">__delattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_copy_source_file_id&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">location_type</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span> <span class="ow">and</span> <span class="n">location</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;available&quot;</span>
+               <span class="k">for</span> <span class="n">location</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.object_transfer</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectFileClient</span>
+        <span class="k">if</span> <span class="n">client</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">ObjectFileClient</span><span class="o">.</span><span class="n">from_context</span><span class="p">()</span>
+        <span class="n">runner_upload</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">object_api_prefix</span> <span class="o">==</span> <span class="s2">&quot;/runner/objects&quot;</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="n">Resource</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">transfer_resource_name</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span><span class="p">))</span> <span class="k">if</span> <span class="n">runner_upload</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">location</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">location</span><span class="o">.</span><span class="n">location_type</span> <span class="o">!=</span> <span class="s2">&quot;local_path&quot;</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">():</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">path</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="k">continue</span>
+            <span class="c1"># API metadata + direct S3 transfer; no content enters a DB write.</span>
+            <span class="n">uploaded</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">runner_upload</span> <span class="ow">and</span> <span class="n">transfer_resource_name</span><span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;__pending__&quot;</span><span class="p">:</span>
+                <span class="n">location</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="n">resource</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">FileInstance</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">uploaded</span><span class="p">))</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">runner_upload</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">locations</span> <span class="o">=</span> <span class="p">[</span><span class="n">value</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span> <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">location_type</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">]</span>
+            <span class="n">staged</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_staging_directory&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">staged</span><span class="p">:</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+                <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">staged</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">locations</span> <span class="o">=</span> <span class="p">[</span><span class="n">value</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span> <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">location_type</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">]</span>
+                <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_staging_directory&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No local source exists to publish FileStack </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="FileStack.complex_hash">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.files.FileStack.complex_hash">[docs]</a>
@@ -529,8 +618,11 @@
 <span class="sd">        :param local_dir: The local directory to copy the file stack to.</span>
 <span class="sd">        :type local_dir: Path</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pending</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">transfer_resource_name</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;__pending__&quot;</span>
+            <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pending</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_raw</span><span class="p">(</span><span class="n">Resource</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="s2">&quot;__pending__&quot;</span><span class="p">),</span> <span class="n">local_dir</span><span class="p">)</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_raw</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">local_dir</span><span class="p">)</span></div>
 
 
@@ -551,55 +643,51 @@
         <span class="k">if</span> <span class="n">local_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">local_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_memory</span><span class="p">:</span>
+        <span class="n">pending</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">value</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span>
+            <span class="k">if</span> <span class="n">transfer_resource_name</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;__pending__&quot;</span>
+            <span class="ow">and</span> <span class="n">Path</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">()),</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pending</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">local_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="n">local_dir</span> <span class="o">/</span> <span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">else</span> <span class="n">Path</span><span class="p">(</span><span class="n">pending</span><span class="o">.</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">target</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File </span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2"> already exists.&quot;</span><span class="p">)</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">pending</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">target</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
+        <span class="n">requests</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_object_requests&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">requests</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;FileStack is in-memory but content is missing.&quot;</span><span class="p">)</span>
-                <span class="n">file_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;file&quot;</span>
-                <span class="c1"># Decompress the content</span>
-                <span class="n">decompressed_content</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
-                <span class="c1"># Write the decompressed content to the local directory</span>
-                <span class="n">target_path</span> <span class="o">=</span> <span class="n">local_dir</span> <span class="o">/</span> <span class="n">file_name</span>
-                <span class="k">if</span> <span class="n">target_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span> <span class="c1"># the user must make sure that the file does not exist, otherwise the file will be overwritten</span>
-                    <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File </span><span class="si">{</span><span class="n">target_path</span><span class="si">}</span><span class="s2"> already exists.&quot;</span><span class="p">)</span>
-                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">target_path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">decompressed_content</span><span class="p">)</span>
-                <span class="k">return</span> <span class="n">target_path</span>
-            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to decompress and write file </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Failed to decompress and write file </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
-                <span class="p">)</span>
+                <span class="n">requests</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">requests</span>
+            <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+                <span class="n">requests</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">requests</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">requests</span><span class="o">.</span><span class="n">authorization</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">}:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.object_transfer</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectFileClient</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="n">local_dir</span> <span class="o">/</span> <span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">ObjectFileClient</span><span class="o">.</span><span class="n">for_api</span><span class="p">(</span><span class="n">requests</span><span class="p">)</span><span class="o">.</span><span class="n">materialize_user_file</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_copy_source_file_id&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">),</span> <span class="n">target</span><span class="p">)</span>
 
         <span class="n">local_resource_name</span> <span class="o">=</span> <span class="n">transfer_resource_name</span><span class="p">(</span><span class="n">local_resource</span><span class="p">)</span>
         <span class="n">local_transfer_resource</span> <span class="o">=</span> <span class="n">Resource</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">local_resource_name</span><span class="p">)</span>
 
         <span class="c1"># If in-memory instance not found or decompression failed, try finding instance on same resource</span>
-        <span class="n">same_resource_instance</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
-            <span class="p">(</span>
-                <span class="n">f</span>
-                <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span>
-                <span class="k">if</span> <span class="n">transfer_resource_name</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span> <span class="o">==</span> <span class="n">local_resource_name</span>
-                <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;available&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;available&quot;</span>
-            <span class="p">),</span>
-            <span class="kc">None</span><span class="p">,</span>
-        <span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">same_resource_instance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">same_resource_instance</span><span class="o">.</span><span class="n">last_accessed_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
-            <span class="c1"># Return the absolute path by joining with the resource&#39;s workdir if it&#39;s relative</span>
-            <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">same_resource_instance</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">instance</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">instance</span><span class="o">.</span><span class="n">location_type</span> <span class="o">!=</span> <span class="s2">&quot;local_path&quot;</span>
+                    <span class="ow">or</span> <span class="n">transfer_resource_name</span><span class="p">(</span><span class="n">instance</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span> <span class="o">!=</span> <span class="n">local_resource_name</span>
+                    <span class="ow">or</span> <span class="n">instance</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="s2">&quot;available&quot;</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">instance</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">():</span>
-                <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">path</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">instance</span><span class="o">.</span><span class="n">last_accessed_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="k">return</span> <span class="n">path</span>
 
-                <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">path</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using existing instance </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">path</span>
-
-        <span class="n">remote_instance</span> <span class="o">=</span> <span class="n">first_available_remote_location</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">,</span> <span class="n">local_transfer_resource</span>
-        <span class="p">)</span>
+        <span class="n">remote_instance</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">location</span> <span class="k">for</span> <span class="n">location</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span>
+            <span class="k">if</span> <span class="n">location</span><span class="o">.</span><span class="n">location_type</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span> <span class="ow">and</span> <span class="n">location</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;available&quot;</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">remote_instance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">remote_instance</span> <span class="o">=</span> <span class="n">first_available_remote_location</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">,</span> <span class="n">local_transfer_resource</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">remote_instance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;No suitable file instance found for copying.&quot;</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
@@ -624,7 +712,7 @@
         <span class="k">assert</span> <span class="n">client</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
         <span class="n">transfer</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">create_transfer</span><span class="p">(</span>
-            <span class="n">file_stack_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+            <span class="n">file_stack_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_copy_source_file_id&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">)),</span>
             <span class="n">source_file_instance_id</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">remote_instance</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
             <span class="n">source_resource_name</span><span class="o">=</span><span class="n">transfer_resource_name</span><span class="p">(</span><span class="n">remote_instance</span><span class="o">.</span><span class="n">resource</span><span class="p">),</span>
             <span class="n">target_resource_name</span><span class="o">=</span><span class="n">transfer_resource_name</span><span class="p">(</span><span class="n">local_resource</span><span class="p">),</span>
@@ -655,7 +743,14 @@
         <span class="n">target_path</span> <span class="o">=</span> <span class="n">local_dir</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">or</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">remote_instance</span><span class="o">.</span><span class="n">path</span><span class="p">))</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">target_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
             <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File </span><span class="si">{</span><span class="n">target_path</span><span class="si">}</span><span class="s2"> already exists.&quot;</span><span class="p">)</span>
-        <span class="n">downloaded</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">download_file</span><span class="p">(</span><span class="n">transfer_id</span><span class="p">,</span> <span class="n">target_path</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">downloaded</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">download_file</span><span class="p">(</span><span class="n">transfer_id</span><span class="p">,</span> <span class="n">target_path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">client</span><span class="o">.</span><span class="n">fail_transfer</span><span class="p">(</span><span class="n">transfer_id</span><span class="p">,</span> <span class="n">error_message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span> <span class="n">error_code</span><span class="o">=</span><span class="s2">&quot;TARGET_DOWNLOAD_FAILED&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed to report download failure for transfer </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">transfer_id</span><span class="p">)</span>
+            <span class="k">raise</span>
         <span class="n">instance_path</span> <span class="o">=</span> <span class="n">path_for_file_instance</span><span class="p">(</span><span class="n">downloaded</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span>
         <span class="n">completed</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">complete_transfer</span><span class="p">(</span>
             <span class="n">transfer_id</span><span class="o">=</span><span class="n">transfer_id</span><span class="p">,</span>
@@ -720,7 +815,7 @@
         <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Hello World&quot;</span><span class="p">)</span>
     <span class="n">file_stack</span> <span class="o">=</span> <span class="n">FileStack</span><span class="o">.</span><span class="n">from_local_file</span><span class="p">(</span><span class="s2">&quot;test.txt&quot;</span><span class="p">,</span> <span class="n">is_hashable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">in_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">file_stack</span><span class="p">)</span>
-    <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">file_stack</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">publish_value</span><span class="p">(</span><span class="n">file_stack</span><span class="p">)</span>
     <span class="n">local_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;samira&quot;</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">file_stack</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
     <span class="n">retrieved</span> <span class="o">=</span> <span class="n">file_stack</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">local_dir</span><span class="o">=</span><span class="n">local_dir</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Retrieved file path:&quot;</span><span class="p">,</span> <span class="n">retrieved</span><span class="p">)</span></div>
@@ -768,6 +863,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

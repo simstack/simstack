@@ -1,6 +1,14 @@
 simstack.models package
 =======================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   simstack.models.document
+
 Submodules
 ----------
 

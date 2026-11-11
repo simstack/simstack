@@ -12,15 +12,17 @@ Add One
 
 1. Define the target state first: model code, collection shape, and recovery
    flow.
-2. Add one file under ``server/migrations/`` named
-   ``YYYYMMDDHHMMSS_short_name.py``.
-3. Set ``name`` to the file stem and ``dependencies`` to the latest migration.
-4. Take a backup before running the migration on any real workspace database.
+2. Add workspace migrations under ``server/migrations/`` and central
+   ``simstack`` database migrations under ``server/migrations/application/``.
+   Name files ``YYYYMMDDHHMMSS_short_name.py``.
+3. Set ``name`` to the file stem and ``dependencies`` to the latest migration
+   in the selected directory.
+4. Take a backup before running the migration on any real database.
 5. Check ``CONNECTION_STRING`` before running:
 
    - The current runner requires a MongoDB user with ``admin.root``.
-   - This applies to both ``--scope ALL`` and ``--scope DATABASES`` in the
-     current implementation.
+   - This applies to ``--scope ALL``, ``--scope DATABASES``, and
+     ``--scope SERVER``.
 
 6. Decide rollout before writing code:
 
@@ -46,7 +48,7 @@ Add One
    - If the migration is started again after a partial failure, it must not
      duplicate or corrupt already migrated data.
 
-9. Test on one workspace DB first.
+9. Test on one target database first.
 
    .. code-block:: bash
 
@@ -64,6 +66,10 @@ Add One
         --scope ALL \
         migrate
 
+      uv run python -m server.migrations.run_workspace_migrations \
+        --scope SERVER \
+        migrate
+
 10. ``db_migrations.yml`` runs ``--scope ALL migrate`` by default. Use that
     only after one workspace DB is verified.
 
@@ -79,6 +85,15 @@ Add One
          uv run python -m server.migrations.run_workspace_migrations \
          --scope DATABASES \
          --databases my_test_user_db \
+         migrate
+
+    To run central ``simstack`` database migrations:
+
+    .. code-block:: bash
+
+       docker compose -f db_migrations.yml run --rm simstack-migrations \
+         uv run python -m server.migrations.run_workspace_migrations \
+         --scope SERVER \
          migrate
 
 Example 1: Add Field - ResourceDefinition.is_enabled

@@ -17,6 +17,8 @@ def test_permission_error_fails_transfer(monkeypatch, tmp_path: Path):
     transfer = {
         "transfer_id": "6ad029a0cc353f863203af1c",
         "source_path": "pyscf_hessian/task/result.wfn.npy",
+        "file_stack_id": "6ad029a0cc353f863203af1d",
+        "source_resource_name": "big2",
     }
 
     assert service._upload_transfer(client, transfer) is False

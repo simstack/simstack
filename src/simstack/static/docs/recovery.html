@@ -233,7 +233,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -288,12 +293,14 @@ The example <cite>recovery_test.py</cite> demonstrates how to handle nodes that 
 <ol class="arabic simple">
 <li><p><strong>The Failing Node</strong>: A node that performs some work, writes output to a file, but then fails (e.g., due to an exception).</p></li>
 <li><p><strong>The Repair Function</strong>: A helper function that knows how to locate the output of a failed node and “repair” the result by collecting the files and marking it as successful.</p></li>
-<li><p><strong>The Recovery Node</strong>: A node that queries the database for failed instances of specific nodes and applies the repair function to them.</p></li>
+<li><p><strong>The Recovery Node</strong>: A node that consumes explicit task references and published output files, and produces a repaired result under its own execution.</p></li>
 </ol>
 </section>
 <section id="implementation-details">
 <h2>Implementation Details<a class="headerlink" href="#implementation-details" title="Link to this heading">¶</a></h2>
-<p>The example implementation can be found in <cite>examples/testing/recovery_test.py</cite>.</p>
+<p>The historical <code class="docutils literal notranslate"><span class="pre">recovery_test.py</span></code> example used direct task writes and is not
+an executable example for the current API boundary. Recovery code must use
+the task API and explicit scientific value publication.</p>
 </section>
 <section id="how-it-works">
 <h2>How it Works<a class="headerlink" href="#how-it-works" title="Link to this heading">¶</a></h2>
@@ -303,7 +310,11 @@ This node simulates a failure. Even though it fails, it ensures that its progres
 <li><p><strong>stx_repair_node</strong>:
 This function takes a <cite>NodeRegistry</cite> entry. It constructs the path to the original node’s working directory using <cite>context.config.workdir</cite>. If it finds the expected output files, it uses <cite>node_runner.succeed()</cite> to provide the missing data.</p></li>
 <li><p><strong>sxt_recovery_node</strong>:
-This is the orchestrator for recovery. It uses <cite>context.db.find</cite> to search for <cite>NodeRegistry</cite> entries with a <cite>failed</cite> status and a specific <cite>call_path</cite>. For each failed node found, it calls <cite>stx_repair_node</cite>. If repair is successful, it updates the original node’s status in the database.</p></li>
+Read a known task with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">context.server.tasks.get_task(task_id)</span></code> and
+resolve its scientific references with <code class="docutils literal notranslate"><span class="pre">context.server.values.resolve_values</span></code>.
+A recovery node publishes repaired outputs under its own task. Preserve the
+original failure and its error; scientific publication cannot change a task’s
+status. Retrying the original task must go through the Server task lifecycle.</p></li>
 <li><p><strong>Main Execution</strong>:
 The <cite>main</cite> function first runs several instances of <cite>sxt_failing_node</cite>, which all fail. Then, it runs <cite>sxt_recovery_node</cite> to automatically fix these failures and recover the data.</p></li>
 </ol>
@@ -366,6 +377,6 @@ The <cite>main</cite> function first runs several instances of <cite>sxt_failing
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

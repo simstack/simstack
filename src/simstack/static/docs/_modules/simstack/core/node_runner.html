@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -275,12 +280,14 @@
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Set</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Set</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">Model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">Model</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.definitions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskStatus</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.simstack_result</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimstackResult</span>
@@ -329,6 +336,16 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">last_stderr</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log_string</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">info_file_patterns</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;*.in&quot;</span><span class="p">,</span> <span class="s2">&quot;*.out&quot;</span><span class="p">,</span> <span class="s2">&quot;*.err&quot;</span><span class="p">,</span> <span class="s2">&quot;*.log&quot;</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">custom_name</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_node_dir</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_program_name</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file_watchdog_proc</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_workdir</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_cleanup</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logged_scratch</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_env_backup</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_chdir</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;NodeRunner &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; initialized for task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
 
@@ -356,6 +373,438 @@
             <span class="n">name</span><span class="o">=</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
             <span class="n">task_id</span><span class="o">=</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;task_id&quot;</span><span class="p">],</span>
             <span class="n">logger</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;logger&quot;</span><span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NodeRunner.enter_scratch">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node_runner.NodeRunner.enter_scratch">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">enter_scratch</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">program_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">chdir</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">scratch_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scratch_cleanup</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send temporary files to the scratch directory from config.toml.</span>
+
+<span class="sd">        When ``[&lt;resource&gt;.program.&lt;name&gt;]`` has ``use_tmp`` / ``use_temp``</span>
+<span class="sd">        true, files are written under ``[&lt;resource&gt;.setup] tmp_base_dir``</span>
+<span class="sd">        (or an explicit ``scratch_dir``). Logs once when scratch is used.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            program_name: Program key in config.toml. Defaults to this runner&#39;s name.</span>
+<span class="sd">            chdir: If True, change the process working directory to scratch and</span>
+<span class="sd">                set TURBOTMPDIR/TMPDIR/TMP so child processes write temps there.</span>
+<span class="sd">            scratch_dir: Explicit scratch path. If omitted, resolved from</span>
+<span class="sd">                ResourceConfig when the program flag is set.</span>
+<span class="sd">            scratch_cleanup: If True, delete the scratch directory on</span>
+<span class="sd">                ``leave_scratch``. ``None`` reads the program or post-processing</span>
+<span class="sd">                config; missing means do not delete.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The scratch directory, or None when scratch is not configured.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Scratch was requested but ``tmp_base_dir`` is missing</span>
+<span class="sd">                or not a usable directory path.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span><span class="p">)</span>
+
+        <span class="n">program_name</span> <span class="o">=</span> <span class="n">program_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">resource_config</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">program_params</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">post_params</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">scratch_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">context</span><span class="o">.</span><span class="n">initialized</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">None</span>
+                <span class="n">resource_config</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">resource_config</span>
+            <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">resource_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">program_params</span> <span class="o">=</span> <span class="n">resource_config</span><span class="o">.</span><span class="n">get_program</span><span class="p">(</span><span class="n">program_name</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="n">post_params</span> <span class="o">=</span> <span class="n">resource_config</span><span class="o">.</span><span class="n">get_postprocessing_params</span><span class="p">()</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="s2">&quot;use_tmp&quot;</span> <span class="ow">in</span> <span class="n">program_params</span> <span class="ow">and</span> <span class="s2">&quot;use_temp&quot;</span> <span class="ow">in</span> <span class="n">program_params</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">bool</span><span class="p">(</span><span class="n">program_params</span><span class="p">[</span><span class="s2">&quot;use_tmp&quot;</span><span class="p">])</span> <span class="o">!=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">program_params</span><span class="p">[</span><span class="s2">&quot;use_temp&quot;</span><span class="p">]):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Program </span><span class="si">{</span><span class="n">program_name</span><span class="si">!r}</span><span class="s2"> has conflicting use_tmp=&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">program_params</span><span class="p">[</span><span class="s1">&#39;use_tmp&#39;</span><span class="p">]</span><span class="si">!r}</span><span class="s2"> and use_temp=&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">program_params</span><span class="p">[</span><span class="s1">&#39;use_temp&#39;</span><span class="p">]</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;use_tmp&quot;</span> <span class="ow">in</span> <span class="n">program_params</span><span class="p">:</span>
+                <span class="n">use_scratch</span> <span class="o">=</span> <span class="n">program_params</span><span class="p">[</span><span class="s2">&quot;use_tmp&quot;</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="s2">&quot;use_temp&quot;</span> <span class="ow">in</span> <span class="n">program_params</span><span class="p">:</span>
+                <span class="n">use_scratch</span> <span class="o">=</span> <span class="n">program_params</span><span class="p">[</span><span class="s2">&quot;use_temp&quot;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">use_scratch</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;use_tmp/use_temp for program </span><span class="si">{</span><span class="n">program_name</span><span class="si">!r}</span><span class="s2"> must be a bool, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">use_scratch</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">use_scratch</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">resource_config</span><span class="o">.</span><span class="n">get_setup_params</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tmp_base_dir&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;TMP_BASE_DIR&quot;</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Program </span><span class="si">{</span><span class="n">program_name</span><span class="si">!r}</span><span class="s2"> has use_tmp=true but tmp_base_dir is &quot;</span>
+                    <span class="s2">&quot;not set in config.toml [resource.setup] and TMP_BASE_DIR is &quot;</span>
+                    <span class="s2">&quot;not in the environment&quot;</span>
+                <span class="p">)</span>
+            <span class="n">scratch_path</span> <span class="o">=</span> <span class="n">resource_config</span><span class="o">.</span><span class="n">tmp_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">scratch_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">scratch_dir</span><span class="p">)</span>
+            <span class="n">scratch_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">scratch_cleanup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">scratch_cleanup</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;scratch_cleanup must be a bool, got </span><span class="si">{</span><span class="n">scratch_cleanup</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_cleanup</span> <span class="o">=</span> <span class="n">scratch_cleanup</span>
+        <span class="k">elif</span> <span class="s2">&quot;scratch_cleanup&quot;</span> <span class="ow">in</span> <span class="n">program_params</span><span class="p">:</span>
+            <span class="n">flag</span> <span class="o">=</span> <span class="n">program_params</span><span class="p">[</span><span class="s2">&quot;scratch_cleanup&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">flag</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;scratch_cleanup for program </span><span class="si">{</span><span class="n">program_name</span><span class="si">!r}</span><span class="s2"> must be a bool, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">flag</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_cleanup</span> <span class="o">=</span> <span class="n">flag</span>
+        <span class="k">elif</span> <span class="s2">&quot;scratch_cleanup&quot;</span> <span class="ow">in</span> <span class="n">post_params</span><span class="p">:</span>
+            <span class="n">flag</span> <span class="o">=</span> <span class="n">post_params</span><span class="p">[</span><span class="s2">&quot;scratch_cleanup&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">flag</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;post-processing scratch_cleanup must be a bool, got </span><span class="si">{</span><span class="n">flag</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_cleanup</span> <span class="o">=</span> <span class="n">flag</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_cleanup</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">scratch_path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_workdir</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_chdir</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">chdir</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">chdir</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_workdir</span><span class="o">.</span><span class="n">resolve</span><span class="p">():</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;TURBOTMPDIR&quot;</span><span class="p">,</span> <span class="s2">&quot;TMPDIR&quot;</span><span class="p">,</span> <span class="s2">&quot;TMP&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_env_backup</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logged_scratch</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Writing temporary files to scratch directory: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logged_scratch</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span></div>
+
+
+<div class="viewcode-block" id="NodeRunner.leave_scratch">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node_runner.NodeRunner.leave_scratch">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">leave_scratch</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy scratch files back to the original workdir and optionally delete scratch.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_workdir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">scratch</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span><span class="p">)</span>
+        <span class="n">workdir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scratch_workdir</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">scratch</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="n">scratch</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">!=</span> <span class="n">workdir</span><span class="o">.</span><span class="n">resolve</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">scratch</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
+                    <span class="n">dest</span> <span class="o">=</span> <span class="n">workdir</span> <span class="o">/</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span>
+                    <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                        <span class="n">shutil</span><span class="o">.</span><span class="n">copytree</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">dirs_exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_chdir</span><span class="p">:</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">previous</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_env_backup</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">previous</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">previous</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_cleanup</span>
+                <span class="ow">and</span> <span class="n">scratch</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+                <span class="ow">and</span> <span class="n">scratch</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">!=</span> <span class="n">workdir</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+            <span class="p">):</span>
+                <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">scratch</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_workdir</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_chdir</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_scratch_env_backup</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logged_scratch</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_require_resource_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">context</span><span class="o">.</span><span class="n">initialized</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;context is not initialized&quot;</span><span class="p">)</span>
+        <span class="n">resource_config</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">resource_config</span>
+        <span class="k">if</span> <span class="n">resource_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;context.resource_config is not available&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">resource_config</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_stop_file_watchdog</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">proc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_watchdog_proc</span>
+        <span class="k">if</span> <span class="n">proc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file_watchdog_proc</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">proc</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">proc</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">proc</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">:</span>
+            <span class="n">proc</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
+            <span class="n">proc</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<div class="viewcode-block" id="NodeRunner.stage">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node_runner.NodeRunner.stage">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stage</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_files</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">FileStack</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">resource_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create the ResourceConfig scratch directory and copy input files into it.</span>
+
+<span class="sd">        The Python process stays in the node directory. ``execute`` runs with</span>
+<span class="sd">        ``cwd`` set to the returned scratch path.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            input_files: Files to copy into scratch. Strings are paths relative</span>
+<span class="sd">                to the node directory. ``FileStack`` values are materialized with</span>
+<span class="sd">                ``.get(local_dir=scratch)``. Omitted means copy nothing.</span>
+<span class="sd">            resource_config: Explicit configuration; defaults to the context.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The scratch directory path.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Already staged, context/resource config missing,</span>
+<span class="sd">                ``tmp_base_dir`` is not configured, or a listed input file is missing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;scratch is already staged&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">resource_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">resource_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_resource_config</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">resource_config</span><span class="o">.</span><span class="n">get_setup_params</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tmp_base_dir&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;TMP_BASE_DIR&quot;</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;tmp_base_dir is not set in config.toml [resource.setup] and &quot;</span>
+                <span class="s2">&quot;TMP_BASE_DIR is not in the environment&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_node_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span>
+        <span class="n">scratch</span> <span class="o">=</span> <span class="n">resource_config</span><span class="o">.</span><span class="n">tmp_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">scratch</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Writing temporary files to scratch directory: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logged_scratch</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">input_files</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">input_files</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">&quot;get&quot;</span><span class="p">):</span>
+                    <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">local_dir</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="n">src</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_dir</span> <span class="o">/</span> <span class="n">item</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">src</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Input file </span><span class="si">{</span><span class="n">item</span><span class="si">!r}</span><span class="s2"> does not exist in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_node_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">dest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="n">item</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+                <span class="k">if</span> <span class="n">src</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">!=</span> <span class="n">dest</span><span class="o">.</span><span class="n">resolve</span><span class="p">():</span>
+                    <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span></div>
+
+
+<div class="viewcode-block" id="NodeRunner.execute">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node_runner.NodeRunner.execute">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">program_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">command</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;run_command&quot;</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">env</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">resource_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run a named command for ``program_name`` from ResourceConfig.</span>
+
+<span class="sd">        Executes in the staged scratch directory when ``stage`` was called,</span>
+<span class="sd">        otherwise in the current working directory.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            program_name: Program key under ``[&lt;resource&gt;.program.&lt;name&gt;]``.</span>
+<span class="sd">            command: Key in that program table whose string is executed.</span>
+<span class="sd">                Defaults to ``run_command``.</span>
+<span class="sd">            env: Environment overrides for this subprocess only.</span>
+<span class="sd">            name: Subprocess log name. Defaults to ``program_name``.</span>
+<span class="sd">            resource_config: Explicit configuration; defaults to the context.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if the subprocess returned 0, False otherwise.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Context/resource config missing, program not found, or</span>
+<span class="sd">                the requested command key is missing/empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">program_name</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;program_name is required&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">command</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;command must be a non-empty string, got </span><span class="si">{</span><span class="n">command</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">resource_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">resource_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_resource_config</span><span class="p">()</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">resource_config</span><span class="o">.</span><span class="n">get_program</span><span class="p">(</span><span class="n">program_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">params</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Program </span><span class="si">{</span><span class="n">program_name</span><span class="si">!r}</span><span class="s2"> not found in ResourceConfig&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">command</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Program </span><span class="si">{</span><span class="n">program_name</span><span class="si">!r}</span><span class="s2"> is missing </span><span class="si">{</span><span class="n">command</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">run_command</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="n">command</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">run_command</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">run_command</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Program </span><span class="si">{</span><span class="n">program_name</span><span class="si">!r}</span><span class="s2"> </span><span class="si">{</span><span class="n">command</span><span class="si">!r}</span><span class="s2"> must be a non-empty &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;string, got </span><span class="si">{</span><span class="n">run_command</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_program_name</span> <span class="o">=</span> <span class="n">program_name</span>
+        <span class="n">cwd</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">subprocess_name</span> <span class="o">=</span> <span class="n">program_name</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">name</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">subprocess</span><span class="p">(</span>
+            <span class="n">subprocess_name</span><span class="p">,</span> <span class="n">run_command</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="n">cwd</span><span class="p">,</span>
+            <span class="o">**</span><span class="p">({</span><span class="s2">&quot;env&quot;</span><span class="p">:</span> <span class="n">env</span><span class="p">}</span> <span class="k">if</span> <span class="n">env</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NodeRunner.retrieve">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node_runner.NodeRunner.retrieve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">retrieve</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">output_files</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">FileStack</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">resource_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy result files from scratch back to the node directory.</span>
+
+<span class="sd">        Stops the file watchdog. If ``output_files`` is a list (including empty),</span>
+<span class="sd">        copies those names only. If omitted, copies every item in scratch.</span>
+<span class="sd">        Deletes scratch only when ``scratch_cleanup`` is a bool in the program</span>
+<span class="sd">        or post-processing config.</span>
+<span class="sd">        ``resource_config`` overrides the context configuration for cleanup.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: ``stage`` was never called, or ``scratch_cleanup`` is set</span>
+<span class="sd">                but is not a bool.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;retrieve requires stage() first&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_file_watchdog</span><span class="p">()</span>
+        <span class="n">scratch</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span><span class="p">)</span>
+        <span class="n">workdir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_node_dir</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">scratch</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="n">scratch</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">!=</span> <span class="n">workdir</span><span class="o">.</span><span class="n">resolve</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">output_files</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">items</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">scratch</span><span class="o">.</span><span class="n">iterdir</span><span class="p">())</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">items</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">output_files</span><span class="p">:</span>
+                        <span class="n">name</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">item</span>
+                        <span class="n">items</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">scratch</span> <span class="o">/</span> <span class="n">name</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">item</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                        <span class="k">continue</span>
+                    <span class="n">dest</span> <span class="o">=</span> <span class="n">workdir</span> <span class="o">/</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span>
+                    <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                        <span class="n">shutil</span><span class="o">.</span><span class="n">copytree</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">dirs_exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+            <span class="n">cleanup</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="n">resource_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">resource_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_resource_config</span><span class="p">()</span>
+            <span class="n">program_params</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_program_name</span><span class="p">:</span>
+                <span class="n">program_params</span> <span class="o">=</span> <span class="n">resource_config</span><span class="o">.</span><span class="n">get_program</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_program_name</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="n">post_params</span> <span class="o">=</span> <span class="n">resource_config</span><span class="o">.</span><span class="n">get_postprocessing_params</span><span class="p">()</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="s2">&quot;scratch_cleanup&quot;</span> <span class="ow">in</span> <span class="n">program_params</span><span class="p">:</span>
+                <span class="n">flag</span> <span class="o">=</span> <span class="n">program_params</span><span class="p">[</span><span class="s2">&quot;scratch_cleanup&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">flag</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;scratch_cleanup for program </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_program_name</span><span class="si">!r}</span><span class="s2"> must be a bool, &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">flag</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">cleanup</span> <span class="o">=</span> <span class="n">flag</span>
+            <span class="k">elif</span> <span class="s2">&quot;scratch_cleanup&quot;</span> <span class="ow">in</span> <span class="n">post_params</span><span class="p">:</span>
+                <span class="n">flag</span> <span class="o">=</span> <span class="n">post_params</span><span class="p">[</span><span class="s2">&quot;scratch_cleanup&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">flag</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;post-processing scratch_cleanup must be a bool, got </span><span class="si">{</span><span class="n">flag</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">cleanup</span> <span class="o">=</span> <span class="n">flag</span>
+            <span class="k">if</span> <span class="n">cleanup</span> <span class="ow">and</span> <span class="n">scratch</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="n">scratch</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">!=</span> <span class="n">workdir</span><span class="o">.</span><span class="n">resolve</span><span class="p">():</span>
+                <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">scratch</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_node_dir</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_program_name</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logged_scratch</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="NodeRunner.file_watchdog">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node_runner.NodeRunner.file_watchdog">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">file_watchdog</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy ``files`` from scratch to the node directory every ``interval`` seconds.</span>
+
+<span class="sd">        Starts a child process (not a thread) so copying does not hold the GIL.</span>
+<span class="sd">        The child exits when this process dies (parent-pid poll; Linux also uses</span>
+<span class="sd">        ``PR_SET_PDEATHSIG``). Stopped by ``retrieve``, ``fail``, and ``succeed``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            files: Non-empty list of file names relative to scratch.</span>
+<span class="sd">            interval: Positive number of seconds between copy passes.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Scratch was not staged, files/interval are invalid, or a</span>
+<span class="sd">                watchdog is already running.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;file_watchdog requires stage() first&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_watchdog_proc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_watchdog_proc</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;file_watchdog is already running&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">files</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;files must be a non-empty list&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">interval</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">interval</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="ow">or</span> <span class="n">interval</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;interval must be a positive number, got </span><span class="si">{</span><span class="n">interval</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span>
+            <span class="s2">&quot;-m&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;simstack.util.scratch_file_watchdog&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--scratch&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span><span class="p">),</span>
+            <span class="s2">&quot;--dest&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_node_dir</span><span class="p">),</span>
+            <span class="s2">&quot;--interval&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">interval</span><span class="p">),</span>
+            <span class="s2">&quot;--parent-pid&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()),</span>
+            <span class="o">*</span><span class="n">files</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="n">env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">simstack</span>
+
+        <span class="n">src_dir</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">simstack</span><span class="o">.</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="p">)</span>
+        <span class="n">existing</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;PYTHONPATH&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">env</span><span class="p">[</span><span class="s2">&quot;PYTHONPATH&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">src_dir</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">existing</span> <span class="k">else</span> <span class="n">src_dir</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">pathsep</span> <span class="o">+</span> <span class="n">existing</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file_watchdog_proc</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Started file watchdog for </span><span class="si">{</span><span class="n">files</span><span class="si">}</span><span class="s2"> every </span><span class="si">{</span><span class="n">interval</span><span class="si">}</span><span class="s2">s &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(pid </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_file_watchdog_proc</span><span class="o">.</span><span class="n">pid</span><span class="si">}</span><span class="s2">)&quot;</span>
         <span class="p">)</span></div>
 
 
@@ -503,7 +952,10 @@
 
 <div class="viewcode-block" id="NodeRunner.subprocess">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.node_runner.NodeRunner.subprocess">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">subprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">cwd</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">subprocess</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">cwd</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">env</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Execute a shell command as a subprocess and capture its output.</span>
 
@@ -513,6 +965,7 @@
 <span class="sd">        Args:</span>
 <span class="sd">            name (str): Name identifier for the subprocess (used for log file naming)</span>
 <span class="sd">            command (str): Shell command to execute</span>
+<span class="sd">            env: Environment overrides; the parent environment is preserved.</span>
 <span class="sd">            cwd (str, optional): Working directory for command execution. Defaults to current directory.</span>
 
 <span class="sd">        Returns:</span>
@@ -528,17 +981,32 @@
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
             <span class="n">command</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
 
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.log&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">process_log</span><span class="p">:</span>
+        <span class="n">exec_cwd</span> <span class="o">=</span> <span class="n">cwd</span> <span class="k">if</span> <span class="n">cwd</span> <span class="k">else</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch_dir</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">exec_cwd</span><span class="p">:</span>
+            <span class="n">exec_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">exec_cwd</span><span class="p">)</span>
+            <span class="n">exec_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logged_scratch</span> <span class="ow">and</span> <span class="n">exec_path</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">!=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Writing temporary files to scratch directory: </span><span class="si">{</span><span class="n">exec_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_logged_scratch</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">log_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">exec_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.log&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">log_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.log&quot;</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">log_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">process_log</span><span class="p">:</span>
             <span class="n">process_log</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Command: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="c1"># TODO adapt for docker</span>
-            <span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-                <span class="n">command</span><span class="p">,</span>
-                <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Important: use shell=True for shell operators like &amp;&amp;</span>
-                <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
-                <span class="n">cwd</span><span class="o">=</span><span class="n">cwd</span> <span class="k">if</span> <span class="n">cwd</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="p">)</span>
+            <span class="n">run_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;shell&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>  <span class="c1"># Important: use shell=True for shell operators like &amp;&amp;</span>
+                <span class="s2">&quot;capture_output&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;encoding&quot;</span><span class="p">:</span> <span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;cwd&quot;</span><span class="p">:</span> <span class="n">exec_cwd</span> <span class="k">if</span> <span class="n">exec_cwd</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;nt&quot;</span><span class="p">:</span>
+                <span class="n">run_kwargs</span><span class="p">[</span><span class="s2">&quot;creationflags&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CREATE_NO_WINDOW</span>
+            <span class="k">if</span> <span class="n">env</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">run_kwargs</span><span class="p">[</span><span class="s2">&quot;env&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">,</span> <span class="o">**</span><span class="n">env</span><span class="p">}</span>
+            <span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="o">**</span><span class="n">run_kwargs</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;run script </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> finished: </span><span class="si">{</span><span class="n">process</span><span class="o">.</span><span class="n">returncode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">last_stdout</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">stdout</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">last_stderr</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">stderr</span>
@@ -546,7 +1014,7 @@
             <span class="n">process_log</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process output:</span><span class="se">\n</span><span class="si">{</span><span class="n">process</span><span class="o">.</span><span class="n">stdout</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">process_log</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process error:</span><span class="se">\n</span><span class="si">{</span><span class="n">process</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">file_stack</span> <span class="o">=</span> <span class="n">FileStack</span><span class="o">.</span><span class="n">from_local_file</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.log&quot;</span><span class="p">,</span> <span class="n">in_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">is_hashable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">secure_source</span><span class="o">=</span><span class="kc">True</span>
+            <span class="n">log_path</span><span class="p">,</span> <span class="n">in_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">is_hashable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">secure_source</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">info_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_stack</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Subprocess &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; log added to info files: </span><span class="si">{</span><span class="n">file_stack</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -637,6 +1105,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            NodeRunner: Self reference for chaining.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_file_watchdog</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_make_log_file</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Task </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2"> task_id: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -663,6 +1132,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            NodeRunner: Self reference for chaining.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_file_watchdog</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_make_log_file</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;succeeded </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">msg</span>
@@ -706,6 +1176,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-10 13:23:18 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

@@ -32,13 +32,20 @@ class SlurmParametersPatch(EmbeddedModel):
     exclusive: Optional[bool] = None
     nice: Optional[int] = None
     dependency: Optional[str] = None
-    array: Optional[str] = None
     startup_commands: Optional[list[str]] = None
     chdir: Optional[str] = None
     export: Optional[str] = None
     signal: Optional[str] = None
     requeue: Optional[bool] = None
     no_requeue: Optional[bool] = None
+
+    @field_validator("extra_options")
+    @classmethod
+    def validate_extra_options(cls, value):
+        from simstack.models.parameters import _extra_sbatch_flag
+        for option in value or []:
+            _extra_sbatch_flag(option)
+        return value
 
     model_config: ClassVar[Dict[str, Any]] = {
         "extra": "forbid",
@@ -73,7 +80,6 @@ class ResourceAssignmentRule(Model):
     description: Optional[str] = ""
 
     model_config = {
-        "collection": "resource_assignment_rule",
         # Required so missing new fields (in_docker, slurm_parameters, ...) do not
         # raise key_not_found_in_document when loading older Mongo documents.
         "parse_doc_with_default_factories": True,

@@ -654,6 +654,47 @@ class TestNodeRunnerScratch:
         runner = NodeRunner("turbomole2", "task_abc")
         assert runner.enter_scratch("turbomole2") is None
 
+    def test_failed_copyback_preserves_scratch_and_restores_environment(self, tmp_path, monkeypatch):
+        workdir = tmp_path / "work"
+        scratch = tmp_path / "scratch"
+        workdir.mkdir()
+        monkeypatch.chdir(workdir)
+        for key in ("TURBOTMPDIR", "TMPDIR", "TMP"):
+            monkeypatch.setenv(key, str(workdir / key))
+        saved_env = {key: os.environ[key] for key in ("TURBOTMPDIR", "TMPDIR", "TMP")}
+        runner = NodeRunner("turbomole2", "task_copyback")
+        runner.enter_scratch(scratch_dir=scratch, chdir=True, scratch_cleanup=True)
+        (scratch / "results").mkdir()
+        output = scratch / "results" / "only-copy.dat"
+        output.write_text("scientific output", encoding="utf-8")
+        (workdir / "results").write_text("existing input", encoding="utf-8")
+
+        with pytest.raises(FileExistsError):
+            runner.leave_scratch()
+
+        assert output.read_text(encoding="utf-8") == "scientific output"
+        assert (workdir / "results").read_text(encoding="utf-8") == "existing input"
+        assert Path.cwd().resolve() == workdir.resolve()
+        assert {key: os.environ[key] for key in saved_env} == saved_env
+
+    def test_copyback_io_error_preserves_original_error_and_output(self, tmp_path, monkeypatch):
+        workdir = tmp_path / "work"
+        scratch = tmp_path / "scratch"
+        workdir.mkdir()
+        monkeypatch.chdir(workdir)
+        runner = NodeRunner("turbomole2", "task_copyback_io")
+        runner.enter_scratch(scratch_dir=scratch, chdir=False, scratch_cleanup=True)
+        output = scratch / "only-copy.dat"
+        output.write_bytes(b"scientific output")
+        failure = OSError(28, "No space left on device")
+        with patch("simstack.core.node_runner.shutil.copy2", side_effect=failure):
+            with pytest.raises(OSError) as raised:
+                runner.leave_scratch()
+
+        assert raised.value is failure
+        assert output.read_bytes() == b"scientific output"
+        assert Path.cwd().resolve() == workdir.resolve()
+
     def test_subprocess_logs_when_cwd_is_scratch(self, tmp_path):
         scratch = tmp_path / "scratch"
         scratch.mkdir()

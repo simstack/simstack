@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, ClassVar, Dict, List
 
 from simstack.models.document import Model, Field
 from pydantic import field_validator
@@ -46,6 +46,8 @@ class SimpleTable(Model):
     """
     A simple table model to display tabular data using ag-grid
     """
+
+    __simstack_table_kind__: ClassVar[str] = "simple-table"
 
     name: str = Field(default="SimpleTable")
     heading: List[str] = Field(default_factory=list)

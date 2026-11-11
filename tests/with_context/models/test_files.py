@@ -33,7 +33,7 @@ def setup_test_env(initialized_context, monkeypatch):
 
     # Temporarily override the workdir in context
     original_workdir = initialized_context.config.workdir
-    initialized_context.config._workdir = test_workdir
+    initialized_context.config._resource_definition.workdir = test_workdir
 
     try:
         os.makedirs(test_workdir, exist_ok=True)
@@ -44,7 +44,7 @@ def setup_test_env(initialized_context, monkeypatch):
             shutil.rmtree(test_workdir, ignore_errors=True)
 
         # Restore original workdir
-        initialized_context.config._workdir = original_workdir
+        initialized_context.config._resource_definition.workdir = str(original_workdir)
 
 
 @pytest.fixture
@@ -151,9 +151,9 @@ def test_from_local_file_resolves_self_resource_from_runner_token(
 ):
     """External file instances should never be stored under symbolic self."""
     context = setup_test_env
-    original_resource = context.config._resource_str
+    original_resource = context.config._resource_definition.resource_str
     original_allowed_resources = allowed_resources.get_resources()
-    monkeypatch.setattr(context.config, "_resource_str", "self")
+    monkeypatch.setattr(context.config._resource_definition, "resource_str", "self")
     allowed_resources.add_resource("local")
     monkeypatch.setenv("SIMSTACK_RUNNER_TOKEN", _runner_token_for_resource("local"))
 
@@ -167,7 +167,7 @@ def test_from_local_file_resolves_self_resource_from_runner_token(
 
         assert instance.resource.value == "local"
     finally:
-        monkeypatch.setattr(context.config, "_resource_str", original_resource)
+        monkeypatch.setattr(context.config._resource_definition, "resource_str", original_resource)
         allowed_resources._resources = original_allowed_resources
 
 
@@ -203,9 +203,10 @@ def test_file_stack_creation():
 
 def test_file_stack_document_without_location_id_migrates():
     """Old FileStack documents without FileInstance ids should still load."""
+    identity = OdmanticObjectId()
     stack = FileStack.model_validate_doc(
         {
-            "_id": OdmanticObjectId(),
+            "id": identity,
             "name": "legacy.txt",
             "size": 12,
             "is_hashable": True,
@@ -221,6 +222,7 @@ def test_file_stack_document_without_location_id_migrates():
         }
     )
 
+    assert stack.id == identity
     assert stack.locations[0].id
     assert stack.locations[0].location_type == "local_path"
     assert stack.locations[0].status == "available"
@@ -480,9 +482,9 @@ def test_get_remote_instance_resolves_self_target_from_runner_token(
 ):
     """The transfer API should receive a concrete target resource, not self."""
     context = setup_test_env
-    original_resource = context.config._resource_str
+    original_resource = context.config._resource_definition.resource_str
     original_allowed_resources = allowed_resources.get_resources()
-    monkeypatch.setattr(context.config, "_resource_str", "self")
+    monkeypatch.setattr(context.config._resource_definition, "resource_str", "self")
     allowed_resources.add_resource("local")
     monkeypatch.setenv("SIMSTACK_RUNNER_TOKEN", _runner_token_for_resource("local"))
     payload = b"remote payload"
@@ -543,19 +545,19 @@ def test_get_remote_instance_resolves_self_target_from_runner_token(
         assert fake_client.completed["target_resource_name"] == "local"
         assert file_stack.locations[-1].resource.value == "local"
     finally:
-        monkeypatch.setattr(context.config, "_resource_str", original_resource)
+        monkeypatch.setattr(context.config._resource_definition, "resource_str", original_resource)
         allowed_resources._resources = original_allowed_resources
 
 
 @pytest.mark.asyncio
-async def test_runner_cleanup_deletes_expired_cached_file(setup_test_env, monkeypatch):
+async def test_runner_cleanup_deletes_expired_cached_file(setup_test_env, server_storage, monkeypatch):
     from simstack.core.services.runner_cleanup_service import RunnerCleanupService
 
     context = setup_test_env
     monkeypatch.setenv("SIMSTACK_FILE_CACHE_TTL_DAYS", "14")
 
-    for existing in await context.db.find_all(FileStack):
-        await context.db.delete(existing)
+    for existing in await context.server.values.query_records(FileStack, "all"):
+        await context.server.values.archive_records([existing])
 
     cached_path = Path(context.config.workdir) / "cache" / "result.dat"
     cached_path.parent.mkdir(parents=True, exist_ok=True)
@@ -569,7 +571,7 @@ async def test_runner_cleanup_deletes_expired_cached_file(setup_test_env, monkey
         is_cached=True,
         status="available",
     )
-    file_stack = await context.db.save(
+    file_stack = await server_storage.save(
         FileStack(
             name="result.dat",
             in_memory=False,
@@ -581,7 +583,7 @@ async def test_runner_cleanup_deletes_expired_cached_file(setup_test_env, monkey
     service = RunnerCleanupService(context.config.resource, interval=300)
     await service._cleanup_file_cache()
 
-    updated = await context.db.find_one(FileStack, FileStack.id == file_stack.id)
+    updated = await context.server.values.get_value(FileStack, file_stack.id)
     assert updated is not None
     assert not cached_path.exists()
     assert updated.locations[0].status == "deleted"

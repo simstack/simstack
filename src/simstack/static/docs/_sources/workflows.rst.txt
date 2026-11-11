@@ -42,7 +42,7 @@ the following:
 To achievieve this, we need to make the following changes in the code:
 
 * decorate the functions that should be visible in the GUI with the `@node` decorator
-* ensure that all input and output types of the nodes are registered odmantic Models
+* ensure that all input and output types of the nodes are registered SimStack domain Models
 * specifiy where the nodes should be executed
 
 For the specific example above the code looks as follows:
@@ -91,7 +91,7 @@ Here are some ground rules to write workflows in Simstack II:
 
 Beyond that nodes functions are normal python functions which can use the full flexibility of python.
 The can call other functions or other nodes, but should **avoid "closures"**, such as global variables.
-For this reason, node function should **not be class members** unless they are class members of an odmantic model.
+For this reason, node function should **not be class members** unless they are class members of a SimStack domain model.
 
 You can consult the documentation of this class to understand how this works but this is not required to write
 workflows.
@@ -108,7 +108,7 @@ Return Types
 ~~~~~~~~~~~~
 
 In workflows, the results of node functions must be visible in the databse and may be
-processed by other nodes. This means that **results** of the nodes must by odmantic models which
+processed by other nodes. This means that **results** of the nodes must by SimStack domain models which
 can be visualized in the GUI and passed to other nodes which may execute on different resources.
 
 In order to encapsulate data processing, this essentially **precludes the use
@@ -325,13 +325,16 @@ of operations controlled by the class Node.
 - before execution all arguments and the function body are hashed using
   :func:`simstack.core.hash.complex_hash_function`, which will infer how to
   deal with nested objects, such as list, dicts, classes, etc.
-  For odmantic models which have a ``complex_hash_function`` this function will
+  For SimStack domain models which have a ``complex_hash_function`` this function will
   override the default behavior. Odmantic ObjectId are not hashed.
-- if a NodeRegistry :class:`simstack.models.node_registry.NodeRegistry` entry
-  matching the name of the function, the hash of the
-  arguments and the hash of the function is found, this registry entry is
-  returned, even if the node has failed unless force_rerun is True.
-- if no such NodeRegistry entry exists a new one is created with TaskStatus.SUBMITTED
+- if a completed NodeRegistry :class:`simstack.models.node_registry.NodeRegistry`
+  entry matching the function name, argument hash and function hash is found,
+  its result is reused. A non-completed matching entry is reused only when its
+  resource, queue, Docker flag and Slurm parameters match the current execution
+  route. Otherwise, a new registry entry is created. ``force_rerun=True`` always
+  bypasses reuse.
+- if no reusable NodeRegistry entry exists a new one is created with
+  TaskStatus.SUBMITTED
 - the node class then calls the function :func:`simstack.core.node.Node.run_somewhere`
   which executes the node locally using
   :func:`simstack.core.node.Node.execute_node_locally` or waits until
@@ -355,34 +358,35 @@ server and specify the information relevant to the remote node in the
 ``simstack.toml`` configuration file (see: :ref:`configuration-file`). This
 needs to be done only once.
 
-When someone is actively developing new nodes or other code to be run on the
-remote node, it is important to keep the code on the remote server up-to-date.
-The preferred way is to periodically check for a git-update or other server
-crashes and restart the server if such events are detected.
-The file :file:`simstack.scripts.check_runner.sh` provides a template that
-must be adapted to the configuration of the remote node. This needs to be
-done only once.
+Publish a new repository revision through Server when workflow code changes.
+Server requests preparation of that revision and its resource-specific extras
+through the Runner API. Tasks are admitted after the prepared runtime is ready;
+running tasks retain their original revision and environment. Runner does not
+update the active checkout or its environment in place.
 
 .. _registering:
 
 Registering Models and Nodes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Database access to the mongodb database in Simstack II is facilitated by a
-using the odmantic package, which provides asynchronous object oriented access
-to the database (see :ref:`persisting_data`). This means that data in the
-generic code-base of Simstack is loaded/stored by storing class instances.
+Server owns database access and publishes a model/node catalogue for each
+approved repository revision. Runner loads scientific values through
+``context.server.values`` and changes task state through
+``context.server.tasks``. Models, references, properties and serialization
+perform no implicit I/O; there is no Runner database facade or model ``save``
+hook.
 
-These classes cannot be imported via the standard ``import`` statements,
-because they are unknown to the SimStack core modules. To overcome this
-problem a dynamic import system has been implemented, where the module paths
-of Simstack Models and Nodes are stored in database tables (``node_model``
-and ``model_table``, respectively).
+Workflow classes can be resolved dynamically from the approved catalogue with
+``await import_class(mapping, context.server.values)``. Use
+``publish_value``/``publish_values`` to publish scientific graphs and
+``get_value``/``resolve_values`` to load typed references. Named operations
+such as dataset queries and artifact replacement keep storage decisions on
+Server.
 
-The functions :func:`simstack.core.model_table.make_model_table` and
-:func:`simstack.core.node_table.make_node_table` scan the directories
-provided in the path section of the configuration file
-(:ref:`configuration_file`)
+The local recursive builders in ``simstack.tables.model_table`` and
+``simstack.tables.node_table`` collect descriptors from the configured paths.
+Server registers the resulting catalogue; running a builder locally does not
+write a database.
 
 
 .. code-block:: python

@@ -36,6 +36,10 @@ def model_copy(
 
     Returns:
         A reconstructed copy with valid Pydantic field and private state.
+
+    Copying is local. Published FileStacks retain their immutable byte-version
+    identity; the explicit publication API creates the new object's metadata
+    and bytes, even when the source scientific record has been archived.
     """
     return _copy_value(
         model,
@@ -71,6 +75,14 @@ def _copy_value(
         # Nested records are copied only if copy_references=True.
         if not _is_root and not copy_references:
             return value
+
+        from simstack.models.files import FileStack
+        if isinstance(value, FileStack):
+            with value._publication_lock():
+                return _reconstruct_pydantic_model(
+                    value, deep=deep, preserve_ids=preserve_ids,
+                    copy_references=copy_references, _seen=_seen,
+                )
 
         copied = _reconstruct_pydantic_model(
             value,
@@ -224,5 +236,72 @@ def _reconstruct_pydantic_model(
         # loaded from a repository and therefore carries an existing baseline.
         model_values.pop("_simstack_persisted_document", None)
         model_values.pop("_simstack_refreshed_fields", None)
+
+    from simstack.util.object_list_mixin import ObjectListMixin
+    if deep and copy_references and isinstance(source, ObjectListMixin):
+        source_cache = source.__dict__.get("_cache", [])
+        copied_cache = model_values.get("_cache", [])
+        identities = {original.id: clone.id
+                      for original, clone in zip(source_cache, copied_cache)}
+        model_values["elements"] = [identities.get(identity, identity)
+                                    for identity in source.elements]
+
+    from simstack.models.dataset import DataSetSelection
+    from simstack.models.datasettuple import DataSetTupleSection, DataSetTupleSelection
+    from simstack.methods.multiple_executor import MultipleExecutorInput, MultipleExecutorOutput
+    if deep and copy_references and isinstance(source, (DataSetSelection, DataSetTupleSelection)):
+        source_cache = source.__dict__.get("_cache")
+        copied_cache = model_values.get("_cache")
+        if isinstance(source_cache, Model) and source.dataset_id == source_cache.id:
+            model_values["dataset_id"] = copied_cache.id
+
+    if deep and copy_references and isinstance(source, (DataSetTupleSection, MultipleExecutorInput)):
+        source_cache = source.__dict__.get("_cache", [])
+        copied_cache = model_values.get("_cache", [])
+        identities = {(column, original.id): clone.id
+                      for original_row, cloned_row in zip(source_cache, copied_cache)
+                      for column, (original, clone) in enumerate(zip(original_row, cloned_row))}
+        # Keep manually supplied/unmaterialized IDs and the copied containers'
+        # aliases intact; only cloned records acquire a new reference identity.
+        field_name = "data" if isinstance(source, DataSetTupleSection) else "inputs_data"
+        for row in model_values[field_name]:
+            row[:] = [identities.get((column, identity), identity) for column, identity in enumerate(row)]
+
+    if deep and copy_references and isinstance(source, MultipleExecutorOutput):
+        source_cache = source.__dict__.get("_cache", [])
+        copied_cache = model_values.get("_cache", [])
+        identities = {original.id: clone.id
+                      for original, clone in zip(source_cache, copied_cache)
+                      if isinstance(original, Model)}
+        model_values["result_ids"][:] = [identities.get(identity, identity)
+                                        for identity in source.result_ids]
+
+    from simstack.models.files import FileStack
+    if isinstance(source, FileStack):
+        from simstack.models.parameters import Resource
+        staged = getattr(source, "_staging_directory", None)
+        if staged is not None:
+            import atexit
+            from pathlib import Path
+            import shutil
+            import tempfile
+
+            directory = tempfile.mkdtemp(prefix="simstack-file-", dir=Path(staged).parent)
+            atexit.register(shutil.rmtree, directory, ignore_errors=True)
+            locations = [location.model_copy(deep=True) for location in source.locations]
+            for location in locations:
+                path = Path(location.path)
+                if location.location_type == "local_path" and path.resolve().is_relative_to(Path(staged).resolve()):
+                    target = Path(directory) / path.name
+                    shutil.copyfile(path, target)
+                    location.path = str(target.resolve())
+                    location.resource = Resource(value="__pending__")
+            copied.locations = locations
+            object.__setattr__(copied, "_staging_directory", directory)
+        elif copied.id != source.id and any(location.location_type == "s3" and location.status == "available" for location in source.locations):
+            object.__setattr__(copied, "_copy_source_file_id", getattr(source, "_copy_source_file_id", source.id))
+            # The location's immutable object key survives canonical archive.
+            # Securing a new object belongs to publish_value/ensure_uploaded,
+            # with the explicit publishing caller's authorization.
 
     return copied

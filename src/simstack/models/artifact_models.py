@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, ClassVar
 
 from simstack.models.document import Field, Model, ObjectId
 
@@ -59,15 +59,12 @@ from simstack.models.simstack_model import simstack_model
 
 @simstack_model
 class ArtifactModel(Model):
+    __simstack_artifact_kind__: ClassVar[str] = "generic"
     parent_id: Optional[ObjectId] = Field(default=None, description="ID of the node registry")
     name: str
     description: Optional[str] = None
     data: Dict[str, Any] = Field(default_factory=dict)
     path: Optional[str] = None
-
-    model_config = {
-        "collection": "artifacts"  # All subclasses will use the same collection
-    }
 
     def make_table_entries(
         self,

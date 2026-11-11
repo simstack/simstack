@@ -20,6 +20,8 @@ is decribed in more detail in :ref:`using_gui_section`.
 In a typical installation Simstack II requrires only one instance of the
 Next-JS frontend, one instance of the FastAPI backend and one instance of
 the MongoDB database server. Each user has his/her own database in the
-MongoDB server. The runners are installed for each user on the required remote resources and automatically update themselves
-from one or several GIT repositories, which may be different for different users.
+MongoDB server. The runners are installed for each user on the required remote resources.
+Server publishes approved repository revisions and requests preparation of their
+pinned runtimes through the Runner API. Running tasks retain their original
+revision and environment when a new revision is prepared.
 

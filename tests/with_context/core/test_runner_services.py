@@ -1,7 +1,8 @@
+from server import storage_criteria
 import asyncio
 import pytest
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from simstack.core.context import context
 from simstack.models.parameters import Resource
 from simstack.models.runner_model import RunnerEvent, RunnerEventEnum, RunnerType
@@ -11,22 +12,22 @@ from simstack.core.services.runner_cleanup_service import RunnerCleanupService
 from simstack.core.services.timeout_restart_service import TimeoutRestartService
 
 @pytest.mark.asyncio
-async def test_runner_status_service(initialized_context):
-    resource = Resource(value="self")
+async def test_runner_status_service(initialized_context, server_storage):
+    resource = Resource(value="test")
     service = RunnerStatusService(resource, interval=60)
     
     await service.execute()
     
-    event = await context.db.find_one(
+    event = await server_storage.find_one(
         RunnerEvent,
-        (RunnerEvent.resource == resource) & (RunnerEvent.event == RunnerEventEnum.ALIVE)
+        (storage_criteria.field(RunnerEvent, 'resource') == resource) & (storage_criteria.field(RunnerEvent, 'event') == RunnerEventEnum.ALIVE)
     )
     assert event is not None
 
 @pytest.mark.asyncio
-async def test_stop_check_service(initialized_context, tmp_path):
+async def test_stop_check_service(initialized_context, tmp_path, server_storage):
     from unittest.mock import patch, PropertyMock, MagicMock
-    resource = Resource(value="self")
+    resource = Resource(value="test")
     shutdown_event = asyncio.Event()
     
     # Patch context.config to mock workdir
@@ -53,9 +54,9 @@ async def test_stop_check_service(initialized_context, tmp_path):
         assert shutdown_event.is_set()
         
         # Check event
-        event = await context.db.find_one(
+        event = await server_storage.find_one(
             RunnerEvent,
-            (RunnerEvent.resource == resource) & (RunnerEvent.event == RunnerEventEnum.SHUTDOWN)
+            (storage_criteria.field(RunnerEvent, 'resource') == resource) & (storage_criteria.field(RunnerEvent, 'event') == RunnerEventEnum.SHUTDOWN)
         )
         assert event is not None
         assert event.message == "STOP file found"
@@ -63,49 +64,49 @@ async def test_stop_check_service(initialized_context, tmp_path):
 import pytest_asyncio
 
 @pytest_asyncio.fixture(autouse=True)
-async def clear_events():
-    collection = context.db.get_collection(RunnerEvent)
+async def clear_events(server_storage):
+    collection = server_storage.get_collection(RunnerEvent)
     await collection.delete_many({})
     yield
 
 @pytest.mark.asyncio
-async def test_runner_cleanup_service(initialized_context):
-    resource = Resource(value="self")
+async def test_runner_cleanup_service(initialized_context, server_storage):
+    resource = Resource(value="test")
     service = RunnerCleanupService(resource, interval=300)
     
     # Create an old event
-    old_time = datetime.now() - timedelta(minutes=35)
+    old_time = datetime.now(timezone.utc) - timedelta(minutes=35)
     old_event = RunnerEvent(
         resource=resource,
         runner_type=RunnerType.RESOURCE_RUNNER,
-        event=RunnerEventEnum.ALIVE,
+        event=RunnerEventEnum.RUNNER_STARTED,
         timestamp=old_time
     )
-    await context.db.save(old_event)
+    await server_storage.save(old_event)
     
     # Create a recent event
     recent_event = RunnerEvent(
         resource=resource,
         runner_type=RunnerType.RESOURCE_RUNNER,
         event=RunnerEventEnum.ALIVE,
-        timestamp=datetime.now()
+        timestamp=datetime.now(timezone.utc)
     )
-    await context.db.save(recent_event)
+    await server_storage.save(recent_event)
     
-    await service.execute()
+    await RunnerStatusService(resource, interval=60).execute()
     
-    # Old event should be gone
-    found_old = await context.db.find_one(RunnerEvent, RunnerEvent.id == old_event.id)
+    # Server applies retention when receiving the resource heartbeat.
+    found_old = await server_storage.find_one(RunnerEvent, storage_criteria.field(RunnerEvent, 'id') == old_event.id)
     assert found_old is None
     
     # Recent event should still be there
-    found_recent = await context.db.find_one(RunnerEvent, RunnerEvent.id == recent_event.id)
+    found_recent = await server_storage.find_one(RunnerEvent, storage_criteria.field(RunnerEvent, 'id') == recent_event.id)
     assert found_recent is not None
 
 @pytest.mark.asyncio
-async def test_timeout_restart_service(initialized_context):
+async def test_timeout_restart_service(initialized_context, server_storage):
     from unittest.mock import patch, AsyncMock
-    resource = Resource(value="self")
+    resource = Resource(value="test")
     # Using small timeout for testing
     service = TimeoutRestartService(resource, timeout_minutes=1)
     
@@ -115,9 +116,9 @@ async def test_timeout_restart_service(initialized_context):
         mock_restart.assert_called_once()
         
         # Check event
-        event = await context.db.find_one(
+        event = await server_storage.find_one(
             RunnerEvent,
-            (RunnerEvent.resource == resource) & (RunnerEvent.event == RunnerEventEnum.SHUTDOWN)
+            (storage_criteria.field(RunnerEvent, 'resource') == resource) & (storage_criteria.field(RunnerEvent, 'event') == RunnerEventEnum.SHUTDOWN)
         )
         assert event is not None
         assert "Timeout restart" in event.message

@@ -1,98 +1,65 @@
 import subprocess
 from types import SimpleNamespace
-
 import pytest
-from simstack.models.document import ObjectId
+from simstack.util.slurm_observation import observe_job
 
-from simstack.models.parameters import Resource
-from simstack.util.runner_utils import (
-    SqueueNotFoundError,
-    SqueueQueryError,
-    get_job_info,
-    run_squeue_for_job,
-)
+def test_queue_probe_has_bounded_argv_and_preserves_job_identity(monkeypatch):
+    calls = []
+    def run(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(returncode=0, stdout="999|PENDING|PD|other-job|user|0:00|node02|Resources\n12345|RUNNING|R|orca-job|artem|1:23|node01|None\n", stderr="")
+    monkeypatch.setattr("simstack.util.slurm_observation.subprocess.run", run)
+    result = observe_job("12345")
+    assert result["kind"] == "active"
+    assert result["state"] == "RUNNING"
+    assert result["job_id"] == "12345"
+    assert result["job_name"] == "orca-job"
+    assert result["elapsed"] == "1:23"
+    # An all-jobs view can establish absence without a missing-ID query error;
+    # the observer must still select only the requested job from that view.
+    assert calls[0][0] == ["squeue", "--noheader", "--states=all", "--format=%F|%T|%t|%j|%u|%M|%N|%R"]
+    assert calls[0][1]["timeout"] == 30
+    assert calls[0][1]["env"]["TZ"] == "UTC"
+    assert "shell" not in calls[0][1]
 
-SQUEUE_HEADER = "JOBID PARTITION NAME USER ST TIME NODES NODELIST(REASON)"
-SQUEUE_JOB_LINE = "12345 batch hyperpol user R 1:23 1 node01"
+@pytest.mark.parametrize("error", [
+    FileNotFoundError("squeue not installed"),
+    subprocess.TimeoutExpired("squeue", 30),
+])
+def test_query_failures_are_unknown_evidence(monkeypatch, error):
+    def run(*args, **kwargs):
+        raise error
+    monkeypatch.setattr("simstack.util.slurm_observation.subprocess.run", run)
+    assert observe_job("12345")["kind"] == "unknown"
 
+@pytest.mark.parametrize("stdout,returncode,stderr", [
+    ("", 1, "Socket timed out on send/recv operation"),
+    ("", 127, "squeue not found"),
+    ("unexpected controller output", 0, ""),
+    ("", 0, ""),
+])
+def test_absence_bad_output_and_nonzero_never_invent_timeout(monkeypatch, stdout, returncode, stderr):
+    monkeypatch.setattr("simstack.util.slurm_observation.subprocess.run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=returncode, stdout=stdout, stderr=stderr))
+    assert observe_job("12345")["kind"] == "unknown"
 
-def _completed(stdout: str, returncode: int = 0, stderr: str = ""):
-    return SimpleNamespace(returncode=returncode, stdout=stdout, stderr=stderr)
-
-
-def _patch_squeue(monkeypatch, result):
-    monkeypatch.setattr(
-        "simstack.util.runner_utils.subprocess.run",
-        lambda *args, **kwargs: result,
-    )
-
-
-def test_get_job_info_parses_running_job(monkeypatch):
-    _patch_squeue(monkeypatch, _completed(f"{SQUEUE_HEADER}\n{SQUEUE_JOB_LINE}\n"))
-    info = get_job_info("12345", ObjectId(), Resource(value="self"))
-    assert info is not None
-    assert info.job_id == "12345"
-    assert info.name == "hyperpol"
-    assert info.code == "R"
-    assert info.time == "1:23"
-    assert info.nodes == ["node01"]
-
-
-def test_get_job_info_returns_none_when_job_left_the_queue(monkeypatch):
-    _patch_squeue(monkeypatch, _completed(f"{SQUEUE_HEADER}\n"))
-    assert get_job_info("12345", ObjectId(), Resource(value="self")) is None
-
-
-def test_get_job_info_raises_when_squeue_times_out(monkeypatch):
-    def raise_timeout(*args, **kwargs):
-        raise subprocess.TimeoutExpired(cmd="squeue -j 12345", timeout=30)
-
-    monkeypatch.setattr("simstack.util.runner_utils.subprocess.run", raise_timeout)
-    with pytest.raises(SqueueQueryError, match="timed out"):
-        get_job_info("12345", ObjectId(), Resource(value="self"))
+def test_invalid_scheduler_job_id_is_not_interpreted_as_a_shell_command():
+    with pytest.raises(ValueError, match="job identity"):
+        observe_job("42; touch /tmp/should-not-exist")
 
 
-def test_get_job_info_raises_when_squeue_returns_nonzero(monkeypatch):
-    _patch_squeue(
-        monkeypatch,
-        _completed(
-            "",
-            returncode=1,
-            stderr="slurm_load_jobs error: Socket timed out on send/recv operation",
-        ),
-    )
-    with pytest.raises(SqueueQueryError, match="return code 1"):
-        get_job_info("12345", ObjectId(), Resource(value="self"))
+def test_scheduler_display_filters_do_not_change_observation_or_connection_environment(monkeypatch):
+    filters = ["SQUEUE_STATES", "SQUEUE_USERS", "SQUEUE_PARTITION", "SQUEUE_ACCOUNT", "SQUEUE_NAMES", "SQUEUE_QOS", "SQUEUE_FORMAT2"]
+    for name in filters:
+        monkeypatch.setenv(name, "caller-display-filter")
+    monkeypatch.setenv("SLURM_CONF", "/cluster/slurm.conf")
+    monkeypatch.setenv("SLURM_CLUSTERS", "compute")
 
+    def run(command, **kwargs):
+        assert not any(name.startswith("SQUEUE_") for name in kwargs["env"])
+        assert kwargs["env"]["SLURM_CONF"] == "/cluster/slurm.conf"
+        assert kwargs["env"]["SLURM_CLUSTERS"] == "compute"
+        return SimpleNamespace(returncode=0, stdout="42|PENDING|PD|array|user|0:00|node01|Resources\n", stderr="")
 
-def test_get_job_info_raises_when_squeue_returns_empty_stdout(monkeypatch):
-    _patch_squeue(monkeypatch, _completed("   \n", returncode=0))
-    with pytest.raises(SqueueQueryError, match="returned no output"):
-        get_job_info("12345", ObjectId(), Resource(value="self"))
-
-
-def test_get_job_info_raises_when_squeue_output_is_not_a_listing(monkeypatch):
-    _patch_squeue(
-        monkeypatch,
-        _completed("slurm_load_jobs error: Unable to contact slurm controller\n"),
-    )
-    with pytest.raises(SqueueQueryError, match="unexpected output"):
-        get_job_info("12345", ObjectId(), Resource(value="self"))
-
-
-def test_run_squeue_for_job_raises_when_squeue_missing(monkeypatch):
-    _patch_squeue(
-        monkeypatch,
-        _completed("", returncode=127, stderr="/bin/sh: 1: squeue: not found"),
-    )
-    with pytest.raises(SqueueNotFoundError):
-        run_squeue_for_job("12345")
-
-
-def test_get_job_info_raises_when_squeue_missing(monkeypatch):
-    _patch_squeue(
-        monkeypatch,
-        _completed("", returncode=127, stderr="/bin/sh: 1: squeue: not found"),
-    )
-    with pytest.raises(SqueueNotFoundError):
-        get_job_info("12345", ObjectId(), Resource(value="self"))
+    monkeypatch.setattr("simstack.util.slurm_observation.subprocess.run", run)
+    assert observe_job("42")["kind"] == "active"

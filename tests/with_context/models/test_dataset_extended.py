@@ -1,4 +1,5 @@
 import pytest
+from simstack.server_api.http_transport import RunnerAPIError
 from simstack.core.context import context
 from simstack.models.dataset import DataSet, DataSetSection
 from simstack.models.dataset_metadata import DataSetMetadata
@@ -12,8 +13,8 @@ class TestDataSetExtended:
         """Test DataSetSection.make_column_defs."""
         f = FloatData(value=1.0)
         s = StringData(value="test")
-        await context.db.save(f)
-        await context.db.save(s)
+        await context.server.values.publish_value(f)
+        await context.server.values.publish_value(s)
 
         section = DataSetSection()
         section.add_row({"f": f, "s": s}, name="item1")
@@ -38,8 +39,8 @@ class TestDataSetExtended:
         """Test DataSetSection.make_table_entries."""
         f = FloatData(value=42.0)
         s = StringData(value="hello")
-        await context.db.save(f)
-        await context.db.save(s)
+        await context.server.values.publish_value(f)
+        await context.server.values.publish_value(s)
 
         section = DataSetSection()
         section.add_row({"f": f, "s": s}, name="item1")
@@ -80,8 +81,8 @@ class TestDataSetExtended:
         """Test that saving a dataset with a different structure for the same type fails."""
         f = FloatData(value=1.0)
         s = StringData(value="test")
-        await context.db.save(f)
-        await context.db.save(s)
+        await context.server.values.publish_value(f)
+        await context.server.values.publish_value(s)
 
         # First dataset
         meta1 = DataSetMetadata(field_name="mismatch_type", data={})
@@ -89,7 +90,7 @@ class TestDataSetExtended:
         sec1 = DataSetSection()
         sec1.add_row({"f": f}, name="row1")
         ds1["train"] = sec1
-        await ds1.save(context.db)
+        await context.server.values.publish_value(ds1)
 
         # Second dataset with same type but different structure
         meta2 = DataSetMetadata(field_name="mismatch_type", data={})
@@ -98,14 +99,14 @@ class TestDataSetExtended:
         sec2.add_row({"f": s}, name="row1") # "s" instead of "f"
         ds2["train"] = sec2
 
-        with pytest.raises(ValueError, match=r"Metadata [Vv]alidation failed|Section '?'?train'?'? has different (content|value)"):
-            await ds2.save(context.db)
+        with pytest.raises(RunnerAPIError, match=r"Metadata [Vv]alidation failed|Section '?'?train'?'? has different (content|value)"):
+            await context.server.values.publish_value(ds2)
 
     @pytest.mark.asyncio
     async def test_dataset_metadata_data_key_mismatch_fails(self, initialized_context):
         """Test that saving a dataset with a different data keys for the same field_name fails."""
         f = FloatData(value=1.0)
-        await context.db.save(f)
+        await context.server.values.publish_value(f)
 
         # First dataset with metadata data {'a': 1}
         meta1 = DataSetMetadata(field_name="data_mismatch", data={"a": 1})
@@ -113,7 +114,7 @@ class TestDataSetExtended:
         sec1 = DataSetSection()
         sec1.add_row({"f": f}, name="row1")
         ds1["train"] = sec1
-        await ds1.save(context.db)
+        await context.server.values.publish_value(ds1)
 
         # Second dataset with same field_name but different metadata data keys {'b': 2}
         meta2 = DataSetMetadata(field_name="data_mismatch", data={"b": 2})
@@ -122,14 +123,14 @@ class TestDataSetExtended:
         sec2.add_row({"f": f}, name="row1")
         ds2["train"] = sec2
 
-        with pytest.raises(ValueError, match=r"Data schema properties mismatch"):
-            await ds2.save(context.db)
+        with pytest.raises(RunnerAPIError, match=r"Data schema properties mismatch"):
+            await context.server.values.publish_value(ds2)
 
     @pytest.mark.asyncio
     async def test_dataset_metadata_data_type_mismatch_fails(self, initialized_context):
         """Test that saving a dataset with a different data types for the same field_name fails."""
         f = FloatData(value=1.0)
-        await context.db.save(f)
+        await context.server.values.publish_value(f)
 
         # First dataset with metadata data {'a': 1} (int)
         meta1 = DataSetMetadata(field_name="data_type_mismatch", data={"a": 1})
@@ -137,7 +138,7 @@ class TestDataSetExtended:
         sec1 = DataSetSection()
         sec1.add_row({"f": f}, name="row1")
         ds1["train"] = sec1
-        await ds1.save(context.db)
+        await context.server.values.publish_value(ds1)
 
         # Second dataset with same field_name but different metadata data type {'a': "1"} (str)
         meta2 = DataSetMetadata(field_name="data_type_mismatch", data={"a": "1"})
@@ -146,14 +147,14 @@ class TestDataSetExtended:
         sec2.add_row({"f": f}, name="row1")
         ds2["train"] = sec2
 
-        with pytest.raises(ValueError, match=r"Property 'a' type mismatch"):
-            await ds2.save(context.db)
+        with pytest.raises(RunnerAPIError, match=r"Property 'a' type mismatch"):
+            await context.server.values.publish_value(ds2)
 
     @pytest.mark.asyncio
     async def test_dataset_metadata_data_value_change_succeeds(self, initialized_context):
         """Test that saving a dataset with different data values (same type/keys) for the same field_name succeeds."""
         f = FloatData(value=1.0)
-        await context.db.save(f)
+        await context.server.values.publish_value(f)
 
         # First dataset with metadata data {'a': 1}
         meta1 = DataSetMetadata(field_name="data_value_change", data={"a": 1})
@@ -161,7 +162,7 @@ class TestDataSetExtended:
         sec1 = DataSetSection()
         sec1.add_row({"f": f}, name="row1")
         ds1["train"] = sec1
-        await ds1.save(context.db)
+        await context.server.values.publish_value(ds1)
 
         # Second dataset with same field_name and same data structure but different value {'a': 2}
         meta2 = DataSetMetadata(field_name="data_value_change", data={"a": 2})
@@ -171,4 +172,4 @@ class TestDataSetExtended:
         ds2["train"] = sec2
         
         # This should NOT fail because the schema (keys and types) is the same
-        await ds2.save(context.db)
+        await context.server.values.publish_value(ds2)

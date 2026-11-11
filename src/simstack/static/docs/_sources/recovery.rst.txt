@@ -1,5 +1,5 @@
 Recovery and Repair of Nodes
-===========================
+============================
 
 This document explains how to implement recovery mechanisms for failed nodes in SimStack.
 The example `recovery_test.py` demonstrates how to handle nodes that might fail after producing some output, and how to recover that output using a recovery node.
@@ -11,16 +11,14 @@ The recovery process involves three main components:
 
 1. **The Failing Node**: A node that performs some work, writes output to a file, but then fails (e.g., due to an exception).
 2. **The Repair Function**: A helper function that knows how to locate the output of a failed node and "repair" the result by collecting the files and marking it as successful.
-3. **The Recovery Node**: A node that queries the database for failed instances of specific nodes and applies the repair function to them.
+3. **The Recovery Node**: A node that consumes explicit task references and published output files, and produces a repaired result under its own execution.
 
 Implementation Details
 ----------------------
 
-The example implementation can be found in `examples/testing/recovery_test.py`.
-
-.. literalinclude:: ../../../examples/testing/recovery_test.py
-   :language: python
-   :linenos:
+The historical ``recovery_test.py`` example used direct task writes and is not
+an executable example for the current API boundary. Recovery code must use
+the task API and explicit scientific value publication.
 
 How it Works
 ------------
@@ -32,7 +30,11 @@ How it Works
    This function takes a `NodeRegistry` entry. It constructs the path to the original node's working directory using `context.config.workdir`. If it finds the expected output files, it uses `node_runner.succeed()` to provide the missing data.
 
 3. **sxt_recovery_node**:
-   This is the orchestrator for recovery. It uses `context.db.find` to search for `NodeRegistry` entries with a `failed` status and a specific `call_path`. For each failed node found, it calls `stx_repair_node`. If repair is successful, it updates the original node's status in the database.
+   Read a known task with ``await context.server.tasks.get_task(task_id)`` and
+   resolve its scientific references with ``context.server.values.resolve_values``.
+   A recovery node publishes repaired outputs under its own task. Preserve the
+   original failure and its error; scientific publication cannot change a task's
+   status. Retrying the original task must go through the Server task lifecycle.
 
 4. **Main Execution**:
    The `main` function first runs several instances of `sxt_failing_node`, which all fail. Then, it runs `sxt_recovery_node` to automatically fix these failures and recover the data.

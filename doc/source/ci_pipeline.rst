@@ -27,8 +27,10 @@ On branch pushes and manual workflow runs, the ``package-html-docs`` job:
 
 The job is read-only: it does not commit or push generated files. This ensures
 that the pull-request head itself retains the CI result instead of being
-replaced by an unchecked ``[skip ci]`` documentation commit. Bundled static
-documentation can be refreshed intentionally as part of a release.
+replaced by an unchecked ``[skip ci]`` documentation commit. The PyPI release
+workflow and the Server image pipeline rebuild documentation from their reviewed
+Core checkout before building the wheel, so shipped packages contain current
+documentation without committing generated HTML.
 
 How other projects should consume docs
 --------------------------------------

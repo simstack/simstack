@@ -24,7 +24,7 @@ Example:
 .. code-block:: python
 
    from typing import List
-   from odmantic import Model, Field
+   from simstack.models.document import Model, Field
    from simstack.models import simstack_model
    from simstack.models.base_lists import GenericListMixin
 
@@ -60,14 +60,14 @@ The mixin also provides convenience methods for searching elements if they have 
 ObjectListMixin
 ---------------
 
-The ``ObjectListMixin`` is designed for lists of ``Model`` instances. Instead of storing the full objects, it stores only their ``ObjectId``. This is useful for keeping the parent model small and avoiding deep nesting in MongoDB. Interaction with the objects is done asynchronously through the database.
+The ``ObjectListMixin`` is designed for lists of ``Model`` instances. Instead of storing the full objects, it stores only their ``ObjectId``. This is useful for keeping the parent model small and avoiding deep nesting in MongoDB. Server resolves the referenced objects when the containing model is loaded through the scientific API. List operations then use local values.
 
 Requirements:
 ~~~~~~~~~~~~~
 
 To use ``ObjectListMixin``, your class must:
 
-1. Inherit from ``ObjectListMixin[T]`` where ``T`` is an odmantic ``Model``.
+1. Inherit from ``ObjectListMixin[T]`` where ``T`` is a SimStack domain ``Model``.
 2. Have an attribute named ``elements`` of type ``List[ObjectId]``.
 
 Example:
@@ -76,7 +76,7 @@ Example:
 .. code-block:: python
 
    from typing import List
-   from odmantic import Model, Field, ObjectId
+   from simstack.models.document import Model, Field, ObjectId
    from simstack.models import simstack_model, StringData
    from simstack.models.base_lists import ObjectListMixin
 
@@ -94,18 +94,16 @@ Several core SimStack models utilize these mixins:
 *   :doc:`array_lists`: ``ArrayList`` uses ``ObjectListMixin[ArrayStorage]``.
 *   :doc:`tables`: ``SimpleTable`` (while not using list mixins directly, it's a related data structure).
 
-Available Methods (mostly Async):
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Available Methods
+~~~~~~~~~~~~~~~~~
 
-- ``await append(element: T)``: Saves the ``Model`` instance to the database and adds its ID to the list.
-- ``await extend(elements: Union[List[T], ObjectListMixin[T]])``: Extends the list, saving any new models to the database.
-- ``await get(index: int) -> T``: Retrieves the full model from the database at the specified index.
-- ``await find(pattern: str) -> Optional[T]``: Searches for a model with a matching ``name`` attribute in the database.
-- ``await find_all(pattern: str) -> List[T]``: Searches for all models matching the regex ``pattern``.
-- ``async for element in my_list``: Support for asynchronous iteration over the full objects.
-- ``len(my_list)``: Returns the number of IDs in the list.
-- ``my_list[index]``: Returns the ``ObjectId`` at the specified index (sync).
-- ``element in my_list``: Checks if a ``Model`` or ``ObjectId`` is in the list (sync).
+- ``append(element)`` and ``extend(elements)`` update the local list.
+- ``get(index)`` retrieves a locally materialized model.
+- ``find(pattern)`` and ``find_all(pattern)`` search materialized values.
+- ``for element in my_list`` iterates locally.
+- ``len(my_list)`` returns the number of referenced values.
 
-.. note::
-   Interaction with ``ObjectListMixin`` requires an active database engine context, which is typically provided during node execution.
+Publish the containing model with
+``await context.server.values.publish_value(my_list)``. Resolve it with
+``await context.server.values.get_value(ListModelType, id)`` before accessing
+remote values. Constructors and list access never query a database.

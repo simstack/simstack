@@ -1,332 +1,174 @@
-from types import SimpleNamespace
+"""Nested routing/cache contracts through Server-owned publication and claims."""
+from simstack.runner_runtime.launch_claims import acquire_work
 from unittest.mock import AsyncMock
 
 import pytest
+import pytest_asyncio
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.node import Node, _find_reusable_task, node
-from simstack.core.node_claim import (
-    claim_submitted_node,
-)
+from simstack.core.node import Node, compute_arg_hash
 from simstack.core.services.node_execution_service import NodeExecutionService
-from simstack.models import (
-    FloatData,
-    NodeModel,
-    NodeRegistry,
-    ResourceAssignmentRule,
-    SlurmParametersPatch,
-)
+from simstack.models import NodeModel, NodeRegistry, ResourceAssignmentRule, SlurmParametersPatch
 from simstack.models.parameters import Parameters, Resource, SlurmParameters
-
-
-@node
-def sync_nested_slurm_failure_node(**kwargs) -> FloatData:
-    return FloatData(value=1.0)
+from simstack.runner_runtime.launch_claims import task_execution
 
 
 def nested_slurm_route_probe(**kwargs):
-    return None
+    return True
 
 
-async def _register_nested_slurm_route_probe():
-    name = nested_slurm_route_probe.__name__
-    mapping = await context.db.find_one(NodeModel, NodeModel.name == name)
-    if mapping is None:
-        mapping = await context.db.save(
-            NodeModel(
-                name=name,
-                function_mapping=f"{__name__}.{name}",
-                input_mappings=[],
-                result_mappings=[],
-                default_parameters=Parameters(),
-            )
-        )
-    context.node_mappings._by_name[name] = mapping
-    context.node_mappings._by_mapping[mapping.function_mapping] = mapping
+@pytest_asyncio.fixture(autouse=True)
+async def register_probe(server_storage):
+    await server_storage.save(NodeModel(name="nested_slurm_route_probe",
+        function_mapping=f"{__name__}.nested_slurm_route_probe", input_mappings=[],
+        result_mappings=[], default_parameters=Parameters()))
+    await context.refresh_mappings()
 
 
-async def _delete_nested_slurm_route_probe_data():
-    entries = await context.db.find(
-        NodeRegistry,
-        NodeRegistry.name == nested_slurm_route_probe.__name__,
-    )
-    for entry in entries:
-        await context.db.delete(entry)
-
-    rules = await context.db.find(
-        ResourceAssignmentRule,
-        ResourceAssignmentRule.name == "nested-slurm-route-probe",
-    )
-    for rule in rules:
-        await context.db.delete(rule)
+async def running_parent(server_storage):
+    parent = NodeRegistry(name="parent", status=TaskStatus.SUBMITTED,
+        function_hash="", arg_hash="parent", func_mapping="test.parent",
+        parameters=Parameters(resource="test"))
+    await server_storage.save(parent)
+    entry = (await acquire_work(context.server, capacity=1))[0]
+    with task_execution(entry):
+        await context.server.tasks.start_attempt(entry)
+    return await context.server.tasks.get_task(entry.id)
 
 
-def _slurm_registry(name: str, status: TaskStatus = TaskStatus.SUBMITTED):
-    return NodeRegistry(
-        name=name,
-        status=status,
-        function_hash=f"{name}-function-hash",
-        arg_hash=f"{name}-arg-hash",
-        func_mapping=f"tests:{name}",
-        parameters=Parameters(
-            resource="test",
-            queue="slurm-queue",
-            slurm_parameters=SlurmParameters(nodes=1),
-        ),
-    )
+async def child_for(parent, parameters):
+    value = Node(func=nested_slurm_route_probe, is_async=False, parent_id=parent.id,
+        parameters=parameters, call_path=".workflow.nested_slurm_route_probe")
+    with task_execution(parent):
+        await value.get_node_registry()
+    return value
 
 
-def _execution_node(registry_entry: NodeRegistry) -> Node:
-    execution_node = Node.__new__(Node)
-    execution_node.name = registry_entry.name
-    execution_node.registry_entry = registry_entry
-    execution_node.parameters = registry_entry.parameters
-    return execution_node
+def close_reservation(node):
+    handle = getattr(node, "_inline_launch_reservation", None)
+    if handle is not None:
+        handle.close()
 
 
 @pytest.mark.asyncio
-async def test_completed_result_is_reusable_after_execution_route_change():
-    completed = _slurm_registry("completed_route_cache", TaskStatus.COMPLETED)
-    completed.parameters = Parameters(resource="self", queue="default")
-    db = SimpleNamespace(find=AsyncMock(return_value=[completed]))
-
-    reusable = await _find_reusable_task(
-        db,
-        name=completed.name,
-        arg_hash=completed.arg_hash,
-        execution_parameters=Parameters(
-            resource="test",
-            queue="slurm-queue",
-            slurm_parameters=SlurmParameters(nodes=2, mem="4G"),
-        ),
-    )
-
-    assert reusable is completed
+async def test_completed_result_is_reusable_after_execution_route_change(server_storage):
+    parent = await running_parent(server_storage)
+    completed = NodeRegistry(name="nested_slurm_route_probe", status=TaskStatus.COMPLETED,
+        function_hash="old-ignored-function-hash", arg_hash=compute_arg_hash([]),
+        func_mapping=f"{__name__}.nested_slurm_route_probe", parameters=Parameters(resource="test"))
+    await server_storage.save(completed)
+    node = await child_for(parent, Parameters(resource="test", queue="slurm-queue", slurm_parameters=SlurmParameters(tasks=1, tasks_per_node=None)))
+    assert node.id == completed.id
+    assert node.status == TaskStatus.COMPLETED
+    assert not node._owns_inline_nested_execution
 
 
 @pytest.mark.asyncio
-async def test_active_task_is_reusable_only_on_the_same_execution_route():
-    active = _slurm_registry("active_route_cache", TaskStatus.RETRIEVED)
-    db = SimpleNamespace(find=AsyncMock(return_value=[active]))
-
-    same_route = await _find_reusable_task(
-        db,
-        name=active.name,
-        arg_hash=active.arg_hash,
-        execution_parameters=active.parameters.model_copy(deep=True),
-    )
-    changed_route = await _find_reusable_task(
-        db,
-        name=active.name,
-        arg_hash=active.arg_hash,
-        execution_parameters=Parameters(resource="self", queue="default"),
-    )
-
-    assert same_route is active
-    assert changed_route is None
-
-
-@pytest.mark.asyncio
-async def test_changed_nested_route_ignores_stale_self_cache_and_waits_for_runner(
-    monkeypatch,
-):
-    await _delete_nested_slurm_route_probe_data()
-    await _register_nested_slurm_route_probe()
-    parent_parameters = Parameters(resource="test", queue="default")
-    call_path = ".workflow.nested_slurm_route_probe"
-
+async def test_active_task_is_reusable_only_on_the_same_execution_route(server_storage):
+    parent = await running_parent(server_storage)
+    first = await child_for(parent, Parameters(resource="self"))
     try:
-        stale_node = Node(
-            func=nested_slurm_route_probe,
-            is_async=False,
-            parameters=Parameters(),
-            parent_parameters=parent_parameters,
-            call_path=call_path,
-        )
-        assert await stale_node.get_node_registry() == TaskStatus.RETRIEVED
-        assert stale_node.registry_entry is not None
-        stale_id = stale_node.registry_entry.id
-        assert stale_node.parameters.resource == "self"
-        assert stale_node.parameters.queue == "default"
-
-        await context.db.save(
-            ResourceAssignmentRule(
-                name="nested-slurm-route-probe",
-                regex_pattern="workflow.nested_slurm_route_probe",
-                resource_str="test",
-                queue="slurm-queue",
-                slurm_parameters_patch=SlurmParametersPatch(nodes=2, mem="4G"),
-            )
-        )
-
-        slurm_node = Node(
-            func=nested_slurm_route_probe,
-            is_async=False,
-            parameters=Parameters(),
-            parent_parameters=parent_parameters,
-            call_path=call_path,
-        )
-        assert await slurm_node.get_node_registry() == TaskStatus.SUBMITTED
-        assert slurm_node.registry_entry is not None
-        assert slurm_node.registry_entry.id != stale_id
-        assert slurm_node.parameters.resource == "test"
-        assert slurm_node.parameters.queue == "slurm-queue"
-        assert slurm_node.parameters.slurm_parameters.nodes == 2
-        assert slurm_node.parameters.slurm_parameters.mem == "4G"
-        assert slurm_node.registry_entry.assignment_rule_name == (
-            "nested-slurm-route-probe"
-        )
-
-        persisted_stale = await context.db.load_task_by_id(stale_id)
-        assert persisted_stale.status == TaskStatus.RETRIEVED
-        assert persisted_stale.parameters.resource == "self"
-        assert persisted_stale.parameters.queue == "default"
-
-        sentinel = SimpleNamespace(value="nested-slurm-result")
-
-        async def fake_wait_for_remote_completion(self):
-            saved = await context.db.load_task_by_id(self.id)
-            assert saved.status == TaskStatus.SUBMITTED
-            return sentinel
-
-        async def fail_if_executed_locally(self):
-            raise AssertionError("the changed child route must wait for the host runner")
-
-        monkeypatch.setattr(
-            Node, "_wait_for_remote_completion", fake_wait_for_remote_completion
-        )
-        monkeypatch.setattr(Node, "run_node_as_process", fail_if_executed_locally)
-
-        assert await slurm_node.run_somewhere() is sentinel
-        persisted = await context.db.load_task_by_id(slurm_node.registry_entry.id)
-        assert persisted.status == TaskStatus.SUBMITTED
+        same = await child_for(parent, Parameters(resource="self"))
+        changed = await child_for(parent, Parameters(resource="test", queue="slurm-queue", slurm_parameters=SlurmParameters(tasks=1, tasks_per_node=None)))
+        assert same.id == first.id
+        assert not same._owns_inline_nested_execution
+        assert changed.id != first.id
+        assert changed.status == TaskStatus.SUBMITTED
     finally:
-        await _delete_nested_slurm_route_probe_data()
+        close_reservation(first)
 
 
 @pytest.mark.asyncio
-async def test_claim_submitted_node_only_claims_once():
-    registry_entry = await context.db.save(_slurm_registry("claim_once_child"))
-
-    assert await claim_submitted_node(registry_entry) is True
-    assert registry_entry.status == TaskStatus.RETRIEVED
-    assert await claim_submitted_node(registry_entry) is False
-
-    saved_entry = await context.db.load_task_by_id(registry_entry.id)
-    assert saved_entry.status == TaskStatus.RETRIEVED
-
-
-@pytest.mark.asyncio
-async def test_nested_slurm_child_stays_submitted_for_host_runner(monkeypatch):
-    registry_entry = await context.db.save(_slurm_registry("host_runner_slurm_child"))
-    execution_node = _execution_node(registry_entry)
-    sentinel = SimpleNamespace(value="nested-result")
-
-    async def fake_wait_for_remote_completion(self):
-        saved = await context.db.load_task_by_id(self.id)
-        assert saved.status == TaskStatus.SUBMITTED
-        return sentinel
-
-    monkeypatch.setattr(
-        Node, "_wait_for_remote_completion", fake_wait_for_remote_completion
-    )
-
-    result = await execution_node.run_somewhere()
-
-    assert result is sentinel
-    saved_entry = await context.db.load_task_by_id(registry_entry.id)
-    assert saved_entry.status == TaskStatus.SUBMITTED
+async def test_changed_nested_route_ignores_stale_self_cache_and_waits_for_runner(server_storage, monkeypatch):
+    parent = await running_parent(server_storage)
+    first = await child_for(parent, Parameters(resource="self"))
+    try:
+        await server_storage.save(ResourceAssignmentRule(name="nested-slurm-route-probe",
+            regex_pattern="workflow.nested_slurm_route_probe", resource_str="test",
+            queue="slurm-queue", slurm_parameters_patch=SlurmParametersPatch(nodes=2, mem="4G")))
+        routed = await child_for(parent, Parameters(resource="self"))
+        assert routed.id != first.id
+        assert routed.status == TaskStatus.SUBMITTED
+        assert routed.parameters.queue == "slurm-queue"
+        assert routed.parameters.slurm_parameters.nodes == 2
+        assert routed.parameters.slurm_parameters.mem == "4G"
+        assert routed.registry_entry.assignment_rule_name == "nested-slurm-route-probe"
+        sentinel = object()
+        monkeypatch.setattr(routed, "_wait_for_remote_completion", AsyncMock(return_value=sentinel))
+        monkeypatch.setattr(routed, "run_node_as_process", AsyncMock(side_effect=AssertionError("Slurm ran inline")))
+        assert await routed.run_somewhere() is sentinel
+        assert (await context.server.tasks.get_task(first.id)).status == TaskStatus.RETRIEVED
+    finally:
+        close_reservation(first)
 
 
 @pytest.mark.asyncio
-async def test_nested_slurm_wait_raises_when_host_runner_fails(monkeypatch):
-    registry_entry = await context.db.save(_slurm_registry("failed_host_slurm_child"))
-    execution_node = _execution_node(registry_entry)
-
-    async def fail_on_host(self):
-        entry = await context.db.load_task_by_id(self.id)
-        entry.status = TaskStatus.FAILED
-        entry.error = "terminated with status TaskStatus.FAILED"
-        await context.db.save(entry)
-        raise RuntimeError(
-            f"Task task_id: {self.id} node: {self.name} failed with "
-            "terminated with status TaskStatus.FAILED"
-        )
-
-    monkeypatch.setattr(Node, "_wait_for_remote_completion", fail_on_host)
-
-    with pytest.raises(RuntimeError, match="terminated with status"):
-        await execution_node.run_somewhere()
-
-    saved_entry = await context.db.load_task_by_id(registry_entry.id)
-    assert saved_entry.status == TaskStatus.FAILED
+async def test_acquire_submitted_node_only_claims_once(server_storage):
+    parent = await running_parent(server_storage)
+    child = await child_for(parent, Parameters(resource="test", queue="slurm-queue", slurm_parameters=SlurmParameters(tasks=1, tasks_per_node=None)))
+    first = await acquire_work(context.server, capacity=1)
+    assert [entry.id for entry in first] == [child.id]
+    assert await acquire_work(context.server, capacity=1) == []
+    assert (await context.server.tasks.get_task(child.id)).status == TaskStatus.RETRIEVED
 
 
 @pytest.mark.asyncio
-async def test_sync_node_wrapper_raises_when_host_slurm_child_fails(monkeypatch):
-    async def fail_on_host(self):
-        entry = await context.db.load_task_by_id(self.id)
-        entry.status = TaskStatus.FAILED
-        entry.error = "terminated with status TaskStatus.FAILED"
-        await context.db.save(entry)
-        raise RuntimeError(
-            f"Task task_id: {self.id} node: {self.name} failed with "
-            "terminated with status TaskStatus.FAILED"
-        )
-
-    monkeypatch.setattr(Node, "_wait_for_remote_completion", fail_on_host)
-
-    with pytest.raises(RuntimeError, match="terminated with status"):
-        sync_nested_slurm_failure_node(
-            parameters=Parameters(
-                resource="test",
-                queue="slurm-queue",
-                slurm_parameters=SlurmParameters(nodes=1),
-                force_rerun=True,
-            )
-        )
-
-    entries = await context.db.find(
-        NodeRegistry,
-        NodeRegistry.name == "sync_nested_slurm_failure_node",
-    )
-    assert entries
-    assert entries[-1].status == TaskStatus.FAILED
-    for entry in entries:
-        await context.db.delete(entry)
+async def test_nested_slurm_child_stays_submitted_for_host_runner(server_storage, monkeypatch):
+    parent = await running_parent(server_storage)
+    child = await child_for(parent, Parameters(resource="test", queue="slurm-queue", slurm_parameters=SlurmParameters(tasks=1, tasks_per_node=None)))
+    sentinel = object()
+    monkeypatch.setattr(child, "_wait_for_remote_completion", AsyncMock(return_value=sentinel))
+    assert await child.run_somewhere() is sentinel
+    assert (await context.server.tasks.get_task(child.id)).status == TaskStatus.SUBMITTED
 
 
 @pytest.mark.asyncio
-async def test_runner_skips_stale_entry_when_another_process_claimed_it(monkeypatch):
-    registry_entry = await context.db.save(
-        _slurm_registry("runner_stale_slurm_child", status=TaskStatus.RETRIEVED)
-    )
-    service = NodeExecutionService(
-        Resource(value="test"),
-        interval=1,
-        max_concurrent=1,
-        shutdown_event=None,
-        detach=False,
-    )
+async def test_nested_slurm_wait_raises_when_host_runner_fails(server_storage):
+    parent = await running_parent(server_storage)
+    child = await child_for(parent, Parameters(resource="test", queue="slurm-queue", slurm_parameters=SlurmParameters(tasks=1, tasks_per_node=None)))
+    entry = (await acquire_work(context.server, capacity=1))[0]
+    with task_execution(entry):
+        await context.server.tasks.fail_attempt(entry, "host bootstrap failed", phase="bootstrap")
+    with pytest.raises(RuntimeError, match="host bootstrap failed"):
+        await child._wait_for_remote_completion()
+    assert (await context.server.tasks.get_task(child.id)).error == "host bootstrap failed"
 
-    async def fake_write_resource_event(*args, **kwargs):
-        return None
 
-    async def fake_load_waiting_tasks_for_resource(resource):
-        return [registry_entry]
-
-    async def fail_if_run(entry):
-        raise AssertionError("stale entries must not be executed after claim failed")
-
-    monkeypatch.setattr(service, "write_resource_event", fake_write_resource_event)
-    monkeypatch.setattr(
-        context.db,
-        "load_waiting_tasks_for_resource",
-        fake_load_waiting_tasks_for_resource,
-    )
-    monkeypatch.setattr(service, "_run_with_semaphore", fail_if_run)
-
+@pytest.mark.asyncio
+async def test_runner_skips_already_claimed_task_on_next_poll(server_storage, monkeypatch):
+    parent = await running_parent(server_storage)
+    child = await child_for(parent, Parameters(resource="test", queue="slurm-queue", slurm_parameters=SlurmParameters(tasks=1, tasks_per_node=None)))
+    await acquire_work(context.server, capacity=1)
+    # No local intent remains for this independently held claim.
+    from simstack.runner_runtime.launch_claims import receipt, finish
+    finish(context.server, receipt(context.server, child.id), claimed=False)
+    service = NodeExecutionService(Resource(value="test"), 1, 1, None, detach=False)
+    monkeypatch.setattr(service, "run_node", AsyncMock(side_effect=AssertionError("duplicate execution")))
     await service.execute()
+    assert not service._running_tasks
+    assert (await context.server.tasks.get_task(child.id)).status == TaskStatus.RETRIEVED
 
-    assert service._running_tasks == set()
+
+@pytest.mark.asyncio
+async def test_default_slurm_parameters_form_a_valid_submission(server_storage):
+    parent = await running_parent(server_storage)
+    parameters = Parameters(resource="test", queue="slurm-queue")
+    assert parameters.slurm_parameters.tasks == 1
+    assert parameters.slurm_parameters.tasks_per_node == 1
+    child = await child_for(parent, parameters)
+    assert child.status == TaskStatus.SUBMITTED
+    assert child.parameters.slurm_parameters.nodes == 1
+    assert child.parameters.slurm_parameters.tasks is None
+    assert child.parameters.slurm_parameters.tasks_per_node is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("count", [1, 2])
+async def test_total_tasks_and_per_node_limit_are_both_preserved(server_storage, count):
+    parent = await running_parent(server_storage)
+    child = await child_for(parent, Parameters(resource="test", queue="slurm-queue",
+        slurm_parameters=SlurmParameters(nodes=1, tasks=count, tasks_per_node=count)))
+    assert child.status == TaskStatus.SUBMITTED
+    assert child.parameters.slurm_parameters.tasks == count
+    assert child.parameters.slurm_parameters.tasks_per_node == count

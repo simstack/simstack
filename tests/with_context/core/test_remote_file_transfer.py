@@ -9,7 +9,7 @@ import shutil
 import pytest
 from unittest.mock import patch
 
-from src.simstack.models.files import FileStack
+from simstack.models.files import FileStack
 from simstack.models.file_instance import FileInstance
 
 # Configure logging
@@ -78,7 +78,7 @@ def setup_test_env():
 def mock_context(setup_test_env):
     """Mock the simstack context for testing."""
     with patch(
-        "src.simstack.models.files.context", MockContext(setup_test_env["workdir"])
+        "simstack.models.files.context", MockContext(setup_test_env["workdir"])
     ):
         yield
 
@@ -86,8 +86,8 @@ def mock_context(setup_test_env):
 @pytest.fixture
 def mock_job_submission():
     """Mock the job submission and status check functions."""
-    with patch("src.simstack.models.files.submit_copy_job") as mock_submit, patch(
-        "src.simstack.models.files.check_job_status"
+    with patch("simstack.models.files.submit_copy_job") as mock_submit, patch(
+        "simstack.models.files.check_job_status"
     ) as mock_status:
         # Configure the mock job status to simulate completion after a few checks
         mock_status.side_effect = ["PENDING", "RUNNING", "COMPLETED"]
@@ -208,7 +208,7 @@ def test_filestack_get_remote(
     file_stack = FileStack(stack_ref=stack_ref, locations=[instance])
 
     # Mock the minimal_route_finder function
-    with patch("src.simstack.models.files.find_shortest_route") as mock_route_finder:
+    with patch("simstack.models.files.find_shortest_route") as mock_route_finder:
         # Set up route finder to return a valid route
         mock_route_finder.return_value = [
             ("remote1", "local", "remote1")  # Format: (source, target, executing_host)
@@ -287,7 +287,7 @@ def test_filestack_get_multi_remote_first_fails(
     file_stack = FileStack(stack_ref=stack_ref, locations=[instance1, instance2])
 
     # Mock the minimal_route_finder function
-    with patch("src.simstack.models.files.find_shortest_route") as mock_route_finder:
+    with patch("simstack.models.files.find_shortest_route") as mock_route_finder:
         # Set up route finder to return valid routes for both resources
         def route_finder_side_effect(source, target, routes):
             if source == "remote1":
@@ -387,7 +387,7 @@ def test_filestack_get_no_valid_instances(
     file_stack = FileStack(stack_ref=stack_ref, locations=[instance])
 
     # Mock the minimal_route_finder to return no route
-    with patch("src.simstack.models.files.find_shortest_route") as mock_route_finder:
+    with patch("simstack.models.files.find_shortest_route") as mock_route_finder:
         mock_route_finder.return_value = None  # No route available
 
         # Act and Assert

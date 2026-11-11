@@ -19,26 +19,13 @@ def parent_with_attribute_call():
 
 
 @pytest.mark.asyncio
-async def test_make_node_table_runs_second_stage_after_rebuild(monkeypatch):
-    calls = []
-
-    class FakeCreator:
-        def __init__(self, db, write_schema=False, project_root=None):
-            self.db = db
-
-        async def build(self, **kwargs):
-            calls.append(("build", kwargs))
-
-        async def second_stage(self, drops):
-            calls.append(("second", drops))
-
-    monkeypatch.setattr(node_table, "CreateNodeTable", FakeCreator)
-
-    await make_node_table(object())
-
-    assert calls[0][0] == "build"
-    assert calls[0][1]["drops"] == ""
-    assert calls[1] == ("second", "")
+async def test_make_node_table_runs_second_stage_after_rebuild(monkeypatch, tmp_path):
+    from simstack.tables.catalogue import CatalogueCollector
+    from unittest.mock import AsyncMock
+    second_stage = AsyncMock()
+    monkeypatch.setattr(node_table.CreateNodeTable, "second_stage", second_stage)
+    await make_node_table(CatalogueCollector(), project_root=tmp_path, ignore_entrypoints=True)
+    second_stage.assert_awaited_once_with("")
 
 
 @pytest.mark.asyncio
@@ -58,25 +45,15 @@ async def test_update_node_children_keeps_attribute_calls_from_the_docstring(
         description="",
         called_nodes=[],
     )
-    updates = []
+    from simstack.tables.catalogue import CatalogueCollector
+    catalogue = CatalogueCollector(nodes=[child, parent])
 
-    class FakeDatabase:
-        async def find(self, model):
-            return [child, parent]
-
-        async def save(self, model):
-            updates.append((model.id, list(model.called_nodes)))
-            return model
-
-    async def import_function(function_mapping, database):
-        if function_mapping == "pkg.parent_node":
-            return parent_with_attribute_call
-        return child_node
+    def import_function(function_mapping):
+        return parent_with_attribute_call if function_mapping == "pkg.parent_node" else child_node
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(node_children, "import_function", import_function)
+    monkeypatch.setattr(node_children, "_import_callable_from_mapping", import_function)
 
-    await node_children.update_node_children(FakeDatabase(), "")
+    await node_children.update_node_children(catalogue, "")
 
-    parent_update = next(calls for identity, calls in updates if identity == "parent")
-    assert parent_update == ["pkg.child_node"]
+    assert parent.called_nodes == ["pkg.child_node"]

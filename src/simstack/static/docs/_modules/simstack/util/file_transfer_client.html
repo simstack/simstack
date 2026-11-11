@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -316,6 +321,9 @@
 
 <span class="sd">    It intentionally avoids adding a mandatory requests/httpx dependency to the</span>
 <span class="sd">    runner environment while still streaming upload and download bodies.</span>
+<span class="sd">    Uploads larger than the configured chunk size (or that receive HTTP 413)</span>
+<span class="sd">    are sent as sequential Content-Range requests so reverse proxies with a</span>
+<span class="sd">    small client_max_body_size can still accept Gaussian-sized FileStack files.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">chunk_size</span> <span class="o">=</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>
@@ -326,10 +334,14 @@
         <span class="n">server_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">runner_token</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">timeout_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span>
+        <span class="n">rotate_credentials</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">account_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">server_url</span> <span class="o">=</span> <span class="n">server_url</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">runner_token</span> <span class="o">=</span> <span class="n">runner_token</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_runner_token</span> <span class="o">=</span> <span class="n">runner_token</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">timeout_seconds</span> <span class="o">=</span> <span class="n">timeout_seconds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rotate_credentials</span> <span class="o">=</span> <span class="n">rotate_credentials</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">account_id</span> <span class="o">=</span> <span class="n">account_id</span>
         <span class="n">parsed</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">server_url</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;http&quot;</span><span class="p">,</span> <span class="s2">&quot;https&quot;</span><span class="p">}</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">parsed</span><span class="o">.</span><span class="n">netloc</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid SIMSTACK_SERVER_URL: </span><span class="si">{</span><span class="n">server_url</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -355,12 +367,11 @@
         <span class="n">server_url</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_SERVER_URL&quot;</span><span class="p">)</span>
             <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;server_url&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;simstack_server_url&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">runner_token</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_RUNNER_TOKEN&quot;</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_SERVER_TOKEN&quot;</span><span class="p">)</span>
             <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;server_token&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;simstack_runner_token&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">timeout_seconds</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
             <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_FILE_TRANSFER_REQUEST_TIMEOUT_SECONDS&quot;</span><span class="p">,</span> <span class="s2">&quot;60&quot;</span><span class="p">)</span>
@@ -378,6 +389,7 @@
             <span class="n">server_url</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">server_url</span><span class="p">),</span>
             <span class="n">runner_token</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">runner_token</span><span class="p">),</span>
             <span class="n">timeout_seconds</span><span class="o">=</span><span class="n">timeout_seconds</span><span class="p">,</span>
+            <span class="n">account_id</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_EXECUTION_ACCOUNT_ID&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;account_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
         <span class="p">)</span></div>
 
 
@@ -487,6 +499,81 @@
 
         <span class="n">size_bytes</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span>
         <span class="n">checksum</span> <span class="o">=</span> <span class="n">hash_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">raw_chunk</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_FILE_TRANSFER_UPLOAD_CHUNK_BYTES&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">raw_chunk</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">chunk_size</span> <span class="o">=</span> <span class="mi">8</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">raw_chunk</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;SIMSTACK_FILE_TRANSFER_UPLOAD_CHUNK_BYTES must be an integer, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">raw_chunk</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+            <span class="k">if</span> <span class="n">chunk_size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;SIMSTACK_FILE_TRANSFER_UPLOAD_CHUNK_BYTES must be positive, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">chunk_size</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+        <span class="n">production_floor</span> <span class="o">=</span> <span class="mi">256</span> <span class="o">*</span> <span class="mi">1024</span>
+        <span class="n">min_chunk_bytes</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">production_floor</span>
+            <span class="k">if</span> <span class="n">chunk_size</span> <span class="o">&gt;</span> <span class="n">production_floor</span>
+            <span class="k">else</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">chunk_size</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">send_ranges</span> <span class="o">=</span> <span class="n">size_bytes</span> <span class="o">&gt;</span> <span class="n">chunk_size</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">send_ranges</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_put_upload</span><span class="p">(</span>
+                        <span class="n">transfer_id</span><span class="p">,</span>
+                        <span class="n">path</span><span class="p">,</span>
+                        <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">length</span><span class="o">=</span><span class="n">size_bytes</span><span class="p">,</span>
+                        <span class="n">total_size</span><span class="o">=</span><span class="n">size_bytes</span><span class="p">,</span>
+                        <span class="n">checksum</span><span class="o">=</span><span class="n">checksum</span><span class="p">,</span>
+                        <span class="n">include_content_range</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="n">result</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">while</span> <span class="n">offset</span> <span class="o">&lt;</span> <span class="n">size_bytes</span><span class="p">:</span>
+                    <span class="n">length</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">chunk_size</span><span class="p">,</span> <span class="n">size_bytes</span> <span class="o">-</span> <span class="n">offset</span><span class="p">)</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_put_upload</span><span class="p">(</span>
+                        <span class="n">transfer_id</span><span class="p">,</span>
+                        <span class="n">path</span><span class="p">,</span>
+                        <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
+                        <span class="n">length</span><span class="o">=</span><span class="n">length</span><span class="p">,</span>
+                        <span class="n">total_size</span><span class="o">=</span><span class="n">size_bytes</span><span class="p">,</span>
+                        <span class="n">checksum</span><span class="o">=</span><span class="n">checksum</span><span class="p">,</span>
+                        <span class="n">include_content_range</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">offset</span> <span class="o">+=</span> <span class="n">length</span>
+                <span class="k">return</span> <span class="n">result</span>
+            <span class="k">except</span> <span class="n">FileTransferError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;HTTP 413&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">):</span>
+                    <span class="k">raise</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">send_ranges</span><span class="p">:</span>
+                    <span class="n">send_ranges</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">chunk_size</span><span class="p">,</span> <span class="mi">512</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="n">next_chunk</span> <span class="o">=</span> <span class="n">chunk_size</span> <span class="o">//</span> <span class="mi">2</span>
+                <span class="k">if</span> <span class="n">next_chunk</span> <span class="o">&lt;</span> <span class="n">min_chunk_bytes</span><span class="p">:</span>
+                    <span class="k">raise</span>
+                <span class="n">chunk_size</span> <span class="o">=</span> <span class="n">next_chunk</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_put_upload</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">transfer_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">length</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">total_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">include_content_range</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
         <span class="n">conn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">()</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">conn</span><span class="o">.</span><span class="n">putrequest</span><span class="p">(</span>
@@ -495,73 +582,41 @@
             <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auth_headers</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="n">conn</span><span class="o">.</span><span class="n">putheader</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
             <span class="n">conn</span><span class="o">.</span><span class="n">putheader</span><span class="p">(</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">,</span> <span class="s2">&quot;application/octet-stream&quot;</span><span class="p">)</span>
-            <span class="n">conn</span><span class="o">.</span><span class="n">putheader</span><span class="p">(</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">size_bytes</span><span class="p">))</span>
-            <span class="n">conn</span><span class="o">.</span><span class="n">putheader</span><span class="p">(</span><span class="s2">&quot;X-File-Size&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">size_bytes</span><span class="p">))</span>
+            <span class="n">conn</span><span class="o">.</span><span class="n">putheader</span><span class="p">(</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">length</span><span class="p">))</span>
+            <span class="n">conn</span><span class="o">.</span><span class="n">putheader</span><span class="p">(</span><span class="s2">&quot;X-File-Size&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">total_size</span><span class="p">))</span>
             <span class="n">conn</span><span class="o">.</span><span class="n">putheader</span><span class="p">(</span><span class="s2">&quot;X-Checksum-SHA256&quot;</span><span class="p">,</span> <span class="n">checksum</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">include_content_range</span><span class="p">:</span>
+                <span class="n">end</span> <span class="o">=</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">length</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">length</span> <span class="k">else</span> <span class="n">offset</span>
+                <span class="n">conn</span><span class="o">.</span><span class="n">putheader</span><span class="p">(</span><span class="s2">&quot;Content-Range&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;bytes </span><span class="si">{</span><span class="n">offset</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">end</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total_size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">conn</span><span class="o">.</span><span class="n">endheaders</span><span class="p">()</span>
 
             <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="nb">iter</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chunk_size</span><span class="p">),</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+                <span class="n">handle</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">offset</span><span class="p">)</span>
+                <span class="n">remaining</span> <span class="o">=</span> <span class="n">length</span>
+                <span class="k">while</span> <span class="n">remaining</span><span class="p">:</span>
+                    <span class="n">chunk</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chunk_size</span><span class="p">,</span> <span class="n">remaining</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">chunk</span><span class="p">:</span>
+                        <span class="k">break</span>
                     <span class="n">conn</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+                    <span class="n">remaining</span> <span class="o">-=</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
 
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_response</span><span class="p">(</span><span class="n">conn</span><span class="o">.</span><span class="n">getresponse</span><span class="p">())</span>
         <span class="k">finally</span><span class="p">:</span>
-            <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
-
+            <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
 <div class="viewcode-block" id="FileTransferClient.download_file">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.file_transfer_client.FileTransferClient.download_file">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">download_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transfer_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">target_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DownloadResult</span><span class="p">:</span>
-        <span class="n">target_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">target_path</span><span class="p">)</span>
-        <span class="n">target_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.object_transfer</span><span class="w"> </span><span class="kn">import</span> <span class="n">download_object</span>
 
-        <span class="n">conn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">()</span>
-        <span class="n">temp_name</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">conn</span><span class="o">.</span><span class="n">request</span><span class="p">(</span>
-                <span class="s2">&quot;GET&quot;</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;/api/file-transfers/</span><span class="si">{</span><span class="n">transfer_id</span><span class="si">}</span><span class="s2">/download&quot;</span><span class="p">),</span>
-                <span class="n">headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_auth_headers</span><span class="p">(),</span>
-            <span class="p">)</span>
-            <span class="n">response</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">getresponse</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status</span> <span class="o">&gt;=</span> <span class="mi">400</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_raise_response</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
-
-            <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
-
-            <span class="n">sha256</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">()</span>
-            <span class="n">size_bytes</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span>
-                <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;wb&quot;</span><span class="p">,</span>
-                <span class="nb">dir</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">target_path</span><span class="o">.</span><span class="n">parent</span><span class="p">),</span>
-                <span class="n">prefix</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;.</span><span class="si">{</span><span class="n">target_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
-                <span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-            <span class="p">)</span> <span class="k">as</span> <span class="n">temp_file</span><span class="p">:</span>
-                <span class="n">temp_name</span> <span class="o">=</span> <span class="n">temp_file</span><span class="o">.</span><span class="n">name</span>
-                <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-                    <span class="n">chunk</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chunk_size</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="n">chunk</span><span class="p">:</span>
-                        <span class="k">break</span>
-                    <span class="n">temp_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
-                    <span class="n">sha256</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
-                    <span class="n">size_bytes</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
-
-            <span class="n">temp_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">temp_name</span><span class="p">)</span>
-            <span class="n">temp_path</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">target_path</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">DownloadResult</span><span class="p">(</span>
-                <span class="n">path</span><span class="o">=</span><span class="n">target_path</span><span class="p">,</span>
-                <span class="n">size_bytes</span><span class="o">=</span><span class="n">size_bytes</span><span class="p">,</span>
-                <span class="n">checksum_sha256</span><span class="o">=</span><span class="n">sha256</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">(),</span>
-            <span class="p">)</span>
-        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">temp_name</span><span class="p">:</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">Path</span><span class="p">(</span><span class="n">temp_name</span><span class="p">)</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed to clean temporary download </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">temp_name</span><span class="p">)</span>
-            <span class="k">raise</span>
-        <span class="k">finally</span><span class="p">:</span>
-            <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+        <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+            <span class="n">metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_json_request</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;/api/file-transfers/</span><span class="si">{</span><span class="n">transfer_id</span><span class="si">}</span><span class="s2">/download-url&quot;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">download_object</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="n">target_path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout_seconds</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">FileTransferError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">attempt</span> <span class="ow">or</span> <span class="s2">&quot;HTTP 403&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">):</span>
+                    <span class="k">raise</span>
+        <span class="k">raise</span> <span class="n">FileTransferError</span><span class="p">(</span><span class="s2">&quot;Object download URL could not be refreshed&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="FileTransferClient.complete_transfer">
@@ -588,26 +643,35 @@
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_json_request</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
         <span class="n">body</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">payload</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
         <span class="n">headers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auth_headers</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">body</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;application/json&quot;</span>
-        <span class="n">conn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">()</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">conn</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="n">body</span><span class="o">=</span><span class="n">body</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_response</span><span class="p">(</span><span class="n">conn</span><span class="o">.</span><span class="n">getresponse</span><span class="p">())</span>
-        <span class="k">finally</span><span class="p">:</span>
-            <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+            <span class="n">conn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">()</span> <span class="k">if</span> <span class="n">timeout_seconds</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">(</span><span class="n">timeout_seconds</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">conn</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="n">body</span><span class="o">=</span><span class="n">body</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">getresponse</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="mi">401</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">attempt</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">rotate_credentials</span><span class="p">:</span>
+                    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.runner_credentials</span><span class="w"> </span><span class="kn">import</span> <span class="n">refreshed_token</span>
+                    <span class="n">replacement</span> <span class="o">=</span> <span class="n">refreshed_token</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">server_url</span><span class="p">,</span> <span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Authorization&quot;</span><span class="p">][</span><span class="mi">7</span><span class="p">:])</span>
+                    <span class="k">if</span> <span class="n">replacement</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">response</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+                        <span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Authorization&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Bearer &quot;</span> <span class="o">+</span> <span class="n">replacement</span>
+                        <span class="k">continue</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_response</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">http</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">HTTPConnection</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">http</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">HTTPConnection</span><span class="p">:</span>
         <span class="n">connection_cls</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">http</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">HTTPSConnection</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parsed</span><span class="o">.</span><span class="n">scheme</span> <span class="o">==</span> <span class="s2">&quot;https&quot;</span>
             <span class="k">else</span> <span class="n">http</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">HTTPConnection</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">connection_cls</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parsed</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout_seconds</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">connection_cls</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parsed</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout_seconds</span> <span class="k">if</span> <span class="n">timeout_seconds</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">timeout_seconds</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="n">base_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parsed</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
@@ -618,8 +682,18 @@
             <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;/</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_path</span><span class="si">}{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">base_path</span> <span class="k">else</span> <span class="n">path</span>
 
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">runner_token</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">rotate_credentials</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runner_token</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.runner_credentials</span><span class="w"> </span><span class="kn">import</span> <span class="n">current_token</span>
+        <span class="k">return</span> <span class="n">current_token</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">server_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runner_token</span><span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_auth_headers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">runner_token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">runner_token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">account_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-SimStack-Account&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">account_id</span>
+        <span class="k">return</span> <span class="n">headers</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_parse_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">http</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">HTTPResponse</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status</span> <span class="o">&gt;=</span> <span class="mi">400</span><span class="p">:</span>
@@ -786,6 +860,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

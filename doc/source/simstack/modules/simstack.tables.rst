@@ -4,6 +4,14 @@ simstack.tables package
 Submodules
 ----------
 
+simstack.tables.catalogue module
+--------------------------------
+
+.. automodule:: simstack.tables.catalogue
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.tables.model\_table module
 -----------------------------------
 

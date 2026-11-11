@@ -233,7 +233,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -282,17 +287,13 @@
 <h1>Simstack II Setup<a class="headerlink" href="#simstack-ii-setup" title="Link to this heading">¶</a></h1>
 <section id="ui-setup">
 <h2>UI Setup<a class="headerlink" href="#ui-setup" title="Link to this heading">¶</a></h2>
-<ol class="arabic">
-<li><p>Register at <code class="docutils literal notranslate"><span class="pre">simstack.int.kit.edu</span></code> (inside the KIT network). This will create an <strong>inactive</strong> user.</p></li>
-<li><p>Email the maintainer so your account can be activated and you can receive:</p>
-<ul class="simple">
-<li><p>a database name</p></li>
-<li><p>a database password</p></li>
-</ul>
-<p>(This is not automated yet.)</p>
-</li>
-<li><p>Go to your profile and upload your resources configuration.</p></li>
+<ol class="arabic simple">
+<li><p>Create an account on your SimStack Server and have it activated by its administrator.</p></li>
+<li><p>Create or select a resource in the UI and run its enrollment command on that resource.</p></li>
+<li><p>Connect the workflow repository and select its branch. Server publishes the catalogue and Runner prepares the pinned revision.</p></li>
 </ol>
+<p>Database credentials are configured by the Server administrator and are never
+issued to Runner or workflow environments.</p>
 <section id="example-resources-configuration">
 <h3>Example resources configuration<a class="headerlink" href="#example-resources-configuration" title="Link to this heading">¶</a></h3>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">[</span>
@@ -397,40 +398,33 @@ It is unclear what you need on other systems.</p>
 uv<span class="w"> </span>sync<span class="w"> </span>--locked
 </pre></div>
 </div>
-<p>Note: This will install all required dependencies, including <code class="docutils literal notranslate"><span class="pre">mongomock</span></code> and <code class="docutils literal notranslate"><span class="pre">mongomock-motor</span></code>, which are used for in-memory database support during testing.</p>
+<p>Core depends on the Server API rather than a database driver. Storage integration tests run with the sibling Server checkout and its development dependencies.</p>
 </section>
 <section id="create-simstack-toml">
 <span id="configuration-file"></span><h3>Create <code class="docutils literal notranslate"><span class="pre">simstack.toml</span></code><a class="headerlink" href="#create-simstack-toml" title="Link to this heading">¶</a></h3>
 <p>Create a <code class="docutils literal notranslate"><span class="pre">simstack.toml</span></code> file (placeholders shown below):</p>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[parameters]</span>
-<span class="k">[parameters.general]</span>
-<span class="n">use_db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
-<span class="n">workdir_self</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;PATH_TO_SIMSTACK_DATA_DIR&gt;&quot;</span>
-<span class="c1"># these are parameters for one user for all hosts</span>
-
-<span class="k">[parameters.db]</span>
-<span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;NAME&gt;_data&quot;</span>
-<span class="n">test_database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;NAME&gt;_test&quot;</span>
-<span class="n">connection_string</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mongodb://&lt;USER&gt;:&lt;PASSWORD&gt;@&lt;HOST&gt;:27017/&quot;</span>
-<span class="n">mongodump_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;PATH_TO_MONGODUMP_EXE&gt;&quot;</span>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[parameters.server]</span>
+<span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://&lt;SIMSTACK_SERVER&gt;&quot;</span>
 </pre></div>
 </div>
-<p>Where:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;PATH_TO_SIMSTACK_DATA_DIR&gt;</span></code> is the path to the data directory created above (e.g. <code class="docutils literal notranslate"><span class="pre">$HOME/simstack</span></code>)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;NAME&gt;</span></code> is your database name (often your first name in lower case)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;PASSWORD&gt;</span></code> is the database password</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;PATH_TO_MONGODUMP_EXE&gt;</span></code> is the path to the <code class="docutils literal notranslate"><span class="pre">mongodump</span></code> executable (required for database backups)</p></li>
-</ul>
+<p>Runner receives its resource token through enrollment. Set
+<code class="docutils literal notranslate"><span class="pre">SIMSTACK_RUNNER_TOKEN</span></code> and <code class="docutils literal notranslate"><span class="pre">SIMSTACK_RUNNER_WORKDIR</span></code> in its environment;
+MongoDB and S3 credentials belong only to the Server deployment. Do not add a
+<code class="docutils literal notranslate"><span class="pre">[parameters.db]</span></code> section or a database connection string to workflow or
+Runner configuration.</p>
+<p>For a Python user session, initialize <code class="docutils literal notranslate"><span class="pre">context</span></code> with <code class="docutils literal notranslate"><span class="pre">server_url</span></code>,
+<code class="docutils literal notranslate"><span class="pre">user_token</span></code> and the selected resource, or supply
+<code class="docutils literal notranslate"><span class="pre">ServerAPI.for_user(server_url,</span> <span class="pre">user_token,</span> <span class="pre">resource=...)</span></code> as <code class="docutils literal notranslate"><span class="pre">server</span></code>.
+A user access token is distinct from a Runner resource token.</p>
 </section>
 <section id="initialize-the-system">
 <h3>Initialize the system<a class="headerlink" href="#initialize-the-system" title="Link to this heading">¶</a></h3>
-<p>This will happen automatically when the default runner starts.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>create_model_table<span class="w"> </span>--dir<span class="w"> </span>examples<span class="w"> </span>--dir<span class="w"> </span>applications
-uv<span class="w"> </span>run<span class="w"> </span>create_node_table<span class="w"> </span>--dir<span class="w"> </span>examples<span class="w"> </span>--dir<span class="w"> </span>applications
-</pre></div>
-</div>
-<p>Note: this may crash if your database is very old.</p>
+<p>Connect the workflow repository in the UI. Server discovers its model/node
+catalogue and registers the selected revision. Runner prepares that revision
+and reports readiness before tasks are admitted.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">create_model_table</span></code> and <code class="docutils literal notranslate"><span class="pre">create_node_table</span></code> commands remain local
+catalogue inspection tools. They collect descriptors and do not write a
+database from Runner.</p>
 </section>
 <section id="configure-git-identity-required">
 <h3>Configure Git identity (required)<a class="headerlink" href="#configure-git-identity-required" title="Link to this heading">¶</a></h3>
@@ -548,6 +542,6 @@ git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

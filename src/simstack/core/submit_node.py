@@ -1,277 +1,220 @@
+"""Generate a batch wrapper and submit one fenced execution to Slurm."""
+
+import logging
 import os
 import re
-import stat
 import shlex
+import stat
 import subprocess
 from pathlib import Path
 
 from simstack.core.context import context
-from simstack.core.definitions import TaskStatus
 from simstack.core.node import process_is_in_docker
-from simstack.models import NodeRegistry
 from simstack.util.sanitized_output import sanitized_tail
-from simstack.util.submit_to_watchdog import submit_to_watchdog
-import logging
 
 logger = logging.getLogger("submit_node")
 
 
-async def _persist_submission_failure(
-    registry_entry: NodeRegistry, error: str
-) -> None:
-    """Fail an owned submission without rolling a started task backward."""
-    if registry_entry.status != TaskStatus.SLURM_QUEUED:
-        registry_entry.status = TaskStatus.FAILED
-        registry_entry.error = error
-        await context.db.save(registry_entry)
-        return
-
-    updated = await context.db.task_mutation(registry_entry.id, "failure", {
-        "status": TaskStatus.FAILED.value, "error": error,
-    }, [TaskStatus.SLURM_QUEUED.value])
-    if updated is not None:
-        registry_entry.status = TaskStatus.FAILED
-        registry_entry.error = error
-
-
-def make_executable(file_path: str | os.PathLike[str]) -> None:
-    # Get current permissions
-    current_permissions = os.stat(file_path).st_mode
-
-    # Add executable bit for user, group and others
-    executable_mode = current_permissions | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
-
-    # Apply new permissions
-    os.chmod(file_path, executable_mode)
+def _write_launch_environment(path, environment):
+    """Keep launcher identity independent of Slurm's user export policy."""
+    names = {
+        "SIMSTACK_SERVER_URL", "SIMSTACK_RUNNER_TOKEN", "SIMSTACK_SERVER_TOKEN",
+        "SIMSTACK_RUNNER_CREDENTIALS", "SIMSTACK_LOCAL_EXECUTION_TOKEN",
+        "SIMSTACK_REPOSITORY_REVISION", "SIMSTACK_MACHINE_CONFIG",
+        "SIMSTACK_RUNNER_WORKDIR",
+        "SIMSTACK_EXECUTION_TASK", "SIMSTACK_EXECUTION_CLAIM",
+        "SIMSTACK_EXECUTION_START", "SIMSTACK_EXECUTION_GENERATION",
+        "SIMSTACK_EXECUTION_RESOURCE", "SIMSTACK_EXECUTION_ACCOUNT_ID",
+        "SIMSTACK_SLURM_SUBMISSION", "SIMSTACK_SLURM_SUBMISSION_TASK",
+    }
+    values = {key: value for key, value in environment.items() if key in names}
+    # The batch script may be readable by others; credentials remain private.
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(descriptor, "w") as stream:
+        os.fchmod(stream.fileno(), 0o600)
+        stream.write("unset SIMSTACK_USER_TOKEN " + " ".join(sorted(names)) + "\n")
+        for key, value in sorted(values.items()):
+            stream.write(f"export {key}={shlex.quote(value)}\n")
 
 
-async def submit_node(registry_entry: NodeRegistry) -> bool:
-    """Submit a node to the SLURM queue.
+async def _persist_submission_failure(entry, error):
+    from simstack.runner_runtime.pending_execution_failures import record_failure
 
-    Must run on the host. Calling ``sbatch`` from inside a container is
-    rejected with a persisted ``FAILED`` status and ``RuntimeError``.
-    """
-    task_id = registry_entry.id
+    error = sanitized_tail(error, None)
+    record_failure(
+        error, phase="submit", execution=context.server.tasks.execution(entry), server=context.server,
+        resource=getattr(entry, "_execution_resource", None)
+    )
+    await context.server.tasks.fail_attempt(entry, error, phase="submit")
+
+
+def make_executable(path):
+    os.chmod(path, os.stat(path).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+
+async def submit_node(entry):
+    from simstack.runner_runtime.slurm_submission_intents import (
+        begin_intent, forget_intent, process_identity, update_intent,
+    )
+
     if process_is_in_docker():
-        error = (
-            f"Cannot run sbatch for task_id: {task_id} from inside a "
-            "container. Slurm submission must be done by the host runner."
-        )
-        logger.error("Task task_id: %s %s", task_id, error)
-        await _persist_submission_failure(registry_entry, error)
+        error = "Slurm submission must be performed by the host Runner"
+        await _persist_submission_failure(entry, error)
         raise RuntimeError(error)
+    submitted = False
+    submission_id = None
     try:
-        logger.info(f"Submitting task_id: {task_id} to SLURM queue")
-        # Implement SLURM submission logic here
-        from simstack.runner_api.runtime import task_project_root, task_resource_config, task_environment, is_api_runner
-        base_path = task_project_root(registry_entry, context.config.project_root)
-        resource_config = task_resource_config(registry_entry, context)
+        from simstack.runner_runtime.execution_environment import (
+            task_project_root,
+            task_resource_config,
+            task_environment,
+            task_launch_command,
+        )
 
-        python_path = os.pathsep.join(
-            dict.fromkeys(
-                [str(base_path)]
-                + [str(path) for path in context.config.python_paths]
+        base = task_project_root(entry, context.config.project_root)
+        config = task_resource_config(entry, context)
+        resource = str(entry.parameters.resource)
+        resource = str(context.config.resource) if resource == "self" else resource
+        try:
+            program = config.get_program(entry.name, resource=resource) or {}
+        except ValueError:
+            program = {}
+        if entry.parameters.in_docker and not program.get("docker_image"):
+            raise ValueError(
+                f"Docker image for {entry.name} not found (resource={resource})"
             )
-        )
-        work_dir = context.config.workdir / registry_entry.name / str(registry_entry.id)
-        job_name = registry_entry.name + "." + str(registry_entry.id)
-
-        logger.info(f"task_id: {task_id} workdir {work_dir} python path {python_path}")
-        # write a slurm script that starts a python script "run_node.py" with the node id as an argument
-
-        original_slurm_parameters = registry_entry.parameters.slurm_parameters
-        if original_slurm_parameters is None:
-            logger.error(f"Task task_id: {task_id} has no slurm parameters -- failing")
-            registry_entry.status = TaskStatus.FAILED
-            await context.db.save(registry_entry)
-            return False
-        slurm_parameters = original_slurm_parameters.model_copy(deep=True)
-        slurm_parameters.output = f"{work_dir}/%j.out"
-        slurm_parameters.error = f"{work_dir}/%j.err"
-        slurm_parameters.job_name = f"{job_name}"
-        slurm_parameters.chdir = str(work_dir)
-
-        slurm_parameters.startup_commands.append("source ~/.bashrc")
-        slurm_parameters.startup_commands.append(f"{context.config.environment_start}")
-        slurm_parameters.startup_commands.append(
-            f"export PYTHONPATH={python_path}:$PYTHONPATH"
-        )
-
-        sync_data_start = """# 1. Define the rsync function
-        sync_data() {
-            echo "=== Time limit approaching! Starting rsync at $(date) ==="
-
-            # Run rsync safely 
-        """
-        sync_data_end = """
-            echo "=== Rsync completed at $(date) ==="
-            exit 0
-        }        
-        """
-
-        resource_value = registry_entry.parameters.resource
-        task_resource = (
-            getattr(resource_value, "__dict__", {}).get("value")
-            or str(resource_value)
-        )
-        selected_resource = (
-            str(context.config.resource) if task_resource == "self" else task_resource
-        )
-        if resource_config is not None:
-            try:
-                program_config = resource_config.get_program(
-                    registry_entry.name, resource=selected_resource
-                ) or {}
-            except ValueError:
-                program_config = {}
-        else:
-            program_config = {}
-
-        logger.info(
-            "task_id: %s selected resource %s program %s",
-            task_id,
-            selected_resource,
-            registry_entry.name,
-        )
-        if registry_entry.parameters.in_docker and not program_config.get(
-            "docker_image"
+        if (
+            "use_tmp" in program
+            and "use_temp" in program
+            and bool(program["use_tmp"]) != bool(program["use_temp"])
         ):
-            registry_entry.status = TaskStatus.FAILED
-            registry_entry.error = (
-                f"Docker image for {registry_entry.name} not found "
-                f"(resource={selected_resource})"
-            )
-            logger.error("Task task_id: %s %s", task_id, registry_entry.error)
-            await context.db.save(registry_entry)
-            return False
-        if "use_tmp" in program_config and "use_temp" in program_config:
-            if bool(program_config["use_tmp"]) != bool(program_config["use_temp"]):
-                registry_entry.status = TaskStatus.FAILED
-                registry_entry.error = (
-                    f"Program {registry_entry.name} has conflicting use_tmp="
-                    f"{program_config['use_tmp']!r} and use_temp="
-                    f"{program_config['use_temp']!r}"
-                )
-                logger.error("Task task_id: %s %s", task_id, registry_entry.error)
-                await context.db.save(registry_entry)
-                return False
-        use_tmp = (
-            program_config["use_tmp"]
-            if "use_tmp" in program_config
-            else program_config.get("use_temp", False)
-        )
+            raise ValueError("Conflicting use_tmp and use_temp configuration")
+        use_tmp = program.get("use_tmp", program.get("use_temp", False))
+        params = entry.parameters.slurm_parameters
+        if params is None:
+            raise ValueError(f"Task {entry.id} has no Slurm parameters")
+        params = params.model_copy(deep=True)
+        if os.environ.get("SBATCH_ARRAY_INX"):
+            raise ValueError("Slurm job arrays are unsupported; use explicit child tasks or MassRunner")
+        workdir = Path(context.config.workdir) / entry.name / str(entry.id)
+        workdir.mkdir(parents=True, exist_ok=True)
+        checkpoint_args = []
         if use_tmp:
-            tmp_dir = resource_config.tmp_dir(registry_entry.id)
-
-            if not tmp_dir.exists() or not tmp_dir.is_dir():
-                logger.error(
-                    f"Task task_id: {task_id} tmp_dir {tmp_dir} does not exist or is not a directory -- failing")
-                registry_entry.status = TaskStatus.FAILED
-                await context.db.save(registry_entry)
-                return False
-
-            full_sync_data = sync_data_start + f'cp -a {tmp_dir}/. {work_dir}/recovery\n' + sync_data_end
-
-            logger.info(f"task_id: {task_id} full_sync_data {full_sync_data}")
-            slurm_parameters.startup_commands.append(full_sync_data)
-            slurm_parameters.startup_commands.append("trap 'sync_data' SIGUSR1")
-
-        # ``run_node`` applies the task's independent ``in_docker`` flag inside
-        # the Slurm allocation, using the selected resource's program config.
-        if is_api_runner(context) and getattr(registry_entry, "repository_revision", None):
-            interpreter = base_path / ".venv/bin/python"
-            node_command = shlex.join([str(interpreter), "-m", "simstack.core.run_node", "--node-id", str(registry_entry.id), "--resource", selected_resource, "--project-root", str(base_path)])
-        else:
-            node_command = f"uv run --directory {base_path} run_node --node-id {registry_entry.id} --resource {selected_resource} --project-root {base_path}"
-        slurm_parameters.startup_commands.append(node_command + " &")
-        slurm_parameters.startup_commands.append("wait")
-        slurm_parameters.signal = "B:SIGUSR1@60"
-
-        slurm_script = slurm_parameters.to_sbatch_header()
-        # write the script to a file in the work_dir
-        os.makedirs(work_dir, exist_ok=True)
-        logger.info(f"task_id: {task_id} workdir {work_dir} python path {python_path}")
-        script_path = os.path.join(work_dir, "slurm_script.sh")
-        with open(script_path, "w") as f:
-            f.write(slurm_script)
-
-        make_executable(script_path)
-        # submit the script to the slurm queue
-        connection_string = getattr(context.config, "connection_string", None)
-        database_env = task_environment(registry_entry)
-        # Publish the queued state before sbatch. A very short job may update
-        # the same record before the submission command returns.
-        registry_entry.status = TaskStatus.SLURM_QUEUED
-        await context.db.save(registry_entry)
-        if context.config.docker:
-            external_work_dir = (
-                context.config.external_workdir
-                / registry_entry.name
-                / str(registry_entry.id)
+            scratch = config.tmp_dir(entry.id)
+            if not scratch.is_dir():
+                raise ValueError(f"Scratch directory does not exist: {scratch}")
+            destination = workdir / "recovery"
+            checkpoint_script = (
+                Path(__file__).parents[1] / "static" / "slurm_checkpoint.sh"
             )
-            job_id = "slurm_" + str(registry_entry.id)
-            queue_dir = context.config.workdir / "queue"
-            result = submit_to_watchdog(
-                f"/usr/bin/sbatch {os.path.join(external_work_dir, 'slurm_script.sh')}",
-                job_id,
-                queue_dir,
-                env=database_env or None,
-            )
-        else:
-            result = subprocess.run(
-                f"/usr/bin/sbatch {os.path.join(work_dir, 'slurm_script.sh')}",
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=30,  # Add timeout to prevent hanging
-                env=database_env,
-            )
-
-        stdout = sanitized_tail(result.stdout, connection_string)
-        stderr = sanitized_tail(result.stderr, connection_string)
-        logger.info(
-            "submitting job task_id: %s returns: %s stdout=%s stderr=%s",
-            task_id,
-            result.returncode,
-            stdout,
-            stderr,
+            checkpoint_args = [
+                "bash",
+                str(checkpoint_script),
+                str(scratch),
+                str(destination),
+            ]
+            if params.signal is None:
+                params.signal = "B:SIGUSR1@60"
+        paths = list(dict.fromkeys([str(base), *map(str, context.config.python_paths)]))
+        params.output = str(workdir / "%j.out")
+        params.error = str(workdir / "%j.err")
+        params.chdir = str(workdir)
+        params.startup_commands.append("source ~/.bashrc")
+        if context.config.environment_start:
+            params.startup_commands.append(context.config.environment_start)
+        params.startup_commands.append(
+            "export PYTHONPATH="
+            + shlex.quote(os.pathsep.join(paths))
+            + ":${PYTHONPATH:-}"
         )
-        if result.returncode == 0:
-            # Extract job ID using a regex pattern
-            match = re.search(r"Submitted batch job (\d+)", stdout)
-            if match:
-                job_id = match.group(1)
-                logger.info(
-                    f"task_id: {task_id} job successfully submitted with job_id: {job_id}"
-                )
-                registry_entry.job_id = job_id
-                await context.db.task_mutation(registry_entry.id, "scheduler", {"job_id": job_id})
-            else:
-                logger.warning(
-                    "task_id: %s job submitted but could not extract job_id from output: %s",
-                    task_id,
-                    stdout,
-                )
-        else:
-            logger.error(
-                "error submitting job for task_id: %s return code: %s stdout: %s stderr: %s",
-                task_id,
-                result.returncode,
-                stdout,
-                stderr,
+        command = task_launch_command(entry, resource, base)
+        script = workdir / "slurm_script.sh"
+        intent = begin_intent(context.server, entry)
+        submission = await context.server.slurm.scheduler_submission(entry, intent["submission_id"])
+        submission_id = submission["submission_id"]
+        if submission_id != intent["submission_id"]:
+            # Another owner already advanced this launch. Its actual job is
+            # discovered through the scheduler, never by a second sbatch.
+            update_intent(context.server, intent, submission_id=submission_id, phase="submitting")
+            return True
+        if intent["phase"] == "accepted":
+            await context.server.slurm.scheduler_accepted(context.server.tasks.execution(entry),
+                submission_id, intent["job_id"])
+            forget_intent(context.server, intent)
+            return True
+        if intent["phase"] == "submitting":
+            return True
+        params.job_name = "ss-" + submission_id
+        environment = task_environment(entry, server=context.server)
+        environment["SIMSTACK_SLURM_SUBMISSION"] = submission_id
+        environment["SIMSTACK_SLURM_SUBMISSION_TASK"] = str(entry.id)
+        launch_environment = workdir / ("slurm_environment_" + submission_id + ".sh")
+        _write_launch_environment(launch_environment, environment)
+        params.startup_commands.append("source " + shlex.quote(str(launch_environment)) + " || exit $?")
+        params.startup_commands.append(
+            "exec " + shlex.join([*checkpoint_args, *command])
+        )
+        script.write_text(params.to_sbatch_header())
+        make_executable(script)
+        # Phase replay is safe while the local journal still says prepared:
+        # no external process has been created yet.
+        await context.server.slurm.scheduler_submission(entry, submission_id, phase="submitting")
+        intent = update_intent(context.server, intent, phase="submitting",
+            process_id=os.getpid(), process_birth=process_identity(os.getpid()))
+        submitted = True
+        try:
+            process = subprocess.Popen(
+                # Slurm gives environment options precedence over #SBATCH
+                # directives. The CLI must own our reconciliation identity.
+                ["sbatch", "--parsable", "--job-name=" + params.job_name, str(script)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=environment,
             )
-            error = sanitized_tail(
-                f"sbatch failed with return code {result.returncode}\n"
-                f"stdout:\n{stdout}\nstderr:\n{stderr}",
-                connection_string,
+        except OSError:
+            submitted = False  # The operating system did not start sbatch.
+            raise
+        intent = update_intent(context.server, intent, process_id=process.pid,
+            process_birth=process_identity(process.pid))
+        try:
+            stdout, stderr = process.communicate(timeout=30)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate()
+            raise
+        stdout = sanitized_tail(stdout, None).strip()
+        stderr = sanitized_tail(stderr, None)
+        if process.returncode:
+            await _persist_submission_failure(
+                entry, f"sbatch failed with exit {process.returncode}: {stderr}"
             )
-            await _persist_submission_failure(registry_entry, error)
+            forget_intent(context.server, intent)
             return False
+        match = re.fullmatch(r"(\d+)(?:;[^\s]+)?", stdout)
+        if match is None:
+            logger.warning(
+                "Slurm accepted submission %s but its job identity is indeterminate",
+                submission_id,
+            )
+            return True
+        intent = update_intent(context.server, intent, phase="accepted", job_id=match.group(1))
+        await context.server.slurm.scheduler_accepted(
+            context.server.tasks.execution(entry), submission_id, match.group(1)
+        )
+        forget_intent(context.server, intent)
         return True
-    except Exception as e:
-        error = sanitized_tail(
-            str(e), getattr(context.config, "connection_string", None)
-        ) or type(e).__name__
-        logger.error("fatal error in submitting task_id: %s %s", task_id, error)
-        await _persist_submission_failure(registry_entry, error)
+    except Exception as exc:
+        error = sanitized_tail(str(exc), None) or type(exc).__name__
+        if submitted:
+            # Neither a timeout nor a lost API reply proves sbatch did not apply.
+            logger.warning(
+                "Submission %s requires scheduler reconciliation: %s",
+                submission_id,
+                error,
+            )
+            return True
+        await _persist_submission_failure(entry, error)
+        if submission_id is not None:
+            forget_intent(context.server, intent)
         return False

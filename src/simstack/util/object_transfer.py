@@ -82,6 +82,26 @@ def download_object(metadata, target_path, timeout=60):
 
 
 class ObjectFileClient(FileTransferClient):
+    def __init__(self, *, object_api_prefix="/runner/objects", **kwargs):
+        super().__init__(**kwargs)
+        if object_api_prefix not in {
+            "/runner/objects", "/files/objects", "/local-execution/v3/objects"
+        }:
+            raise ValueError("Unknown object transfer authorization")
+        self.object_api_prefix = object_api_prefix
+
+    @classmethod
+    def from_context(cls):
+        from simstack.core.context import context
+        return cls.for_api(context.server.requests)
+
+    @classmethod
+    def for_api(cls, requests):
+        return cls(server_url=requests.server_url, runner_token=requests.token,
+                   account_id=requests.bootstrap_data["account_id"] if requests.bootstrap_data else None,
+                   object_api_prefix=requests.object_api_prefix,
+                   rotate_credentials=requests.object_api_prefix == "/runner/objects")
+
     def publish(self, file_stack, path):
         checksum = hash_file(path)
         payload = {
@@ -89,10 +109,17 @@ class ObjectFileClient(FileTransferClient):
             "size_bytes": Path(path).stat().st_size, "checksum_sha256": checksum,
             "is_hashable": file_stack.is_hashable,
             "multipart": Path(path).stat().st_size > 8 * 1024 * 1024,
-            "local_instance": file_stack.locations[0].model_dump(mode="json"),
         }
+        staging_directory = getattr(file_stack, "_staging_directory", None)
+        staged = staging_directory is not None and Path(path).resolve().is_relative_to(Path(staging_directory).resolve())
+        if self.object_api_prefix == "/runner/objects" and not staged:
+            payload["local_instance"] = file_stack.locations[0].model_dump(mode="json")
+            if payload["local_instance"]["resource"] == {"value": "__pending__"}:
+                from simstack.core.context import context
+                from simstack.util.file_transfer_client import transfer_resource_name
+                payload["local_instance"]["resource"] = {"value": transfer_resource_name(context.config.resource)}
         for attempt in range(2):
-            prepared = self._json_request("POST", "/runner/objects/prepare", payload)
+            prepared = self._json_request("POST", self.object_api_prefix + "/prepare", payload)
             try:
                 if prepared.get("multipart"):
                     if self._publish_parts(prepared, path) != checksum:
@@ -103,8 +130,28 @@ class ObjectFileClient(FileTransferClient):
             except FileTransferError as exc:
                 if attempt or "HTTP 403" not in str(exc):
                     raise
-        completed = self._json_request("POST", f"/runner/objects/{prepared['upload_id']}/complete", {},
+        completed = self._json_request("POST", f"{self.object_api_prefix}/{prepared['upload_id']}/complete", {},
             timeout_seconds=max(self.timeout_seconds, 60 + Path(path).stat().st_size // (1024 * 1024)))
+        return next(location for location in completed["locations"] if location["location_type"] == "s3")
+
+    def materialize_user_file(self, file_stack_id, target, *, object_key=None):
+        from urllib.parse import urlencode
+        if self.object_api_prefix == "/runner/objects":
+            raise ValueError("Local materialization requires user or local execution authorization")
+        query = "?" + urlencode({"object_key": object_key}) if object_key else ""
+        metadata = self._json_request("GET", f"{self.object_api_prefix}/{file_stack_id}/download{query}")
+        return download_object(metadata, target, self.timeout_seconds).path
+
+    def copy_file(self, file_stack, source_file_id):
+        source = next(location for location in file_stack.locations
+                      if location.location_type == "s3" and location.status == "available")
+        prepared = self._json_request("POST", self.object_api_prefix + "/prepare", {
+            "file_stack_id": str(file_stack.id), "source_file_stack_id": str(source_file_id),
+            "source_object_key": source.object_key,
+            "name": file_stack.name, "size_bytes": source.size_bytes,
+            "checksum_sha256": source.checksum_sha256, "is_hashable": file_stack.is_hashable,
+        }, timeout_seconds=max(self.timeout_seconds, 60 + source.size_bytes // (1024 * 1024)))
+        completed = self._json_request("POST", f"{self.object_api_prefix}/{prepared['upload_id']}/complete", {})
         return next(location for location in completed["locations"] if location["location_type"] == "s3")
 
 
@@ -129,7 +176,7 @@ class ObjectFileClient(FileTransferClient):
                            "checksum_sha256": digest.hexdigest()}
                 for attempt in range(3):
                     signed = self._json_request("POST",
-                        f"/runner/objects/{prepared['upload_id']}/parts/prepare", payload)
+                        f"{self.object_api_prefix}/{prepared['upload_id']}/parts/prepare", payload)
                     try:
                         upload_object(signed["upload_url"], path, signed["upload_headers"],
                                       self.timeout_seconds, offset=offset, length=length)

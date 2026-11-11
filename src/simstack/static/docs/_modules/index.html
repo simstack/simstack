@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -276,32 +281,30 @@
 <li><a href="simstack/core/asnyc_helper.html">simstack.core.asnyc_helper</a></li>
 <li><a href="simstack/core/config_file.html">simstack.core.config_file</a></li>
 <li><a href="simstack/core/definitions.html">simstack.core.definitions</a></li>
-<li><a href="simstack/core/engine.html">simstack.core.engine</a></li>
 <li><a href="simstack/core/find_simstack_modules.html">simstack.core.find_simstack_modules</a></li>
 <li><a href="simstack/core/hash.html">simstack.core.hash</a></li>
 <li><a href="simstack/core/node.html">simstack.core.node</a></li>
-<li><a href="simstack/core/node_claim.html">simstack.core.node_claim</a></li>
+<li><a href="simstack/core/node_code_version.html">simstack.core.node_code_version</a></li>
 <li><a href="simstack/core/node_runner.html">simstack.core.node_runner</a></li>
 <li><a href="simstack/core/process_results.html">simstack.core.process_results</a></li>
 <li><a href="simstack/core/recompute_artifacts.html">simstack.core.recompute_artifacts</a></li>
-<li><a href="simstack/core/reset_db.html">simstack.core.reset_db</a></li>
-<li><a href="simstack/core/resource_assignment.html">simstack.core.resource_assignment</a></li>
 <li><a href="simstack/core/resources.html">simstack.core.resources</a></li>
 <li><a href="simstack/core/route_table.html">simstack.core.route_table</a></li>
 <li><a href="simstack/core/run_docker.html">simstack.core.run_docker</a></li>
 <li><a href="simstack/core/run_node.html">simstack.core.run_node</a></li>
+<li><a href="simstack/core/run_node_protocol.html">simstack.core.run_node_protocol</a></li>
 <li><a href="simstack/core/runner.html">simstack.core.runner</a></li>
 <li><a href="simstack/core/services/base_service.html">simstack.core.services.base_service</a></li>
+<li><a href="simstack/core/services/fail_children.html">simstack.core.services.fail_children</a></li>
 <li><a href="simstack/core/services/file_transfer_service.html">simstack.core.services.file_transfer_service</a></li>
-<li><a href="simstack/core/services/git_restart_service.html">simstack.core.services.git_restart_service</a></li>
-<li><a href="simstack/core/services/git_uv_update_service.html">simstack.core.services.git_uv_update_service</a></li>
 <li><a href="simstack/core/services/node_execution_service.html">simstack.core.services.node_execution_service</a></li>
-<li><a href="simstack/core/services/resource_branch_monitor_service.html">simstack.core.services.resource_branch_monitor_service</a></li>
 <li><a href="simstack/core/services/runner_cleanup_service.html">simstack.core.services.runner_cleanup_service</a></li>
+<li><a href="simstack/core/services/runner_control_service.html">simstack.core.services.runner_control_service</a></li>
 <li><a href="simstack/core/services/runner_manager.html">simstack.core.services.runner_manager</a></li>
 <li><a href="simstack/core/services/runner_status_service.html">simstack.core.services.runner_status_service</a></li>
 <li><a href="simstack/core/services/slurm_status_service.html">simstack.core.services.slurm_status_service</a></li>
 <li><a href="simstack/core/services/stop_check_service.html">simstack.core.services.stop_check_service</a></li>
+<li><a href="simstack/core/services/task_termination.html">simstack.core.services.task_termination</a></li>
 <li><a href="simstack/core/services/timeout_restart_service.html">simstack.core.services.timeout_restart_service</a></li>
 <li><a href="simstack/core/simstack_result.html">simstack.core.simstack_result</a></li>
 <li><a href="simstack/core/submit_node.html">simstack.core.submit_node</a></li>
@@ -323,6 +326,11 @@
 <li><a href="simstack/models/dataset.html">simstack.models.dataset</a></li>
 <li><a href="simstack/models/dataset_metadata.html">simstack.models.dataset_metadata</a></li>
 <li><a href="simstack/models/datasettuple.html">simstack.models.datasettuple</a></li>
+<li><a href="simstack/models/document/codec.html">simstack.models.document.codec</a></li>
+<li><a href="simstack/models/document/fields.html">simstack.models.document.fields</a></li>
+<li><a href="simstack/models/document/identity.html">simstack.models.document.identity</a></li>
+<li><a href="simstack/models/document/models.html">simstack.models.document.models</a></li>
+<li><a href="simstack/models/document/schema.html">simstack.models.document.schema</a></li>
 <li><a href="simstack/models/file_instance.html">simstack.models.file_instance</a></li>
 <li><a href="simstack/models/file_list.html">simstack.models.file_list</a></li>
 <li><a href="simstack/models/files.html">simstack.models.files</a></li>
@@ -344,6 +352,26 @@
 <li><a href="simstack/models/slurm_info.html">simstack.models.slurm_info</a></li>
 <li><a href="simstack/models/table_artifact.html">simstack.models.table_artifact</a></li>
 <li><a href="simstack/models/tag.html">simstack.models.tag</a></li>
+<li><a href="simstack/runner_runtime/core_build.html">simstack.runner_runtime.core_build</a></li>
+<li><a href="simstack/runner_runtime/execution_environment.html">simstack.runner_runtime.execution_environment</a></li>
+<li><a href="simstack/runner_runtime/launch_claims.html">simstack.runner_runtime.launch_claims</a></li>
+<li><a href="simstack/runner_runtime/native_observations.html">simstack.runner_runtime.native_observations</a></li>
+<li><a href="simstack/runner_runtime/pending_cancellations.html">simstack.runner_runtime.pending_cancellations</a></li>
+<li><a href="simstack/runner_runtime/pending_execution_failures.html">simstack.runner_runtime.pending_execution_failures</a></li>
+<li><a href="simstack/runner_runtime/project_protocol.html">simstack.runner_runtime.project_protocol</a></li>
+<li><a href="simstack/runner_runtime/runner_credentials.html">simstack.runner_runtime.runner_credentials</a></li>
+<li><a href="simstack/runner_runtime/slurm_submission_intents.html">simstack.runner_runtime.slurm_submission_intents</a></li>
+<li><a href="simstack/runner_runtime/windows_science_job.html">simstack.runner_runtime.windows_science_job</a></li>
+<li><a href="simstack/server_api.html">simstack.server_api</a></li>
+<ul><li><a href="simstack/server_api/http_transport.html">simstack.server_api.http_transport</a></li>
+<li><a href="simstack/server_api/log_upload.html">simstack.server_api.log_upload</a></li>
+<li><a href="simstack/server_api/resource_control.html">simstack.server_api.resource_control</a></li>
+<li><a href="simstack/server_api/scientific_value_graph.html">simstack.server_api.scientific_value_graph</a></li>
+<li><a href="simstack/server_api/scientific_values.html">simstack.server_api.scientific_values</a></li>
+<li><a href="simstack/server_api/server_requests.html">simstack.server_api.server_requests</a></li>
+<li><a href="simstack/server_api/slurm_jobs.html">simstack.server_api.slurm_jobs</a></li>
+<li><a href="simstack/server_api/workflow_tasks.html">simstack.server_api.workflow_tasks</a></li>
+</ul><li><a href="simstack/tables/catalogue.html">simstack.tables.catalogue</a></li>
 <li><a href="simstack/tables/model_table.html">simstack.tables.model_table</a></li>
 <li><a href="simstack/tables/node_children.html">simstack.tables.node_children</a></li>
 <li><a href="simstack/tables/node_table.html">simstack.tables.node_table</a></li>
@@ -353,9 +381,6 @@
 <li><a href="simstack/util/cleaned_json_schema.html">simstack.util.cleaned_json_schema</a></li>
 <li><a href="simstack/util/config_reader.html">simstack.util.config_reader</a></li>
 <li><a href="simstack/util/custom_model_dump.html">simstack.util.custom_model_dump</a></li>
-<li><a href="simstack/util/database_information.html">simstack.util.database_information</a></li>
-<li><a href="simstack/util/db.html">simstack.util.db</a></li>
-<li><a href="simstack/util/db_logger.html">simstack.util.db_logger</a></li>
 <li><a href="simstack/util/default_from_dict.html">simstack.util.default_from_dict</a></li>
 <li><a href="simstack/util/directory_iterator.html">simstack.util.directory_iterator</a></li>
 <li><a href="simstack/util/docstring_parser.html">simstack.util.docstring_parser</a></li>
@@ -370,25 +395,28 @@
 <li><a href="simstack/util/git_repository_status.html">simstack.util.git_repository_status</a></li>
 <li><a href="simstack/util/import_module.html">simstack.util.import_module</a></li>
 <li><a href="simstack/util/importer.html">simstack.util.importer</a></li>
-<li><a href="simstack/util/init_data_source.html">simstack.util.init_data_source</a></li>
 <li><a href="simstack/util/make_graph.html">simstack.util.make_graph</a></li>
 <li><a href="simstack/util/make_table.html">simstack.util.make_table</a></li>
 <li><a href="simstack/util/mappings.html">simstack.util.mappings</a></li>
 <li><a href="simstack/util/minimal_route_finder.html">simstack.util.minimal_route_finder</a></li>
-<li><a href="simstack/util/mock_db.html">simstack.util.mock_db</a></li>
+<li><a href="simstack/util/model_copy.html">simstack.util.model_copy</a></li>
 <li><a href="simstack/util/module_path_checker.html">simstack.util.module_path_checker</a></li>
 <li><a href="simstack/util/object_list_mixin.html">simstack.util.object_list_mixin</a></li>
+<li><a href="simstack/util/object_transfer.html">simstack.util.object_transfer</a></li>
+<li><a href="simstack/util/output_permissions.html">simstack.util.output_permissions</a></li>
 <li><a href="simstack/util/path_manager.html">simstack.util.path_manager</a></li>
 <li><a href="simstack/util/project_root_finder.html">simstack.util.project_root_finder</a></li>
 <li><a href="simstack/util/queue_watcher.html">simstack.util.queue_watcher</a></li>
+<li><a href="simstack/util/repository_runtime.html">simstack.util.repository_runtime</a></li>
 <li><a href="simstack/util/resource_config.html">simstack.util.resource_config</a></li>
 <li><a href="simstack/util/route_finder.html">simstack.util.route_finder</a></li>
 <li><a href="simstack/util/runner_util.html">simstack.util.runner_util</a></li>
-<li><a href="simstack/util/runner_utils.html">simstack.util.runner_utils</a></li>
 <li><a href="simstack/util/safe_code_executor.html">simstack.util.safe_code_executor</a></li>
 <li><a href="simstack/util/sample_config.html">simstack.util.sample_config</a></li>
+<li><a href="simstack/util/sanitized_output.html">simstack.util.sanitized_output</a></li>
+<li><a href="simstack/util/scratch_file_watchdog.html">simstack.util.scratch_file_watchdog</a></li>
 <li><a href="simstack/util/sensitive_content_filter.html">simstack.util.sensitive_content_filter</a></li>
-<li><a href="simstack/util/setup_logging.html">simstack.util.setup_logging</a></li>
+<li><a href="simstack/util/slurm_observation.html">simstack.util.slurm_observation</a></li>
 <li><a href="simstack/util/submit_to_watchdog.html">simstack.util.submit_to_watchdog</a></li>
 <li><a href="simstack/util/toml_reader.html">simstack.util.toml_reader</a></li>
 <li><a href="simstack/util/transform_file_name.html">simstack.util.transform_file_name</a></li>
@@ -429,6 +457,6 @@
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-10 13:31:53 UTC" src="../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

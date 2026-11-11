@@ -6,7 +6,7 @@ from simstack.models.node_registry import NodeRegistry
 
 
 @pytest_asyncio.fixture
-async def node_registry():
+async def node_registry(server_storage):
     """Create a properly configured NodeRegistry instance for testing."""
     # Create a proper Parameters instance
     parameters = Parameters()
@@ -22,11 +22,11 @@ async def node_registry():
         parameters=parameters,  # Required field
     )
 
-    await context.db.save(node_data)
+    await server_storage.save(node_data)
     
     yield node_data
     
     try:
-        await context.db.delete(node_data)
+        await server_storage.delete(node_data)
     except Exception:
         pass

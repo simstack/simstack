@@ -233,7 +233,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -292,20 +297,18 @@
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.config_file">simstack.core.config_file module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.context">simstack.core.context module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.definitions">simstack.core.definitions module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.engine">simstack.core.engine module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.find_simstack_modules">simstack.core.find_simstack_modules module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.hash">simstack.core.hash module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.node">simstack.core.node module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.node_claim">simstack.core.node_claim module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.node_code_version">simstack.core.node_code_version module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.node_runner">simstack.core.node_runner module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.process_results">simstack.core.process_results module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.recompute_artifacts">simstack.core.recompute_artifacts module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.reset_db">simstack.core.reset_db module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.resource_assignment">simstack.core.resource_assignment module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.resources">simstack.core.resources module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.route_table">simstack.core.route_table module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.run_docker">simstack.core.run_docker module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.run_node">simstack.core.run_node module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.run_node_protocol">simstack.core.run_node_protocol module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.runner">simstack.core.runner module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.simstack_result">simstack.core.simstack_result module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.core.html#module-simstack.core.submit_node">simstack.core.submit_node module</a></li>
@@ -327,6 +330,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.models.html">simstack.models package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.models.html#subpackages">Subpackages</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.models.html#submodules">Submodules</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.models.html#module-simstack.models.array_list">simstack.models.array_list module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.models.html#module-simstack.models.array_storage">simstack.models.array_storage module</a></li>
@@ -362,8 +366,37 @@
 <li class="toctree-l4"><a class="reference internal" href="simstack.models.html#module-simstack.models">Module contents</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="simstack.runner_runtime.html">simstack.runner_runtime package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.html#module-simstack.runner_runtime.core_build">simstack.runner_runtime.core_build module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.html#module-simstack.runner_runtime.execution_environment">simstack.runner_runtime.execution_environment module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.html#module-simstack.runner_runtime.launch_claims">simstack.runner_runtime.launch_claims module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.html#module-simstack.runner_runtime.native_observations">simstack.runner_runtime.native_observations module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.html#module-simstack.runner_runtime.pending_cancellations">simstack.runner_runtime.pending_cancellations module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.html#module-simstack.runner_runtime.pending_execution_failures">simstack.runner_runtime.pending_execution_failures module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.html#module-simstack.runner_runtime.project_protocol">simstack.runner_runtime.project_protocol module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.html#module-simstack.runner_runtime.runner_credentials">simstack.runner_runtime.runner_credentials module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.html#module-simstack.runner_runtime.slurm_submission_intents">simstack.runner_runtime.slurm_submission_intents module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.html#module-simstack.runner_runtime.windows_science_job">simstack.runner_runtime.windows_science_job module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.runner_runtime.html#module-simstack.runner_runtime">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack.server_api.html">simstack.server_api package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack.server_api.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.server_api.html#module-simstack.server_api.http_transport">simstack.server_api.http_transport module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.server_api.html#module-simstack.server_api.log_upload">simstack.server_api.log_upload module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.server_api.html#module-simstack.server_api.resource_control">simstack.server_api.resource_control module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.server_api.html#module-simstack.server_api.scientific_value_graph">simstack.server_api.scientific_value_graph module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.server_api.html#module-simstack.server_api.scientific_values">simstack.server_api.scientific_values module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.server_api.html#module-simstack.server_api.server_requests">simstack.server_api.server_requests module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.server_api.html#module-simstack.server_api.slurm_jobs">simstack.server_api.slurm_jobs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.server_api.html#module-simstack.server_api.workflow_tasks">simstack.server_api.workflow_tasks module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.server_api.html#module-simstack.server_api">Module contents</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="simstack.tables.html">simstack.tables package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="simstack.tables.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.tables.html#module-simstack.tables.catalogue">simstack.tables.catalogue module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.tables.html#module-simstack.tables.model_table">simstack.tables.model_table module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.tables.html#module-simstack.tables.node_children">simstack.tables.node_children module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.tables.html#module-simstack.tables.node_table">simstack.tables.node_table module</a></li>
@@ -378,9 +411,6 @@
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.cleaned_json_schema">simstack.util.cleaned_json_schema module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.config_reader">simstack.util.config_reader module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.custom_model_dump">simstack.util.custom_model_dump module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.database_information">simstack.util.database_information module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.db">simstack.util.db module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.db_logger">simstack.util.db_logger module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.default_from_dict">simstack.util.default_from_dict module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.directory_iterator">simstack.util.directory_iterator module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.docstring_parser">simstack.util.docstring_parser module</a></li>
@@ -396,25 +426,28 @@
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.git_repository_status">simstack.util.git_repository_status module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.import_module">simstack.util.import_module module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.importer">simstack.util.importer module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.init_data_source">simstack.util.init_data_source module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.make_graph">simstack.util.make_graph module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.make_table">simstack.util.make_table module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.mappings">simstack.util.mappings module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.minimal_route_finder">simstack.util.minimal_route_finder module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.mock_db">simstack.util.mock_db module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.model_copy">simstack.util.model_copy module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.module_path_checker">simstack.util.module_path_checker module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.object_list_mixin">simstack.util.object_list_mixin module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.object_transfer">simstack.util.object_transfer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.output_permissions">simstack.util.output_permissions module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.path_manager">simstack.util.path_manager module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.project_root_finder">simstack.util.project_root_finder module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.queue_watcher">simstack.util.queue_watcher module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.repository_runtime">simstack.util.repository_runtime module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.resource_config">simstack.util.resource_config module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.route_finder">simstack.util.route_finder module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.runner_util">simstack.util.runner_util module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.runner_utils">simstack.util.runner_utils module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.safe_code_executor">simstack.util.safe_code_executor module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.sample_config">simstack.util.sample_config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.sanitized_output">simstack.util.sanitized_output module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.scratch_file_watchdog">simstack.util.scratch_file_watchdog module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.sensitive_content_filter">simstack.util.sensitive_content_filter module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.setup_logging">simstack.util.setup_logging module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.slurm_observation">simstack.util.slurm_observation module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.submit_to_watchdog">simstack.util.submit_to_watchdog module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.toml_reader">simstack.util.toml_reader module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="simstack.util.html#module-simstack.util.transform_file_name">simstack.util.transform_file_name module</a></li>
@@ -484,6 +517,6 @@
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-10 13:31:53 UTC" src="../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

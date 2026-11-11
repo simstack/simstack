@@ -270,26 +270,28 @@ class ResourceConfig:
                 f"got {use_temp!r}"
             )
 
+        subprocess_name = "run" if name is None else name
         if node_runner is not None:
             from simstack.core.node_runner import NodeRunner
 
             if isinstance(node_runner, NodeRunner):
                 if use_temp:
-                    node_runner.stage(input_files=input_files)
+                    node_runner.stage(input_files=input_files, resource_config=self)
                     ok = node_runner.execute(
-                        program_name, command=command, name=name, **env_kwargs
+                        program_name, command=command, name=subprocess_name,
+                        resource_config=self, **env_kwargs
                     )
-                    node_runner.retrieve(output_files=output_files)
+                    node_runner.retrieve(output_files=output_files, resource_config=self)
                     return ok
                 return node_runner.execute(
-                    program_name, command=command, name=name, **env_kwargs
+                    program_name, command=command, name=subprocess_name,
+                    resource_config=self, **env_kwargs
                 )
 
         # scratch_cleanup from postprocessing
         post_params = self.get_postprocessing_params()
         scratch_cleanup = params.get("scratch_cleanup", post_params.get("scratch_cleanup", False))
 
-        subprocess_name = "run" if name is None else name
         ok = True
         tmp_dir = None
         try:

@@ -116,7 +116,8 @@ class FileTransferService(BaseService):
 
         path = resolve_instance_path(str(source_path), Path(context.config.workdir))
         try:
-            client.upload_file(transfer_id, path)
+            client.upload_file(path, file_stack_id=transfer["file_stack_id"],
+                source_resource=transfer["source_resource_name"])
             logger.info("Uploaded FileStack transfer %s from %s", transfer_id, path)
             return True
         except FileTransferError as exc:

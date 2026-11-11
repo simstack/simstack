@@ -16,6 +16,7 @@ from simstack.models import (
 from simstack.util.async_zip_utils import async_zip
 from simstack.util.importer import import_function, import_class
 from simstack.util.make_table import make_table_entries
+from simstack.server_api.http_transport import RunnerAPIError
 
 # Define your prefix
 PREFIX = "[ParallelExecutor]"
@@ -44,20 +45,18 @@ async def get_mappings(func: Callable[[Model], Model]):
     """
     Decorator to map a function to a model.
     """
-    node_model = await context.db.load_node_model_by_name(func.__name__)
+    node_model = next((item for item in await context.server.values.catalogue_nodes() if item.name == func.__name__), None)
     if node_model is None:
-        raise ValueError(f"Node model {func.__name__} not found in database.")
+        raise ValueError(f"Node model {func.__name__} not found in the catalogue.")
 
     # Get return type annotation from function
     return_type = func.__annotations__.get("return")
     if return_type is None:
         raise ValueError(f"Function {func.__name__} must have return type annotation")
 
-    result_model = await context.db.find_one(
-        ModelMapping, ModelMapping.name == return_type.__name__
-    )
+    result_model = next((item for item in await context.server.values.catalogue_models() if item.name == return_type.__name__), None)
     if result_model is None:
-        raise ValueError(f"Result model {return_type.__name__} not found in database.")
+        raise ValueError(f"Result model {return_type.__name__} not found in the catalogue.")
 
     return node_model.function_mapping, node_model.input_mappings, result_model.mapping
 
@@ -111,33 +110,21 @@ class MultipleExecutorInput(Model, Generic[T]):
         )
 
     async def input_generator(self) -> AsyncGenerator[List[Model], None]:
-        """Deserialize the input models"""
-        input_model_classes = [
-            await import_class(input_mapping) for input_mapping in self.input_mappings
-        ]
-        for input_item in self.inputs_data:
-            input_models = [
-                await context.db.find_one(
-                    input_model_class, input_model_class.id == model_id
-                )
-                for input_model_class, model_id in zip(input_model_classes, input_item)
-            ]
-            # if one models is None: fail
-            if any(model is None for model in input_models):
-                raise ValueError(
-                    f"One or more input models not found in database for input IDs: {input_item}"
-                )
-            yield input_models
+        cache = vars(self).get("_cache")
+        if cache is None:
+            raise ValueError("Resolve executor inputs explicitly before reading")
+        for row in cache:
+            yield row
 
-    async def append(self, input_models: Union[T, List[T]], with_save=True):
+    async def append(self, input_models: Union[T, List[T]]):
         """Add the inputs for a single function call"""
         if isinstance(input_models, Model):
             input_models = [input_models]
-        if with_save:
-            for input_model in input_models:
-                await context.db.save(input_model)
-        input_ids = [input_model.id for input_model in input_models]
-        self.inputs_data.append(input_ids)
+        cache = vars(self).setdefault("_cache", [])
+        if len(cache) != len(self.inputs_data):
+            raise ValueError("Resolve executor inputs explicitly before editing")
+        self.inputs_data.append([model.id for model in input_models])
+        cache.append(list(input_models))
 
     async def execute(self, **kwargs) -> "MultipleExecutorOutput":
         task_id = kwargs.get("task_id", "NA")
@@ -148,9 +135,10 @@ class MultipleExecutorInput(Model, Generic[T]):
         # Prepare all jobs to run concurrently
         tasks = []
         result_ids = [None] * len(self.inputs_data)
+        result_models = [None] * len(self.inputs_data)
         kwargs["parent_id"] = task_id
         try:
-            func = await import_function(self.function_mapping, context.db, task_id)
+            func = await import_function(self.function_mapping, context.server.values, task_id)
             i = 0
             async for task_input in self.input_generator():
                 # Create an async task that calls our async wrapper
@@ -159,6 +147,8 @@ class MultipleExecutorInput(Model, Generic[T]):
                 task.index = i
                 tasks.append(task)
                 i += 1
+        except RunnerAPIError:
+            raise
         except Exception as e:
             logger.error(f"Error preparing tasks: {str(e)}")
 
@@ -170,7 +160,10 @@ class MultipleExecutorInput(Model, Generic[T]):
             try:
                 task_result = task.result()
                 result_ids[task.index] = task_result.id
+                result_models[task.index] = task_result
                 logger.info(f"Successfully processed task {task.index}")
+            except RunnerAPIError:
+                raise
             except Exception as e:
                 logger.error(f"Error processing task {task.index}: {str(e)}")
 
@@ -187,6 +180,7 @@ class MultipleExecutorInput(Model, Generic[T]):
             result_mapping=self.result_mapping,
             result_ids=result_ids,
         )
+        object.__setattr__(output, "_cache", result_models)
         logger.info("finished")
         return output
 
@@ -213,34 +207,18 @@ class MultipleExecutorOutput(Model, Generic[T, R]):
             "required": ["result_mapping", "results"],
         }
 
-    @async_helper
-    async def custom_model_dump(self) -> Dict[str, Any]:
-        """
-        Retrieve all results and return them as a list of dictionaries.
-        """
-        results = []
-        async for result in self.result_generator():
-            if result is not None:
-                results.append(result.model_dump())
-            else:
-                results.append(None)
-        print(f"{PREFIX} custom_model_dump: {results}")
-        return {"result": results}
+    def custom_model_dump(self) -> Dict[str, Any]:
+        cache = vars(self).get("_cache")
+        if cache is None:
+            raise ValueError("Resolve executor results explicitly before presentation")
+        return {"result": [item.model_dump() if item is not None else None for item in cache]}
 
     async def result_generator(self) -> AsyncGenerator[Union[R, None], None]:
-        """Deserialize the result models"""
-        result_model_class = await import_class(self.result_mapping)
-        for result_id in self.result_ids:
-            if result_id is not None:
-                result_model = await context.db.find_one(
-                    result_model_class, result_model_class.id == result_id
-                )
-                if result_model is not None:
-                    yield result_model
-                else:
-                    yield None
-            else:
-                yield None
+        cache = vars(self).get("_cache")
+        if cache is None:
+            raise ValueError("Resolve executor results explicitly before reading")
+        for item in cache:
+            yield item
 
     @async_helper
     async def make_table(self):

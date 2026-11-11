@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -275,9 +280,8 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">List</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">EmbeddedModel</span><span class="p">,</span> <span class="n">Field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">EmbeddedModel</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">Model</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.asnyc_helper</span><span class="w"> </span><span class="kn">import</span> <span class="n">async_helper</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span>
 
 
@@ -340,122 +344,14 @@
         <span class="k">return</span> <span class="n">_get_json_schema</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="DataSetMetadata.validate_dict">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.dataset_metadata.DataSetMetadata.validate_dict">[docs]</a>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">validate_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_structure</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-
-        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-        <span class="n">reference_metadata</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
-            <span class="n">DataSetMetadataTemplate</span><span class="p">,</span>
-            <span class="n">DataSetMetadataTemplate</span><span class="o">.</span><span class="n">dataset_type</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">field_name</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="c1"># remove empty sections without mutating the dict during iteration</span>
-        <span class="n">new_structure</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">new_structure</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">value</span>
-        <span class="p">}</span>
-
-        <span class="k">if</span> <span class="n">reference_metadata</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">metadata_template</span> <span class="o">=</span> <span class="n">DataSetMetadataTemplate</span><span class="p">(</span>
-                <span class="n">dataset_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">field_name</span><span class="p">,</span>
-                <span class="n">model_json</span><span class="o">=</span><span class="n">_get_json_schema</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">),</span>
-                <span class="n">structure</span><span class="o">=</span><span class="n">new_structure</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">metadata_template</span><span class="p">)</span>
-            <span class="k">return</span> <span class="kc">True</span>  <span class="c1"># first model of this type</span>
-
-        <span class="n">new_data_json</span> <span class="o">=</span> <span class="n">_get_json_schema</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
-
-        <span class="c1"># Compare schemas element by element</span>
-        <span class="n">ref_props</span> <span class="o">=</span> <span class="n">reference_metadata</span><span class="o">.</span><span class="n">model_json</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;properties&quot;</span><span class="p">,</span> <span class="p">{})</span>
-        <span class="n">new_props</span> <span class="o">=</span> <span class="n">new_data_json</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;properties&quot;</span><span class="p">,</span> <span class="p">{})</span>
-
-        <span class="c1"># Check if property keys match</span>
-        <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">ref_props</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">!=</span> <span class="nb">set</span><span class="p">(</span><span class="n">new_props</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Data schema properties mismatch. Reference keys: </span><span class="si">{</span><span class="nb">set</span><span class="p">(</span><span class="n">ref_props</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">, Current keys: </span><span class="si">{</span><span class="nb">set</span><span class="p">(</span><span class="n">new_props</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
-
-        <span class="c1"># Check each property type, allowing string format differences</span>
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">ref_props</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="n">ref_prop</span> <span class="o">=</span> <span class="n">ref_props</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-            <span class="n">new_prop</span> <span class="o">=</span> <span class="n">new_props</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-
-            <span class="n">ref_type</span> <span class="o">=</span> <span class="n">ref_prop</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span>
-            <span class="n">new_type</span> <span class="o">=</span> <span class="n">new_prop</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span>
-
-            <span class="k">if</span> <span class="n">ref_type</span> <span class="o">!=</span> <span class="n">new_type</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Property &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; type mismatch. Reference: </span><span class="si">{</span><span class="n">ref_type</span><span class="si">}</span><span class="s2">, Current: </span><span class="si">{</span><span class="n">new_type</span><span class="si">}</span><span class="s2">&quot;</span>
-                <span class="p">)</span>
-
-            <span class="c1"># For string types, allow the format field to differ or be missing</span>
-            <span class="k">if</span> <span class="n">ref_type</span> <span class="o">==</span> <span class="s2">&quot;string&quot;</span><span class="p">:</span>
-                <span class="c1"># Compare all fields except &#39;format&#39;</span>
-                <span class="n">ref_without_format</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ref_prop</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;format&quot;</span><span class="p">}</span>
-                <span class="n">new_without_format</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">new_prop</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;format&quot;</span><span class="p">}</span>
-                <span class="k">if</span> <span class="n">ref_without_format</span> <span class="o">!=</span> <span class="n">new_without_format</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Property &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; schema mismatch (excluding format). Reference: </span><span class="si">{</span><span class="n">ref_without_format</span><span class="si">}</span><span class="s2">, Current: </span><span class="si">{</span><span class="n">new_without_format</span><span class="si">}</span><span class="s2">&quot;</span>
-                    <span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># For non-string types, require exact match</span>
-                <span class="k">if</span> <span class="n">ref_prop</span> <span class="o">!=</span> <span class="n">new_prop</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Property &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; schema mismatch. Reference: </span><span class="si">{</span><span class="n">ref_prop</span><span class="si">}</span><span class="s2">, Current: </span><span class="si">{</span><span class="n">new_prop</span><span class="si">}</span><span class="s2">&quot;</span>
-                    <span class="p">)</span>
-
-        <span class="c1"># Check if model types in existing sections match, and add new keys</span>
-        <span class="n">save_template</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="n">updated_structure</span> <span class="o">=</span> <span class="n">reference_metadata</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-
-        <span class="k">for</span> <span class="n">section_name</span><span class="p">,</span> <span class="n">new_section_content</span> <span class="ow">in</span> <span class="n">new_structure</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">section_name</span> <span class="ow">in</span> <span class="n">updated_structure</span><span class="p">:</span>
-                <span class="n">ref_section_content</span> <span class="o">=</span> <span class="n">updated_structure</span><span class="p">[</span><span class="n">section_name</span><span class="p">]</span>
-                <span class="c1"># Check if the structure of the section matches exactly</span>
-                <span class="k">if</span> <span class="n">ref_section_content</span> <span class="o">!=</span> <span class="n">new_section_content</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Section </span><span class="si">{</span><span class="n">section_name</span><span class="si">}</span><span class="s2"> has different content in existing structure. &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;Reference: </span><span class="si">{</span><span class="n">ref_section_content</span><span class="si">}</span><span class="s2">, Current: </span><span class="si">{</span><span class="n">new_section_content</span><span class="si">}</span><span class="s2">&quot;</span>
-                    <span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># Completely new section</span>
-                <span class="n">updated_structure</span><span class="p">[</span><span class="n">section_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_section_content</span>
-                <span class="n">save_template</span> <span class="o">=</span> <span class="kc">True</span>
-
-        <span class="k">if</span> <span class="n">save_template</span><span class="p">:</span>
-            <span class="n">reference_metadata</span><span class="o">.</span><span class="n">structure</span> <span class="o">=</span> <span class="n">new_structure</span>
-            <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">reference_metadata</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">structure</span> <span class="o">=</span> <span class="n">new_structure</span>
-        <span class="k">return</span> <span class="kc">True</span></div>
-
-
-<div class="viewcode-block" id="DataSetMetadata.freeze">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.dataset_metadata.DataSetMetadata.freeze">[docs]</a>
-    <span class="nd">@async_helper</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">freeze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_structure</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-        <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
-        <span class="n">reference_metadata</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
-            <span class="n">DataSetMetadataTemplate</span><span class="p">,</span>
-            <span class="n">DataSetMetadataTemplate</span><span class="o">.</span><span class="n">dataset_type</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">field_name</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">reference_metadata</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Metadata does not exist&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure</span> <span class="o">!=</span> <span class="n">reference_metadata</span><span class="o">.</span><span class="n">structure</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Metadata structure has changed in the database&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure</span> <span class="o">==</span> <span class="p">{}:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">structure</span> <span class="o">=</span> <span class="n">new_structure</span>
-            <span class="n">reference_metadata</span><span class="o">.</span><span class="n">structure</span> <span class="o">=</span> <span class="n">new_structure</span>
-            <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">reference_metadata</span><span class="p">)</span>
-        <span class="c1"># some structure exists already</span>
-        <span class="k">return</span> <span class="n">new_structure</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure</span></div>
-
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dataset_type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">field_name</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">initialized</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if the model has been fully constructed.&quot;&quot;&quot;</span>
-        <span class="c1"># A simple heuristic: if we have an ID or if type is set, we&#39;re initialized</span>
-        <span class="k">return</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;dataset_type&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">field_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Structural edits are locked only after explicit validation/freeze.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_validated</span>
 
     <span class="c1"># Dict-like behavior methods</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
@@ -670,6 +566,56 @@
             <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">}</span></div>
 </div>
 
+
+
+<div class="viewcode-block" id="validate_metadata_template">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.dataset_metadata.validate_metadata_template">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_metadata_template</span><span class="p">(</span><span class="n">metadata</span><span class="p">:</span> <span class="n">DataSetMetadata</span><span class="p">,</span> <span class="n">reference</span><span class="p">:</span> <span class="n">DataSetMetadataTemplate</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+                               <span class="n">structure</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">dataset_tuple</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">freeze</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pure metadata validation; the Server owns loading/persisting its template.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
+    <span class="n">structure</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">structure</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">value</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">freeze</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">reference</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Metadata does not exist&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">metadata</span><span class="o">.</span><span class="n">structure</span> <span class="o">!=</span> <span class="n">reference</span><span class="o">.</span><span class="n">structure</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Metadata structure has changed&quot;</span><span class="p">)</span>
+        <span class="n">updated</span> <span class="o">=</span> <span class="n">reference</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">updated</span><span class="o">.</span><span class="n">structure</span><span class="p">:</span>
+            <span class="n">updated</span><span class="o">.</span><span class="n">structure</span> <span class="o">=</span> <span class="n">structure</span>
+        <span class="k">return</span> <span class="n">updated</span><span class="p">,</span> <span class="n">structure</span> <span class="o">==</span> <span class="n">updated</span><span class="o">.</span><span class="n">structure</span>
+    <span class="k">if</span> <span class="n">reference</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">DataSetMetadataTemplate</span><span class="p">(</span><span class="n">dataset_type</span><span class="o">=</span><span class="n">metadata</span><span class="o">.</span><span class="n">field_name</span><span class="p">,</span>
+            <span class="n">model_json</span><span class="o">=</span><span class="n">_get_json_schema</span><span class="p">(</span><span class="n">metadata</span><span class="o">.</span><span class="n">data</span><span class="p">),</span> <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">),</span> <span class="kc">True</span>
+    <span class="n">reference_properties</span> <span class="o">=</span> <span class="n">reference</span><span class="o">.</span><span class="n">model_json</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;properties&quot;</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">properties</span> <span class="o">=</span> <span class="n">_get_json_schema</span><span class="p">(</span><span class="n">metadata</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;properties&quot;</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">reference_properties</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">set</span><span class="p">(</span><span class="n">properties</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Data schema properties mismatch&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">expected</span> <span class="ow">in</span> <span class="n">reference_properties</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">actual</span> <span class="o">=</span> <span class="n">properties</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">expected</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">actual</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Property &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; type mismatch&quot;</span><span class="p">)</span>
+        <span class="n">ignored</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;format&quot;</span><span class="p">}</span> <span class="k">if</span> <span class="n">expected</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;string&quot;</span> <span class="k">else</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">if</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">expected</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ignored</span><span class="p">}</span> <span class="o">!=</span> <span class="p">{</span>
+            <span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">actual</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ignored</span>
+        <span class="p">}:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Property &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; schema mismatch&quot;</span><span class="p">)</span>
+    <span class="n">updated_structure</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">reference</span><span class="o">.</span><span class="n">structure</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">section_name</span><span class="p">,</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">structure</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="n">updated_structure</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">section_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">expected</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">updated_structure</span><span class="p">[</span><span class="n">section_name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">section</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">dataset_tuple</span> <span class="ow">and</span> <span class="n">expected</span> <span class="o">!=</span> <span class="n">section</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Section &#39;</span><span class="si">{</span><span class="n">section_name</span><span class="si">}</span><span class="s2">&#39; content mismatch&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">section</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">expected</span> <span class="ow">and</span> <span class="n">expected</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">!=</span> <span class="n">value</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Section &#39;</span><span class="si">{</span><span class="n">section_name</span><span class="si">}</span><span class="s2">&#39; has different value for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+                <span class="n">expected</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="n">updated</span> <span class="o">=</span> <span class="n">reference</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">updated</span><span class="o">.</span><span class="n">structure</span> <span class="o">=</span> <span class="n">updated_structure</span>
+    <span class="k">return</span> <span class="n">updated</span><span class="p">,</span> <span class="kc">True</span></div>
+
 </pre></div>
         </article>
       </div>
@@ -706,6 +652,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

@@ -3,6 +3,6 @@ from simstack.core.context import context
 
 
 @pytest.mark.asyncio
-async def test_initialized_context(document_repository):
+async def test_initialized_context(initialized_context):
     """text whether the context works"""
     assert context.initialized is True

@@ -1,3 +1,5 @@
+import asyncio
+import hashlib
 import logging
 import pytest
 
@@ -6,6 +8,7 @@ from simstack.core.node import node
 from simstack.core.node_runner import NodeRunner
 from simstack.models import BinaryOperationInput, FloatData
 from simstack.models.files import FileStack
+from simstack.models.parameters import Resource
 from tests.with_context.core.test_simple_nodes import adder_in_tests
 
 logger = logging.getLogger("TestNode")
@@ -67,7 +70,7 @@ def test_return_simstack_results(caplog):
 
 
 @pytest.mark.asyncio
-async def test_node_with_files(caplog, test_file_stack):
+async def test_node_with_files(caplog, test_file_stack, tmp_path):
     """Test the node_with_files function to ensure it processes files correctly."""
     with caplog.at_level(logging.INFO):
         # Create test arguments
@@ -82,12 +85,20 @@ async def test_node_with_files(caplog, test_file_stack):
         assert result.result2.value == 60000
         assert result.status == "completed"
 
-        # Check that files are included in the result
-        assert len(result.files) == 1
-        assert result.files[0] == test_file_stack
+        assert isinstance(result.files, list)
 
-        # Verify the file name is preserved
-        assert test_file_stack.name == "test_file.txt"
+        async def check_file(value, directory):
+            assert len(value.files) == 1
+            returned = value.files[0]
+            expected = b"test content"
+            # Decoded results carry their own API client; compare the file's
+            # scientific identity and bytes, not that transient private client.
+            assert (returned.id, returned.name, returned.hash, returned.size) == (
+                test_file_stack.id, "test_file.txt", hashlib.sha256(expected).hexdigest(), len(expected))
+            path = await asyncio.to_thread(returned.get_raw, Resource(value="test"), directory)
+            assert path.read_bytes() == expected
+
+        await check_file(result, tmp_path / "first-result")
 
         # Check if the results are correctly logged
         assert "Computed results: 500.0, 60000.0" in caplog.text
@@ -99,7 +110,9 @@ async def test_node_with_files(caplog, test_file_stack):
         assert isinstance(result_rerun, SimstackResult)
         assert result_rerun.result1.value == 500
         assert result_rerun.result2.value == 60000
-        assert len(result_rerun.files) == 1
+        assert result_rerun.result1.id == result.result1.id
+        assert result_rerun.result2.id == result.result2.id
+        await check_file(result_rerun, tmp_path / "cached-result")
 
 
 @pytest.mark.asyncio

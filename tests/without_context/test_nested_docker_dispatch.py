@@ -1,5 +1,6 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
+from uuid import uuid4
 
 import pytest
 
@@ -11,7 +12,9 @@ from simstack.core.node import (
     process_is_in_docker,
     should_handoff_nested_execution,
 )
-from simstack.models import NodeRegistry, Project
+from simstack.models import NodeRegistry
+from simstack.models.document import ObjectId
+from simstack.runner_runtime.launch_claims import current_execution, pending, reserve_launch, task_execution
 from simstack.models.parameters import Parameters
 from simstack.util.resource_config import ResourceConfig
 
@@ -201,585 +204,99 @@ def test_process_is_in_docker_false_without_flag_or_dockerenv(monkeypatch):
     assert process_is_in_docker() is False
 
 
-def _images(name, resource=None):
-    if name == "dftb_calculator":
-        return DFTB_IMAGE
-    return PSI4_IMAGE
-
-
-def _execution_node(name: str, parameters: Parameters) -> Node:
-    execution_node = Node.__new__(Node)
-    execution_node.name = name
-    execution_node.parameters = parameters
-    execution_node.registry_entry = SimpleNamespace(
-        id="task-id",
-        parameters=parameters,
-        status=TaskStatus.SUBMITTED,
-    )
-    return execution_node
-
-
-def _patch_run_somewhere_context(
-    monkeypatch, *, in_docker: bool, current_node_name: str | None, resource: str = "local"
+@pytest.mark.asyncio
+@pytest.mark.parametrize("resource,queue,in_docker,process_in_docker,current_resource,child_image,expected_inline", [
+    ("local", "default", True, True, "local", PSI4_IMAGE, True),
+    ("local", "default", True, True, "local", DFTB_IMAGE, False),
+    ("local", "default", False, True, "local", PSI4_IMAGE, False),
+    ("local", "default", False, True, "local", DFTB_IMAGE, False),
+    ("local", "default", False, True, "local", None, False),
+    ("local", "default", True, False, "local", PSI4_IMAGE, False),
+    ("local", "default", True, True, "local", None, False),
+    ("self", "slurm-queue", False, True, "local", DFTB_IMAGE, True),
+    ("self", "slurm-queue", True, True, "local", DFTB_IMAGE, True),
+    ("self", "default", False, False, "local", DFTB_IMAGE, True),
+    ("cloud", "default", True, True, "cloud", PSI4_IMAGE, False),
+    ("self", "default", True, True, "cloud", PSI4_IMAGE, True),
+])
+async def test_nested_publication_hints_keep_container_and_cloud_semantics(
+    monkeypatch, tmp_path, resource, queue, in_docker, process_in_docker,
+    current_resource, child_image, expected_inline,
 ):
-    saved_entries: list = []
-
-    async def fake_task_mutation(task_id, action, values=None, expected_statuses=None):
-        assert action == "handoff"
-        assert expected_statuses == [TaskStatus.SUBMITTED.value]
-        saved_entries.append((task_id, values))
-        return {}
-
-
-    async def fake_claim(entry):
-        if entry.status != TaskStatus.SUBMITTED:
-            return False
-        entry.status = TaskStatus.RETRIEVED
+    monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
+    calls = []
+    input_publication = str(uuid4())
+    api = SimpleNamespace(requests=SimpleNamespace(server_url="https://example.invalid/api",
+        resource=current_resource, authorization="runner", bootstrap_data={"account_id": "test-account"}),
+        values=SimpleNamespace(publish_task_inputs=AsyncMock(return_value=([], input_publication))),
+        tasks=SimpleNamespace())
+    mapping = SimpleNamespace(function_mapping="tests.child_node", repository_revision=None)
+    parent = SimpleNamespace(id=ObjectId(), _execution_claim_id="parent-claim", _execution_generation="parent-generation")
+    active = SimpleNamespace(server=api, in_docker=process_in_docker,
+        current_node_name="parent_node", config=SimpleNamespace(resource=current_resource),
+        node_mappings=SimpleNamespace(get_by_name=lambda name: mapping))
+    monkeypatch.setattr("simstack.core.node.context", active)
+    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: process_in_docker)
+    monkeypatch.setattr("simstack.core.node.docker_image_for_node",
+        lambda name, resource=None: PSI4_IMAGE if name == "parent_node" else child_image)
+    async def publish(payload, *, request_id):
+        assert payload["input_publication"] == input_publication
+        assert payload["inline"] is expected_inline
+        assert payload["parent_execution"] == current_execution()
+        assert pending(api).__next__()["publication"] == payload
+        assert reserve_launch(api, payload["requested_task_id"]) is None
+        calls.append(payload)
+        entry = NodeRegistry(id=payload["requested_task_id"], name="child_node",
+            status=TaskStatus.RETRIEVED if expected_inline else TaskStatus.SUBMITTED,
+            function_hash="", arg_hash="hash", func_mapping="tests.child_node",
+            parameters=Parameters.model_validate(payload["parameters"]))
+        object.__setattr__(entry, "_execution_claim_id", "canonical-claim")
+        object.__setattr__(entry, "_execution_generation", "canonical-generation")
+        return {"task": entry, "disposition": "launch_inline" if expected_inline else "scheduled", "recompute_artifacts": False}
+    api.tasks.create_child = publish
+    async def resolve(payload, *, request_id):
+        effective = Parameters.model_validate(payload["parameters"])
+        logical_self = effective.resource == "self"
+        if logical_self:
+            effective.resource = current_resource
+        return {"parameters": effective.model_dump(mode="json"),
+            "logical_self": logical_self, "route": "resolved-route", "repository_revision": None}
+    async def reuse(payload, *, request_id):
+        return {"task": None, "disposition": "cache_miss", **await resolve(payload, request_id=request_id)}
+    api.tasks.resolve_invocation = AsyncMock(side_effect=resolve)
+    api.tasks.reuse_invocation = reuse
+    def child_node(**kwargs):
         return True
-
-    monkeypatch.setattr(
-        "simstack.core.node.context",
-        SimpleNamespace(
-            in_docker=in_docker,
-            current_node_name=current_node_name,
-            config=SimpleNamespace(resource=resource),
-            resource_config=None,
-            db=SimpleNamespace(
-                task_mutation=fake_task_mutation
-            ),
-        ),
-    )
-    monkeypatch.setattr("simstack.core.node.docker_image_for_node", _images)
-    monkeypatch.setattr("simstack.core.node.claim_submitted_node", fake_claim)
-    monkeypatch.setattr(
-        "simstack.core.node._DOCKERENV_PATH", MagicMock(exists=lambda: False)
-    )
-    return saved_entries
-
-
-async def _publish_nested_node(
-    monkeypatch,
-    *,
-    child_image: str | None,
-    parameters: Parameters,
-    nested_self: bool = False,
-    process_in_docker: bool = True,
-    current_resource: str = "local",
-):
-    visible_registry_entries: list[dict] = []
-    project = Project(field_name="nested-publication-test")
-
-    class ObservedDB:
-        async def find(self, model):
-            assert model is Project
-            return [project]
-
-        async def save(self, entry):
-            if isinstance(entry, NodeRegistry):
-                snapshot = {
-                    "status": entry.status,
-                    "in_docker": entry.parameters.in_docker,
-                    "resource": str(entry.parameters.resource),
-                    "host_claimed": entry.status == TaskStatus.SUBMITTED,
-                }
-                visible_registry_entries.append(snapshot)
-                if snapshot["host_claimed"]:
-                    entry.status = TaskStatus.RETRIEVED
-            return entry
-
-    async def keep_parameters(db, registry_entry, *, parent_parameters=None):
-        return None
-
-    def child_node():
-        return None
-
-    monkeypatch.setattr(
-        "simstack.core.node.context",
-        SimpleNamespace(
-            in_docker=process_in_docker,
-            current_node_name="parent_node",
-            config=SimpleNamespace(resource=current_resource),
-            node_mappings=SimpleNamespace(
-                get_by_name=lambda name: SimpleNamespace(
-                    function_mapping="tests.child_node"
-                )
-            ),
-            db=ObservedDB(),
-        ),
-    )
-    monkeypatch.setattr(
-        "simstack.core.node.process_is_in_docker", lambda: process_in_docker
-    )
-    monkeypatch.setattr(
-        "simstack.core.node.docker_image_for_node",
-        lambda name, resource=None: PSI4_IMAGE
-        if name == "parent_node"
-        else child_image,
-    )
-    monkeypatch.setattr(
-        "simstack.core.node.apply_resource_assignment_to_node_registry",
-        keep_parameters,
-    )
-
-    node_kwargs = dict(
-        func=child_node,
-        is_async=False,
-        parameters=parameters,
-    )
-    if nested_self:
-        node_kwargs["parent_parameters"] = Parameters(resource="self")
-    execution_node = Node(**node_kwargs)
-    await execution_node.make_registry_entry("function-hash", "arg-hash")
-    return execution_node, visible_registry_entries
+    value = Node(func=child_node, is_async=False, parent_id=parent.id,
+        parameters=Parameters(resource=resource, queue=queue, in_docker=in_docker))
+    with task_execution(parent):
+        await value.get_node_registry()
+    api.tasks.resolve_invocation.assert_awaited_once()
+    api.values.publish_task_inputs.assert_awaited_once_with([], repository_revision=None)
+    assert value.parameters.in_docker is in_docker
+    assert value._owns_inline_nested_execution is expected_inline
+    sentinel = object()
+    value.run_node_as_process = AsyncMock(return_value=sentinel)
+    value._wait_for_remote_completion = AsyncMock(return_value=sentinel)
+    assert await value.run_somewhere() is sentinel
+    if expected_inline:
+        value.run_node_as_process.assert_awaited_once()
+        value._wait_for_remote_completion.assert_not_awaited()
+    else:
+        value._wait_for_remote_completion.assert_awaited_once()
+        value.run_node_as_process.assert_not_awaited()
+    assert len(calls) == 1
 
 
 @pytest.mark.asyncio
-async def test_same_image_nested_task_is_owned_before_first_save(monkeypatch):
-    execution_node, visible_entries = await _publish_nested_node(
-        monkeypatch,
-        child_image=PSI4_IMAGE,
-        parameters=Parameters(
-            resource="local", queue="default", in_docker=True
-        ),
-    )
-
-    assert visible_entries == [
-        {
-            "status": TaskStatus.RETRIEVED,
-            "in_docker": True,
-            "resource": "local",
-            "host_claimed": False,
-        }
-    ]
-    assert execution_node._owns_inline_nested_execution is True
-
-    sentinel = SimpleNamespace(value="inline-result")
-
-    async def fake_process():
-        return sentinel
-
-    async def forbidden_wait():
-        raise AssertionError("creator-owned task must not wait for the host runner")
-
-    async def forbidden_claim(entry):
-        raise AssertionError("creator-owned task must not compete for a second claim")
-
-    monkeypatch.setattr(execution_node, "run_node_as_process", fake_process)
-    monkeypatch.setattr(
-        execution_node, "_wait_for_remote_completion", forbidden_wait
-    )
-    monkeypatch.setattr("simstack.core.node.claim_submitted_node", forbidden_claim)
-
-    assert await execution_node.run_somewhere() is sentinel
-
-
-@pytest.mark.asyncio
-async def test_different_image_handoff_is_final_before_first_save(monkeypatch):
-    execution_node, visible_entries = await _publish_nested_node(
-        monkeypatch,
-        child_image=DFTB_IMAGE,
-        parameters=Parameters(
-            resource="local", queue="default", in_docker=True
-        ),
-    )
-
-    assert visible_entries == [
-        {
-            "status": TaskStatus.SUBMITTED,
-            "in_docker": True,
-            "resource": "local",
-            "host_claimed": True,
-        }
-    ]
-    assert execution_node._nested_execution_handoff_prepared is True
-
-    sentinel = SimpleNamespace(value="host-result")
-
-    async def fake_wait():
-        return sentinel
-
-    async def forbidden_process():
-        raise AssertionError("different image must execute through the host runner")
-
-    async def forbidden_late_handoff():
-        raise AssertionError("handoff must already be complete before publication")
-
-    monkeypatch.setattr(
-        execution_node, "_wait_for_remote_completion", fake_wait
-    )
-    monkeypatch.setattr(execution_node, "run_node_as_process", forbidden_process)
-    monkeypatch.setattr(
-        execution_node, "_persist_nested_execution_handoff", forbidden_late_handoff
-    )
-
-    assert await execution_node.run_somewhere() is sentinel
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("in_docker", [False, True])
-async def test_self_child_is_owned_before_first_save_regardless_of_docker_flag(
-    monkeypatch, in_docker
-):
-    execution_node, visible_entries = await _publish_nested_node(
-        monkeypatch,
-        child_image=DFTB_IMAGE,
-        parameters=Parameters(
-            resource="self", queue="slurm-queue", in_docker=in_docker
-        ),
-        nested_self=True,
-    )
-
-    assert visible_entries == [
-        {
-            "status": TaskStatus.RETRIEVED,
-            "in_docker": in_docker,
-            "resource": "self",
-            "host_claimed": False,
-        }
-    ]
-    assert execution_node._owns_inline_nested_execution is True
-    assert execution_node._nested_execution_handoff_prepared is False
-
-
-@pytest.mark.asyncio
-async def test_host_side_self_child_is_owned_before_first_save(monkeypatch):
-    execution_node, visible_entries = await _publish_nested_node(
-        monkeypatch,
-        child_image=DFTB_IMAGE,
-        parameters=Parameters(
-            resource="self", queue="default", in_docker=False
-        ),
-        nested_self=True,
-        process_in_docker=False,
-    )
-
-    assert visible_entries == [
-        {
-            "status": TaskStatus.RETRIEVED,
-            "in_docker": False,
-            "resource": "self",
-            "host_claimed": False,
-        }
-    ]
-    assert execution_node._owns_inline_nested_execution is True
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("child_image", [PSI4_IMAGE, DFTB_IMAGE, None])
-async def test_explicit_non_docker_child_is_handed_off_without_flipping_flag(
-    monkeypatch, child_image
-):
-    execution_node, visible_entries = await _publish_nested_node(
-        monkeypatch,
-        child_image=child_image,
-        parameters=Parameters(
-            resource="local", queue="default", in_docker=False
-        ),
-    )
-
-    assert visible_entries == [
-        {
-            "status": TaskStatus.SUBMITTED,
-            "in_docker": False,
-            "resource": "local",
-            "host_claimed": True,
-        }
-    ]
-    assert execution_node.parameters.in_docker is False
-    assert execution_node._nested_execution_handoff_prepared is True
-    assert execution_node._owns_inline_nested_execution is False
-
-
-@pytest.mark.asyncio
-async def test_same_resource_docker_task_waits_for_host_runner(monkeypatch):
-    saved_entries = _patch_run_somewhere_context(
-        monkeypatch, in_docker=False, current_node_name=None
-    )
-    execution_node = _execution_node(
-        "dftb_calculator",
-        Parameters(resource="local", queue="default", in_docker=True),
-    )
-    sentinel = SimpleNamespace(value="docker-result")
-
-    async def fake_process(self):
-        raise AssertionError("host must hand a Docker task to the runner")
-
-    async def fake_wait(self):
-        return sentinel
-
-    monkeypatch.setattr(Node, "run_node_as_process", fake_process)
-    monkeypatch.setattr(Node, "_wait_for_remote_completion", fake_wait)
-
-    result = await execution_node.run_somewhere()
-
-    assert result is sentinel
-    assert len(saved_entries) == 1
-    assert execution_node.registry_entry.status == TaskStatus.SUBMITTED
-
-
-@pytest.mark.asyncio
-async def test_in_docker_same_image_stays_local(monkeypatch):
-    _patch_run_somewhere_context(
-        monkeypatch, in_docker=True, current_node_name="multistep_optimizer"
-    )
-    execution_node = _execution_node(
-        "psi4_calculator",
-        Parameters(resource="local", queue="default", in_docker=True),
-    )
-    sentinel = SimpleNamespace(value="same-image")
-
-    async def fake_process(self):
-        return sentinel
-
-    async def fake_wait(self):
-        raise AssertionError("same docker image must execute in-process")
-
-    monkeypatch.setattr(Node, "run_node_as_process", fake_process)
-    monkeypatch.setattr(Node, "_wait_for_remote_completion", fake_wait)
-
-    result = await execution_node.run_somewhere()
-
-    assert result is sentinel
-
-
-@pytest.mark.asyncio
-async def test_in_docker_different_image_waits_for_host(monkeypatch):
-    _patch_run_somewhere_context(
-        monkeypatch, in_docker=True, current_node_name="multistep_optimizer"
-    )
-    execution_node = _execution_node(
-        "dftb_calculator",
-        Parameters(resource="local", queue="default", in_docker=True),
-    )
-    sentinel = SimpleNamespace(value="other-container")
-    local_called = False
-
-    async def fake_process(self):
-        nonlocal local_called
-        local_called = True
-        raise AssertionError("different docker image must not execute in-process")
-
-    async def fake_wait(self):
-        return sentinel
-
-    monkeypatch.setattr(Node, "run_node_as_process", fake_process)
-    monkeypatch.setattr(Node, "_wait_for_remote_completion", fake_wait)
-
-    result = await execution_node.run_somewhere()
-
-    assert result is sentinel
-    assert local_called is False
-    assert execution_node.parameters.in_docker is True
-    assert execution_node.registry_entry.parameters.in_docker is True
-
-
-@pytest.mark.asyncio
-async def test_in_docker_non_docker_handoff_preserves_explicit_false(monkeypatch):
-    saved_entries = _patch_run_somewhere_context(
-        monkeypatch, in_docker=True, current_node_name="multistep_optimizer"
-    )
-    execution_node = _execution_node(
-        "dftb_calculator",
-        Parameters(resource="local", queue="default", in_docker=False),
-    )
-    sentinel = SimpleNamespace(value="other-container")
-
-    async def fake_process(self):
-        raise AssertionError("different docker image must not execute in-process")
-
-    async def fake_wait(self):
-        return sentinel
-
-    monkeypatch.setattr(Node, "run_node_as_process", fake_process)
-    monkeypatch.setattr(Node, "_wait_for_remote_completion", fake_wait)
-
-    result = await execution_node.run_somewhere()
-
-    assert result is sentinel
-    assert execution_node.parameters.in_docker is False
-    assert len(saved_entries) == 1
-    assert execution_node.registry_entry.parameters.in_docker is False
-    assert saved_entries[0][1]["parameters.in_docker"] is False
-
-
-@pytest.mark.asyncio
-async def test_in_docker_missing_child_image_waits_for_host(monkeypatch):
-    saved_entries = _patch_run_somewhere_context(
-        monkeypatch, in_docker=True, current_node_name="multistep_optimizer"
-    )
-    monkeypatch.setattr(
-        "simstack.core.node.docker_image_for_node",
-        lambda name, resource=None: PSI4_IMAGE if name == "multistep_optimizer" else None,
-    )
-    execution_node = _execution_node(
-        "dftb_calculator",
-        Parameters(resource="local", queue="default", in_docker=True),
-    )
-    sentinel = SimpleNamespace(value="missing-image-wait")
-
-    async def fake_process(self):
-        raise AssertionError("missing child image must not execute in-process")
-
-    async def fake_wait(self):
-        return sentinel
-
-    monkeypatch.setattr(Node, "run_node_as_process", fake_process)
-    monkeypatch.setattr(Node, "_wait_for_remote_completion", fake_wait)
-
-    result = await execution_node.run_somewhere()
-
-    assert result is sentinel
-    assert execution_node.parameters.in_docker is True
-    assert len(saved_entries) == 1
-
-
-@pytest.mark.asyncio
-async def test_self_resource_with_different_image_waits_for_host(monkeypatch):
-    saved_entries = _patch_run_somewhere_context(
-        monkeypatch, in_docker=True, current_node_name="multistep_optimizer"
-    )
-    execution_node = _execution_node(
-        "dftb_calculator",
-        Parameters(resource="self", queue="default", in_docker=True),
-    )
-    sentinel = SimpleNamespace(value="self-resource")
-
-    async def fake_process(self):
-        raise AssertionError("different image must return to the host")
-
-    async def fake_wait(self):
-        return sentinel
-
-    monkeypatch.setattr(Node, "run_node_as_process", fake_process)
-    monkeypatch.setattr(Node, "_wait_for_remote_completion", fake_wait)
-
-    result = await execution_node.run_somewhere()
-
-    assert result is sentinel
-    assert len(saved_entries) == 1
-    assert execution_node.registry_entry.status == TaskStatus.SUBMITTED
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("in_docker", [False, True])
-async def test_nested_self_resource_stays_in_current_execution_context(
-    monkeypatch, in_docker
-):
-    saved_entries = _patch_run_somewhere_context(
-        monkeypatch,
-        in_docker=True,
-        current_node_name="multistep_optimizer",
-    )
-    execution_node = _execution_node(
-        "dftb_calculator",
-        Parameters(resource="self", queue="slurm-queue", in_docker=in_docker),
-    )
-    execution_node.parent_id = "parent-task"
-    execution_node._function_kwargs = {}
-    sentinel = SimpleNamespace(value="same-context")
-
-    async def fake_process(self):
-        return sentinel
-
-    async def forbidden_wait(self):
-        raise AssertionError("nested self resource must stay in the current context")
-
-    monkeypatch.setattr(Node, "run_node_as_process", fake_process)
-    monkeypatch.setattr(Node, "_wait_for_remote_completion", forbidden_wait)
-
-    result = await execution_node.run_somewhere()
-
-    assert result is sentinel
-    assert saved_entries == []
-    assert execution_node.registry_entry.status == TaskStatus.RETRIEVED
-
-
-@pytest.mark.asyncio
-async def test_cloud_child_of_cloud_process_stays_submitted_for_a_new_vm(monkeypatch):
-    execution_node, visible_entries = await _publish_nested_node(
-        monkeypatch,
-        child_image=PSI4_IMAGE,
-        parameters=Parameters(
-            resource="cloud", queue="default", in_docker=True
-        ),
-        current_resource="cloud",
-    )
-
-    assert visible_entries == [
-        {
-            "status": TaskStatus.SUBMITTED,
-            "in_docker": True,
-            "resource": "cloud",
-            "host_claimed": True,
-        }
-    ]
-    assert execution_node._owns_inline_nested_execution is False
-    assert execution_node._nested_execution_handoff_prepared is False
-
-    sentinel = SimpleNamespace(value="new-vm")
-
-    async def fake_wait():
-        return sentinel
-
-    async def forbidden_process():
-        raise AssertionError("explicit cloud child must not run on the caller VM")
-
-    async def forbidden_claim(entry):
-        raise AssertionError("caller must not claim a cloud child")
-
-    monkeypatch.setattr(execution_node, "_wait_for_remote_completion", fake_wait)
-    monkeypatch.setattr(execution_node, "run_node_as_process", forbidden_process)
-    monkeypatch.setattr("simstack.core.node.claim_submitted_node", forbidden_claim)
-
-    assert await execution_node.run_somewhere() is sentinel
-
-
-@pytest.mark.asyncio
-async def test_self_child_on_cloud_stays_on_the_current_vm(monkeypatch):
-    execution_node, visible_entries = await _publish_nested_node(
-        monkeypatch,
-        child_image=PSI4_IMAGE,
-        parameters=Parameters(resource="self", queue="default", in_docker=True),
-        nested_self=True,
-        current_resource="cloud",
-    )
-
-    assert visible_entries == [
-        {
-            "status": TaskStatus.RETRIEVED,
-            "in_docker": True,
-            "resource": "self",
-            "host_claimed": False,
-        }
-    ]
-    assert execution_node._owns_inline_nested_execution is True
-
-
-@pytest.mark.asyncio
-async def test_cloud_same_image_child_is_not_claimed_by_the_caller(monkeypatch):
-    saved_entries = _patch_run_somewhere_context(
-        monkeypatch,
-        in_docker=True,
-        current_node_name="pyscf_hessian_orchestrator",
-        resource="cloud",
-    )
-    execution_node = _execution_node(
-        "pyscf_hessian_partial_ext",
-        Parameters(resource="cloud", queue="default", in_docker=True),
-    )
-    sentinel = SimpleNamespace(value="new-vm")
-
-    async def fake_process(self):
-        raise AssertionError("explicit cloud child must not run on the caller VM")
-
-    async def fake_wait(self):
-        return sentinel
-
-    monkeypatch.setattr(Node, "run_node_as_process", fake_process)
-    monkeypatch.setattr(Node, "_wait_for_remote_completion", fake_wait)
-
-    result = await execution_node.run_somewhere()
-
-    assert result is sentinel
-    assert saved_entries == []
-    assert execution_node.registry_entry.status == TaskStatus.SUBMITTED
+@pytest.mark.parametrize("granted_inline", [False, True])
+async def test_execution_uses_server_disposition_without_a_second_claim(monkeypatch, granted_inline):
+    node = Node.__new__(Node)
+    node._owns_inline_nested_execution = granted_inline
+    node._inline_launch_reservation = None
+    inline_result, scheduled_result = object(), object()
+    node.run_node_as_process = AsyncMock(return_value=inline_result)
+    node._wait_for_remote_completion = AsyncMock(return_value=scheduled_result)
+    assert await node.run_somewhere() is (inline_result if granted_inline else scheduled_result)
+    assert node.run_node_as_process.await_count == int(granted_inline)
+    assert node._wait_for_remote_completion.await_count == int(not granted_inline)

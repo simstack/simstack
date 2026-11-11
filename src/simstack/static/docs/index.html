@@ -233,7 +233,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -369,8 +374,6 @@
 <li class="toctree-l3"><a class="reference internal" href="files.html#filelist-and-filelistmodel">FileList and FileListModel</a></li>
 <li class="toctree-l3"><a class="reference internal" href="files.html#api-reference">API Reference</a></li>
 <li class="toctree-l3"><a class="reference internal" href="files.html#external-and-internal-files-and-resources">External and Internal Files and Resources</a></li>
-<li class="toctree-l3"><a class="reference internal" href="files.html#input-data">Input Data</a></li>
-<li class="toctree-l3"><a class="reference internal" href="files.html#output-data">Output Data</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="resource_config.html">Program Execution</a><ul>
@@ -401,10 +404,8 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="testing_complex_nodes.html">Testing Complex Nodes</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="testing_complex_nodes.html#overview">Overview</a></li>
-<li class="toctree-l3"><a class="reference internal" href="testing_complex_nodes.html#test-generation-generate-test-py">Test Generation (<cite>generate_test.py</cite>)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="testing_complex_nodes.html#testing-with-patches-testing-test-generation-py">Testing with Patches (<cite>testing_test_generation.py</cite>)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="testing_complex_nodes.html#benefits">Benefits</a></li>
+<li class="toctree-l3"><a class="reference internal" href="testing_complex_nodes.html#generating-test-data">Generating test data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="testing_complex_nodes.html#patching-external-work">Patching external work</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="database_migrations.html">Database Migrations</a><ul>
@@ -417,12 +418,11 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="ci_pipeline.html">CI Pipeline and Documentation Artifacts</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="ci_pipeline.html#where-the-html-documentation-lives">Where the HTML documentation lives</a></li>
-<li class="toctree-l3"><a class="reference internal" href="ci_pipeline.html#how-the-ci-job-updates-docs">How the CI job updates docs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ci_pipeline.html#how-the-ci-job-validates-docs">How the CI job validates docs</a></li>
 <li class="toctree-l3"><a class="reference internal" href="ci_pipeline.html#how-other-projects-should-consume-docs">How other projects should consume docs</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="misc.html">Miscellaneous</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="misc.html#bugs">BUGS:</a></li>
 <li class="toctree-l3"><a class="reference internal" href="misc.html#references">References</a></li>
 <li class="toctree-l3"><a class="reference internal" href="misc.html#customizing-simstack-models">Customizing Simstack Models</a></li>
 </ul>
@@ -511,6 +511,6 @@
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

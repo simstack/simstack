@@ -1,4 +1,4 @@
-from typing import Optional, Literal, Dict, Any, Union
+from typing import Optional, Literal, Dict, Any, Union, ClassVar
 import base64
 import os
 from simstack.models.document import Model, Field, ObjectId
@@ -6,7 +6,9 @@ from simstack.models.simstack_model import simstack_model
 
 @simstack_model
 class Image2DArtifactModel(Model):
-    """Model for storing 2D image artifacts in MongoDB."""
+    """A rendered image and its scientific presentation metadata."""
+
+    __simstack_artifact_kind__: ClassVar[str] = "image"
 
     parent_id: Optional[ObjectId] = None
     name: str = Field(..., description="Name of the image artifact")

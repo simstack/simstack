@@ -14,29 +14,11 @@ from simstack.models.dataset import (
 )
 from simstack.models.dataset_metadata import DataSetMetadata
 from simstack.models.document import ObjectId
-from simstack.models.models import ModelMapping
-from simstack.persistence.memory import InMemoryRepository
-from simstack.util.db import Database
-from simstack.util.mappings import ModelMappingTable
+from simstack.server_api.scientific_value_graph import encode_graph, decode_graph
+from simstack.models.document.models import _MODEL_TYPES
 
 
-@pytest.fixture
-def database(monkeypatch):
-    db = Database(repository=InMemoryRepository())
-    mapping = ModelMapping(
-        name="StringData",
-        mapping="simstack.models.base_types.StringData",
-        collection_name="string_data",
-    )
-    runtime = SimpleNamespace(db=db, model_mappings=ModelMappingTable([mapping]))
-    context_module = importlib.import_module("simstack.core.context")
-    importer = importlib.import_module("simstack.util.importer")
-    monkeypatch.setattr(context_module, "context", runtime)
-    monkeypatch.setattr(importer, "context", runtime)
-    return db
-
-
-async def stored_dataset(database):
+async def stored_dataset():
     section = DataSetSection(
         model_types={
             "left": "StringData",
@@ -58,8 +40,9 @@ async def stored_dataset(database):
         metadata=DataSetMetadata(field_name="selection-regression"),
         sections={"main": section, "auxiliary": auxiliary},
     )
-    await database.save(dataset)
-    return dataset
+    for section in dataset.sections.values():
+        await section.prepare_publication()
+    return decode_graph(encode_graph([dataset]), lambda name: _MODEL_TYPES[name])[0]
 
 
 def selection(dataset, indices, section_name="main"):
@@ -68,7 +51,7 @@ def selection(dataset, indices, section_name="main"):
         dataset_selection_fields=[
             DataSetSelectionField(section_name=section_name, indices=indices)
         ],
-    )
+    ).materialize(dataset)
 
 
 async def collect(value, method, section_name=None):
@@ -83,8 +66,8 @@ def values(rows):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", ["getter", "iterator"])
-async def test_selection_preserves_stored_rows_columns_duplicates_and_optional_cells(database, method):
-    dataset = await stored_dataset(database)
+async def test_selection_preserves_stored_rows_columns_duplicates_and_optional_cells(method):
+    dataset = await stored_dataset()
     before = dataset.model_dump_doc()
     chosen = selection(dataset, [2, 0, 2, 1])
 
@@ -98,14 +81,13 @@ async def test_selection_preserves_stored_rows_columns_duplicates_and_optional_c
     ]
     assert rows[0][0].id != rows[0][1].id
     assert rows[0][0].id == rows[2][0].id
-    persisted = await database.find_one(DataSet, DataSet.id == dataset.id)
-    assert persisted.model_dump_doc() == before
+    assert dataset.model_dump_doc() == before
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", ["getter", "iterator"])
-async def test_selection_preserves_sections_and_supports_section_filter(database, method):
-    dataset = await stored_dataset(database)
+async def test_selection_preserves_sections_and_supports_section_filter(method):
+    dataset = await stored_dataset()
     chosen = selection(dataset, [1])
     chosen.dataset_selection_fields.insert(
         0, DataSetSelectionField(section_name="auxiliary", indices=[0])
@@ -123,8 +105,8 @@ async def test_selection_preserves_sections_and_supports_section_filter(database
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", ["getter", "iterator"])
 @pytest.mark.parametrize("empty_fields", [False, True])
-async def test_empty_selection_has_no_rows(database, method, empty_fields):
-    dataset = await stored_dataset(database)
+async def test_empty_selection_has_no_rows(method, empty_fields):
+    dataset = await stored_dataset()
     chosen = selection(dataset, [])
     if empty_fields:
         chosen.dataset_selection_fields = []
@@ -135,8 +117,8 @@ async def test_empty_selection_has_no_rows(database, method, empty_fields):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", ["getter", "iterator"])
 @pytest.mark.parametrize("index", [-1, 3])
-async def test_selection_rejects_invalid_stored_row_positions(database, method, index):
-    dataset = await stored_dataset(database)
+async def test_selection_rejects_invalid_stored_row_positions(method, index):
+    dataset = await stored_dataset()
 
     with pytest.raises(IndexError, match="out of range"):
         await collect(selection(dataset, [index]), method)
@@ -144,11 +126,14 @@ async def test_selection_rejects_invalid_stored_row_positions(database, method, 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", ["getter", "iterator"])
-async def test_selection_rejects_missing_dataset_and_section(database, method):
-    dataset = await stored_dataset(database)
+async def test_selection_rejects_missing_dataset_and_section(method):
+    dataset = await stored_dataset()
     missing = selection(dataset, [0])
     missing.dataset_id = ObjectId()
-    with pytest.raises(ValueError, match="Dataset with id .* not found"):
+    with pytest.raises(ValueError, match="identity mismatch"):
+        missing.materialize(dataset)
+    object.__setattr__(missing, "_cache", None)
+    with pytest.raises(ValueError, match="explicitly"):
         await collect(missing, method)
     with pytest.raises(ValueError, match="Section missing not found"):
         await collect(selection(dataset, [0], section_name="missing"), method)
@@ -156,9 +141,9 @@ async def test_selection_rejects_missing_dataset_and_section(database, method):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", ["getter", "iterator"])
-async def test_selection_fails_when_stored_row_cannot_be_loaded_to_cache(database, method):
-    dataset = await stored_dataset(database)
-    await database.delete(dataset.sections["main"].get_item("row-z")["left"])
+async def test_selection_fails_when_stored_row_cannot_be_loaded_to_cache(method):
+    dataset = await stored_dataset()
+    dataset.sections["main"]._set_cache({})
 
     with pytest.raises(KeyError, match="row-z.*not found"):
         await collect(selection(dataset, [0]), method)

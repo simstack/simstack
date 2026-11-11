@@ -32,6 +32,3 @@ class LogEntry(Model):
     exception_traceback: Optional[str] = None
     # extra_data: Dict[str, Any] = Field(default_factory=dict)
     parameters: Optional[Parameters] = None  # If Parameters is related to LogEntry
-
-    # Replace Config class with model_config
-    model_config = {"collection": "logs"}

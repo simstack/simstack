@@ -233,7 +233,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -295,7 +300,7 @@
 <section id="example">
 <h3>Example:<a class="headerlink" href="#example" title="Link to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.base_lists</span><span class="w"> </span><span class="kn">import</span> <span class="n">GenericListMixin</span>
 
@@ -333,19 +338,19 @@
 </section>
 <section id="objectlistmixin">
 <h2>ObjectListMixin<a class="headerlink" href="#objectlistmixin" title="Link to this heading">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">ObjectListMixin</span></code> is designed for lists of <code class="docutils literal notranslate"><span class="pre">Model</span></code> instances. Instead of storing the full objects, it stores only their <code class="docutils literal notranslate"><span class="pre">ObjectId</span></code>. This is useful for keeping the parent model small and avoiding deep nesting in MongoDB. Interaction with the objects is done asynchronously through the database.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">ObjectListMixin</span></code> is designed for lists of <code class="docutils literal notranslate"><span class="pre">Model</span></code> instances. Instead of storing the full objects, it stores only their <code class="docutils literal notranslate"><span class="pre">ObjectId</span></code>. This is useful for keeping the parent model small and avoiding deep nesting in MongoDB. Server resolves the referenced objects when the containing model is loaded through the scientific API. List operations then use local values.</p>
 <section id="id1">
 <h3>Requirements:<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
 <p>To use <code class="docutils literal notranslate"><span class="pre">ObjectListMixin</span></code>, your class must:</p>
 <ol class="arabic simple">
-<li><p>Inherit from <code class="docutils literal notranslate"><span class="pre">ObjectListMixin[T]</span></code> where <code class="docutils literal notranslate"><span class="pre">T</span></code> is an odmantic <code class="docutils literal notranslate"><span class="pre">Model</span></code>.</p></li>
+<li><p>Inherit from <code class="docutils literal notranslate"><span class="pre">ObjectListMixin[T]</span></code> where <code class="docutils literal notranslate"><span class="pre">T</span></code> is a SimStack domain <code class="docutils literal notranslate"><span class="pre">Model</span></code>.</p></li>
 <li><p>Have an attribute named <code class="docutils literal notranslate"><span class="pre">elements</span></code> of type <code class="docutils literal notranslate"><span class="pre">List[ObjectId]</span></code>.</p></li>
 </ol>
 </section>
 <section id="id2">
 <h3>Example:<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">ObjectId</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">ObjectId</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span><span class="p">,</span> <span class="n">StringData</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.base_lists</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectListMixin</span>
 
@@ -365,23 +370,19 @@
 <li><p><a class="reference internal" href="array_lists.html"><span class="doc">Array Lists</span></a>: <code class="docutils literal notranslate"><span class="pre">ArrayList</span></code> uses <code class="docutils literal notranslate"><span class="pre">ObjectListMixin[ArrayStorage]</span></code>.</p></li>
 <li><p><a class="reference internal" href="tables.html"><span class="doc">Tables</span></a>: <code class="docutils literal notranslate"><span class="pre">SimpleTable</span></code> (while not using list mixins directly, it’s a related data structure).</p></li>
 </ul>
-<section id="available-methods-mostly-async">
-<h3>Available Methods (mostly Async):<a class="headerlink" href="#available-methods-mostly-async" title="Link to this heading">¶</a></h3>
+<section id="id3">
+<h3>Available Methods<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">append(element:</span> <span class="pre">T)</span></code>: Saves the <code class="docutils literal notranslate"><span class="pre">Model</span></code> instance to the database and adds its ID to the list.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">extend(elements:</span> <span class="pre">Union[List[T],</span> <span class="pre">ObjectListMixin[T]])</span></code>: Extends the list, saving any new models to the database.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">get(index:</span> <span class="pre">int)</span> <span class="pre">-&gt;</span> <span class="pre">T</span></code>: Retrieves the full model from the database at the specified index.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">find(pattern:</span> <span class="pre">str)</span> <span class="pre">-&gt;</span> <span class="pre">Optional[T]</span></code>: Searches for a model with a matching <code class="docutils literal notranslate"><span class="pre">name</span></code> attribute in the database.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">find_all(pattern:</span> <span class="pre">str)</span> <span class="pre">-&gt;</span> <span class="pre">List[T]</span></code>: Searches for all models matching the regex <code class="docutils literal notranslate"><span class="pre">pattern</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">for</span> <span class="pre">element</span> <span class="pre">in</span> <span class="pre">my_list</span></code>: Support for asynchronous iteration over the full objects.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">len(my_list)</span></code>: Returns the number of IDs in the list.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">my_list[index]</span></code>: Returns the <code class="docutils literal notranslate"><span class="pre">ObjectId</span></code> at the specified index (sync).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">element</span> <span class="pre">in</span> <span class="pre">my_list</span></code>: Checks if a <code class="docutils literal notranslate"><span class="pre">Model</span></code> or <code class="docutils literal notranslate"><span class="pre">ObjectId</span></code> is in the list (sync).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">append(element)</span></code> and <code class="docutils literal notranslate"><span class="pre">extend(elements)</span></code> update the local list.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get(index)</span></code> retrieves a locally materialized model.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">find(pattern)</span></code> and <code class="docutils literal notranslate"><span class="pre">find_all(pattern)</span></code> search materialized values.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">for</span> <span class="pre">element</span> <span class="pre">in</span> <span class="pre">my_list</span></code> iterates locally.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">len(my_list)</span></code> returns the number of referenced values.</p></li>
 </ul>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Interaction with <code class="docutils literal notranslate"><span class="pre">ObjectListMixin</span></code> requires an active database engine context, which is typically provided during node execution.</p>
-</div>
+<p>Publish the containing model with
+<code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">context.server.values.publish_value(my_list)</span></code>. Resolve it with
+<code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">context.server.values.get_value(ListModelType,</span> <span class="pre">id)</span></code> before accessing
+remote values. Constructors and list access never query a database.</p>
 </section>
 </section>
 </section>
@@ -455,7 +456,7 @@
 </ul>
 </li>
 <li><a class="reference internal" href="#concrete-implementations">Concrete Implementations</a><ul>
-<li><a class="reference internal" href="#available-methods-mostly-async">Available Methods (mostly Async):</a></li>
+<li><a class="reference internal" href="#id3">Available Methods</a></li>
 </ul>
 </li>
 </ul>
@@ -473,6 +474,6 @@
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

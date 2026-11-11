@@ -13,7 +13,6 @@ from .codec import (
 )
 from .fields import (
     PAYLOAD_SCHEMA_KEY,
-    REFERENCE_COLLECTION_SCHEMA_KEY,
     REFERENCE_MODEL_SCHEMA_KEY,
     REFERENCE_SCHEMA_KEY,
     Field,
@@ -30,7 +29,6 @@ __all__ = [
     "Model",
     "ObjectId",
     "PAYLOAD_SCHEMA_KEY",
-    "REFERENCE_COLLECTION_SCHEMA_KEY",
     "REFERENCE_MODEL_SCHEMA_KEY",
     "REFERENCE_SCHEMA_KEY",
     "Reference",

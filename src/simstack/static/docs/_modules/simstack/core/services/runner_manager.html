@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -286,11 +291,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.runner_cleanup_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnerCleanupService</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.file_transfer_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileTransferService</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.slurm_status_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">SlurmStatusService</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.resource_branch_monitor_service</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">ResourceBranchMonitorService</span><span class="p">,</span>
-<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.stop_check_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">StopCheckService</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.git_uv_update_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">GitUvUpdateService</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.timeout_restart_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">TimeoutRestartService</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;NodeRunner&quot;</span><span class="p">)</span>
@@ -303,19 +304,28 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">resource</span><span class="p">:</span> <span class="n">Resource</span><span class="p">,</span>
         <span class="n">detach</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">no_pull</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">no_pull</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">is_default</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">with_file_transfer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">with_jobs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">with_jobs</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">with_file_transfer</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;A runner with --jobs false and --file-transfer false has no work to do.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">no_pull</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Runner updates are managed by Server; pulling a runtime is not supported.&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_resource</span> <span class="o">=</span> <span class="n">resource</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_detach</span> <span class="o">=</span> <span class="n">detach</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_no_pull</span> <span class="o">=</span> <span class="n">no_pull</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_pid</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_services</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">BaseService</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_shutdown_event</span><span class="p">:</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Event</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_claiming_paused</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_restart_requested</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_pid_file</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;runner_</span><span class="si">{</span><span class="n">resource</span><span class="si">}</span><span class="s2">.pid&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_is_default</span> <span class="o">=</span> <span class="n">is_default</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_with_file_transfer</span> <span class="o">=</span> <span class="n">with_file_transfer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_with_jobs</span> <span class="o">=</span> <span class="n">with_jobs</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_is_process_running</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pid</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if a process with given PID is running and is a simstack_runner process&quot;&quot;&quot;</span>
@@ -393,22 +403,38 @@
         <span class="c1"># Save PID on startup</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_pid_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pid</span><span class="p">))</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_services</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">NodeExecutionService</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_resource</span><span class="p">,</span>
-                <span class="n">polling_interval</span><span class="p">,</span>
-                <span class="n">max_concurrent</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_shutdown_event</span><span class="p">,</span>
-                <span class="n">detach</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_detach</span><span class="p">,</span>
-                <span class="n">is_default</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_is_default</span><span class="p">,</span>
-            <span class="p">),</span>
-            <span class="n">RunnerStatusService</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">60</span><span class="p">),</span>
-            <span class="n">RunnerCleanupService</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">300</span><span class="p">),</span>
-            <span class="n">SlurmStatusService</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">60</span><span class="p">),</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_services</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_with_jobs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_services</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">NodeExecutionService</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_resource</span><span class="p">,</span>
+                    <span class="n">polling_interval</span><span class="p">,</span>
+                    <span class="n">max_concurrent</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_shutdown_event</span><span class="p">,</span>
+                    <span class="n">detach</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_detach</span><span class="p">,</span>
+                    <span class="n">is_default</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_is_default</span><span class="p">,</span>
+                    <span class="n">claiming_paused</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_claiming_paused</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.runner_control_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnerControlService</span>
+        <span class="c1"># Admission waits for the first authoritative pause/control state.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_claiming_paused</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_services</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">RunnerControlService</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_services</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">RunnerStatusService</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">60</span><span class="p">),</span>
+                <span class="n">RunnerCleanupService</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">300</span><span class="p">),</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+        <span class="c1"># Tasks can explicitly select Slurm even when it is not the resource&#39;s</span>
+        <span class="c1"># default queue. An empty watchlist does not invoke scheduler commands.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_with_jobs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_services</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">SlurmStatusService</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">60</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_services</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="n">StopCheckService</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_resource</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">shutdown_event</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_shutdown_event</span>
-            <span class="p">),</span>
-        <span class="p">]</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_with_file_transfer</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_services</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
@@ -416,14 +442,8 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">_resource</span><span class="p">,</span>
                     <span class="n">interval</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
                     <span class="n">max_concurrent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-                    <span class="n">shutdown_event</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_shutdown_event</span><span class="p">,</span>
+                    <span class="n">shutdown_event</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="p">)</span>
-            <span class="p">)</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_no_pull</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_services</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">GitUvUpdateService</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">60</span><span class="p">))</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_services</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="n">ResourceBranchMonitorService</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
             <span class="p">)</span>
 
         <span class="c1"># Add timeout restart service if timeout is specified</span>
@@ -480,6 +500,6 @@
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

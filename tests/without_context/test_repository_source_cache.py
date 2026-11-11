@@ -15,11 +15,31 @@ def git(root,*arguments):
     return subprocess.check_output(["git","-C",str(root),*arguments],text=True).strip()
 
 
+def test_core_build_identity_includes_the_executable_checkpoint_wrapper(tmp_path, monkeypatch):
+    from simstack.runner_runtime import core_build
+    package = tmp_path / "simstack"
+    (package / "runner_runtime").mkdir(parents=True)
+    (package / "static").mkdir()
+    source = package / "runner_runtime" / "core_build.py"
+    source.write_text("PROTOCOL_VERSION = 3\n")
+    wrapper = package / "static" / "slurm_checkpoint.sh"
+    wrapper.write_text("exit 0\n")
+    monkeypatch.setattr(core_build, "__file__", str(source))
+    core_build.core_build_identity.cache_clear()
+    first = core_build.core_build_identity()
+    wrapper.write_text("exit 17\n")
+    core_build.core_build_identity.cache_clear()
+    assert core_build.core_build_identity() != first
+    core_build.core_build_identity.cache_clear()
+
+
 def init(root):
     root.mkdir()
     git(root,"init","--quiet")
     git(root,"config","user.name","Fixture")
     git(root,"config","user.email","fixture@example.invalid")
+    (root / "pyproject.toml").write_text("[tool.simstack]\nrunner-protocol = 3\n")
+    git(root, "add", "pyproject.toml")
 
 
 def test_recursive_submodule_pin_and_dirty_sources_are_checked(tmp_path):
@@ -111,6 +131,35 @@ def _descriptor(root, revision, *, extras=None):
         "git_metadata": metadata, "extras": extras or []}
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("authorization", ["user", "local"])
+async def test_standalone_pinned_runtime_verifies_current_sdk_source_without_prepared_cache(monkeypatch, tmp_path, authorization):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from simstack.core.context import context
+    from simstack.util import repository_runtime as runtime
+    root = tmp_path / "caller-source"
+    init(root)
+    (root / "workflow.py").write_text("VALUE = 1\n")
+    git(root, "add", ".")
+    git(root, "commit", "--quiet", "-m", "Pin")
+    revision = "a" * 64
+    descriptor = _descriptor(root, revision)
+    api = SimpleNamespace(requests=SimpleNamespace(authorization=authorization),
+        resource=SimpleNamespace(repository_revision=AsyncMock(return_value=descriptor)))
+    monkeypatch.setattr(context, "_server", api)
+    monkeypatch.setattr(context, "_config", SimpleNamespace(project_root=root))
+    monkeypatch.delenv("SIMSTACK_REPOSITORY_ROOT", raising=False)
+    prepare = AsyncMock(side_effect=AssertionError("standalone runtime used Runner cache"))
+    monkeypatch.setattr(runtime, "prepare_repository", prepare)
+    assert await runtime.prepare_task_runtime(SimpleNamespace(repository_revision=revision)) == root
+    prepare.assert_not_awaited()
+    api.resource.repository_revision.assert_awaited_once_with(revision)
+    (root / "workflow.py").write_text("VALUE = 2\n")
+    with pytest.raises(RuntimeError, match="modified|changed"):
+        await runtime.prepare_task_runtime(SimpleNamespace(repository_revision=revision))
+
+
 def test_git_cache_pins_old_commit_submodules_and_tags_and_keeps_versions(tmp_path, monkeypatch):
     from simstack.util import repository_runtime as runtime
     child, source, cache = tmp_path / "child", tmp_path / "remote", tmp_path / "cache"
@@ -141,6 +190,7 @@ def test_git_cache_pins_old_commit_submodules_and_tags_and_keeps_versions(tmp_pa
         (root / ".venv").mkdir()
         (root / ".venv" / "preserved").write_text("old runtime")
     monkeypatch.setattr(runtime, "prepare_environment", prepare)
+    monkeypatch.setattr(runtime, "verify_runtime_core", lambda _root: None)
     first_root = runtime._cache_revision(None, first, cache=cache)
     assert (first_root / "value.py").read_text() == "VERSION = 1\n"
     verify_source(first_root, first)
@@ -176,6 +226,7 @@ def test_failed_git_runtime_preparation_is_retryable_without_touching_ready_vers
         runtime._cache_revision(None, descriptor, cache=cache)
     assert not list(cache.glob("*/.simstack-repository.json"))
     monkeypatch.setattr(runtime, "prepare_environment", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "verify_runtime_core", lambda _root: None)
     root = runtime._cache_revision(None, descriptor, cache=cache)
     assert (root / ".simstack-repository.json").is_file()
 
@@ -187,7 +238,7 @@ def test_cold_git_cache_runs_real_locked_uv_sync_and_preserves_installed_core(tm
     init(source)
     (source / "pyproject.toml").write_text(
         '[project]\nname="cold-runner-fixture"\nversion="0.1.0"\nrequires-python=">=3.12"\ndependencies=[]\n'
-        '[project.optional-dependencies]\nmachine=[]\n[tool.uv]\npackage=false\n')
+        '[project.optional-dependencies]\nmachine=[]\n[tool.uv]\npackage=false\n[tool.simstack]\nrunner-protocol=3\n')
     (source / "fixture_workflow.py").write_text("RESULT = 42\n")
     uv = os.environ.get("UV_EXECUTABLE") or shutil.which("uv")
     subprocess.run([uv, "lock", "--python", sys.executable], cwd=source, check=True, capture_output=True)
@@ -216,6 +267,7 @@ def test_startup_inventory_keeps_valid_profiles_without_preparing_missing_or_dir
         git(root, "add", ".")
         git(root, "commit", "--quiet", "-m", "Prepared workflow")
         descriptor = _descriptor(root, revision * 64, extras=["gpu", "cpu", "gpu"])
+        descriptor["core_build"] = runtime.core_build_identity()
         (root / ".simstack-repository.json").write_text(json.dumps(descriptor))
         if revision != "b":
             python = runtime.runtime_python(root)
@@ -228,6 +280,7 @@ def test_startup_inventory_keeps_valid_profiles_without_preparing_missing_or_dir
     (invalid / ".simstack-repository.json").write_text("not-json")
     monkeypatch.setattr(runtime, "prepare_environment", lambda *args, **kwargs: pytest.fail("Startup must not sync"))
     monkeypatch.setattr(runtime, "_checkout_git", lambda *args, **kwargs: pytest.fail("Startup must not clone"))
+    monkeypatch.setattr(runtime, "verify_runtime_core", lambda _root: None)
     assert runtime.prepared_repositories(cache=cache) == [{"repository_revision": "a" * 64, "extras": ["cpu", "gpu"]}]
 
 
@@ -237,7 +290,207 @@ async def test_empty_cache_reconciles_before_any_lazy_checkout(tmp_path, monkeyp
     from unittest.mock import AsyncMock
     from types import SimpleNamespace
     monkeypatch.setenv("SIMSTACK_REPOSITORY_CACHE", str(tmp_path / "cold-cache"))
-    api = SimpleNamespace(json=AsyncMock())
+    api = SimpleNamespace(reconcile_repositories=AsyncMock())
     await runtime.reconcile_prepared_repositories(api)
-    api.json.assert_awaited_once_with("POST", "/runner/repositories/reconcile", {"prepared": []})
+    api.reconcile_repositories.assert_awaited_once_with([])
     assert not (tmp_path / "cold-cache").exists()
+
+
+def _create_runtime_for_core_probe(root, *, core_parent=None, **_kwargs):
+    """A real Python environment; no uv or dependency downloads are needed."""
+    import venv
+    import simstack
+    from pathlib import Path
+    from simstack.util.repository_runtime import runtime_python
+    venv.EnvBuilder(with_pip=False, system_site_packages=True).create(root / '.venv')
+    python = runtime_python(root)
+    sites = json.loads(subprocess.check_output([str(python), '-I', '-c',
+        'import json,site; print(json.dumps(site.getsitepackages()))'], text=True))
+    Path(sites[0], 'simstack-platform.pth').write_text(str(core_parent or Path(simstack.__file__).resolve().parent.parent) + '\n')
+
+
+def test_core_upgrade_prepares_separate_runtime_and_never_changes_old_one(tmp_path, monkeypatch):
+    from simstack.util import repository_runtime as runtime
+    source = tmp_path / 'source'
+    init(source)
+    (source / 'value.py').write_text('VALUE=1\n')
+    git(source, 'add', '.')
+    git(source, 'commit', '--quiet', '-m', 'Pinned scientific code')
+    descriptor = _descriptor(source, 'e' * 64)
+    monkeypatch.setattr(runtime, 'validate_clone_url', lambda value: value)
+    monkeypatch.setattr(runtime, 'git_environment', lambda **kwargs: {**os.environ, 'GIT_ALLOW_PROTOCOL': 'file'})
+    def prepare(root, **kwargs):
+        (root / '.venv').mkdir()
+        (root / '.venv' / 'scientific-dependencies').write_text('pinned dependencies')
+    monkeypatch.setattr(runtime, 'prepare_environment', prepare)
+    monkeypatch.setattr(runtime, 'verify_runtime_core', lambda root: None)
+    monkeypatch.setattr(runtime, 'core_build_identity', lambda: '1' * 64)
+    cache = tmp_path / 'cache'
+    old_root = runtime._cache_revision(None, descriptor, cache=cache)
+    old_marker = (old_root / '.simstack-repository.json').read_bytes()
+    monkeypatch.setattr(runtime, 'core_build_identity', lambda: '2' * 64)
+    assert runtime.prepared_repositories(cache=cache) == []
+    new_root = runtime._cache_revision(None, descriptor, cache=cache)
+    assert new_root != old_root
+    assert (old_root / '.simstack-repository.json').read_bytes() == old_marker
+    assert (old_root / '.venv' / 'scientific-dependencies').read_text() == 'pinned dependencies'
+    assert git(new_root, 'rev-parse', 'HEAD') == descriptor['commit_sha']
+    assert json.loads((new_root / '.simstack-repository.json').read_text())['core_build'] == '2' * 64
+
+
+def test_real_interpreter_rejects_stale_copied_core_binding(tmp_path):
+    from pathlib import Path
+    from simstack.util import repository_runtime as runtime
+    from simstack.runner_runtime import core_build
+    root = tmp_path / 'prepared'
+    root.mkdir()
+    _create_runtime_for_core_probe(root)
+    # The prepared interpreter, not the caller's PYTHONPATH, must load Core.
+    runtime.verify_runtime_core(root)
+    copied = tmp_path / 'old-platform' / 'simstack' / 'runner_runtime'
+    copied.mkdir(parents=True)
+    (copied.parent / '__init__.py').write_text('')
+    (copied / '__init__.py').write_text('')
+    shutil.copy2(Path(core_build.__file__), copied / 'core_build.py')
+    (copied.parent / 'static').mkdir()
+    shutil.copy2(Path(core_build.__file__).parents[1] / 'static' / 'slurm_checkpoint.sh',
+        copied.parent / 'static' / 'slurm_checkpoint.sh')
+    (copied.parent / 'old_feature.py').write_text('OLD = True\n')
+    python = runtime.runtime_python(root)
+    site = json.loads(subprocess.check_output([str(python), '-I', '-c',
+        'import json,site; print(json.dumps(site.getsitepackages()))'], text=True))[0]
+    Path(site, 'simstack-platform.pth').write_text(str(copied.parent.parent) + '\n')
+    with pytest.raises(RuntimeError, match='different Core build'):
+        runtime.verify_runtime_core(root)
+
+
+def test_prepared_core_snapshot_survives_in_place_runner_upgrade(tmp_path, monkeypatch):
+    """Even a late import in an old environment must use its prepared Core."""
+    import venv
+    import simstack
+    from types import SimpleNamespace
+    from simstack.util import repository_runtime as runtime
+
+    installed = tmp_path / "runner-install"
+    package = installed / "simstack"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("")
+    (package / "late_science.py").write_text("VALUE = 'old'\n")
+    metadata = installed / "simstack-1.0.dist-info"
+    metadata.mkdir()
+    (metadata / "METADATA").write_text("Name: simstack\nVersion: 1.0\n")
+    monkeypatch.setattr(simstack, "__file__", str(package / "__init__.py"))
+    monkeypatch.setattr(runtime.importlib.metadata, "distribution", lambda name: SimpleNamespace(_path=metadata))
+
+    run = subprocess.run
+    def create_environment(command, **kwargs):
+        if command[1] == "venv":
+            venv.EnvBuilder(with_pip=False).create(command[-1])
+            return SimpleNamespace(returncode=0)
+        return run(command, **kwargs)
+
+    monkeypatch.setattr(runtime.subprocess, "run", create_environment)
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "pyproject.toml").write_text("[tool.simstack]\nrunner-protocol = 3\n")
+    first = runtime.prepare_environment(source, extras=[], runtime=tmp_path / "old-runtime")
+    (package / "late_science.py").write_text("VALUE = 'new'\n")
+    second = runtime.prepare_environment(source, extras=[], runtime=tmp_path / "new-runtime")
+    command = ["-I", "-c", "from simstack.late_science import VALUE; print(VALUE)"]
+    assert subprocess.check_output([str(first), *command], text=True).strip() == "old"
+    assert subprocess.check_output([str(second), *command], text=True).strip() == "new"
+    assert not (first.parent.parent / ".simstack-platform" / "simstack").is_symlink()
+
+
+@pytest.mark.parametrize("manifest", [None, "[tool.simstack]\nrunner-protocol=2\n", '[tool.simstack]\nrunner-protocol="3"\n'])
+def test_incompatible_workflow_manifest_is_rejected_before_environment_creation(tmp_path, monkeypatch, manifest):
+    from simstack.util import repository_runtime as runtime
+    source = tmp_path / "source"
+    source.mkdir()
+    if manifest is not None:
+        (source / "pyproject.toml").write_text(manifest)
+    monkeypatch.setattr(runtime.subprocess, "run", lambda *args, **kwargs: pytest.fail("uv ran before compatibility gate"))
+    with pytest.raises(ValueError, match="protocol|manifest|pyproject"):
+        runtime.prepare_environment(source, extras=[])
+    assert not (source / ".venv").exists()
+
+
+def test_inventory_does_not_advertise_an_unsupported_manifest(tmp_path, monkeypatch):
+    from simstack.util import repository_runtime as runtime
+    root = tmp_path / "cache" / "prepared"
+    root.parent.mkdir()
+    init(root)
+    (root / "pyproject.toml").write_text("[tool.simstack]\nrunner-protocol=2\n")
+    git(root, "add", ".")
+    git(root, "commit", "--quiet", "-m", "Unsupported pinned workflow")
+    descriptor = _descriptor(root, "a" * 64)
+    descriptor["core_build"] = runtime.core_build_identity()
+    (root / ".simstack-repository.json").write_text(json.dumps(descriptor))
+    executable = runtime.runtime_python(root)
+    executable.parent.mkdir(parents=True)
+    executable.symlink_to(sys.executable)
+    monkeypatch.setattr(runtime, "verify_runtime_core", lambda *args: pytest.fail("Unsupported interpreter was launched"))
+    assert runtime.prepared_repositories(cache=root.parent) == []
+
+
+def test_invalid_current_binding_is_not_ready_and_only_explicit_preparation_repairs_it(tmp_path, monkeypatch):
+    from simstack.util import repository_runtime as runtime
+    source = tmp_path / 'source'
+    init(source)
+    (source / 'value.py').write_text('VALUE=7\n')
+    git(source, 'add', '.')
+    git(source, 'commit', '--quiet', '-m', 'Scientific source')
+    descriptor = _descriptor(source, 'f' * 64)
+    monkeypatch.setattr(runtime, 'validate_clone_url', lambda value: value)
+    monkeypatch.setattr(runtime, 'git_environment', lambda **kwargs: {**os.environ, 'GIT_ALLOW_PROTOCOL': 'file'})
+    monkeypatch.setattr(runtime, 'prepare_environment', _create_runtime_for_core_probe)
+    cache = tmp_path / 'cache'
+    root = runtime._cache_revision(None, descriptor, cache=cache)
+    current = json.loads((root / '.simstack-repository.json').read_text())
+    assert current['core_build'] == runtime.core_build_identity()
+    python = runtime.runtime_python(root)
+    site = json.loads(subprocess.check_output([str(python), '-I', '-c',
+        'import json,site; print(json.dumps(site.getsitepackages()))'], text=True))[0]
+    from pathlib import Path
+    binding = Path(site, 'simstack-platform.pth')
+    binding.write_text(str(tmp_path / 'deleted-runner-installation') + '\n')
+    assert runtime.prepared_repositories(cache=cache) == []
+    stale = binding.read_bytes()
+    with pytest.raises(subprocess.CalledProcessError):
+        runtime._cache_revision(None, descriptor, cache=cache)
+    assert binding.read_bytes() == stale
+    repaired = runtime._cache_revision(None, descriptor, cache=cache, repair_runtime=True)
+    assert repaired == root
+    runtime.verify_runtime_core(root)
+    assert runtime.prepared_repositories(cache=cache) == [{'repository_revision': 'f' * 64, 'extras': []}]
+
+
+def test_failed_explicit_runtime_repair_restores_previous_environment(tmp_path, monkeypatch):
+    from simstack.util import repository_runtime as runtime
+    source = tmp_path / 'source'
+    init(source)
+    (source / 'value.py').write_text('VALUE=1\n')
+    git(source, 'add', '.')
+    git(source, 'commit', '--quiet', '-m', 'Source')
+    descriptor = _descriptor(source, '8' * 64)
+    monkeypatch.setattr(runtime, 'validate_clone_url', lambda value: value)
+    monkeypatch.setattr(runtime, 'git_environment', lambda **kwargs: {**os.environ, 'GIT_ALLOW_PROTOCOL': 'file'})
+    monkeypatch.setattr(runtime, 'prepare_environment', lambda root, **kwargs: (root / '.venv').mkdir())
+    monkeypatch.setattr(runtime, 'verify_runtime_core', lambda root: None)
+    cache = tmp_path / 'cache'
+    root = runtime._cache_revision(None, descriptor, cache=cache)
+    previous = root / '.venv' / 'scientific-dependency'
+    previous.write_text('original locked dependency')
+    def stale(root):
+        raise RuntimeError('Core binding is stale')
+    monkeypatch.setattr(runtime, 'verify_runtime_core', stale)
+    def fail_preparation(root, **kwargs):
+        (root / '.venv').mkdir()
+        (root / '.venv' / 'incomplete').touch()
+        raise RuntimeError('uv unavailable')
+    monkeypatch.setattr(runtime, 'prepare_environment', fail_preparation)
+    with pytest.raises(RuntimeError, match='uv unavailable'):
+        runtime._cache_revision(None, descriptor, cache=cache, repair_runtime=True)
+    assert previous.read_text() == 'original locked dependency'
+    assert not (root / '.venv' / 'incomplete').exists()
+    assert not list(cache.glob('runtime-*'))

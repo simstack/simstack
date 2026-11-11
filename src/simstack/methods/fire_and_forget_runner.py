@@ -95,8 +95,7 @@ class FireAndForgetRunner(NodeRunner):
             success=success
         )
         
-        db = context.db
-        await db.save(ff_result)
+        await context.server.values.publish_value(ff_result)
         return ff_result
 
     def create_tasks(self, *args: Model):

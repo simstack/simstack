@@ -4,7 +4,7 @@ from datetime import datetime
 from unittest.mock import Mock
 
 from simstack.models.document.codec import decode_document_value
-from simstack.runner_api.logging import APILogHandler
+from simstack.server_api.log_upload import APILogHandler
 from simstack.util.sanitized_output import sanitized_tail
 
 

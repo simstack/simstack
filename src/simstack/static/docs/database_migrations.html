@@ -233,7 +233,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -288,15 +293,17 @@ repairs.</p>
 <ol class="arabic">
 <li><p>Define the target state first: model code, collection shape, and recovery
 flow.</p></li>
-<li><p>Add one file under <code class="docutils literal notranslate"><span class="pre">server/migrations/</span></code> named
-<code class="docutils literal notranslate"><span class="pre">YYYYMMDDHHMMSS_short_name.py</span></code>.</p></li>
-<li><p>Set <code class="docutils literal notranslate"><span class="pre">name</span></code> to the file stem and <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> to the latest migration.</p></li>
-<li><p>Take a backup before running the migration on any real workspace database.</p></li>
+<li><p>Add workspace migrations under <code class="docutils literal notranslate"><span class="pre">server/migrations/</span></code> and central
+<code class="docutils literal notranslate"><span class="pre">simstack</span></code> database migrations under <code class="docutils literal notranslate"><span class="pre">server/migrations/application/</span></code>.
+Name files <code class="docutils literal notranslate"><span class="pre">YYYYMMDDHHMMSS_short_name.py</span></code>.</p></li>
+<li><p>Set <code class="docutils literal notranslate"><span class="pre">name</span></code> to the file stem and <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> to the latest migration
+in the selected directory.</p></li>
+<li><p>Take a backup before running the migration on any real database.</p></li>
 <li><p>Check <code class="docutils literal notranslate"><span class="pre">CONNECTION_STRING</span></code> before running:</p>
 <ul class="simple">
 <li><p>The current runner requires a MongoDB user with <code class="docutils literal notranslate"><span class="pre">admin.root</span></code>.</p></li>
-<li><p>This applies to both <code class="docutils literal notranslate"><span class="pre">--scope</span> <span class="pre">ALL</span></code> and <code class="docutils literal notranslate"><span class="pre">--scope</span> <span class="pre">DATABASES</span></code> in the
-current implementation.</p></li>
+<li><p>This applies to <code class="docutils literal notranslate"><span class="pre">--scope</span> <span class="pre">ALL</span></code>, <code class="docutils literal notranslate"><span class="pre">--scope</span> <span class="pre">DATABASES</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">--scope</span> <span class="pre">SERVER</span></code>.</p></li>
 </ul>
 </li>
 <li><p>Decide rollout before writing code:</p>
@@ -326,7 +333,7 @@ target database.</p></li>
 duplicate or corrupt already migrated data.</p></li>
 </ul>
 </li>
-<li><p>Test on one workspace DB first.</p>
+<li><p>Test on one target database first.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>server.migrations.run_workspace_migrations<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--scope<span class="w"> </span>DATABASES<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--databases<span class="w"> </span>my_test_user_db<span class="w"> </span><span class="se">\</span>
@@ -339,6 +346,10 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>server.migrations.run_workspace_migrations<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--scope<span class="w"> </span>ALL<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>migrate
+
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>server.migrations.run_workspace_migrations<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scope<span class="w"> </span>SERVER<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>migrate
 </pre></div>
 </div>
@@ -353,6 +364,13 @@ only after one workspace DB is verified.</p>
 <span class="w">  </span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>server.migrations.run_workspace_migrations<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--scope<span class="w"> </span>DATABASES<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--databases<span class="w"> </span>my_test_user_db<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>migrate
+</pre></div>
+</div>
+<p>To run central <code class="docutils literal notranslate"><span class="pre">simstack</span></code> database migrations:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>db_migrations.yml<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>simstack-migrations<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>server.migrations.run_workspace_migrations<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scope<span class="w"> </span>SERVER<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>migrate
 </pre></div>
 </div>
@@ -647,6 +665,6 @@ and each <code class="docutils literal notranslate"><span class="pre">FileStack<
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

@@ -4,10 +4,11 @@ from unittest.mock import AsyncMock
 import pytest
 
 from simstack.core.definitions import TaskStatus
+from simstack.core.context import context
 from simstack.core.node_runner import NodeRunner
 from simstack.methods.mass_runner import MassRunner
 from simstack.models import DataSet, FloatData
-from simstack.runner_api.transport import RunnerAPIError
+from simstack.server_api.http_transport import RunnerAPIError
 
 
 def _runner(name: str, node) -> MassRunner:
@@ -44,6 +45,69 @@ async def test_duplicate_arg_hash_reuses_one_result_per_input():
         assert row["result_FloatData"].value == row["arg_value"].value + 10
     assert sorted(stored_ids) == sorted(item.id for item in inputs)
     assert sum("#" in name for name in section.keys()) == 2
+
+
+@pytest.mark.asyncio
+async def test_dataset_member_snapshots_get_their_own_calculation():
+    from simstack.models.dataset_metadata import DataSetMetadata
+    from simstack.models.datasettuple import DataSetTuple, DataSetTupleSection
+
+    member = FloatData(value=1.0)
+    section = DataSetTupleSection()
+    section.extend([(member,)])
+    dataset = await context.server.values.publish_value(DataSetTuple(
+        metadata=DataSetMetadata(field_name="mass_runner_member_inputs"),
+        sections={"rows": section},
+    ))
+    original = await context.server.values.get_value(DataSetTuple, dataset.id)
+    edited = await context.server.values.get_value(FloatData, member.id)
+    edited.value = 2.0
+    await context.server.values.publish_value(edited)
+    current = await context.server.values.get_value(DataSetTuple, dataset.id)
+    calls = []
+
+    async def calculate(sample, **kwargs):
+        value = sample.sections["rows"][0][0].value
+        calls.append(value)
+        return FloatData(value=value * 10)
+
+    async with _runner("mass_runner_member_snapshots", calculate) as runner:
+        runner.create_tasks(original)
+        runner.create_tasks(current)
+        runner.create_tasks(original)
+
+    assert sorted(calls) == [1.0, 2.0]
+    assert [
+        (row["arg_sample"].sections["rows"][0][0].value,
+         row["result_FloatData"].value)
+        for row in runner.dataset["tasks"].values()
+    ] == [(1.0, 10.0), (2.0, 20.0), (1.0, 10.0)]
+
+
+@pytest.mark.asyncio
+async def test_duplicate_files_use_content_identity():
+    from simstack.models.files import FileStack
+
+    calls = []
+
+    async def calculate(source, **kwargs):
+        calls.append(source.name)
+        return FloatData(value=source.size)
+
+    inputs = [
+        FileStack.from_string("same", "first.txt"),
+        FileStack.from_string("same", "second.txt"),
+        FileStack.from_string("different", "third.txt"),
+    ]
+    async with _runner("mass_runner_file_contents", calculate) as runner:
+        for source in inputs:
+            runner.create_tasks(source)
+
+    assert calls == ["first.txt", "third.txt"]
+    assert sorted(
+        (row["arg_source"].name, row["result_FloatData"].value)
+        for row in runner.dataset["tasks"].values()
+    ) == [("first.txt", 4.0), ("second.txt", 4.0), ("third.txt", 9.0)]
 
 
 @pytest.mark.asyncio
@@ -95,8 +159,8 @@ async def test_api_failure_propagates_after_siblings_finish(monkeypatch):
         return FloatData(value=value.value)
 
     runner = _runner("mass_runner_api_failure", calculate)
-    save = AsyncMock()
-    monkeypatch.setattr(DataSet, "save", save)
+    publication = AsyncMock(wraps=context.server.values.publish_value)
+    monkeypatch.setattr(context.server.values, "publish_value", publication)
 
     async def run():
         async with runner:
@@ -127,7 +191,7 @@ async def test_api_failure_propagates_after_siblings_finish(monkeypatch):
     assert rows[0]["arg_value"].value == 2.0
     assert rows[0]["success"].value is True
     assert runner.status != TaskStatus.COMPLETED
-    save.assert_not_awaited()
+    assert not any(isinstance(call.args[0], DataSet) for call in publication.await_args_list)
 
 
 @pytest.mark.asyncio
@@ -140,8 +204,8 @@ async def test_unexpected_wrapper_failure_is_propagated(monkeypatch):
     monkeypatch.setattr(
         runner, "recover_orphaned_datasets", AsyncMock(side_effect=failure)
     )
-    save = AsyncMock()
-    monkeypatch.setattr(DataSet, "save", save)
+    publication = AsyncMock(wraps=context.server.values.publish_value)
+    monkeypatch.setattr(context.server.values, "publish_value", publication)
 
     with pytest.raises(ValueError) as raised:
         async with runner:
@@ -151,7 +215,7 @@ async def test_unexpected_wrapper_failure_is_propagated(monkeypatch):
     assert raised.value is failure
     assert all(task.done() for task in runner._tasks)
     assert runner.status != TaskStatus.COMPLETED
-    save.assert_not_awaited()
+    assert not any(isinstance(call.args[0], DataSet) for call in publication.await_args_list)
 
 
 @pytest.mark.asyncio
@@ -161,8 +225,8 @@ async def test_context_body_failure_is_not_suppressed(monkeypatch, error_type):
         return value
 
     runner = _runner("mass_runner_body_failure", calculate)
-    save = AsyncMock()
-    monkeypatch.setattr(DataSet, "save", save)
+    publication = AsyncMock(wraps=context.server.values.publish_value)
+    monkeypatch.setattr(context.server.values, "publish_value", publication)
     failure = error_type("Input query failed")
 
     with pytest.raises(error_type) as raised:
@@ -173,7 +237,7 @@ async def test_context_body_failure_is_not_suppressed(monkeypatch, error_type):
     assert raised.value is failure
     assert all(task.done() and not task.cancelled() for task in runner._tasks)
     assert runner.status != TaskStatus.COMPLETED
-    save.assert_not_awaited()
+    assert not any(isinstance(call.args[0], DataSet) for call in publication.await_args_list)
 
 
 @pytest.mark.asyncio
@@ -191,8 +255,8 @@ async def test_body_cancellation_takes_priority_over_child_api_failure(monkeypat
         return value
 
     runner = _runner("mass_runner_cancelled_body", calculate)
-    save = AsyncMock()
-    monkeypatch.setattr(DataSet, "save", save)
+    publication = AsyncMock(wraps=context.server.values.publish_value)
+    monkeypatch.setattr(context.server.values, "publish_value", publication)
 
     with pytest.raises(asyncio.CancelledError) as raised:
         async with runner:
@@ -205,4 +269,4 @@ async def test_body_cancellation_takes_priority_over_child_api_failure(monkeypat
     assert all(task.done() and not task.cancelled() for task in runner._tasks)
     assert runner._tasks[0].exception() is failure
     assert runner.status != TaskStatus.COMPLETED
-    save.assert_not_awaited()
+    assert not any(isinstance(call.args[0], DataSet) for call in publication.await_args_list)

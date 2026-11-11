@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -285,7 +290,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parameters</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeModel</span><span class="p">,</span> <span class="n">ModelMapping</span><span class="p">,</span> <span class="n">DataMapping</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.tables.table_builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">TableBuilderBase</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">Database</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.tables.catalogue</span><span class="w"> </span><span class="kn">import</span> <span class="n">CatalogueCollector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.docstring_parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">DocstringParser</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.importer</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_class_by_name</span>
 
@@ -307,7 +312,7 @@
 <span class="sd">    Helper class to build the node table without passing around many parameters.</span>
 
 <span class="sd">    Usage:</span>
-<span class="sd">        creator = CreateNodeTable(database)</span>
+<span class="sd">        creator = CreateNodeTable(catalogue)</span>
 <span class="sd">        await creator.make_node_table()</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -318,11 +323,8 @@
 <div class="viewcode-block" id="CreateNodeTable.build">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.node_table.CreateNodeTable.build">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">context</span><span class="o">.</span><span class="n">initialized</span><span class="p">:</span>
-            <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
-        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">refresh_mappings</span><span class="p">(</span><span class="n">models</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nodes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">refresh_mappings</span><span class="p">(</span><span class="n">models</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">nodes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">second_stage</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;drops&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span></div>
 
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_process_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -344,6 +346,17 @@
             <span class="k">if</span> <span class="n">func</span><span class="o">.</span><span class="vm">__module__</span> <span class="o">==</span> <span class="n">module_name</span>
         <span class="p">]</span>
 
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_annotation_type_str</span><span class="p">(</span><span class="n">annotation</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a display string for a signature annotation without assuming a class.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">annotation</span> <span class="ow">is</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;Any&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">annotation</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">annotation</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">annotation</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">annotation</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">annotation</span><span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_build_inputs</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">sig</span><span class="p">:</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Signature</span><span class="p">,</span>
@@ -354,23 +367,37 @@
         <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">param_name</span> <span class="o">==</span> <span class="s2">&quot;self&quot;</span><span class="p">:</span>  <span class="c1"># Skip self parameter for methods</span>
                 <span class="k">continue</span>
+            <span class="c1"># *args / **kwargs are runtime plumbing, not node inputs.</span>
+            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">kind</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">VAR_POSITIONAL</span><span class="p">,</span>
+                <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">VAR_KEYWORD</span><span class="p">,</span>
+            <span class="p">):</span>
+                <span class="k">continue</span>
 
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">param_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">param_name</span><span class="p">,</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">type_hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="vm">__name__</span><span class="p">),</span>
-                    <span class="s2">&quot;type_str&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span>
-                        <span class="n">type_hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-                            <span class="n">param_name</span><span class="p">,</span>
-                            <span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="vm">__name__</span>
-                            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">annotation</span> <span class="o">!=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span>
-                            <span class="k">else</span> <span class="s2">&quot;Any&quot;</span><span class="p">,</span>
-                        <span class="p">)</span>
-                    <span class="p">),</span>
-                <span class="p">}</span>
-            <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not parse type for </span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">param_info</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="c1"># Prefer resolved type hints. Do not evaluate param.annotation.__name__</span>
+            <span class="c1"># as a dict.get() default: with `from __future__ import annotations`,</span>
+            <span class="c1"># annotations are strings and that attribute access raises, wiping the</span>
+            <span class="c1"># input entry and leaving NodeModel.input_mappings empty.</span>
+            <span class="n">resolved_type</span> <span class="o">=</span> <span class="n">type_hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">param_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">resolved_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">resolved_type</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="kc">None</span>
+                    <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">annotation</span> <span class="ow">is</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span>
+                    <span class="k">else</span> <span class="n">param</span><span class="o">.</span><span class="n">annotation</span>
+                <span class="p">)</span>
+                <span class="n">type_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_annotation_type_str</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">type_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_annotation_type_str</span><span class="p">(</span><span class="n">resolved_type</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">resolved_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not parse type for </span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s2">: missing annotation&quot;</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="n">param_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">param_name</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">resolved_type</span><span class="p">,</span>
+                <span class="s2">&quot;type_str&quot;</span><span class="p">:</span> <span class="n">type_str</span><span class="p">,</span>
+            <span class="p">}</span>
 
             <span class="k">if</span> <span class="n">doc_params</span> <span class="ow">and</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">doc_params</span><span class="p">:</span>
                 <span class="n">param_info</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">doc_params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">)</span>
@@ -437,7 +464,6 @@
             <span class="n">output</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">SimstackResult</span> <span class="k">for</span> <span class="n">output</span> <span class="ow">in</span> <span class="n">outputs</span>
         <span class="p">)</span>
         <span class="n">result_mappings</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
         <span class="k">if</span> <span class="n">returns_simstack_result</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">outputs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
@@ -466,9 +492,10 @@
                                     <span class="n">inner_mapping</span> <span class="o">=</span> <span class="n">inner_type_str</span>
                                 <span class="k">else</span><span class="p">:</span>
                                     <span class="k">try</span><span class="p">:</span>
-                                        <span class="n">inner_model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_class_by_name</span><span class="p">(</span>
-                                            <span class="n">inner_type_str</span><span class="p">,</span> <span class="n">db</span>
-                                        <span class="p">)</span>
+                                        <span class="n">descriptor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalogue</span><span class="o">.</span><span class="n">model_by_name</span><span class="p">(</span><span class="n">inner_type_str</span><span class="p">)</span>
+                                        <span class="n">inner_model</span> <span class="o">=</span> <span class="kc">None</span>
+                                        <span class="k">if</span> <span class="n">descriptor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                                            <span class="n">inner_mapping</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">mapping</span>
                                     <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">LookupError</span><span class="p">):</span>
                                         <span class="n">inner_model</span> <span class="o">=</span> <span class="kc">None</span>
                                     <span class="k">if</span> <span class="n">inner_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -486,15 +513,11 @@
                             <span class="k">else</span><span class="p">:</span>
                                 <span class="c1"># It&#39;s a single class name</span>
                                 <span class="k">try</span><span class="p">:</span>
-                                    <span class="n">output_model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_class_by_name</span><span class="p">(</span>
-                                        <span class="n">output_type</span><span class="p">,</span> <span class="n">db</span>
-                                    <span class="p">)</span>
-                                    <span class="n">output_mapping</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_class_mapping</span><span class="p">(</span>
-                                        <span class="n">output_model</span><span class="p">,</span> <span class="n">drops</span>
-                                    <span class="p">)</span>
+                                    <span class="n">descriptor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalogue</span><span class="o">.</span><span class="n">model_by_name</span><span class="p">(</span><span class="n">output_type</span><span class="p">)</span>
+                                    <span class="n">output_mapping</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">mapping</span> <span class="k">if</span> <span class="n">descriptor</span> <span class="k">else</span> <span class="kc">None</span>
                                 <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">LookupError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                                     <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                                        <span class="sa">f</span><span class="s2">&quot;Could not parse &#39;</span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39; to mapping: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                                        <span class="sa">f</span><span class="s2">&quot;When processing SimstackResults for </span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">: Could not parse &#39;</span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39; to mapping: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
                                     <span class="p">)</span>
                                     <span class="n">output_mapping</span> <span class="o">=</span> <span class="kc">None</span>
                             <span class="k">if</span> <span class="n">output_mapping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -564,47 +587,21 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">node_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">function_mapping</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        If a NodeModel with the same name exists, delete it (and its pickle if present),</span>
-<span class="sd">        but preserve the &#39;favorite&#39; flag for the new entry.</span>
+<span class="sd">        but preserve the favorite flag and called_nodes for the new entry.</span>
+
+<span class="sd">        called_nodes is filled by second_stage. A rebuild that drops it leaves the</span>
+<span class="sd">        submit UI without child-node dependencies until create_node_table is run again.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            (should_skip, existing_favorite)</span>
+<span class="sd">            (should_skip, existing_favorite, existing_called_nodes)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">existing_model</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
-                <span class="n">NodeModel</span><span class="p">,</span> <span class="n">NodeModel</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">node_name</span>
-            <span class="p">)</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error finding existing NodeModel </span><span class="si">{</span><span class="n">node_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">existing_model</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span>
-
-        <span class="k">if</span> <span class="n">function_mapping</span> <span class="o">!=</span> <span class="n">existing_model</span><span class="o">.</span><span class="n">function_mapping</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;NodeModel &#39;</span><span class="si">{</span><span class="n">node_name</span><span class="si">}</span><span class="s2">&#39; already exists in the database</span><span class="se">\n</span><span class="s2">&quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;    DB  Mapping: </span><span class="si">{</span><span class="n">existing_model</span><span class="o">.</span><span class="n">function_mapping</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;    New Mapping: </span><span class="si">{</span><span class="n">function_mapping</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;New Mapping will overwrite DB Mapping.&quot;</span>
-            <span class="p">)</span>
-
-        <span class="n">existing_favorite</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">existing_model</span><span class="p">,</span> <span class="s2">&quot;favorite&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">existing_model</span><span class="p">,</span> <span class="s2">&quot;pickle_function&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">existing_model</span><span class="o">.</span><span class="n">pickle_function</span><span class="p">)</span>
-            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error deleting FunctionPickle for </span><span class="si">{</span><span class="n">node_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">existing_model</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error deleting existing NodeModel </span><span class="si">{</span><span class="n">node_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="n">existing_favorite</span>
+        <span class="n">matches</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalogue</span><span class="o">.</span><span class="n">nodes_by_name</span><span class="p">(</span><span class="n">node_name</span><span class="p">)</span>
+        <span class="n">existing</span> <span class="o">=</span> <span class="n">matches</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">matches</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="nb">bool</span><span class="p">(</span><span class="n">existing</span> <span class="ow">and</span> <span class="n">existing</span><span class="o">.</span><span class="n">favorite</span><span class="p">),</span>
+                <span class="nb">list</span><span class="p">(</span><span class="n">existing</span><span class="o">.</span><span class="n">called_nodes</span> <span class="ow">or</span> <span class="p">[])</span> <span class="k">if</span> <span class="n">existing</span> <span class="k">else</span> <span class="p">[])</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_input_mappings</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -635,12 +632,10 @@
                     <span class="k">if</span> <span class="n">drops</span> <span class="ow">and</span> <span class="n">input_mapping</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">drops</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span><span class="p">):</span>
                         <span class="n">input_mapping</span> <span class="o">=</span> <span class="n">input_mapping</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">drops</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:]</span>
 
-                    <span class="n">input_mapping_found</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
-                        <span class="n">ModelMapping</span><span class="p">,</span> <span class="n">ModelMapping</span><span class="o">.</span><span class="n">mapping</span> <span class="o">==</span> <span class="n">input_mapping</span>
-                    <span class="p">)</span>
+                    <span class="n">input_mapping_found</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalogue</span><span class="o">.</span><span class="n">model_by_mapping</span><span class="p">(</span><span class="n">input_mapping</span><span class="p">)</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="n">input_mapping_found</span> <span class="ow">and</span> <span class="n">input_mapping</span><span class="p">:</span>
                         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;Processing node: </span><span class="si">{</span><span class="n">node_name</span><span class="si">}</span><span class="s2"> model </span><span class="si">{</span><span class="n">input_mapping</span><span class="si">}</span><span class="s2"> not found in db!&quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;Processing node: </span><span class="si">{</span><span class="n">node_name</span><span class="si">}</span><span class="s2"> model </span><span class="si">{</span><span class="n">input_mapping</span><span class="si">}</span><span class="s2"> not found in the catalogue!&quot;</span>
                         <span class="p">)</span>
 
                     <span class="n">input_mappings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">input_mapping</span><span class="p">)</span>
@@ -703,6 +698,7 @@
                 <span class="p">(</span>
                     <span class="n">should_skip</span><span class="p">,</span>
                     <span class="n">existing_favorite</span><span class="p">,</span>
+                    <span class="n">existing_called_nodes</span><span class="p">,</span>
                 <span class="p">)</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delete_existing_node_model_if_needed</span><span class="p">(</span>
                     <span class="n">node_name</span><span class="p">,</span> <span class="n">function_mapping</span>
                 <span class="p">)</span>
@@ -746,7 +742,7 @@
                     <span class="n">description</span><span class="o">=</span><span class="n">node_description</span><span class="p">,</span>
                     <span class="n">input_mappings</span><span class="o">=</span><span class="n">data_mappings</span><span class="p">,</span>
                     <span class="n">result_mappings</span><span class="o">=</span><span class="n">result_mappings</span><span class="p">,</span>
-                    <span class="n">called_nodes</span><span class="o">=</span><span class="p">[],</span>  <span class="c1"># we need to first build the full list, will be filled in second_stage</span>
+                    <span class="n">called_nodes</span><span class="o">=</span><span class="n">existing_called_nodes</span><span class="p">,</span>
                     <span class="n">default_parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
                     <span class="n">pickle_function</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                     <span class="n">favorite</span><span class="o">=</span><span class="n">existing_favorite</span><span class="p">,</span>
@@ -755,7 +751,7 @@
                 <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;NodeModel: </span><span class="si">{</span><span class="n">node_model</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">node_model</span><span class="o">.</span><span class="n">function_mapping</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">node_model</span><span class="o">.</span><span class="n">input_mappings</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
-                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">node_model</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">catalogue</span><span class="o">.</span><span class="n">register_node</span><span class="p">(</span><span class="n">node_model</span><span class="p">)</span>
 
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error creating/saving NodeModel </span><span class="si">{</span><span class="n">node_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -766,14 +762,14 @@
 <div class="viewcode-block" id="CreateNodeTable.second_stage">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.node_table.CreateNodeTable.second_stage">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">second_stage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">await</span> <span class="n">update_node_children</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="n">drops</span><span class="p">)</span></div>
+        <span class="k">await</span> <span class="n">update_node_children</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalogue</span><span class="p">,</span> <span class="n">drops</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="CreateNodeTable.clear_table">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.node_table.CreateNodeTable.clear_table">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">clear_table</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Clearing NodeModel collection&quot;</span><span class="p">)</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">NodeModel</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Clearing discovered node descriptors&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">catalogue</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
 </div>
 
 
@@ -781,7 +777,7 @@
 <div class="viewcode-block" id="make_node_table">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.tables.html#simstack.tables.node_table.make_node_table">[docs]</a>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">make_node_table</span><span class="p">(</span>
-    <span class="n">db</span><span class="p">:</span> <span class="n">Database</span><span class="p">,</span>
+    <span class="n">catalogue</span><span class="p">:</span> <span class="n">CatalogueCollector</span><span class="p">,</span>
     <span class="n">dirs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">drops</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">write_schema</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -790,12 +786,16 @@
     <span class="n">ignore_entrypoints</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Rebuild the node table using the given databse.</span>
-
-<span class="sd">    This is a thin wrapper around CreateNodeTable for backward compatibility.</span>
+<span class="sd">    Collect node descriptors from the prepared environment.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">creator</span> <span class="o">=</span> <span class="n">CreateNodeTable</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">write_schema</span><span class="o">=</span><span class="n">write_schema</span><span class="p">,</span> <span class="n">project_root</span><span class="o">=</span><span class="n">project_root</span><span class="p">)</span>
-    <span class="k">await</span> <span class="n">creator</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">dirs</span><span class="o">=</span><span class="n">dirs</span><span class="p">,</span> <span class="n">drops</span><span class="o">=</span><span class="n">drops</span><span class="p">,</span> <span class="n">clear</span><span class="o">=</span><span class="n">clear</span><span class="p">,</span> <span class="n">ignore_entrypoints</span><span class="o">=</span><span class="n">ignore_entrypoints</span><span class="p">)</span></div>
+    <span class="n">creator</span> <span class="o">=</span> <span class="n">CreateNodeTable</span><span class="p">(</span><span class="n">catalogue</span><span class="p">,</span> <span class="n">write_schema</span><span class="o">=</span><span class="n">write_schema</span><span class="p">,</span> <span class="n">project_root</span><span class="o">=</span><span class="n">project_root</span><span class="p">)</span>
+    <span class="n">resolved_drops</span> <span class="o">=</span> <span class="n">drops</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">await</span> <span class="n">creator</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
+        <span class="n">dirs</span><span class="o">=</span><span class="n">dirs</span><span class="p">,</span>
+        <span class="n">drops</span><span class="o">=</span><span class="n">resolved_drops</span><span class="p">,</span>
+        <span class="n">clear</span><span class="o">=</span><span class="n">clear</span><span class="p">,</span>
+        <span class="n">ignore_entrypoints</span><span class="o">=</span><span class="n">ignore_entrypoints</span><span class="p">,</span>
+    <span class="p">)</span></div>
 
 
 
@@ -849,6 +849,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

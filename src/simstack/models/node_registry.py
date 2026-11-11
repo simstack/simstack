@@ -75,6 +75,10 @@ class NodeRegistry(Model):
     error: Optional[str] = None
     message: Optional[str] = None
     return_kind: Optional[str] = None
+    phase: Optional[str] = None
+    exit_code: Optional[int] = None
+    signal: Optional[int] = None
+    diagnostics: List[str] = Field(default_factory=list)
 
     input_references: List[NamedDataReference] = Field(default_factory=list)
     results_references: List[NamedDataReference] = Field(default_factory=list)
@@ -109,4 +113,4 @@ class NodeRegistry(Model):
 
 async def find_child_nodes(task_id: str) -> List[NodeRegistry]:
     from simstack.core.context import context
-    return await context.db.find(NodeRegistry, NodeRegistry.parent_ids.in_([ObjectId(task_id)]))
+    return await context.server.tasks.children(task_id)

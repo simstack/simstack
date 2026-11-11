@@ -57,7 +57,12 @@ def sample_node(arg1: FloatData, arg2: FloatData, **kwargs) -> SimstackResult:
 
 @pytest.mark.asyncio
 async def test_build_outputs_accepts_optional_simstack_result_types():
-    builder = CreateNodeTable(context.db)
+    from simstack.tables.catalogue import CatalogueCollector
+    from simstack.tables.model_table import CreateModelTable
+    import simstack.models.base_types
+    collector = CatalogueCollector()
+    await CreateModelTable(collector)._process_module(simstack.models.base_types, "src")
+    builder = CreateNodeTable(collector)
     expected_mapping = builder.get_class_mapping(FloatData, "src")
     parser = DocstringParser(
         """

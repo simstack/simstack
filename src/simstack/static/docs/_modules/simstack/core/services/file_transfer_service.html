@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -289,6 +294,23 @@
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;NodeRunner&quot;</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_report_transfer_failure</span><span class="p">(</span>
+    <span class="n">client</span><span class="p">:</span> <span class="n">FileTransferClient</span><span class="p">,</span>
+    <span class="n">transfer_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">error_message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">error_code</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">fail_transfer</span><span class="p">(</span>
+            <span class="n">transfer_id</span><span class="p">,</span>
+            <span class="n">error_message</span><span class="o">=</span><span class="n">error_message</span><span class="p">,</span>
+            <span class="n">error_code</span><span class="o">=</span><span class="n">error_code</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Failed to report failed file transfer </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">transfer_id</span><span class="p">)</span>
+
+
 <div class="viewcode-block" id="FileTransferService">
 <a class="viewcode-back" href="../../../../simstack/modules/simstack.core.services.html#simstack.core.services.file_transfer_service.FileTransferService">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FileTransferService</span><span class="p">(</span><span class="n">BaseService</span><span class="p">):</span>
@@ -302,8 +324,9 @@
         <span class="n">shutdown_event</span><span class="p">:</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Event</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="s2">&quot;FileTransfer&quot;</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">shutdown_event</span><span class="o">=</span><span class="kc">None</span>
+            <span class="s2">&quot;FileTransfer&quot;</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">shutdown_event</span><span class="o">=</span><span class="n">shutdown_event</span>
         <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_traceback_on_failure</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_semaphore</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Semaphore</span><span class="p">(</span><span class="n">max_concurrent</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_running_tasks</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="n">asyncio</span><span class="o">.</span><span class="n">Task</span><span class="p">[</span><span class="nb">bool</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="p">:</span> <span class="n">FileTransferClient</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
@@ -340,7 +363,6 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="n">transfers</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">list_transfers</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="s2">&quot;source&quot;</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s2">&quot;created&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Unable to poll file transfers: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
             <span class="k">raise</span> <span class="n">exc</span>
 
         <span class="k">for</span> <span class="n">transfer</span> <span class="ow">in</span> <span class="n">transfers</span><span class="p">:</span>
@@ -383,16 +405,21 @@
             <span class="k">return</span> <span class="kc">True</span>
         <span class="k">except</span> <span class="n">FileTransferError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;File transfer upload failed for </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">transfer_id</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">client</span><span class="o">.</span><span class="n">fail_transfer</span><span class="p">(</span>
-                    <span class="n">transfer_id</span><span class="p">,</span>
-                    <span class="n">error_message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span>
-                    <span class="n">error_code</span><span class="o">=</span><span class="s2">&quot;SOURCE_UPLOAD_FAILED&quot;</span><span class="p">,</span>
-                <span class="p">)</span>
-            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
-                    <span class="s2">&quot;Failed to report failed file transfer </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">transfer_id</span>
-                <span class="p">)</span>
+            <span class="n">_report_transfer_failure</span><span class="p">(</span>
+                <span class="n">client</span><span class="p">,</span>
+                <span class="n">transfer_id</span><span class="p">,</span>
+                <span class="n">error_message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span>
+                <span class="n">error_code</span><span class="o">=</span><span class="s2">&quot;SOURCE_UPLOAD_FAILED&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;File transfer source is not readable for </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">transfer_id</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+            <span class="n">_report_transfer_failure</span><span class="p">(</span>
+                <span class="n">client</span><span class="p">,</span>
+                <span class="n">transfer_id</span><span class="p">,</span>
+                <span class="n">error_message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span>
+                <span class="n">error_code</span><span class="o">=</span><span class="s2">&quot;SOURCE_NOT_READABLE&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="k">return</span> <span class="kc">False</span></div>
 
 </pre></div>
@@ -431,6 +458,6 @@
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

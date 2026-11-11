@@ -28,7 +28,12 @@ def external_object_storage(monkeypatch):
     from simstack.util.object_transfer import ObjectFileClient
     from simstack.util.file_transfer_client import path_for_file_instance
 
-    monkeypatch.setattr(ObjectFileClient, "from_context", lambda **kwargs: ObjectStorage())
+    def object_client(api=None, **kwargs):
+        client = ObjectStorage()
+        client.object_api_prefix = api.object_api_prefix if api is not None else "/runner/objects"
+        return client
+    monkeypatch.setattr(ObjectFileClient, "from_context", object_client)
+    monkeypatch.setattr(ObjectFileClient, "for_api", object_client)
     original = FileStack._get_via_server_transfer
     def materialize(self, remote, resource, directory):
         if remote.location_type != "s3" or remote.object_key not in OBJECTS:

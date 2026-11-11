@@ -3,6 +3,52 @@ from pathlib import Path
 import tomllib
 from simstack.util.resource_config import ResourceConfig
 
+
+@pytest.mark.parametrize("use_temp", [False, True])
+@pytest.mark.parametrize("initialized", [False, True])
+def test_run_uses_explicit_config_with_real_node_runner(tmp_path, monkeypatch, use_temp, initialized):
+    import json
+    import shlex
+    import sys
+    from simstack.core.context import context
+    from simstack.core.node_runner import NodeRunner
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(context, "_initialized", initialized)
+    ambient_file = tmp_path / "ambient.toml"
+    ambient_file.write_text(
+        '[local.setup]\ntmp_base_dir = "ambient-scratch"\n'
+        '[local.program.probe]\nrun_command = "exit 99"\nscratch_cleanup = false\n'
+    )
+    ambient = ResourceConfig(ambient_file, "local")
+    monkeypatch.setattr(context, "_resource_config", ambient)
+    command = shlex.join([sys.executable, "-c",
+        "import os; from pathlib import Path; "
+        "Path('result.txt').write_text(Path('input.txt').read_text() + os.environ['PROBE_VALUE'])"])
+    explicit_file = tmp_path / "explicit.toml"
+    explicit_file.write_text(
+        '[local.setup]\ntmp_base_dir = "explicit-scratch"\n'
+        '[local.program.probe]\n'
+        f'run_command = {json.dumps(command)}\nuse_tmp = {str(use_temp).lower()}\n'
+        'scratch_cleanup = true\ninput_files = ["input.txt"]\noutput_files = ["result.txt"]\n'
+    )
+    config = ResourceConfig(explicit_file, "local")
+    (tmp_path / "input.txt").write_text("explicit:")
+    runner = NodeRunner("probe", "012345678901234567890123")
+
+    assert config.run("probe", node_runner=runner, env={"PROBE_VALUE": "selected"})
+
+    assert (tmp_path / "result.txt").read_text() == "explicit:selected"
+    assert context._resource_config is ambient
+    assert context.initialized is initialized
+    assert runner.info_files[-1].name == "run.log"
+    assert not (tmp_path / "ambient-scratch").exists()
+    if use_temp:
+        assert (tmp_path / "explicit-scratch").exists()
+        assert not list((tmp_path / "explicit-scratch").iterdir())
+        assert runner.scratch_dir is None
+
+
 def test_resource_config_basic(tmp_path):
     config_file = tmp_path / "config.toml"
     config_file.write_text("[local.program.orca]\nrun_command = \"orca orca.inp\"\n")
@@ -223,101 +269,25 @@ run_command = "orca"
         rc.get_program("vasp")
 
 @pytest.mark.asyncio
-async def test_global_state_initialization(tmp_path):
+async def test_global_state_uses_explicit_machine_configuration(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
     from simstack.core.context import GlobalState
-    from simstack.util.db import DBType
+    from simstack.core.resources import allowed_resources
     from simstack.models.resource_definition import ResourceDefinition
-    
-    gs = GlobalState()
-    # Ensure it's not initialized
-    gs._initialized = False
-    
-    project_root = tmp_path
-    (project_root / "simstack.toml").write_text("[parameters.db]\ndatabase = \"test_db\"\n")
-    config_file = project_root / "config.toml"
-    config_file.write_text("[local.program.orca]\ncmd = \"run\"\n")
-    
-    # Mimic conftest.py:
-    # 1. Initialize with skip_config=True
-    await gs.initialize(
-        is_test=True,
-        project_root=project_root,
-        db_name="test_db",
-        connection_string="mongodb://localhost:27017", # Provide a dummy connection string to satisfy from_config
-        db_type=DBType.IN_MEMORY,
-        resource="local",
-        skip_config=True
-    )
-    
-    # 2. Save ResourceDefinition to DB
-    resource_definition = ResourceDefinition(
-        resource_str="local",
-        workdir=str(tmp_path),
-        hostname="localhost",
-        is_default=True
-    )
-    await gs.db.save(resource_definition)
-    
-    # 3. Initialize configs
-    # initialize_configs calls ConfigReader.create which calls initialize_resource_from_db
-    from simstack.util.toml_reader import TomlReader
-    mock_toml = AsyncMock(spec=TomlReader)
-    mock_toml.get.return_value = None
-    
-    await gs.initialize_configs(
-        gs.db, 
-        mock_toml,
-        project_root=project_root,
-        resource="local",
-        workdir=tmp_path,
-        python_paths=[project_root]
-    )
-    
-    assert hasattr(gs, "resource_config")
-    assert gs.resource_config._resource == "local"
-    params = gs.resource_config.get_program("orca")
-    assert params == {"cmd": "run"}
-
-def test_resource_config_setup_and_postprocessing(tmp_path):
-    config_file = tmp_path / "config.toml"
-    content = """
-[local.setup]
-scripts = ["echo setup"]
-tmp_base_dir = "/tmp"
-
-[local.post-processing]
-scratch_cleanup = true
-
-[remote.postprocessing]
-scratch_cleanup = false
-"""
-    config_file.write_text(content)
-    rc = ResourceConfig(tmp_path, "local")
-    
-    # Test setup
-    setup = rc.get_setup_params()
-    assert setup["scripts"] == ["echo setup"]
-    assert setup["tmp_base_dir"] == "/tmp"
-    
-    # rc_missing = ResourceConfig(tmp_path, "non-existent")
-    # setup_missing = rc_missing.get_setup_params()
-    # assert setup_missing == {}
-    
-    # Test post-processing (with dash)
-    post = rc.get_postprocessing_params()
-    assert post["scratch_cleanup"] is True
-    
-    # Test postprocessing (without dash)
-    rc_remote = ResourceConfig(tmp_path, "remote")
-    post_remote = rc_remote.get_postprocessing_params()
-    assert post_remote["scratch_cleanup"] is False
-    
-    # Test non-existent resource
-    rc_none = ResourceConfig(tmp_path, "non-existent")
-    with pytest.raises(
-        ValueError, match=r"config.toml has no \[non-existent\] resource block"
-    ):
-        rc_none.get_postprocessing_params()
-
-from unittest.mock import AsyncMock
-from types import SimpleNamespace
+    monkeypatch.setattr(GlobalState, "_instance", None)
+    monkeypatch.setattr("simstack.server_api.log_upload.setup_runner_logging", lambda *args: None)
+    monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
+    allowed_resources.clear_resources()
+    definition = ResourceDefinition(resource_str="local", hostname="localhost", workdir=str(tmp_path))
+    api = SimpleNamespace(resource=SimpleNamespace(bootstrap=AsyncMock(return_value={"account_id": "test-account", "resource": "local", "resources": ["local"], "resource_definition": definition.model_dump(mode="json")})),
+        values=SimpleNamespace(catalogue_models=AsyncMock(return_value=[]), catalogue_nodes=AsyncMock(return_value=[])),
+        requests=SimpleNamespace(authorization="runner", transport=SimpleNamespace(), server_url="https://example.test/api", token="token"))
+    config = tmp_path / "machine.toml"
+    config.write_text('[local.program.orca]\ncmd = "run"\n')
+    monkeypatch.setenv("SIMSTACK_MACHINE_CONFIG", str(config))
+    state = GlobalState()
+    await state.initialize(server=api, project_root=tmp_path, resource="local", config_file=config)
+    assert state.resource_config._config_path == config
+    assert state.resource_config.get_program("orca")["cmd"] == "run"
+    allowed_resources.clear_resources()

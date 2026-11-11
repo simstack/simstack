@@ -16,7 +16,7 @@ import pytest
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import Node
 from simstack.models import FloatData
-from simstack.runner_api.transport import (
+from simstack.server_api.http_transport import (
     RunnerAPIClient,
     RunnerAPIError,
 )
@@ -67,7 +67,7 @@ def api_server(monkeypatch):
 
 @pytest.mark.parametrize("method,path", [
     ("GET", "/runner/control"),
-    ("POST", "/runner/data/query"),
+    ("POST", "/runner/v3/values/resolve"),
 ])
 @pytest.mark.parametrize("status", [500, 502, 503, 504])
 def test_safe_read_retries_transient_http_error(api_server, method, path, status):
@@ -75,38 +75,38 @@ def test_safe_read_retries_transient_http_error(api_server, method, path, status
     key = (method, path)
     with api_server({key: [(status, {}), (200, {"documents": []})]}) as (base, requests):
         api = RunnerAPIClient(base, "test-token", read_retry_delay=0)
-        assert api.json_sync(method, path, body) == {"documents": []}
+        assert api.json_sync(method, path, body, safe_to_retry=True) == {"documents": []}
         assert requests[key] == [body, body]
 
 
 def test_persistent_outage_has_bounded_backoff_and_explicit_read_error(api_server, monkeypatch):
     delays = []
-    monkeypatch.setattr("simstack.runner_api.transport.time.sleep", delays.append)
-    key = ("POST", "/runner/data/query")
+    monkeypatch.setattr("simstack.server_api.http_transport.time.sleep", delays.append)
+    key = ("POST", "/runner/v3/values/resolve")
     with api_server({key: [(502, {})]}) as (base, requests):
         api = RunnerAPIClient(base, "test-token")
         with pytest.raises(RunnerAPIError, match="HTTP 502"):
-            api.json_sync(*key, {"model": "node_registry"})
+            api.json_sync(*key, {"model": "node_registry"}, safe_to_retry=True)
         assert len(requests[key]) == 3
         assert delays == [1, 2]
 
 
 @pytest.mark.parametrize("status", [400, 401, 403, 404, 422])
 def test_permanent_read_error_is_not_retried(api_server, monkeypatch, status):
-    monkeypatch.setattr("simstack.runner_api.credentials.refreshed_token", lambda *args: None)
-    key = ("POST", "/runner/data/query")
+    monkeypatch.setattr("simstack.runner_runtime.runner_credentials.refreshed_token", lambda *args: None)
+    key = ("POST", "/runner/v3/values/resolve")
     with api_server({key: [(status, {}), (200, {"documents": []})]}) as (base, requests):
         api = RunnerAPIClient(base, "test-token", read_retry_delay=0)
         with pytest.raises(RunnerAPIError, match=f"HTTP {status}"):
-            api.json_sync(*key, {})
+            api.json_sync(*key, {}, safe_to_retry=True)
         assert len(requests[key]) == 1
 
 
 @pytest.mark.parametrize("method,path", [
     ("POST", "/submit-node/"),
-    ("POST", "/runner/data/save"),
-    ("POST", "/runner/tasks/child/mutation"),
-    ("POST", "/runner/data/delete"),
+    ("POST", "/runner/v3/values/publications"),
+    ("POST", "/runner/v3/attempts/start"),
+    ("POST", "/runner/v3/records/archive"),
 ])
 @pytest.mark.parametrize("use_async", [False, True])
 @pytest.mark.asyncio
@@ -139,7 +139,7 @@ def test_safe_read_retries_network_interruption(monkeypatch, error):
 
     monkeypatch.setattr("urllib.request.urlopen", urlopen)
     api = RunnerAPIClient("https://example.test/api", "test-token", read_retry_delay=0)
-    assert api.json_sync("POST", "/runner/data/query", {}) == {"documents": []}
+    assert api.json_sync("POST", "/runner/v3/values/resolve", {}, safe_to_retry=True) == {"documents": []}
     assert len(calls) == 2
 
 
@@ -172,7 +172,7 @@ def test_truncated_gateway_error_body_still_retries_the_read(monkeypatch):
 
     monkeypatch.setattr("urllib.request.urlopen", urlopen)
     api = RunnerAPIClient("https://example.test/api", "test-token", read_retry_delay=0)
-    assert api.json_sync("POST", "/runner/data/query", {}) == {"documents": []}
+    assert api.json_sync("POST", "/runner/v3/values/resolve", {}, safe_to_retry=True) == {"documents": []}
     assert len(calls) == 2
 
 
@@ -185,11 +185,11 @@ async def test_cancelled_async_read_does_not_issue_another_attempt(api_server, m
         backing_off.set()
         await never.wait()
 
-    monkeypatch.setattr("simstack.runner_api.transport.asyncio.sleep", wait)
-    key = ("POST", "/runner/data/query")
+    monkeypatch.setattr("simstack.server_api.http_transport.asyncio.sleep", wait)
+    key = ("POST", "/runner/v3/values/resolve")
     with api_server({key: [(502, {}), (200, {"documents": []})]}) as (base, requests):
         api = RunnerAPIClient(base, "test-token")
-        task = asyncio.create_task(api.json(*key, {}))
+        task = asyncio.create_task(api.json(*key, {}, safe_to_retry=True))
         await asyncio.wait_for(backing_off.wait(), timeout=5)
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
@@ -199,14 +199,18 @@ async def test_cancelled_async_read_does_not_issue_another_attempt(api_server, m
 
 @pytest.mark.asyncio
 async def test_remote_wait_recovers_status_read_without_resubmitting(api_server, monkeypatch):
+    from simstack.models import NodeRegistry, Parameters
+    from simstack.server_api import ServerAPI
+    task = NodeRegistry(name="remote_probe", status="running", function_hash="", arg_hash="input", func_mapping="fixture.run", parameters=Parameters())
+    identity = str(task.id)
     submit = ("POST", "/submit-node/")
-    query = ("POST", "/runner/data/query")
+    query = ("GET", f"/runner/v3/tasks/{identity}")
     routes = {
-        submit: [(200, {"id": "remote-task"})],
+        submit: [(200, {"id": identity})],
         query: [
             (502, {}),
-            (200, {"documents": [{"status": "running"}]}),
-            (200, {"documents": [{"status": "completed"}]}),
+            (200, {"task": task.model_dump(mode="json")}),
+            (200, {"task": {**task.model_dump(mode="json"), "status": "completed"}}),
         ],
     }
     real_sleep = asyncio.sleep
@@ -216,16 +220,12 @@ async def test_remote_wait_recovers_status_read_without_resubmitting(api_server,
 
     monkeypatch.setattr("simstack.core.node.asyncio.sleep", fast_sleep)
     with api_server(routes) as (base, requests):
-        api = RunnerAPIClient(base, "test-token", read_retry_delay=0)
-
-        async def load_task_by_id(identity):
-            response = await api.json(*query, {"task_id": identity})
-            return SimpleNamespace(id=identity, status=TaskStatus(response["documents"][0]["status"]))
-
+        transport = RunnerAPIClient(base, "test-token", read_retry_delay=0)
+        api = ServerAPI(transport)
         monkeypatch.setattr("simstack.core.node.context", SimpleNamespace(
-            db=SimpleNamespace(load_task_by_id=load_task_by_id),
+            server=api,
         ))
-        launched = await api.json(*submit, {"id": "remote-task"})
+        launched = await transport.json(*submit, {"id": identity})
         execution = Node.__new__(Node)
         execution.name = "remote_probe"
         execution.registry_entry = SimpleNamespace(id=launched["id"])

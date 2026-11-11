@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -272,190 +277,56 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for simstack.util.config_reader</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Union</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.resources</span><span class="w"> </span><span class="kn">import</span> <span class="n">allowed_resources</span>
+<span></span><span class="sd">&quot;&quot;&quot;Resolved execution settings returned by the Server bootstrap.&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">Resource</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.resource_definition</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResourceDefinition</span><span class="p">,</span> <span class="n">GitRepo</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.transform_file_name</span><span class="w"> </span><span class="kn">import</span> <span class="n">transform_file_name</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.init_data_source</span><span class="w"> </span><span class="kn">import</span> <span class="n">initialize_resource_from_db</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.toml_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">TomlReader</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.database_information</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseInformation</span>
-
-<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">Database</span>
-
 
 <div class="viewcode-block" id="ConfigReader">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.config_reader.ConfigReader">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ConfigReader</span><span class="p">(</span><span class="n">DatabaseInformation</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Represents a configuration reader that integrates with a database and a resource</span>
-<span class="sd">    definition system.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">db_info</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">DatabaseInformation</span><span class="p">,</span> <span class="s2">&quot;Database&quot;</span><span class="p">],</span>
-        <span class="n">resource_definition</span><span class="p">:</span> <span class="n">ResourceDefinition</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">project_root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
-        <span class="n">git_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">GitRepo</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="n">db_temp_info</span> <span class="o">=</span> <span class="n">DatabaseInformation</span><span class="o">.</span><span class="n">from_db_info_or_db</span><span class="p">(</span><span class="n">db_info</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">db_temp_info</span><span class="o">.</span><span class="n">get_information</span><span class="p">())</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_project_root</span> <span class="o">=</span> <span class="n">project_root</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ConfigReader</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_definition</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">project_root</span><span class="p">,</span> <span class="n">server_url</span><span class="p">,</span> <span class="n">server_token</span><span class="p">,</span> <span class="n">account_id</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_resource_definition</span> <span class="o">=</span> <span class="n">resource_definition</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_git_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">git_list</span> <span class="ow">or</span> <span class="p">[])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_resource_str</span> <span class="o">=</span> <span class="n">resource_definition</span><span class="o">.</span><span class="n">resource_str</span>
-
-<div class="viewcode-block" id="ConfigReader.create">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.util.html#simstack.util.config_reader.ConfigReader.create">[docs]</a>
-    <span class="nd">@classmethod</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span>
-        <span class="n">resource_str</span><span class="p">,</span>
-        <span class="n">db</span><span class="p">:</span> <span class="s2">&quot;Database&quot;</span><span class="p">,</span>
-        <span class="n">toml_reader</span><span class="p">:</span> <span class="n">TomlReader</span><span class="p">,</span>
-        <span class="n">project_root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-
-<span class="sd">        the idea here is to attempt to get:</span>
-
-<span class="sd">        1) all required data from the kwargs, if available</span>
-<span class="sd">        2) if the data is not all available, get it from the database</span>
-
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-
-        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;config-reader&quot;</span><span class="p">)</span>  <span class="c1"># do this here because the calling function sets the logger up</span>
-
-        <span class="n">required_keys</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="s2">&quot;python_paths&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;workdir&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;environment_start&quot;</span><span class="p">,</span>
-        <span class="p">]</span>
-        <span class="n">init_done</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="n">workdir_self</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;project_root&quot;</span><span class="p">:</span> <span class="n">project_root</span><span class="p">}</span>
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_keys</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
-                <span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;workdir&quot;</span><span class="p">:</span>
-                    <span class="n">workdir_self</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;workdir&quot;</span><span class="p">)</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Init from kwargs: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">init_done</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;server_url&quot;</span><span class="p">,</span> <span class="s2">&quot;server_token&quot;</span><span class="p">]:</span>  <span class="c1"># these are optional</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
-                <span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Init from kwargs: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="n">git_list</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">init_done</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">toml_reader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;ConfigReader: No toml_reader provided.&quot;</span><span class="p">)</span>
-            <span class="n">workdir_self</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;workdir&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">workdir_self</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">workdir_self</span> <span class="o">=</span> <span class="n">toml_reader</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parameters.general.workdir_self&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">workdir_self</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">workdir_self</span> <span class="o">=</span> <span class="n">toml_reader</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;resources.self.workdir&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">workdir_self</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="c1"># raise ValueError(&quot;No workdir for self specified in config file or keyword arguments.&quot;)</span>
-                <span class="n">workdir_self</span> <span class="o">=</span> <span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;simstack&quot;</span> <span class="c1"># Default to project_root / simstack if not found</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">workdir_self</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">workdir_self</span><span class="p">)</span>
-
-        <span class="n">resource_definition</span> <span class="o">=</span> <span class="k">await</span> <span class="n">initialize_resource_from_db</span><span class="p">(</span><span class="n">resource_str</span><span class="p">,</span> <span class="n">db</span><span class="p">,</span> <span class="n">workdir_self</span><span class="p">)</span>
-            <span class="c1"># else:</span>
-            <span class="c1">#     raise RuntimeError(&quot;initialization from toml file is deprecated&quot;)</span>
-            <span class="c1">#     allowed_resources_list = toml_reader.get_allowed_resources()</span>
-            <span class="c1">#     allowed_resources.set_resources(allowed_resources_list)</span>
-            <span class="c1">#     resource_definition = toml_reader.get_resource_definition(resource_str)</span>
-            <span class="c1">#     git_list = toml_reader.get_git_list()</span>
-            <span class="c1">#     toml_reader.build_routes()</span>
-
-        <span class="k">if</span> <span class="n">resource_definition</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No valid resource definition found.&quot;</span><span class="p">)</span>
-
-        <span class="c1"># override the values in resource definition with those from the keyword arguments</span>
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">resource_definition</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">model_fields</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Overriding </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> from kwargs to: </span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">resource_definition</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
-                <span class="k">del</span> <span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-                <span class="k">del</span> <span class="n">required_keys</span><span class="p">[</span><span class="n">required_keys</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">key</span><span class="p">)]</span>
-
-        <span class="n">project_root</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;project_root&quot;</span><span class="p">)</span>
-        <span class="n">git_list_final</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;git_list&quot;</span><span class="p">,</span> <span class="n">git_list</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">config</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Ignoring unused ConfigReader init keys: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
-
-        <span class="n">log_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Resource: </span><span class="si">{</span><span class="n">resource_definition</span><span class="o">.</span><span class="n">resource_str</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">resource_definition</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;workdir&quot;</span><span class="p">,</span> <span class="s2">&quot;git-branch&quot;</span><span class="p">,</span> <span class="s2">&quot;environment_start&quot;</span><span class="p">]:</span>
-                <span class="n">log_msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">log_msg</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
-            <span class="n">db</span><span class="p">,</span> <span class="n">resource_definition</span><span class="p">,</span> <span class="n">project_root</span><span class="o">=</span><span class="n">project_root</span><span class="p">,</span> <span class="n">git_list</span><span class="o">=</span><span class="n">git_list_final</span>
-        <span class="p">)</span></div>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">_project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_server_url</span> <span class="o">=</span> <span class="n">server_url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_server_token</span> <span class="o">=</span> <span class="n">server_token</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">account_id</span> <span class="o">=</span> <span class="n">account_id</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">server_url</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">server_url</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_url</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">server_token</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">server_token</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_token</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">git_list</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">GitRepo</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_git_list</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">resource</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Resource</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource_definition</span><span class="o">.</span><span class="n">resource_str</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">resource</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Resource</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">Resource</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource_str</span><span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">workdir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">workdir</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">transform_file_name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource_definition</span><span class="o">.</span><span class="n">workdir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_root</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">environment_start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_project_root</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">environment_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resource_definition</span><span class="o">.</span><span class="n">environment_start</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">python_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">transform_file_name</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resource_definition</span><span class="o">.</span><span class="n">python_paths</span><span class="p">]</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">python_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">transform_file_name</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_root</span><span class="p">)</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resource_definition</span><span class="o">.</span><span class="n">python_paths</span><span class="p">]</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">ssh_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ssh_key</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">transform_file_name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource_definition</span><span class="o">.</span><span class="n">ssh_key</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">hostname</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resource_definition</span><span class="o">.</span><span class="n">hostname</span>
-
-    <span class="nd">@resource</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;ConfigReader: Resource cannot be set directly&quot;</span><span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_project_root</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">docker</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-        <span class="k">return</span> <span class="kc">False</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resource_definition</span><span class="o">.</span><span class="n">hostname</span></div>
 
 </pre></div>
         </article>
@@ -493,6 +364,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

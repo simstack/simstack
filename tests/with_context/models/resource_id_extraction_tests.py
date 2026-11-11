@@ -1,6 +1,6 @@
 import unittest
 
-from simstack.runner_api.logging import extract_resource_id
+from simstack.server_api.log_upload import extract_resource_id
 
 
 class TestResourcePatternExtraction(unittest.TestCase):

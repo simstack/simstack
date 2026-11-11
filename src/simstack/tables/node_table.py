@@ -11,7 +11,7 @@ from simstack.tables.node_children import update_node_children
 from simstack.models import Parameters
 from simstack.models.models import NodeModel, ModelMapping, DataMapping
 from simstack.tables.table_builder import TableBuilderBase
-from simstack.util.db import Database
+from simstack.tables.catalogue import CatalogueCollector
 from simstack.util.docstring_parser import DocstringParser
 from simstack.util.importer import import_class_by_name
 
@@ -28,7 +28,7 @@ class CreateNodeTable(TableBuilderBase):
     Helper class to build the node table without passing around many parameters.
 
     Usage:
-        creator = CreateNodeTable(database)
+        creator = CreateNodeTable(catalogue)
         await creator.make_node_table()
     """
 
@@ -37,11 +37,8 @@ class CreateNodeTable(TableBuilderBase):
         return logger
 
     async def build(self, *args, **kwargs) -> None:
-        if not context.initialized:
-            await context.initialize()
-        await context.refresh_mappings(models=True, nodes=False)
         await super().build(*args, **kwargs)
-        await context.refresh_mappings(models=False, nodes=True)
+        await self.second_stage(kwargs.get("drops", ""))
 
     async def _process_module(self, module: Any, drops: str) -> None:
         await self._register_nodes_from_module(module, drops)
@@ -180,7 +177,6 @@ class CreateNodeTable(TableBuilderBase):
             output["type"] == SimstackResult for output in outputs
         )
         result_mappings = []
-        db = context.db
         if returns_simstack_result:
             if len(outputs) > 1:
                 logger.warning(
@@ -209,9 +205,10 @@ class CreateNodeTable(TableBuilderBase):
                                     inner_mapping = inner_type_str
                                 else:
                                     try:
-                                        inner_model = await import_class_by_name(
-                                            inner_type_str, db
-                                        )
+                                        descriptor = self.catalogue.model_by_name(inner_type_str)
+                                        inner_model = None
+                                        if descriptor is not None:
+                                            inner_mapping = descriptor.mapping
                                     except (ValueError, LookupError):
                                         inner_model = None
                                     if inner_model is not None:
@@ -229,12 +226,8 @@ class CreateNodeTable(TableBuilderBase):
                             else:
                                 # It's a single class name
                                 try:
-                                    output_model = await import_class_by_name(
-                                        output_type, db
-                                    )
-                                    output_mapping = self.get_class_mapping(
-                                        output_model, drops
-                                    )
+                                    descriptor = self.catalogue.model_by_name(output_type)
+                                    output_mapping = descriptor.mapping if descriptor else None
                                 except (ValueError, LookupError) as e:
                                     logger.error(
                                         f"When processing SimstackResults for {func_name}: Could not parse '{data['type']}' to mapping: {e}"
@@ -318,40 +311,10 @@ class CreateNodeTable(TableBuilderBase):
         Returns:
             (should_skip, existing_favorite, existing_called_nodes)
         """
-        try:
-            existing_model = await self.db.find_one(
-                NodeModel, NodeModel.name == node_name
-            )
-        except Exception as e:
-            logger.error(f"Error finding existing NodeModel {node_name}: {e}")
-            return False, False, []
-
-        if not existing_model:
-            return False, False, []
-
-        if function_mapping != existing_model.function_mapping:
-            logger.error(
-                f"NodeModel '{node_name}' already exists in the database\n"
-                f"    DB  Mapping: {existing_model.function_mapping}\n"
-                f"    New Mapping: {function_mapping}\n"
-                f"New Mapping will overwrite DB Mapping."
-            )
-
-        existing_favorite = getattr(existing_model, "favorite", False)
-        existing_called_nodes = list(getattr(existing_model, "called_nodes", None) or [])
-
-        if getattr(existing_model, "pickle_function", None):
-            try:
-                await self.db.delete(existing_model.pickle_function)
-            except Exception as e:
-                logger.error(f"Error deleting FunctionPickle for {node_name}: {e}")
-
-        try:
-            await self.db.delete(existing_model)
-        except Exception as e:
-            logger.error(f"Error deleting existing NodeModel {node_name}: {e}")
-
-        return False, existing_favorite, existing_called_nodes
+        matches = self.catalogue.nodes_by_name(node_name)
+        existing = matches[0] if matches else None
+        return (False, bool(existing and existing.favorite),
+                list(existing.called_nodes or []) if existing else [])
 
     async def _resolve_input_mappings(
         self,
@@ -382,12 +345,10 @@ class CreateNodeTable(TableBuilderBase):
                     if drops and input_mapping.startswith(drops + "."):
                         input_mapping = input_mapping[len(drops) + 1 :]
 
-                    input_mapping_found = await self.db.find_one(
-                        ModelMapping, ModelMapping.mapping == input_mapping
-                    )
+                    input_mapping_found = self.catalogue.model_by_mapping(input_mapping)
                     if not input_mapping_found and input_mapping:
                         logger.error(
-                            f"Processing node: {node_name} model {input_mapping} not found in db!"
+                            f"Processing node: {node_name} model {input_mapping} not found in the catalogue!"
                         )
 
                     input_mappings.append(input_mapping)
@@ -500,7 +461,7 @@ class CreateNodeTable(TableBuilderBase):
                 logger.debug(
                     f"NodeModel: {node_model.name}, {node_model.function_mapping}, {node_model.input_mappings}"
                 )
-                await self.db.save(node_model)
+                self.catalogue.register_node(node_model)
 
             except Exception as e:
                 logger.error(f"Error creating/saving NodeModel {node_name}: {e}")
@@ -509,15 +470,15 @@ class CreateNodeTable(TableBuilderBase):
                 traceback.print_exc()
 
     async def second_stage(self, drops: str) -> None:
-        await update_node_children(self.db, drops)
+        await update_node_children(self.catalogue, drops)
 
     async def clear_table(self) -> None:
-        self.logger.info("Clearing NodeModel collection")
-        await self.db.get_collection(NodeModel).drop()
+        self.logger.info("Clearing discovered node descriptors")
+        self.catalogue.nodes.clear()
 
 
 async def make_node_table(
-    db: Database,
+    catalogue: CatalogueCollector,
     dirs: list[str] | None = None,
     drops: str | None = None,
     write_schema: bool = False,
@@ -526,11 +487,9 @@ async def make_node_table(
     ignore_entrypoints: bool = False,
 ) -> None:
     """
-    Rebuild the node table using the given databse.
-
-    This is a thin wrapper around CreateNodeTable for backward compatibility.
+    Collect node descriptors from the prepared environment.
     """
-    creator = CreateNodeTable(db, write_schema=write_schema, project_root=project_root)
+    creator = CreateNodeTable(catalogue, write_schema=write_schema, project_root=project_root)
     resolved_drops = drops or ""
     await creator.build(
         dirs=dirs,
@@ -538,7 +497,6 @@ async def make_node_table(
         clear=clear,
         ignore_entrypoints=ignore_entrypoints,
     )
-    await creator.second_stage(resolved_drops)
 
 
 def create_node_table_main() -> None:

@@ -1,1 +1,2 @@
 recursive-include src/simstack/static/docs *
+include src/simstack/static/slurm_checkpoint.sh

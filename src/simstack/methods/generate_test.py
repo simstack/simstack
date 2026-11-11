@@ -15,17 +15,17 @@ from simstack.util.importer import import_class
 
 logger = logging.getLogger("generate_test")
 
-async def load_models(references: List[NamedDataReference]) -> Dict[str, Any]:
+async def load_models(references: List[NamedDataReference], *, values=None) -> Dict[str, Any]:
     """Load models from the database based on references."""
     result = {}
-    db = context.db
-    for ref in references:
+    for index, ref in enumerate(references):
         try:
-            model_cls = await import_class(ref.variable_mapping, db)
+            model_cls = await import_class(ref.variable_mapping, context.server.values)
             if not model_cls:
                 raise RuntimeError(f"Could not import class {ref.variable_mapping}")
 
-            obj = await db.find_one(model_cls, model_cls.id == ref.reference)
+            obj = (values[index] if values is not None
+                   else await context.server.values.get_value(ref.variable_mapping, ref.reference))
             if obj is None:
                 raise RuntimeError(
                     f"Object {ref.reference} not found in {ref.variable_mapping}"
@@ -36,10 +36,8 @@ async def load_models(references: List[NamedDataReference]) -> Dict[str, Any]:
             if not key:
                 from simstack.models import ModelMapping
 
-                model_mapping = await db.find_one(
-                    ModelMapping,
-                    ModelMapping.mapping == ref.variable_mapping,
-                )
+                mappings = await context.server.values.catalogue_models()
+                model_mapping = next((item for item in mappings if item.mapping == ref.variable_mapping), None)
                 key = model_mapping.name if model_mapping else ref.variable_mapping
 
             if key in result:
@@ -64,8 +62,7 @@ def serialize_models(models: Dict[str, Any]) -> str:
 
 async def generate_test(node_id: str, target_base: Path):
     """Generate a test case for a given node ID."""
-    db = context.db
-    registry_entry = await db.find_one(NodeRegistry, NodeRegistry.id == ObjectId(node_id))
+    registry_entry = await context.server.tasks.get_task(node_id)
     if not registry_entry:
         raise ValueError(f"NodeRegistry entry with ID {node_id} not found.")
 
@@ -93,13 +90,15 @@ async def generate_test(node_id: str, target_base: Path):
 
     # Load and serialize inputs
     print(f"Serializing inputs for {node_id}")
-    inputs = await load_models(registry_entry.input_references)
+    inputs = await load_models(registry_entry.input_references,
+        values=await context.server.values.resolve_task_inputs(registry_entry.id))
     with open(target_dir / "inputs.json", "w") as f:
         f.write(serialize_models(inputs))
 
     # Load and serialize outputs
     print(f"Serializing outputs for {node_id}")
-    outputs = await load_models(registry_entry.results_references)
+    outputs = await load_models(registry_entry.results_references,
+        values=await context.server.values.resolve_task_outputs(registry_entry))
     with open(target_dir / "outputs.json", "w") as f:
         f.write(serialize_models(outputs))
 

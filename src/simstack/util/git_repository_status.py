@@ -4,6 +4,18 @@ from pathlib import Path
 from typing import Optional, Dict
 
 
+def make_git_status_list(project_root: Path) -> list[str]:
+    result = get_git_status(project_root)
+    if not result["branch"]:
+        return ["No branch found"]
+    value = result["branch"] + "[" + result["short_hash"] + "]"
+    if result["up_to_date"]:
+        value += " (up-to-date)"
+    else:
+        value += " (behind " + str(result["behind"]) + " commits)"
+    return [value]
+
+
 def get_git_status(repo_path: Path) -> Dict[str, Optional[object]]:
     """
     Get the current Git short commit hash and whether the branch is up to date with its upstream.

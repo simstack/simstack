@@ -1,4 +1,4 @@
-from tests.object_storage_fakes import stored_file
+from tests.support.domain_files import staged_file
 import pytest
 from typing import Optional
 from simstack.models.document import Model, Field
@@ -19,14 +19,14 @@ class SampleFileModel(Model):
 def sample_file_stacks():
     """Create multiple sample FileStacks for testing"""
     return [
-        stored_file(
+        staged_file(
             name="file1.txt",
             size=50,
             is_hashable=True,
             in_memory=True,
             content=b"content1",
         ),
-        stored_file(
+        staged_file(
             name="file2.txt", 
             size=75, 
             is_hashable=True, 
@@ -40,7 +40,7 @@ async def test_test_file_model_save_and_retrieve(initialized_context, sample_fil
     """Test saving and retrieving SampleFileModel with embedded FileList"""
     # 1. Save FileStacks first (as they are referenced by FileList via ObjectIds)
     for fs in sample_file_stacks:
-        await context.db.save(fs)
+        await context.server.values.publish_value(fs)
     
     # 2. Create FileList and add FileStacks
     file_list = FileList()
@@ -50,12 +50,12 @@ async def test_test_file_model_save_and_retrieve(initialized_context, sample_fil
     model = SampleFileModel(file_list=file_list, name="Test Model")
     
     # 4. Save SampleFileModel
-    saved_model = await context.db.save(model)
+    saved_model = await context.server.values.publish_value(model)
     assert saved_model.id is not None
     assert len(saved_model.file_list) == 2
     
     # 5. Retrieve SampleFileModel from database
-    retrieved_model = await context.db.find_one(SampleFileModel, SampleFileModel.id == saved_model.id)
+    retrieved_model = await context.server.values.get_value(SampleFileModel, saved_model.id)
     
     assert retrieved_model is not None
     assert retrieved_model.name == "Test Model"
@@ -74,8 +74,8 @@ async def test_test_file_model_save_and_retrieve(initialized_context, sample_fil
 async def test_test_file_model_empty_list(initialized_context):
     """Test SampleFileModel with an empty FileList"""
     model = SampleFileModel(name="Empty Model")
-    saved_model = await context.db.save(model)
+    saved_model = await context.server.values.publish_value(model)
     
-    retrieved_model = await context.db.find_one(SampleFileModel, SampleFileModel.id == saved_model.id)
+    retrieved_model = await context.server.values.get_value(SampleFileModel, saved_model.id)
     assert retrieved_model is not None
     assert len(retrieved_model.file_list) == 0

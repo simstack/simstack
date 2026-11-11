@@ -1,325 +1,159 @@
+"""Import pinned workflow code using explicit revision catalogue descriptors."""
 import importlib
+from importlib.machinery import PathFinder
+import inspect
 import logging
-from typing import Any, Callable, Optional, Type, cast
-from simstack.models.document import Model, ObjectId
+from pathlib import Path
+import site
+import sys
+from types import SimpleNamespace
+from typing import Any, Callable, Optional, Type
 
-from simstack.core.context import context
-from simstack.models.models import ModelMapping, NodeModel
-from simstack.util.db import Database
+from simstack.models.document import Model, ObjectId
 
 logger = logging.getLogger("importer")
 
-NODES_SEARCH_BY_NAME_FALLBACK = True
-MODELS_SEARCH_BY_NAME_FALLBACK = True
 
-def _get_initialized_context() -> Any | None:
-    try:
-        from simstack.core.context import context
-
-        if context.initialized:
-            return context
-    except RuntimeError:
-        return None
-    return None
+def _active_api(api=None):
+    if api is not None:
+        return api
+    from simstack.core.context import context
+    return context.server.values
 
 
-def _context_cache_matches_engine(ctx: Any | None, db: Database | None = None) -> bool:
-    if ctx is None:
-        return False
-    if db is None:
-        return True
-    try:
-        return ctx.db is not None and db is ctx.db
-    except RuntimeError:
-        return False
+def _refresh_context_cache(values, descriptors, *, nodes):
+    from simstack.core.context import context
+    from simstack.util.mappings import ModelMappingTable, NodeMappingTable
+
+    if context.initialized and context.server.values is values:
+        table = NodeMappingTable(descriptors) if nodes else ModelMappingTable(descriptors)
+        object.__setattr__(context, "_node_mappings" if nodes else "_model_mappings", table)
 
 
-def _lookup_node_cache(node_mappings: Any, function_path: str) -> Optional[NodeModel]:
-    if node_mappings is None:
-        return None
-    node_model = node_mappings.get_by_mapping(function_path)
-    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
-        if "." in function_path:
-            _, function_name = function_path.rsplit(".", 1)
-        else:
-            function_name = function_path
-        node_model = node_mappings.get_by_name(function_name)
-    return node_model
+async def _find_node_model(function_path, api=None):
+    values = _active_api(api)
+    nodes = await values.catalogue_nodes()
+    _refresh_context_cache(values, nodes, nodes=True)
+    exact = [node for node in nodes if node.function_mapping == function_path]
+    if exact:
+        return exact[0]
+    name = function_path.rsplit(".", 1)[-1]
+    named = [node for node in nodes if node.name == name]
+    if len(named) > 1:
+        raise LookupError(f"Ambiguous node name: {name}")
+    return named[0] if named else None
 
 
-async def _find_node_model(function_path: str, db: Database) -> Optional[NodeModel]:
-    if context.node_mappings is None:
-        await context.refresh_mappings(models=False, nodes=True)
-
-    node_model = _lookup_node_cache(context.node_mappings, function_path)
-    if node_model is not None:
-        return node_model
-
-    await context.refresh_mappings(models=False, nodes=True)
-    node_model = _lookup_node_cache(context.node_mappings, function_path)
-    if node_model is not None:
-        return node_model
-
-    node_model = await db.find_one(
-        NodeModel, NodeModel.function_mapping == function_path
-    )
-    if node_model is None and NODES_SEARCH_BY_NAME_FALLBACK:
-        if "." in function_path:
-            _, function_name = function_path.rsplit(".", 1)
-        else:
-            function_name = function_path
-        node_model = await db.find_one(NodeModel, NodeModel.name == function_name)
-    return node_model
+async def _find_model_mapping(model_path, api=None):
+    values = _active_api(api)
+    mappings = await values.catalogue_models()
+    _refresh_context_cache(values, mappings, nodes=False)
+    exact = [item for item in mappings if item.mapping == model_path]
+    if exact:
+        return exact[0]
+    name = model_path.rsplit(".", 1)[-1]
+    named = [item for item in mappings if item.name == name]
+    if len(named) > 1:
+        raise LookupError(f"Ambiguous model name: {name}")
+    return named[0] if named else None
 
 
-async def _find_node_model_by_name(
-    function_name: str, db: Database
-) -> Optional[NodeModel]:
-    if context.node_mappings is None:
-        await context.refresh_mappings(models=False, nodes=True)
-
-    node_model = context.node_mappings.get_by_name(function_name)
-    if node_model is not None:
-        return node_model
-
-    await context.refresh_mappings(models=False, nodes=True)
-    node_model = context.node_mappings.get_by_name(function_name)
-    if node_model is not None:
-        return node_model
-    return await db.find_one(NodeModel, NodeModel.name == function_name)
+def _import_mapping(mapping):
+    module_path, name = mapping.rsplit(".", 1)
+    return getattr(importlib.import_module(module_path), name)
 
 
-def _lookup_model_cache(
-    model_mappings: Any, class_path: str, class_name: str
-) -> Optional[ModelMapping]:
-    if model_mappings is None:
-        return None
-    model_mapping = None
-    if MODELS_SEARCH_BY_NAME_FALLBACK:
-        model_mapping = model_mappings.get_by_name(class_name)
-    if not model_mapping:
-        model_mapping = model_mappings.get_by_mapping(class_path)
-    return model_mapping
+def _artifact_module(module_path, source_root):
+    """Resolve the exact helper in the workflow runtime before importing it."""
+    core_root = Path(__file__).resolve().parents[1]
+    roots = (source_root.resolve(strict=True), core_root,
+             *(Path(path).resolve() for path in site.getsitepackages()))
 
+    def approved(path):
+        return any(Path(path).resolve().is_relative_to(root) for root in roots)
 
-async def _find_model_mapping(model_path: str, db: Database) -> Optional[ModelMapping]:
-    if "." in model_path:
-        _, model_name = model_path.rsplit(".", 1)
-    else:
-        model_name = model_path
-
-    if context.model_mappings is None:
-        await context.refresh_mappings(models=True, nodes=False)
-
-    model_mapping = _lookup_model_cache(context.model_mappings, model_path, model_name)
-    if model_mapping is not None:
-        return model_mapping
-
-    await context.refresh_mappings(models=True, nodes=False)
-    model_mapping = _lookup_model_cache(context.model_mappings, model_path, model_name)
-    if model_mapping is not None:
-        return model_mapping
-
-    model_mapping = None
-    if MODELS_SEARCH_BY_NAME_FALLBACK:
-        model_mapping = await db.find_one(ModelMapping, ModelMapping.name == model_name)
-    if model_mapping is None:
-        model_mapping = await db.find_one(
-            ModelMapping, ModelMapping.mapping == model_path
-        )
-    return model_mapping
-
-
-# TODO engines remove: duplicate of find_class_mapping_by_name
-async def _find_model_mapping_by_name(
-    class_name: str, db: Database
-) -> Optional[ModelMapping]:
-    if context.model_mappings is None:
-        await context.refresh_mappings(models=True, nodes=False)
-
-    model_mapping = context.model_mappings.get_by_name(class_name)
-    if model_mapping is not None:
-        return model_mapping
-
-    await context.refresh_mappings(models=True, nodes=False)
-    model_mapping = context.model_mappings.get_by_name(class_name)
-    if model_mapping is not None:
-        return model_mapping
-
-    return await db.find_one(ModelMapping, ModelMapping.name == class_name)
-
-
-async def _function_from_model(
-    node_model: NodeModel, task_id: ObjectId | None = None
-) -> Callable[..., Any]:
-    """
-    Get the function from the NodeModel. Here the mapping may already be fixed if the original mapping was wrong
-    Otherwise, it is imported from the function_mapping.
-
-    Args:
-        node_model: NodeModel object
-        task_id: Optional task id
-
-    Returns:
-        The function object
-    """
-
-    function_path = node_model.function_mapping
-    try:
-        module_path, function_name = function_path.rsplit(".", 1)
-        module = importlib.import_module(module_path)
-        return cast(Callable[..., Any], getattr(module, function_name))
-    except (ImportError, AttributeError, ValueError) as e:
-        if NODES_SEARCH_BY_NAME_FALLBACK:
+    search = [str(path) for path in (source_root, source_root / "src", core_root.parent)]
+    search += [path for path in sys.path if path and approved(path)]
+    parts = module_path.split(".")
+    for index in range(len(parts)):
+        name = ".".join(parts[:index + 1])
+        loaded = sys.modules.get(name)
+        spec = getattr(loaded, "__spec__", None) if loaded is not None else PathFinder.find_spec(name, search)
+        origin = getattr(loaded, "__file__", None) if loaded is not None else getattr(spec, "origin", None)
+        locations = getattr(loaded, "__path__", None) if loaded is not None else getattr(spec, "submodule_search_locations", None)
+        if origin is not None and not approved(origin):
+            raise ImportError(f"Artifact helper module {name} is outside the prepared workflow runtime")
+        if origin is None and (not locations or any(not approved(path) for path in locations)):
+            raise ImportError(f"Artifact helper module {name} is not in the prepared workflow runtime")
+        if loaded is None:
+            loaded = importlib.util.module_from_spec(spec)
+            sys.modules[name] = loaded
             try:
-                # Try to load by the name field which might contain the correct path
-                # if it was a name-only search that found this model.
-                if "." in node_model.name:
-                    module_path, function_name = node_model.name.rsplit(".", 1)
-                    module = importlib.import_module(module_path)
-                    return cast(Callable[..., Any], getattr(module, function_name))
-            except (ImportError, AttributeError, ValueError):
-                pass
-        if task_id:
-            logger.error(
-                f"task_id: {task_id} Error importing function {function_path}: {e}"
-            )
-        else:
-            logger.error(f"Error importing function {function_path}: {e}")
-        raise e
+                spec.loader.exec_module(loaded)
+            except BaseException:
+                del sys.modules[name]
+                raise
+            if index:
+                setattr(sys.modules[name.rsplit(".", 1)[0]], parts[index], loaded)
+        if index + 1 < len(parts):
+            if not locations:
+                raise ImportError(f"Artifact helper module {name} is not a package")
+            search = list(locations)
+    return loaded
 
 
-async def import_function(
-    function_path: str,
-    db: Database,
-    task_id: ObjectId | None = None,
-    tolerate_missing_function: bool = False,
-) -> Optional[Callable[..., Any]]:
-    """
-    Dynamically import a function from a module using its full path, including a migration mechanism.
-    load the function information using NodeModel
-    load the pickled version if it exists
-    if there is no pickled version, use regular import.
+async def import_artifact_generator(descriptor, *, task=None):
+    """Import only the exact generator authorized by an artifact descriptor."""
+    from simstack.core.context import context
+    from simstack.models.artifact_models import ArtifactMapping
+    from simstack.util.repository_runtime import prepare_task_runtime
 
-    Args:
-        function_path: Dot notation path to the function (e.g. 'methods.submodule.function_name')
-        db: Database object
-        task_id: Optional task id
-        tolerate_missing_function: If True, return None if function is not found, otherwise raise exception
+    if not isinstance(descriptor, ArtifactMapping):
+        raise TypeError("An artifact generator requires an ArtifactMapping descriptor")
+    mapping = descriptor.function_mapping
+    parts = mapping.split(".")
+    if len(parts) < 2 or any(not part.isidentifier() for part in parts):
+        raise ValueError("An artifact generator requires its full module and function path")
+    revision = task.repository_revision if task is not None else context.server.requests.revision()
+    root = await prepare_task_runtime(SimpleNamespace(repository_revision=revision)) if revision else context.config.project_root
+    module = _artifact_module(".".join(parts[:-1]), Path(root))
+    function = getattr(module, parts[-1])
+    if not callable(function):
+        raise TypeError(f"Artifact generator {mapping} is not callable")
+    inspect.signature(function).bind(object())
+    return function
 
-    Returns:
-        The imported function object or None if import fails
-    """
-    node_model = await _find_node_model(function_path, db)
 
-    if node_model is None:
-        try:
-            module_path, function_name = function_path.rsplit(".", 1)
-            module = importlib.import_module(module_path)
-            return cast(Callable[..., Any], getattr(module, function_name))
-        except (ImportError, AttributeError, ValueError):
-            raise LookupError(
-                f"task_id: {task_id} Function {function_path} not found in the NodeModel Table"
-            )
-
-    try:
-        return await _function_from_model(node_model, task_id)
-    except Exception as e:
+async def import_function(function_path: str, api=None, task_id: ObjectId | None = None,
+                          tolerate_missing_function: bool = False) -> Optional[Callable[..., Any]]:
+    descriptor = await _find_node_model(function_path, api)
+    if descriptor is None:
         if tolerate_missing_function:
             return None
-        else:
-            raise e
-
-
-async def import_function_by_name(
-    function_name: str, db: Database, task_id: ObjectId
-) -> Optional[Callable[..., Any]]:
-    node_model = await _find_node_model_by_name(function_name, db)
-
-    if node_model is None:
-        logger.error(f"Could not find function mapping for name: {function_name}")
-        raise ValueError(f"Could not find function mapping for name: {function_name}")
-
-    return await _function_from_model(node_model, task_id)
-
-
-async def import_class(class_path: str, db: Database) -> Type[Model] | None:
-    """
-    Dynamically import a class from a module using its full path.
-    First tries to load the class from the database using ModelMapping
-
-    A pickled version of the class is used primarily
-    Args:
-
-        :param class_path:   class_path: Dot notation path to the class (e.g. 'models.submodule.ClassName')
-        :param db:    db: Database object
-    Returns:
-        The imported class object or None if import fails
-    """
-
+        raise LookupError(f"task_id: {task_id} Function {function_path} is not in the revision catalogue")
     try:
-        # Split the path into module path and class name
-        if "." in class_path:
-            module_path, class_name = class_path.rsplit(".", 1)
-        else:
-            module_path, class_name = "", class_path
-        model_mapping = await _find_model_mapping(class_path, db)
-
-        # If not found by name, try by mapping
-        if not model_mapping:
-            model_mapping = await db.find_one(
-                ModelMapping, ModelMapping.mapping == class_path
-            )
-        else:
-            # Name fallback may return a mapping whose path changed, or a
-            # bare class name with no module. Keep class_path's module when
-            # mapping has no usable dotted path (rsplit would raise
-            # "not enough values to unpack (expected 2, got 1)").
-            mapped = model_mapping.mapping
-            if "." in mapped:
-                mapped_module, mapped_name = mapped.rsplit(".", 1)
-                if mapped_module:
-                    module_path, class_name = mapped_module, mapped_name
-                else:
-                    class_name = mapped_name
-            else:
-                class_name = mapped
-
-        if not module_path:
-            logger.error(
-                "Error importing class %s: no module path on class_path or ModelMapping.mapping",
-                class_path,
-            )
-            raise LookupError(f"Error finding ModelMapping for {class_name}")
-
-        if model_mapping is None:
-            try:
-                # Import the module
-                module = importlib.import_module(module_path)
-                # Get the class from the module
-                return cast(Type[Model], getattr(module, class_name))
-            except (ImportError, AttributeError):
-                logger.error(f"Error finding ModelMapping for {class_name}")
-                raise LookupError(f"Error finding ModelMapping for {class_name}")
-
-        # Import the module
-        module = importlib.import_module(module_path)
-
-        # Get the class from the module
-        return cast(Type[Model], getattr(module, class_name))
-    except (ImportError, AttributeError, ValueError) as e:
-        logger.error(f"Error importing class {class_path}: {e}")
-        raise e
+        return _import_mapping(descriptor.function_mapping)
+    except (ImportError, AttributeError):
+        if tolerate_missing_function:
+            return None
+        raise
 
 
-async def import_class_by_name(class_name: str, db: Database) -> Type[Model]:
-    model_mapping = await _find_model_mapping_by_name(class_name, db)
+async def import_function_by_name(function_name: str, api=None, task_id=None):
+    return await import_function(function_name, api, task_id)
 
-    if not model_mapping:
-        logger.error(f"Error finding ModelMapping for {class_name}")
-        raise LookupError(f"Error finding ModelMapping for {class_name}")
 
-    model_class = await import_class(model_mapping.mapping, db)
-    if model_class is None:
-        raise LookupError(f"Error importing mapped model class for {class_name}")
-    return model_class
+async def import_class(class_path: str, api=None) -> Type[Model]:
+    descriptor = await _find_model_mapping(class_path, api)
+    if descriptor is None:
+        raise LookupError(f"Model {class_path} is not in the revision catalogue")
+    mapping = descriptor.mapping
+    if "." not in mapping and "." in class_path:
+        mapping = class_path.rsplit(".", 1)[0] + "." + mapping
+    if "." not in mapping:
+        raise LookupError(f"Model {class_path} has no catalogue module path")
+    return _import_mapping(mapping)
+
+
+async def import_class_by_name(class_name: str, api=None) -> Type[Model]:
+    return await import_class(class_name, api)

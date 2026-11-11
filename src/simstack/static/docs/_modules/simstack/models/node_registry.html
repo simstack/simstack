@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -275,7 +280,7 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">Reference</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">Reference</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.definitions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskStatus</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.file_list</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileList</span>
@@ -316,7 +321,9 @@
 <span class="sd">    :ivar completed_at: An optional timestamp indicating when the execution of the node was</span>
 <span class="sd">                        completed.</span>
 <span class="sd">    :type completed_at: Optional[datetime]</span>
-<span class="sd">    :ivar function_hash: A hash value representing the unique function executed by this node.</span>
+<span class="sd">    :ivar function_hash: Unused identity field kept for registry compatibility.</span>
+<span class="sd">                         Function identity is versioned by git rather than by</span>
+<span class="sd">                         hashing the function body.</span>
 <span class="sd">    :type function_hash: str</span>
 <span class="sd">    :ivar arg_hash: A hash value representing the unique arguments passed to the function of</span>
 <span class="sd">                    this node.</span>
@@ -336,9 +343,9 @@
     <span class="n">status</span><span class="p">:</span> <span class="n">TaskStatus</span>
     <span class="n">custom_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">version</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="c1"># Keep this as Optional[ObjectId] instead of Reference(Project):</span>
-    <span class="c1"># in the ODMantic version used here, nullable references are not supported</span>
-    <span class="c1"># as Optional[Project] + Reference() field definitions.</span>
+    <span class="n">repository_revision</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">repository_version</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># Store project identity without loading its record for task execution.</span>
     <span class="n">project</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ObjectId</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
     <span class="n">category</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">description</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
@@ -348,6 +355,11 @@
     <span class="n">assignment_pattern</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">message</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">return_kind</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">phase</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">exit_code</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">signal</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">diagnostics</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
 
     <span class="n">input_references</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">NamedDataReference</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">results_references</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">NamedDataReference</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
@@ -360,19 +372,35 @@
     <span class="n">started_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
     <span class="n">completed_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
     <span class="n">job_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">process_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">function_hash</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">arg_hash</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">func_mapping</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">is_async</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">parameters</span><span class="p">:</span> <span class="n">Parameters</span> <span class="o">=</span> <span class="n">Reference</span><span class="p">()</span></div>
+    <span class="n">parameters</span><span class="p">:</span> <span class="n">Parameters</span> <span class="o">=</span> <span class="n">Reference</span><span class="p">()</span>
 
+<div class="viewcode-block" id="NodeRegistry.populate_results_from_duplicate">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.node_registry.NodeRegistry.populate_results_from_duplicate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">populate_results_from_duplicate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duplicate</span><span class="p">:</span> <span class="s2">&quot;NodeRegistry&quot;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results_references</span> <span class="o">=</span> <span class="n">duplicate</span><span class="o">.</span><span class="n">results_references</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info_files</span> <span class="o">=</span> <span class="n">duplicate</span><span class="o">.</span><span class="n">info_files</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">duplicate</span><span class="o">.</span><span class="n">status</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">completed_at</span> <span class="o">=</span> <span class="n">duplicate</span><span class="o">.</span><span class="n">completed_at</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">job_id</span> <span class="o">=</span> <span class="n">duplicate</span><span class="o">.</span><span class="n">job_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">artifact_ids</span> <span class="o">=</span> <span class="n">duplicate</span><span class="o">.</span><span class="n">artifact_ids</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">error</span> <span class="o">=</span> <span class="n">duplicate</span><span class="o">.</span><span class="n">error</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">duplicate</span><span class="o">.</span><span class="n">message</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">return_kind</span> <span class="o">=</span> <span class="n">duplicate</span><span class="o">.</span><span class="n">return_kind</span>
+        <span class="k">if</span> <span class="n">duplicate</span><span class="o">.</span><span class="n">custom_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">custom_name</span> <span class="o">=</span> <span class="n">duplicate</span><span class="o">.</span><span class="n">custom_name</span></div>
+</div>
 
 
 <div class="viewcode-block" id="find_child_nodes">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.node_registry.find_child_nodes">[docs]</a>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_child_nodes</span><span class="p">(</span><span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">NodeRegistry</span><span class="p">]:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-    <span class="k">return</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">NodeRegistry</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;parent_ids&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;$in&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">task_id</span><span class="p">]}})</span></div>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">children</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span></div>
 
 </pre></div>
         </article>
@@ -410,6 +438,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

@@ -1,0 +1,701 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>simstack.runner_runtime.windows_science_job - SimStack II documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/cobalt2-theme.css?v=2d651046" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/docs-build-badge.css?v=803faff8" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-background-primary: #132738;
+  --color-background-secondary: #1e3a52;
+  --color-foreground-primary: #ffffff;
+  --color-foreground-secondary: #bac8d3;
+  --color-brand-primary: #22d5ff;
+  --color-brand-content: #0088ff;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">SimStack II  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ui_documentation.html">Graphical User Interface</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../developer_guide.html">Developer Guide</a><input aria-label="Toggle navigation of Developer Guide" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../data.html">Persisting and Visualizing Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../lists.html">List Mixins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../array_lists.html">Array Lists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tables.html">Tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../files.html">File Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resource_config.html">Program Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../mass_runner.html">MassRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../fire_and_forget_runner.html">FireAndForgetRunner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../docker_nodes.html">Creating Docker Containers for SimStack Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../testing_complex_nodes.html">Testing Complex Nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../database_migrations.html">Database Migrations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../ci_pipeline.html">CI Pipeline and Documentation Artifacts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../misc.html">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Simstack II Setup</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../simstack/modules/modules.html">simstack</a><input aria-label="Toggle navigation of simstack" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.html">simstack package</a><input aria-label="Toggle navigation of simstack package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.core.html">simstack.core package</a><input aria-label="Toggle navigation of simstack.core package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.core.services.html">simstack.core.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for simstack.runner_runtime.windows_science_job</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Windows ownership for native science, with atomic Job membership at creation.</span>
+
+<span class="sd">Controllers remain outside the science Job. Nested SDK controllers break away</span>
+<span class="sd">from their parent&#39;s Job and receive their own Job handle before bootstrap.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">ctypes</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">C</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">weakref</span>
+
+<span class="n">HANDLE</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">,</span> <span class="n">SIZE_T</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_uint32</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_size_t</span>
+<span class="n">_JOB_HANDLE</span> <span class="o">=</span> <span class="s2">&quot;SIMSTACK_WINDOWS_SCIENCE_JOB_HANDLE&quot;</span>
+<span class="n">_JOB_NAME</span> <span class="o">=</span> <span class="s2">&quot;SIMSTACK_WINDOWS_SCIENCE_JOB&quot;</span>
+<span class="n">_BREAKAWAY</span> <span class="o">=</span> <span class="mh">0x01000000</span>
+<span class="n">_retained_job</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_Limits</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">Structure</span><span class="p">):</span>
+    <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;process_time&quot;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int64</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;job_time&quot;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int64</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;flags&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;min_working&quot;</span><span class="p">,</span> <span class="n">SIZE_T</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;max_working&quot;</span><span class="p">,</span> <span class="n">SIZE_T</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;active_limit&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;affinity&quot;</span><span class="p">,</span> <span class="n">SIZE_T</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;priority&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;scheduling&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">)]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_ExtendedLimits</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">Structure</span><span class="p">):</span>
+    <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;basic&quot;</span><span class="p">,</span> <span class="n">_Limits</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;io&quot;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_uint64</span> <span class="o">*</span> <span class="mi">6</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;process_memory&quot;</span><span class="p">,</span> <span class="n">SIZE_T</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;job_memory&quot;</span><span class="p">,</span> <span class="n">SIZE_T</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;peak_process_memory&quot;</span><span class="p">,</span> <span class="n">SIZE_T</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;peak_job_memory&quot;</span><span class="p">,</span> <span class="n">SIZE_T</span><span class="p">)]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_Accounting</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">Structure</span><span class="p">):</span>
+    <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;times&quot;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int64</span> <span class="o">*</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;faults&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;total&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;active&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;terminated&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">)]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_Startup</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">Structure</span><span class="p">):</span>
+    <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;cb&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;reserved&quot;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_wchar_p</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;desktop&quot;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_wchar_p</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_wchar_p</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;cx&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;cy&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;chars_x&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;chars_y&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;fill&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;flags&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;show&quot;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_uint16</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;reserved_size&quot;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_uint16</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;reserved_bytes&quot;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;stdin&quot;</span><span class="p">,</span> <span class="n">HANDLE</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;stdout&quot;</span><span class="p">,</span> <span class="n">HANDLE</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;stderr&quot;</span><span class="p">,</span> <span class="n">HANDLE</span><span class="p">)]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_StartupEx</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">Structure</span><span class="p">):</span>
+    <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;startup&quot;</span><span class="p">,</span> <span class="n">_Startup</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;attributes&quot;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">)]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_ProcessInfo</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">Structure</span><span class="p">):</span>
+    <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;process&quot;</span><span class="p">,</span> <span class="n">HANDLE</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;thread&quot;</span><span class="p">,</span> <span class="n">HANDLE</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;pid&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;tid&quot;</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">)]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_kernel</span><span class="p">():</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">WinDLL</span><span class="p">(</span><span class="s2">&quot;kernel32&quot;</span><span class="p">,</span> <span class="n">use_last_error</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">signatures</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;CreateJobObjectW&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_wchar_p</span><span class="p">],</span> <span class="n">HANDLE</span><span class="p">),</span>
+        <span class="s2">&quot;OpenJobObjectW&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">DWORD</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_wchar_p</span><span class="p">],</span> <span class="n">HANDLE</span><span class="p">),</span>
+        <span class="s2">&quot;SetInformationJobObject&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">HANDLE</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">],</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+        <span class="s2">&quot;QueryInformationJobObject&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">HANDLE</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">],</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+        <span class="s2">&quot;TerminateJobObject&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">HANDLE</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_uint</span><span class="p">],</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+        <span class="s2">&quot;CloseHandle&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">HANDLE</span><span class="p">],</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+        <span class="s2">&quot;GetCurrentProcess&quot;</span><span class="p">:</span> <span class="p">([],</span> <span class="n">HANDLE</span><span class="p">),</span>
+        <span class="s2">&quot;DuplicateHandle&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">HANDLE</span><span class="p">,</span> <span class="n">HANDLE</span><span class="p">,</span> <span class="n">HANDLE</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">HANDLE</span><span class="p">),</span> <span class="n">DWORD</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">],</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+        <span class="s2">&quot;SetHandleInformation&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">HANDLE</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">],</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+        <span class="s2">&quot;IsProcessInJob&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">HANDLE</span><span class="p">,</span> <span class="n">HANDLE</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">)],</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+        <span class="s2">&quot;InitializeProcThreadAttributeList&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">SIZE_T</span><span class="p">)],</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+        <span class="s2">&quot;UpdateProcThreadAttribute&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">,</span> <span class="n">SIZE_T</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">,</span> <span class="n">SIZE_T</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">],</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+        <span class="s2">&quot;DeleteProcThreadAttributeList&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">],</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="s2">&quot;CreateProcessW&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">C</span><span class="o">.</span><span class="n">c_wchar_p</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_wchar_p</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">,</span>
+                            <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_wchar_p</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">_StartupEx</span><span class="p">),</span> <span class="n">C</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">_ProcessInfo</span><span class="p">)],</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+        <span class="s2">&quot;WaitForSingleObject&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">HANDLE</span><span class="p">,</span> <span class="n">DWORD</span><span class="p">],</span> <span class="n">DWORD</span><span class="p">),</span>
+        <span class="s2">&quot;GetExitCodeProcess&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">HANDLE</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">DWORD</span><span class="p">)],</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+        <span class="s2">&quot;TerminateProcess&quot;</span><span class="p">:</span> <span class="p">([</span><span class="n">HANDLE</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_uint</span><span class="p">],</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="n">arguments</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span> <span class="ow">in</span> <span class="n">signatures</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">function</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="n">function</span><span class="o">.</span><span class="n">argtypes</span><span class="p">,</span> <span class="n">function</span><span class="o">.</span><span class="n">restype</span> <span class="o">=</span> <span class="n">arguments</span><span class="p">,</span> <span class="n">result</span>
+    <span class="k">return</span> <span class="n">kernel</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">C</span><span class="o">.</span><span class="n">WinError</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">get_last_error</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="job_name">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.job_name">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">job_name</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
+    <span class="n">execution</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">execution</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">execution</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">,</span> <span class="s2">&quot;claim_id&quot;</span><span class="p">,</span> <span class="s2">&quot;start_id&quot;</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A science Job requires its original execution identity&quot;</span><span class="p">)</span>
+    <span class="n">bootstrap</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">bootstrap_data</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">bootstrap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;account_id&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A science Job requires its bootstrapped account&quot;</span><span class="p">)</span>
+    <span class="n">scope</span> <span class="o">=</span> <span class="p">[</span><span class="n">server</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">server_url</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">bootstrap</span><span class="p">[</span><span class="s2">&quot;account_id&quot;</span><span class="p">]),</span> <span class="n">execution</span><span class="p">]</span>
+    <span class="k">return</span> <span class="s2">&quot;Local</span><span class="se">\\</span><span class="s2">SimStackScience-&quot;</span> <span class="o">+</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="WindowsJob">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.WindowsJob">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">WindowsJob</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">handle</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">create</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span> <span class="o">=</span> <span class="n">kernel</span> <span class="ow">or</span> <span class="n">_kernel</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span> <span class="o">=</span> <span class="n">name</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">handle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handle</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">_check</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">SetHandleInformation</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">active_processes</span><span class="p">()</span>  <span class="c1"># Reject an inherited non-Job handle.</span>
+            <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                <span class="k">raise</span>
+        <span class="k">elif</span> <span class="n">create</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">_check</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">CreateJobObjectW</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">C</span><span class="o">.</span><span class="n">get_last_error</span><span class="p">()</span> <span class="o">==</span> <span class="mi">183</span><span class="p">:</span>  <span class="c1"># ERROR_ALREADY_EXISTS: never adopt another launch.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">CloseHandle</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span><span class="s2">&quot;The science Job already exists&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handle</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">limits</span> <span class="o">=</span> <span class="n">_ExtendedLimits</span><span class="p">()</span>
+                <span class="n">limits</span><span class="o">.</span><span class="n">basic</span><span class="o">.</span><span class="n">flags</span> <span class="o">=</span> <span class="mh">0x2000</span> <span class="o">|</span> <span class="mh">0x0800</span>  <span class="c1"># KILL_ON_JOB_CLOSE | BREAKAWAY_OK</span>
+                <span class="n">_check</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">SetInformationJobObject</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">limits</span><span class="p">),</span> <span class="n">C</span><span class="o">.</span><span class="n">sizeof</span><span class="p">(</span><span class="n">limits</span><span class="p">)))</span>
+            <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                <span class="k">raise</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">OpenJobObjectW</span><span class="p">(</span><span class="mh">0x0004</span> <span class="o">|</span> <span class="mh">0x0008</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>  <span class="c1"># QUERY | TERMINATE</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">C</span><span class="o">.</span><span class="n">get_last_error</span><span class="p">()</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">_check</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handle</span> <span class="o">=</span> <span class="n">value</span>
+
+<div class="viewcode-block" id="WindowsJob.close">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.WindowsJob.close">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">CloseHandle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handle</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="WindowsJob.active_processes">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.WindowsJob.active_processes">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">active_processes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="n">_Accounting</span><span class="p">()</span>
+        <span class="n">_check</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">QueryInformationJobObject</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">info</span><span class="p">),</span> <span class="n">C</span><span class="o">.</span><span class="n">sizeof</span><span class="p">(</span><span class="n">info</span><span class="p">),</span> <span class="kc">None</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">active</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="WindowsJob.stop">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.WindowsJob.stop">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_processes</span><span class="p">():</span>
+            <span class="n">_check</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">TerminateJobObject</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_processes</span><span class="p">():</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">.05</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="WindowsJob.duplicate_inheritable">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.WindowsJob.duplicate_inheritable">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">duplicate_inheritable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">duplicate</span> <span class="o">=</span> <span class="n">HANDLE</span><span class="p">()</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">GetCurrentProcess</span><span class="p">()</span>
+        <span class="n">_check</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">DuplicateHandle</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span> <span class="n">current</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">duplicate</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">duplicate</span><span class="o">.</span><span class="n">value</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="controller_job">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.controller_job">[docs]</a>
+<span class="nd">@contextmanager</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">controller_job</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">entry</span><span class="p">,</span> <span class="n">environment</span><span class="p">,</span> <span class="n">ownership</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transfer a Job handle before controller bootstrap, retaining caller proof.&quot;&quot;&quot;</span>
+    <span class="n">job</span> <span class="o">=</span> <span class="n">WindowsJob</span><span class="p">(</span><span class="n">job_name</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">entry</span><span class="p">),</span> <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">duplicate</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">duplicate_inheritable</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+        <span class="n">job</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">raise</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">startup</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">STARTUPINFO</span><span class="p">()</span>
+        <span class="n">previous</span> <span class="o">=</span> <span class="n">ownership</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;startupinfo&quot;</span><span class="p">)</span>
+        <span class="n">handles</span> <span class="o">=</span> <span class="nb">list</span><span class="p">((</span><span class="nb">getattr</span><span class="p">(</span><span class="n">previous</span><span class="p">,</span> <span class="s2">&quot;lpAttributeList&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;handle_list&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+        <span class="n">startup</span><span class="o">.</span><span class="n">lpAttributeList</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;handle_list&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">*</span><span class="n">handles</span><span class="p">,</span> <span class="n">duplicate</span><span class="p">]}</span>
+        <span class="n">environment</span><span class="p">[</span><span class="n">_JOB_NAME</span><span class="p">],</span> <span class="n">environment</span><span class="p">[</span><span class="n">_JOB_HANDLE</span><span class="p">]</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">duplicate</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">job</span><span class="p">,</span> <span class="p">{</span><span class="o">**</span><span class="n">ownership</span><span class="p">,</span> <span class="s2">&quot;startupinfo&quot;</span><span class="p">:</span> <span class="n">startup</span><span class="p">}</span>
+    <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+        <span class="n">job</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">raise</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">job</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">CloseHandle</span><span class="p">(</span><span class="n">duplicate</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="retain_inherited_job">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.retain_inherited_job">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">retain_inherited_job</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keep the controller/managed-worker handle; never pass it to science children.&quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">_retained_job</span>
+    <span class="n">handle</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">_JOB_HANDLE</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">handle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_JOB_NAME</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Inherited science Job has no identity&quot;</span><span class="p">)</span>
+        <span class="n">_retained_job</span> <span class="o">=</span> <span class="n">WindowsJob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="n">_JOB_NAME</span><span class="p">],</span> <span class="n">handle</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">handle</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">_retained_job</span></div>
+
+
+
+<div class="viewcode-block" id="inherited_job">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.inherited_job">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">inherited_job</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
+    <span class="n">job</span> <span class="o">=</span> <span class="n">_retained_job</span> <span class="ow">or</span> <span class="n">retain_inherited_job</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">job</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">job</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="n">job_name</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Native controller has no matching inherited science Job&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">job</span></div>
+
+
+
+<div class="viewcode-block" id="child_creationflags">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.child_creationflags">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">child_creationflags</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Only the owned science Job may grant a nested SDK controller breakaway.&quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_JOB_NAME</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    <span class="n">job</span> <span class="o">=</span> <span class="n">WindowsJob</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">member</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">c_int</span><span class="p">()</span>
+        <span class="n">_check</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">IsProcessInJob</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">GetCurrentProcess</span><span class="p">(),</span> <span class="n">job</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">member</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">_BREAKAWAY</span> <span class="k">if</span> <span class="n">member</span><span class="o">.</span><span class="n">value</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">job</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="WindowsProcess">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.WindowsProcess">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">WindowsProcess</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">job</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_returncode</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">pid</span><span class="p">),</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_simstack_windows_job</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">process</span><span class="p">,</span> <span class="n">job</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">kernel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">CloseHandle</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">thread</span><span class="p">)</span>
+        <span class="n">weakref</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">CloseHandle</span><span class="p">,</span> <span class="n">info</span><span class="o">.</span><span class="n">process</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">returncode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_returncode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">WaitForSingleObject</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span> <span class="o">==</span> <span class="mh">0x102</span><span class="p">:</span>  <span class="c1"># WAIT_TIMEOUT: still alive.</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">result</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Could not query the scientific Windows process&quot;</span><span class="p">)</span>
+            <span class="n">code</span> <span class="o">=</span> <span class="n">DWORD</span><span class="p">()</span>
+            <span class="n">_check</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">GetExitCodeProcess</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">code</span><span class="p">)))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_returncode</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">code</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_returncode</span>
+
+<div class="viewcode-block" id="WindowsProcess.wait">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.WindowsProcess.wait">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">wait</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">returncode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">.05</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">returncode</span></div>
+
+
+<div class="viewcode-block" id="WindowsProcess.communicate">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.WindowsProcess.communicate">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">communicate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>  <span class="c1"># Scientific output is redirected to caller-owned files.</span></div>
+
+
+<div class="viewcode-block" id="WindowsProcess.kill">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.WindowsProcess.kill">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">kill</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">_check</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">TerminateProcess</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span></div>
+
+
+    <span class="n">terminate</span> <span class="o">=</span> <span class="n">kill</span></div>
+
+
+
+<div class="viewcode-block" id="spawn_job_process">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.spawn_job_process">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">spawn_job_process</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">cwd</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span><span class="p">,</span> <span class="n">startupinfo</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                      <span class="n">retain_in_child</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">job</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">creationflags</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create science atomically inside its Job (Windows 10+ JOB_LIST attribute).&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">msvcrt</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExitStack</span>
+    <span class="n">own_job</span> <span class="o">=</span> <span class="n">job</span> <span class="ow">is</span> <span class="kc">None</span>
+    <span class="n">job</span> <span class="o">=</span> <span class="n">job</span> <span class="ow">or</span> <span class="n">WindowsJob</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="n">name</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Science process Job differs from its execution&quot;</span><span class="p">)</span>
+    <span class="n">kernel</span><span class="p">,</span> <span class="n">copies</span><span class="p">,</span> <span class="n">initialized</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">kernel</span><span class="p">,</span> <span class="p">[],</span> <span class="kc">False</span>
+    <span class="n">environment</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="n">_JOB_NAME</span><span class="p">:</span> <span class="n">name</span><span class="p">})</span>
+    <span class="n">environment</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">_JOB_HANDLE</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">ExitStack</span><span class="p">()</span> <span class="k">as</span> <span class="n">files</span><span class="p">:</span>
+            <span class="n">current</span> <span class="o">=</span> <span class="n">kernel</span><span class="o">.</span><span class="n">GetCurrentProcess</span><span class="p">()</span>
+            <span class="k">def</span><span class="w"> </span><span class="nf">duplicate_file</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">mode</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">DEVNULL</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">files</span><span class="o">.</span><span class="n">enter_context</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">devnull</span><span class="p">,</span> <span class="n">mode</span><span class="p">))</span>
+                <span class="n">handle</span> <span class="o">=</span> <span class="n">HANDLE</span><span class="p">()</span>
+                <span class="n">_check</span><span class="p">(</span><span class="n">kernel</span><span class="o">.</span><span class="n">DuplicateHandle</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">msvcrt</span><span class="o">.</span><span class="n">get_osfhandle</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">fileno</span><span class="p">()),</span> <span class="n">current</span><span class="p">,</span>
+                    <span class="n">C</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">handle</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+                <span class="n">copies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">handle</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">handle</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">standard</span> <span class="o">=</span> <span class="p">[</span><span class="n">duplicate_file</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">DEVNULL</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">),</span> <span class="n">duplicate_file</span><span class="p">(</span><span class="n">stdout</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">),</span> <span class="n">duplicate_file</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)]</span>
+            <span class="n">inherited</span> <span class="o">=</span> <span class="nb">list</span><span class="p">((</span><span class="nb">getattr</span><span class="p">(</span><span class="n">startupinfo</span><span class="p">,</span> <span class="s2">&quot;lpAttributeList&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;handle_list&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+            <span class="k">if</span> <span class="n">retain_in_child</span><span class="p">:</span>
+                <span class="n">duplicate</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">duplicate_inheritable</span><span class="p">()</span>
+                <span class="n">copies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">duplicate</span><span class="p">)</span>
+                <span class="n">inherited</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">duplicate</span><span class="p">)</span>
+                <span class="n">environment</span><span class="p">[</span><span class="n">_JOB_HANDLE</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">duplicate</span><span class="p">)</span>
+            <span class="n">handles</span> <span class="o">=</span> <span class="p">(</span><span class="n">HANDLE</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">standard</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">inherited</span><span class="p">)))(</span><span class="o">*</span><span class="n">standard</span><span class="p">,</span> <span class="o">*</span><span class="n">inherited</span><span class="p">)</span>
+            <span class="n">jobs</span> <span class="o">=</span> <span class="p">(</span><span class="n">HANDLE</span> <span class="o">*</span> <span class="mi">1</span><span class="p">)(</span><span class="n">job</span><span class="o">.</span><span class="n">handle</span><span class="p">)</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="n">SIZE_T</span><span class="p">()</span>
+            <span class="n">kernel</span><span class="o">.</span><span class="n">InitializeProcThreadAttributeList</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">size</span><span class="p">))</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">size</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                <span class="n">_check</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">attributes</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">create_string_buffer</span><span class="p">(</span><span class="n">size</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+            <span class="n">_check</span><span class="p">(</span><span class="n">kernel</span><span class="o">.</span><span class="n">InitializeProcThreadAttributeList</span><span class="p">(</span><span class="n">attributes</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">size</span><span class="p">)))</span>
+            <span class="n">initialized</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">_check</span><span class="p">(</span><span class="n">kernel</span><span class="o">.</span><span class="n">UpdateProcThreadAttribute</span><span class="p">(</span><span class="n">attributes</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mh">0x20002</span><span class="p">,</span> <span class="n">handles</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">sizeof</span><span class="p">(</span><span class="n">handles</span><span class="p">),</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+            <span class="n">_check</span><span class="p">(</span><span class="n">kernel</span><span class="o">.</span><span class="n">UpdateProcThreadAttribute</span><span class="p">(</span><span class="n">attributes</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mh">0x2000D</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">sizeof</span><span class="p">(</span><span class="n">jobs</span><span class="p">),</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+            <span class="n">startup</span> <span class="o">=</span> <span class="n">_StartupEx</span><span class="p">()</span>
+            <span class="n">startup</span><span class="o">.</span><span class="n">startup</span><span class="o">.</span><span class="n">cb</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">sizeof</span><span class="p">(</span><span class="n">startup</span><span class="p">)</span>
+            <span class="n">startup</span><span class="o">.</span><span class="n">startup</span><span class="o">.</span><span class="n">flags</span> <span class="o">=</span> <span class="mh">0x100</span>  <span class="c1"># STARTF_USESTDHANDLES</span>
+            <span class="n">startup</span><span class="o">.</span><span class="n">startup</span><span class="o">.</span><span class="n">stdin</span><span class="p">,</span> <span class="n">startup</span><span class="o">.</span><span class="n">startup</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="n">startup</span><span class="o">.</span><span class="n">startup</span><span class="o">.</span><span class="n">stderr</span> <span class="o">=</span> <span class="n">standard</span>
+            <span class="n">startup</span><span class="o">.</span><span class="n">attributes</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">attributes</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">)</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="n">_ProcessInfo</span><span class="p">()</span>
+            <span class="n">command_line</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">create_unicode_buffer</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">list2cmdline</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">part</span><span class="p">)</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">command</span><span class="p">]))</span>
+            <span class="n">block</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">create_unicode_buffer</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\0</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">environment</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()))</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\0\0</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">_check</span><span class="p">(</span><span class="n">kernel</span><span class="o">.</span><span class="n">CreateProcessW</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">command_line</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="mh">0x00080000</span> <span class="o">|</span> <span class="mh">0x00000400</span> <span class="o">|</span> <span class="n">creationflags</span><span class="p">,</span> <span class="n">block</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">cwd</span><span class="p">),</span> <span class="n">C</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">startup</span><span class="p">),</span> <span class="n">C</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">info</span><span class="p">)))</span>
+            <span class="n">process</span> <span class="o">=</span> <span class="n">WindowsProcess</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">job</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">own_job</span><span class="p">:</span>
+                <span class="n">weakref</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="n">process</span><span class="p">,</span> <span class="n">job</span><span class="o">.</span><span class="n">close</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">process</span>
+    <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">own_job</span><span class="p">:</span>
+            <span class="n">job</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">raise</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">initialized</span><span class="p">:</span>
+            <span class="n">kernel</span><span class="o">.</span><span class="n">DeleteProcThreadAttributeList</span><span class="p">(</span><span class="n">attributes</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="n">copies</span><span class="p">:</span>
+            <span class="n">kernel</span><span class="o">.</span><span class="n">CloseHandle</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="job_active_processes">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.job_active_processes">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">job_active_processes</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return active membership, or None when no retained Job can be inspected.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">job</span> <span class="o">=</span> <span class="n">WindowsJob</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">job</span><span class="o">.</span><span class="n">active_processes</span><span class="p">()</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">job</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="stop_job">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.runner_runtime.html#simstack.runner_runtime.windows_science_job.stop_job">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stop_job</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="n">job</span> <span class="o">=</span> <span class="n">WindowsJob</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">job</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">job</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, Wolfgang Wenzel
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    </body>
+</html>

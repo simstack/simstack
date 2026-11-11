@@ -106,9 +106,7 @@ async def test_failing_node_with_runner(info_file, hello_world_file):
     assert match
     task_id = match.group(1)
 
-    node_registry = await context.db.find_one(
-        NodeRegistry, NodeRegistry.id == ObjectId(task_id)
-    )
+    node_registry = await context.server.tasks.get_task(task_id)
     assert len(node_registry.info_files) == 1
     assert len(node_registry.results_references) == 1
     assert node_registry.results_references[0].variable_name == "files"

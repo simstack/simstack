@@ -24,23 +24,15 @@ async def test_node_child_scan_preserves_model_when_function_import_fails(
         default_parameters=Parameters(),
     )
 
-    class FakeDatabase:
-        async def find(self, model):
-            return [node_model]
-
-        async def delete(self, item):
-            raise AssertionError("an import failure must never delete a NodeModel")
-
-        def get_collection(self, model):
-            raise AssertionError("the failed model must not be updated")
-
+    from simstack.tables.catalogue import CatalogueCollector
+    catalogue = CatalogueCollector(nodes=[node_model])
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
-        "simstack.tables.node_children.import_function",
-        AsyncMock(side_effect=failure),
+        "simstack.tables.node_children._import_callable_from_mapping",
+        __import__("unittest.mock", fromlist=["Mock"]).Mock(side_effect=failure),
     )
 
-    await update_node_children(FakeDatabase(), drops="")
+    await update_node_children(catalogue, drops="")
 
     assert str(node_model.id) in caplog.text
     assert node_model.name in caplog.text

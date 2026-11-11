@@ -4,13 +4,21 @@ simstack.methods package
 Submodules
 ----------
 
+simstack.methods.archive\_files module
+--------------------------------------
+
+.. automodule:: simstack.methods.archive_files
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.methods.fire\_and\_forget\_runner module
 -------------------------------------------------
 
 .. automodule:: simstack.methods.fire_and_forget_runner
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 simstack.methods.generate\_test module
 --------------------------------------

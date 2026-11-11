@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -276,107 +281,58 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.definitions</span><span class="w"> </span><span class="kn">import</span> <span class="n">DBType</span>
-
-<span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">11</span><span class="p">):</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">tomllib</span>  <span class="c1"># Python 3.11+</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">tomli</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tomllib</span>  <span class="c1"># type: ignore[import-not-found]</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.resource_definition</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResourceDefinition</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.tables.node_table</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_node_table</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.tables.model_table</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_model_table</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.services.runner_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnerManager</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;NodeRunner&quot;</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="initialize_default_resource">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.runner.initialize_default_resource">[docs]</a>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">initialize_default_resource</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">ResourceDefinition</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Checks if the current resource is the default one.</span>
-<span class="sd">    If so, syncs the node and model tables based on config.toml.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">resource_def</span> <span class="o">=</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
-        <span class="n">ResourceDefinition</span><span class="p">,</span>
-        <span class="n">ResourceDefinition</span><span class="o">.</span><span class="n">resource_str</span> <span class="o">==</span> <span class="nb">str</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span><span class="p">),</span>
-    <span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">resource_def</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-            <span class="s2">&quot;No ResourceDefinition found for &#39;</span><span class="si">%s</span><span class="s2">&#39;; skipping default-resource initialization.&quot;</span><span class="p">,</span>
-            <span class="nb">str</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span><span class="p">),</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="kc">None</span>
-
-    <span class="k">if</span> <span class="n">resource_def</span><span class="o">.</span><span class="n">is_default</span><span class="p">:</span>
-        <span class="n">config_path</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;config.toml&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Default resource detected, but </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2"> not found.&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">resource_def</span>
-
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-                <span class="n">config_data</span> <span class="o">=</span> <span class="n">tomllib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-
-            <span class="n">active_dirs</span> <span class="o">=</span> <span class="n">config_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;active_dirs&quot;</span><span class="p">,</span> <span class="p">[])</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">active_dirs</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No active_dirs found in config.toml.&quot;</span><span class="p">)</span>
-                <span class="k">return</span> <span class="n">resource_def</span>
-
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Default resource: initializing tables for </span><span class="si">{</span><span class="n">active_dirs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">await</span> <span class="n">make_model_table</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="n">dirs</span><span class="o">=</span><span class="n">active_dirs</span><span class="p">)</span>
-            <span class="k">await</span> <span class="n">make_node_table</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="n">dirs</span><span class="o">=</span><span class="n">active_dirs</span><span class="p">)</span>
-
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to initialize default resource tables: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">resource_def</span></div>
-
-
-
 <div class="viewcode-block" id="async_main">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.runner.async_main">[docs]</a>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">async_main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">async_main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Async entry point&quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">connection_string</span> <span class="o">==</span> <span class="s2">&quot;none&quot;</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">db_name</span> <span class="o">==</span> <span class="s2">&quot;none&quot;</span><span class="p">:</span>
-        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">resource</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">config_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span>
-            <span class="n">resource</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span>
-            <span class="n">db_name</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">db_name</span><span class="p">,</span>
-            <span class="n">connection_string</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">connection_string</span><span class="p">,</span>
-            <span class="n">db_type</span><span class="o">=</span><span class="n">DBType</span><span class="o">.</span><span class="n">MONGODB</span><span class="p">,</span>
-            <span class="n">config_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
-        <span class="p">)</span>
-
-    <span class="c1"># Initialize tables if this is the default resource</span>
-    <span class="n">resource_def</span> <span class="o">=</span> <span class="k">await</span> <span class="n">initialize_default_resource</span><span class="p">()</span>
-    <span class="n">is_default_resource</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">resource_def</span> <span class="ow">and</span> <span class="n">resource_def</span><span class="o">.</span><span class="n">is_default</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">resource</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Setting resource for runner to </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">resource</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">runner_manager</span> <span class="o">=</span> <span class="n">RunnerManager</span><span class="p">(</span>
-            <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span>
-            <span class="n">detach</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">detach</span><span class="p">,</span>
-            <span class="n">no_pull</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">no_pull</span><span class="p">,</span>
-            <span class="n">is_default</span><span class="o">=</span><span class="n">is_default_resource</span><span class="p">,</span>
-            <span class="n">with_file_transfer</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">with_file_transfer</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="k">await</span> <span class="n">runner_manager</span><span class="o">.</span><span class="n">run_nodes_for_resource</span><span class="p">(</span>
-            <span class="n">args</span><span class="o">.</span><span class="n">polling_interval</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">timeout</span>
-        <span class="p">)</span></div>
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;credentials&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.runner_runtime.runner_credentials</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_credentials</span><span class="p">,</span> <span class="n">configure_git_credentials</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;credentials&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="n">credentials</span> <span class="o">=</span> <span class="n">read_credentials</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_RUNNER_CREDENTIALS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_SERVER_URL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">credentials</span><span class="p">[</span><span class="s2">&quot;server_url&quot;</span><span class="p">]</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_RUNNER_TOKEN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">credentials</span><span class="p">[</span><span class="s2">&quot;token&quot;</span><span class="p">]</span>
+        <span class="n">configure_git_credentials</span><span class="p">(</span><span class="n">credentials</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;server&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;token&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;credentials&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;SIMSTACK_RUNNER_CREDENTIALS&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;server&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_SERVER_URL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;server&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;token&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_RUNNER_TOKEN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;token&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;project_root&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;.local/share/simstack/runner/runtime&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="n">project_root</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;config&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SIMSTACK_MACHINE_CONFIG&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
+    <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">resource</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">config_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="n">project_root</span><span class="o">=</span><span class="n">project_root</span><span class="p">)</span>
+    <span class="n">resource</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resource</span>
+    <span class="n">runner_manager</span> <span class="o">=</span> <span class="n">RunnerManager</span><span class="p">(</span>
+        <span class="n">resource</span><span class="p">,</span> <span class="n">detach</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">detach</span><span class="p">,</span> <span class="n">no_pull</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">is_default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">with_file_transfer</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">file_transfer</span><span class="p">,</span> <span class="n">with_jobs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">jobs</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">await</span> <span class="n">runner_manager</span><span class="o">.</span><span class="n">run_nodes_for_resource</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">polling_interval</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">timeout</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">runner_manager</span><span class="p">,</span> <span class="s2">&quot;_restart_requested&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span></div>
 
 
 
 <div class="viewcode-block" id="runner_main">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.core.html#simstack.core.runner.runner_main">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">runner_main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Run nodes for a specific resource&quot;</span><span class="p">)</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Run nodes through the SimStack server API&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--server&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Server API URL, for example https://simstack.site/api&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--token&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Resource runner API token&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--credentials&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to a private JSON credentials file&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--project-root&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Local runner runtime directory&quot;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">&quot;--config&quot;</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
@@ -389,20 +345,6 @@
         <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
         <span class="n">default</span><span class="o">=</span><span class="s2">&quot;local&quot;</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Resource name to process tasks for&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--db-name&quot;</span><span class="p">,</span>
-        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
-        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Specify a non-standard database&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--connection-string&quot;</span><span class="p">,</span>
-        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
-        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Specify a non-standard connection string&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -427,22 +369,37 @@
     <span class="p">)</span>
 
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--no-pull&quot;</span><span class="p">,</span>
-        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--pull&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;false&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">]),</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;If true, do not pull from git (GitUvUpdateService will not be started)&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">SUPPRESS</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--with-file-transfer&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--file-transfer&quot;</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;false&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">]),</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;If true (default), start the FileTransferService.&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;If true (default), start the FileTransferService. Set to &#39;false&#39; to skip.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--jobs&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;false&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">]),</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">&quot;If true (default), start NodeExecutionService and SlurmStatusService. &quot;</span>
+            <span class="s2">&quot;Set to &#39;false&#39; to skip job claiming (file-transfer sidecar).&quot;</span>
+        <span class="p">),</span>
     <span class="p">)</span>
 
     <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">pull</span><span class="p">:</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--pull=true is no longer supported; publish a repository revision through Server to update the Runner&quot;</span><span class="p">)</span>
     <span class="c1"># Run the async main function</span>
-    <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">async_main</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+    <span class="n">restart_requested</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">async_main</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">restart_requested</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">execv</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span> <span class="p">[</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span> <span class="s2">&quot;-m&quot;</span><span class="p">,</span> <span class="s2">&quot;simstack.core.runner&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:]])</span>
     <span class="n">pid</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;runner with pid </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2"> shutting down normally&quot;</span><span class="p">)</span></div>
 
@@ -486,6 +443,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

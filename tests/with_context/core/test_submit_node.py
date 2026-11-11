@@ -1,366 +1,349 @@
 from types import SimpleNamespace
+import json
+import os
+import subprocess
+import sys
+from uuid import uuid4
 
 import pytest
 
 from simstack.core.context import context
-from simstack.core.definitions import TaskStatus
 from simstack.core.submit_node import submit_node
-from simstack.models import FloatData, NamedDataReference, NodeRegistry
+from simstack.models import NodeRegistry
 from simstack.models.parameters import Parameters, SlurmParameters
+from simstack.runner_runtime.launch_claims import acquire_work
 
 
-class FakeDatabase:
-    def __init__(self):
-        self.saved = []
-
-    async def save(self, item):
-        self.saved.append(item)
-        return item
-
-    async def task_mutation(self, task_id, action, values=None, expected_statuses=None):
-        if not self.saved or str(self.saved[-1].id) != str(task_id):
-            return None
-        item = self.saved[-1]
-        if expected_statuses is not None and item.status.value not in expected_statuses:
-            return None
-        if action == "scheduler":
-            assert set(values) == {"job_id"}
-        else:
-            assert action == "failure"
-            assert set(values) == {"status", "error"}
-            assert expected_statuses == [TaskStatus.SLURM_QUEUED.value]
-        for key, value in values.items():
-            setattr(item, key, TaskStatus(value) if key == "status" else value)
-        return item
+def completed_submission(*, returncode=0, stdout="", stderr=""):
+    return SimpleNamespace(returncode=returncode, pid=os.getpid(),
+        communicate=lambda **kwargs: (stdout, stderr))
 
 
-def _slurm_registry(name: str, parameters: Parameters, parent_ids=None) -> NodeRegistry:
-    return NodeRegistry(
+async def claimed_task(server_storage, name, parameters):
+    task = NodeRegistry(
         name=name,
-        status=TaskStatus.SUBMITTED,
-        function_hash=f"{name}-function-hash",
-        arg_hash=f"{name}-arg-hash",
+        status="submitted",
+        function_hash="function",
+        arg_hash="input",
         func_mapping=f"tests:{name}",
         parameters=parameters,
-        parent_ids=parent_ids or [],
     )
+    await server_storage.save(task)
+    acquired = await acquire_work(context.server, capacity=100)
+    entry = next(item for item in acquired if item.id == task.id)
+    object.__setattr__(entry, "_execution_start_id", str(uuid4()))
+    return entry
+
+
+def configure(tmp_path, monkeypatch, program=None):
+    config = SimpleNamespace(
+        project_root=tmp_path,
+        python_paths=[tmp_path / "models"],
+        workdir=tmp_path / "work",
+        environment_start="",
+        resource="test",
+    )
+    monkeypatch.setattr(context, "config", config)
+    calls = []
+    monkeypatch.setattr("simstack.runner_runtime.slurm_submission_intents.process_identity", lambda pid: "fixture-process")
+
+    def get_program(name, resource=None):
+        calls.append((name, resource))
+        return program or {}
+
+    monkeypatch.setattr(
+        context, "_resource_config", SimpleNamespace(get_program=get_program)
+    )
+    monkeypatch.setattr("simstack.core.submit_node.process_is_in_docker", lambda: False)
+    return calls
 
 
 @pytest.mark.asyncio
-async def test_submit_node_does_not_persist_generated_startup_commands(
-    tmp_path, monkeypatch, initialized_context
+async def test_generated_script_preserves_allocation_and_original_parameters(
+    tmp_path, monkeypatch, server_storage
 ):
-    project_root = tmp_path / "project"
-    python_path = tmp_path / "simstack-model"
-    workdir = tmp_path / "work"
-    project_root.mkdir()
-    python_path.mkdir()
-
+    configure(tmp_path, monkeypatch)
     secret = "mongodb://slurm-env:slurm-password@db.internal:27017/simstack"
+    monkeypatch.setenv("SIMSTACK_DB_CONNECTION_STRING", secret)
     monkeypatch.setenv("SIMSTACK_SERVER_URL", "https://server.example/api")
     monkeypatch.setenv("SIMSTACK_RUNNER_TOKEN", "runner-test-token")
-    monkeypatch.setenv("SIMSTACK_DB_CONNECTION_STRING", secret)
     submitted = []
 
-    def fake_sbatch(*args, **kwargs):
+    def sbatch(*args, **kwargs):
         submitted.append((args, kwargs))
-        return SimpleNamespace(
-            returncode=0,
-            stdout="Submitted batch job 12345\n",
-            stderr="",
-        )
+        return completed_submission(returncode=0, stdout="12345;cluster\n", stderr="")
 
-    monkeypatch.setattr(
-        context,
-        "config",
-        SimpleNamespace(
-            project_root=project_root,
-            python_paths=[python_path],
-            workdir=workdir,
-            environment_start="",
-            docker=False,
-            resource="test",
-            connection_string=secret,
-            db_name="slurm-database",
-        ),
+    monkeypatch.setattr("simstack.core.submit_node.subprocess.Popen", sbatch)
+    params = SlurmParameters(
+        nodes=2,
+        tasks=None,
+        tasks_per_node=1,
+        mem="8G",
+        time="02:00:00",
+        job_name="template-job",
+        output="/template/%j.out",
+        error="/template/%j.err",
+        chdir="/template/work",
+        startup_commands=["module load orca"],
     )
-    monkeypatch.setattr(
-        "simstack.core.submit_node.subprocess.run",
-        fake_sbatch,
+    entry = await claimed_task(
+        server_storage,
+        "parent",
+        Parameters(resource="test", queue="slurm-queue", slurm_parameters=params),
     )
-
-    parent_parameters = Parameters(
-        resource="test",
-        queue="slurm-queue",
-        slurm_parameters=SlurmParameters(
-            nodes=2,
-            tasks=None,
-            tasks_per_node=1,
-            mem="8G",
-            time="02:00:00",
-            job_name="template-job",
-            output="/template/%j.out",
-            error="/template/%j.err",
-            startup_commands=["module load orca"],
-            chdir="/template/work",
-        ),
-    )
-    parent = _slurm_registry("parent", parent_parameters)
-
-    await submit_node(parent)
-
-    parent_script = (
-        workdir / parent.name / str(parent.id) / "slurm_script.sh"
+    original = entry.parameters.slurm_parameters.model_dump()
+    assert await submit_node(entry)
+    script = (
+        context.config.workdir / entry.name / str(entry.id) / "slurm_script.sh"
     ).read_text()
-    assert f"run_node --node-id {parent.id}" in parent_script
-    assert parent_script.count("run_node --node-id") == 1
-    assert "#SBATCH --job-name=parent." in parent_script
-    assert "module load orca" in parent_script
-    assert secret not in parent_script
+    assert script.count(f"run_node --node-id {entry.id}") == 1
+    assert "#SBATCH --job-name=ss-" in script
+    assert "#SBATCH --nodes=2" in script
+    assert "#SBATCH --mem=8G" in script
+    assert "module load orca" in script
+    assert secret not in script
     assert "SIMSTACK_DB_CONNECTION_STRING" not in submitted[0][1]["env"]
-    assert "SIMSTACK_DB_DATABASE" not in submitted[0][1]["env"]
-    assert submitted[0][1]["env"]["SIMSTACK_SERVER_URL"] == "https://server.example/api"
     assert submitted[0][1]["env"]["SIMSTACK_RUNNER_TOKEN"] == "runner-test-token"
-    assert parent.status == TaskStatus.SLURM_QUEUED
-    assert parent.job_id == "12345"
-
-    parent_slurm = parent.parameters.slurm_parameters
-    assert parent_slurm.job_name == "template-job"
-    assert parent_slurm.output == "/template/%j.out"
-    assert parent_slurm.error == "/template/%j.err"
-    assert parent_slurm.chdir == "/template/work"
-    assert parent_slurm.startup_commands == ["module load orca"]
-
-    child = _slurm_registry("child", parent.parameters, parent_ids=[parent.id])
-
-    await submit_node(child)
-
-    child_script = (
-        workdir / child.name / str(child.id) / "slurm_script.sh"
-    ).read_text()
-    assert f"run_node --node-id {child.id}" in child_script
-    assert f"run_node --node-id {parent.id}" not in child_script
-    assert child_script.count("run_node --node-id") == 1
-    assert "module load orca" in child_script
-    assert child.parameters.slurm_parameters.startup_commands == ["module load orca"]
+    assert entry.parameters.slurm_parameters.model_dump() == original
+    stored = await context.server.tasks.get_task(entry.id)
+    assert stored.status == "slurm_queued"
+    assert stored.job_id == "12345"
 
 
 @pytest.mark.asyncio
-async def test_slurm_docker_uses_task_resource_program_and_keeps_task_flag(
-    tmp_path, monkeypatch
+@pytest.mark.parametrize("export", [None, "ALL", "NONE", "NIL", "CUSTOM_SETTING"])
+async def test_restricted_slurm_export_preserves_launcher_identity(
+    tmp_path, monkeypatch, server_storage, export
 ):
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    workdir = tmp_path / "work"
-    database = FakeDatabase()
+    configure(tmp_path, monkeypatch)
+    real_popen = subprocess.Popen
+    monkeypatch.setenv("SIMSTACK_SERVER_URL", "https://server.example/api")
+    token = "private'quoted\nrunner-token"
+    monkeypatch.setenv("SIMSTACK_RUNNER_TOKEN", token)
+    monkeypatch.setenv("SIMSTACK_DB_CONNECTION_STRING", "must-not-propagate")
+    monkeypatch.setattr("simstack.core.submit_node.subprocess.Popen",
+        lambda *args, **kwargs: completed_submission(stdout="12345\n"))
+    target = tmp_path / "observed.json"
+    monkeypatch.setattr("simstack.runner_runtime.execution_environment.task_launch_command",
+        lambda *args: [sys.executable, "-c",
+            "import json, os; from pathlib import Path; Path(" + repr(str(target)) +
+            ").write_text(json.dumps(dict(os.environ)))"])
+    entry = await claimed_task(server_storage, "export_test", Parameters(resource="test",
+        queue="slurm-queue", slurm_parameters=SlurmParameters(export=export)))
+    from bson import ObjectId
+    generation = str(uuid4())
+    await server_storage.raw_database["node_registry"].update_one(
+        {"_id": ObjectId(entry.id)}, {"$set": {"_runner_generation": generation}})
+    object.__setattr__(entry, "_execution_generation", generation)
+    assert await submit_node(entry)
+    workdir = context.config.workdir / entry.name / str(entry.id)
+    script = workdir / "slurm_script.sh"
+    assert token not in script.read_text()
+    if export is not None:
+        assert f"#SBATCH --export={export}" in script.read_text()
+    launch_environment, = workdir.glob("slurm_environment_*.sh")
+    assert launch_environment.stat().st_mode & 0o777 == 0o600
+    assert "SIMSTACK_DB_CONNECTION_STRING" not in launch_environment.read_text()
+    # Execute the generated wrapper in the stripped environment Slurm permits
+    # under NONE/NIL. No Slurm installation or scientific program is mocked here.
+    monkeypatch.setattr(subprocess, "Popen", real_popen)
+    (tmp_path / ".bashrc").write_text("")
+    subprocess.run(["/bin/bash", str(script)], env={"HOME": str(tmp_path), "PATH": os.defpath}, check=True)
+    observed = json.loads(target.read_text())
+    assert observed["SIMSTACK_RUNNER_TOKEN"] == token
+    assert observed["SIMSTACK_EXECUTION_TASK"] == str(entry.id)
+    assert observed["SIMSTACK_EXECUTION_CLAIM"] == entry._execution_claim_id
+    assert observed["SIMSTACK_EXECUTION_START"] == entry._execution_start_id
+    assert observed["SIMSTACK_EXECUTION_GENERATION"] == entry._execution_generation
+    assert "SIMSTACK_DB_CONNECTION_STRING" not in observed
 
-    class RecordingResourceConfig:
-        def __init__(self):
-            self.calls = []
 
-        def get_program(self, name, resource=None):
-            self.calls.append((name, resource))
-            return {"docker_image": "selected-resource-image:latest"}
-
-    resource_config = RecordingResourceConfig()
-    mock_context = SimpleNamespace(
-        config=SimpleNamespace(
-            project_root=project_root,
-            python_paths=[],
-            workdir=workdir,
-            environment_start="",
-            docker=False,
-            resource="local",
-            connection_string=None,
-        ),
-        resource_config=resource_config,
-        db=database,
+@pytest.mark.asyncio
+async def test_slurm_docker_uses_task_resource_program(
+    tmp_path, monkeypatch, server_storage
+):
+    calls = configure(
+        tmp_path, monkeypatch, {"docker_image": "selected-resource-image:latest"}
     )
-    monkeypatch.setattr("simstack.core.submit_node.context", mock_context)
     monkeypatch.setattr(
-        "simstack.core.submit_node.subprocess.run",
-        lambda *args, **kwargs: SimpleNamespace(
-            returncode=0,
-            stdout="Submitted batch job 456\n",
-            stderr="",
+        "simstack.core.submit_node.subprocess.Popen",
+        lambda *args, **kwargs: completed_submission(
+            returncode=0, stdout="456\n", stderr=""
         ),
     )
-    registry = _slurm_registry(
+    entry = await claimed_task(
+        server_storage,
         "docker_child",
         Parameters(
             resource="test",
             queue="slurm-queue",
             in_docker=True,
-            slurm_parameters=SlurmParameters(nodes=1),
+            slurm_parameters=SlurmParameters(),
         ),
     )
-
-    assert await submit_node(registry) is True
-
-    assert resource_config.calls == [("docker_child", "test")]
-    assert registry.parameters.in_docker is True
+    assert await submit_node(entry)
+    assert calls == [("docker_child", "test")]
+    assert entry.parameters.in_docker
     script = (
-        workdir / registry.name / str(registry.id) / "slurm_script.sh"
+        context.config.workdir / entry.name / str(entry.id) / "slurm_script.sh"
     ).read_text()
     assert "--resource test" in script
-    assert "run_node --node-id" in script
     assert "udocker run" not in script
 
 
 @pytest.mark.asyncio
-async def test_sbatch_failure_output_is_bounded_and_sanitized(
-    tmp_path, monkeypatch, caplog
+@pytest.mark.parametrize("configured_signal", [None, "B:SIGUSR1@120"])
+async def test_scratch_checkpoint_installs_handler_and_preserves_configured_signal(
+    tmp_path, monkeypatch, server_storage, configured_signal
 ):
+    configure(tmp_path, monkeypatch, {"use_tmp": True})
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(context._resource_config, "tmp_dir", lambda task_id: scratch, raising=False)
+    monkeypatch.setattr("simstack.core.submit_node.subprocess.Popen",
+        lambda *args, **kwargs: completed_submission(stdout="42\n"))
+    entry = await claimed_task(server_storage, "checkpoint_child", Parameters(resource="test", queue="slurm-queue",
+        slurm_parameters=SlurmParameters(signal=configured_signal)))
+    assert await submit_node(entry)
+    script = (context.config.workdir / entry.name / str(entry.id) / "slurm_script.sh").read_text()
+    assert "#SBATCH --signal=" + (configured_signal or "B:SIGUSR1@60") in script
+    assert "slurm_checkpoint.sh" in script
+    assert str(scratch) in script
+    assert entry.parameters.slurm_parameters.signal == configured_signal
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(os.name == "nt", reason="Slurm batch execution requires a POSIX host")
+async def test_actual_generated_batch_propagates_the_child_process_exit(
+    tmp_path, monkeypatch, server_storage
+):
+    configure(tmp_path, monkeypatch)
+    marker = tmp_path / "child-task-id"
+    code = "import sys; from pathlib import Path; Path(" + repr(str(marker)) + ").write_text(sys.argv[1]); raise SystemExit(17)"
+    monkeypatch.setattr("simstack.runner_runtime.execution_environment.task_launch_command",
+        lambda task, *args: [sys.executable, "-c", code, str(task.id)])
+    native_popen = subprocess.Popen
+    monkeypatch.setattr("simstack.core.submit_node.subprocess.Popen",
+        lambda *args, **kwargs: completed_submission(stdout="42\n"))
+    entry = await claimed_task(server_storage, "failed_python_child", Parameters(resource="test", queue="slurm-queue",
+        slurm_parameters=SlurmParameters()))
+    assert await submit_node(entry)
+    (tmp_path / ".bashrc").write_text("")
+    environment = {**os.environ, "HOME": str(tmp_path)}
+    script = context.config.workdir / entry.name / str(entry.id) / "slurm_script.sh"
+    with native_popen(["bash", str(script)], env=environment) as batch:
+        assert batch.wait(timeout=5) == 17
+    assert marker.read_text() == str(entry.id)
+
+
+@pytest.mark.asyncio
+async def test_sbatch_failure_is_bounded_sanitized_and_stored(
+    tmp_path, monkeypatch, server_storage, caplog
+):
+    configure(tmp_path, monkeypatch)
     secret = "mongodb://slurm-user:slurm-password@db.internal:27017/simstack"
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    workdir = tmp_path / "work"
-    database = FakeDatabase()
-    mock_context = SimpleNamespace(
-        config=SimpleNamespace(
-            project_root=project_root,
-            python_paths=[],
-            workdir=workdir,
-            environment_start="",
-            docker=False,
-            resource="local",
-            connection_string=secret,
-        ),
-        resource_config=None,
-        db=database,
-    )
-    monkeypatch.setattr("simstack.core.submit_node.context", mock_context)
     monkeypatch.setattr(
-        "simstack.core.submit_node.subprocess.run",
-        lambda *args, **kwargs: SimpleNamespace(
-            returncode=1,
-            stdout="x" * 5000 + secret,
-            stderr="y" * 5000 + secret,
+        "simstack.core.submit_node.subprocess.Popen",
+        lambda *args, **kwargs: completed_submission(
+            returncode=1, stdout="", stderr="y" * 5000 + secret
         ),
     )
-    registry = _slurm_registry(
+    entry = await claimed_task(
+        server_storage,
         "failed_child",
         Parameters(
-            resource="local",
-            queue="slurm-queue",
-            in_docker=False,
-            slurm_parameters=SlurmParameters(nodes=1),
+            resource="test", queue="slurm-queue", slurm_parameters=SlurmParameters()
         ),
     )
-
-    assert await submit_node(registry) is False
-
-    assert registry.status == TaskStatus.FAILED
-    assert len(registry.error or "") <= 4096
-    assert secret not in (registry.error or "")
-    assert "slurm-user" not in caplog.text
+    assert not await submit_node(entry)
+    stored = await context.server.tasks.get_task(entry.id)
+    assert stored.status == "failed"
+    assert len(stored.error) <= 4096
+    assert secret not in stored.error
     assert "slurm-password" not in caplog.text
 
 
 @pytest.mark.asyncio
-async def test_fast_slurm_completion_is_not_rolled_back_after_sbatch_returns(
-    tmp_path, monkeypatch
+async def test_fast_completion_survives_delayed_submission_acceptance(
+    tmp_path, monkeypatch, server_storage
 ):
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    workdir = tmp_path / "work"
-    database = FakeDatabase()
-    mock_context = SimpleNamespace(
-        config=SimpleNamespace(
-            project_root=project_root,
-            python_paths=[],
-            workdir=workdir,
-            environment_start="",
-            docker=False,
-            resource="local",
-            connection_string=None,
-            db_name="race-database",
+    configure(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        "simstack.core.submit_node.subprocess.Popen",
+        lambda *args, **kwargs: completed_submission(
+            returncode=0, stdout="789\n", stderr=""
         ),
-        resource_config=None,
-        db=database,
     )
-    monkeypatch.setattr("simstack.core.submit_node.context", mock_context)
-    registry = _slurm_registry(
+    entry = await claimed_task(
+        server_storage,
         "fast_child",
         Parameters(
-            resource="local",
-            queue="slurm-queue",
-            slurm_parameters=SlurmParameters(nodes=1),
+            resource="test", queue="slurm-queue", slurm_parameters=SlurmParameters()
         ),
     )
-    completed_references = [
-        NamedDataReference(
-            variable_name="result",
-            variable_mapping="simstack.models.FloatData",
-            reference=FloatData(value=1.0).id,
-        )
-    ]
+    accept = context.server.slurm.scheduler_accepted
 
-    def complete_before_sbatch_returns(*args, **kwargs):
-        assert registry.status == TaskStatus.SLURM_QUEUED
-        registry.status = TaskStatus.COMPLETED
-        registry.results_references = completed_references
-        return SimpleNamespace(
-            returncode=0,
-            stdout="Submitted batch job 789\n",
-            stderr="",
-        )
+    async def complete_then_accept(execution, submission_id, job_id):
+        admitted = await context.server.slurm.start_incarnation(
+            execution, submission_id, job_id, 0, os.getpid())
+        started = await context.server.tasks.start_attempt(admitted["task"], process_id=os.getpid())
+        await context.server.tasks.complete_attempt(started, return_kind="none")
+        return await accept(execution, submission_id, job_id)
 
     monkeypatch.setattr(
-        "simstack.core.submit_node.subprocess.run",
-        complete_before_sbatch_returns,
+        context.server.slurm, "scheduler_accepted", complete_then_accept
     )
-
-    assert await submit_node(registry) is True
-    assert registry.status == TaskStatus.COMPLETED
-    assert registry.results_references == completed_references
-    assert registry.job_id == "789"
+    assert await submit_node(entry)
+    stored = await context.server.tasks.get_task(entry.id)
+    assert stored.status == "completed"
+    assert stored.job_id == "789"
 
 
 @pytest.mark.asyncio
-async def test_submit_node_fails_loudly_from_inside_a_container(
-    tmp_path, monkeypatch
+async def test_submission_from_container_is_rejected_before_sbatch(
+    tmp_path, monkeypatch, server_storage
 ):
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    workdir = tmp_path / "work"
-    database = FakeDatabase()
-    sbatch_calls = []
-    mock_context = SimpleNamespace(
-        config=SimpleNamespace(
-            project_root=project_root,
-            python_paths=[],
-            workdir=workdir,
-            environment_start="",
-            docker=False,
-            resource="local",
-            connection_string=None,
-        ),
-        resource_config=None,
-        db=database,
-        in_docker=True,
-    )
-    monkeypatch.setattr("simstack.core.submit_node.context", mock_context)
+    configure(tmp_path, monkeypatch)
     monkeypatch.setattr("simstack.core.submit_node.process_is_in_docker", lambda: True)
+    calls = []
     monkeypatch.setattr(
-        "simstack.core.submit_node.subprocess.run",
-        lambda *args, **kwargs: sbatch_calls.append((args, kwargs))
-        or SimpleNamespace(returncode=0, stdout="Submitted batch job 1\n", stderr=""),
+        "simstack.core.submit_node.subprocess.Popen",
+        lambda *args, **kwargs: calls.append(args),
     )
-    registry = _slurm_registry(
+    entry = await claimed_task(
+        server_storage,
         "container_sbatch_child",
         Parameters(
-            resource="local",
-            queue="slurm-queue",
-            slurm_parameters=SlurmParameters(nodes=1),
+            resource="test", queue="slurm-queue", slurm_parameters=SlurmParameters()
         ),
     )
-    await database.save(registry)
+    with pytest.raises(RuntimeError, match="host Runner"):
+        await submit_node(entry)
+    stored = await context.server.tasks.get_task(entry.id)
+    assert stored.status == "failed"
+    assert "host Runner" in stored.error
+    assert not calls
+    assert not list(context.config.workdir.rglob("slurm_script.sh"))
 
-    with pytest.raises(RuntimeError, match="from inside a container"):
-        await submit_node(registry)
 
-    assert registry.status == TaskStatus.FAILED
-    assert "host runner" in (registry.error or "")
-    assert sbatch_calls == []
-    assert not list(workdir.rglob("slurm_script.sh"))
+@pytest.mark.asyncio
+async def test_missing_sbatch_is_a_known_submission_failure(
+    tmp_path, monkeypatch, server_storage
+):
+    configure(tmp_path, monkeypatch)
+
+    def unavailable(*args, **kwargs):
+        raise FileNotFoundError("sbatch executable not found")
+
+    monkeypatch.setattr("simstack.core.submit_node.subprocess.Popen", unavailable)
+    entry = await claimed_task(
+        server_storage,
+        "missing_scheduler",
+        Parameters(
+            resource="test", queue="slurm-queue", slurm_parameters=SlurmParameters()
+        ),
+    )
+    assert not await submit_node(entry)
+    stored = await context.server.tasks.get_task(entry.id)
+    assert stored.status == "failed"
+    assert "sbatch executable not found" in stored.error

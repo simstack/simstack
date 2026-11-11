@@ -1,211 +1,205 @@
+"""Core scientific integration tests use the actual Server domain HTTP API.
+
+Run with the Server development dependencies and both source checkouts on
+PYTHONPATH. Database setup/assertions stay in this fixture, outside Runner code.
+"""
 from pathlib import Path
+import importlib.util
+import sys
 
 import pytest
 import pytest_asyncio
 
 from simstack.core.context import context
-from simstack.core.definitions import DBType
-from simstack.tables.model_table import make_model_table
-from simstack.tables.node_table import make_node_table
 from simstack.models.files import FileStack
+from simstack.util.file_transfer_client import FileTransferClient
+from simstack.util.object_transfer import ObjectFileClient
+
+real_object_client_for_api = ObjectFileClient.for_api
 
 
-def pytest_report_header(config):
-    return "SIMSTACK: Using the Pydantic in-memory repository"
+@pytest_asyncio.fixture
+async def domain_bridge(monkeypatch, tmp_path):
+    server_root = Path(__file__).resolve().parents[3] / "simstack-server"
+    if not server_root.is_dir():
+        raise RuntimeError("Scientific HTTP integration tests require the simstack-server source checkout")
+    monkeypatch.syspath_prepend(str(server_root))
+    helper_path = server_root / "tests" / "domain_http_fixture.py"
+    spec = importlib.util.spec_from_file_location("simstack_domain_test_bridge", helper_path)
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    async with helper.domain_client(monkeypatch, tmp_path) as bridge:
+        from server.routes import user_runtime
+        from server.auth import get_current_user
+        from simstack.server_api import ServerAPI
+        app = bridge.http._transport.app
+        app.include_router(user_runtime.router)
+        app.dependency_overrides[get_current_user] = lambda: bridge.auth.user
+        user_transport = type(bridge.api.requests.transport)()
+        user_transport.rotate_credentials = False
+        user_api = ServerAPI(user_transport, authorization="user", resource="test")
+        user_api.requests.bootstrap_data = bridge.api.requests.bootstrap_data
 
+        bridge.runner_api = bridge.api
+        bridge.user_api = user_api
+        monkeypatch.setattr(bridge.api.tasks, "submit_root", user_api.tasks.submit_root)
+        runner_resolve = bridge.api.tasks.resolve_invocation
+        async def resolve_invocation(payload, *, request_id):
+            method = runner_resolve if payload.get("parent_execution") else user_api.tasks.resolve_invocation
+            return await method(payload, request_id=request_id)
+        monkeypatch.setattr(bridge.api.tasks, "resolve_invocation", resolve_invocation)
+        runner_reuse = bridge.api.tasks.reuse_invocation
+        async def reuse_invocation(payload, *, request_id):
+            method = runner_reuse if payload.get("parent_execution") else user_api.tasks.reuse_invocation
+            return await method(payload, request_id=request_id)
+        monkeypatch.setattr(bridge.api.tasks, "reuse_invocation", reuse_invocation)
+        def domain_errors(original):
+            async def json_with_domain_errors(method, path, body=None, **kwargs):
+                import httpx
+                from simstack.server_api.http_transport import RunnerAPIError
+                try:
+                    return await original(method, path, body, **kwargs)
+                except httpx.HTTPStatusError as exc:
+                    detail = exc.response.json().get("detail", "Runner API request failed")
+                    raise RunnerAPIError(f"Runner API returned HTTP {exc.response.status_code}: {detail}", status_code=exc.response.status_code) from None
+            return json_with_domain_errors
 
-@pytest_asyncio.fixture(autouse=True, scope="session", loop_scope="session")
-async def initialized_context(tmp_path_factory):
-    import os
+        for transport in (bridge.api.requests.transport, user_transport):
+            monkeypatch.setattr(transport, "json", domain_errors(transport.json))
+        # File publications use actual object control-plane routes and a local
+        # S3 HTTP fixture, rather than silently seeding scientific metadata.
+        from server.routes import file_transfers, object_files
+        from server.runner_auth import get_current_runner_context
+        app.include_router(object_files.router)
+        app.include_router(file_transfers.router)
+        bridge.auth.scopes.update({"files:upload", "files:download", "file:status", "file:download", "file:complete"})
+        app.dependency_overrides[get_current_runner_context] = lambda: bridge.auth
+        object_generator = None
 
-    db_connection_string = os.getenv("SIMSTACK_TEST_DB_CONNECTION_STRING", "none")
-    if db_connection_string.lower() not in {"none", ""}:
-        raise RuntimeError("Core tests use an isolated repository. Run MongoDB integration tests in simstack-server.")
-    test_database_name = os.getenv("SIMSTACK_TEST_DB", "test_database")
+        def object_client_for_api(api):
+            nonlocal object_generator
+            if object_generator is None:
+                object_spec = importlib.util.spec_from_file_location("simstack_domain_object_fixture",
+                    server_root / "tests" / "object_file_fakes.py")
+                object_helper = importlib.util.module_from_spec(object_spec)
+                object_spec.loader.exec_module(object_helper)
+                object_generator = object_helper.object_store.__wrapped__(monkeypatch)
+                bridge.object_store = next(object_generator)
+            return real_object_client_for_api(api)
 
-    import logging
+        import asyncio
+        loop = asyncio.get_running_loop()
 
-    logger = logging.getLogger("simstack.test")
+        def object_request(client, method, path, payload=None, **kwargs):
+            request = bridge.http.request(method, path, json=payload, headers=client._auth_headers())
+            try:
+                running_loop = asyncio.get_running_loop()
+            except RuntimeError:
+                running_loop = None
+            if running_loop is loop:
+                # Sync workflow file reads run inside the nested SDK event loop.
+                response = loop.run_until_complete(request)
+            else:
+                response = asyncio.run_coroutine_threadsafe(request, loop).result(timeout=15)
+            response.raise_for_status()
+            return response.json()
 
-    logger.info("Test context initialized with the Pydantic in-memory repository")
-
-    working_dir = tmp_path_factory.mktemp("simstack_test")
-    # set the variables such that fake dirs exist, project_root is the actual project root
-    (working_dir / "home").mkdir()
-    (working_dir / "home" / "simstack").mkdir()
-    ssh_dir = working_dir / "home" / ".ssh"
-    ssh_dir.mkdir()
-    (ssh_dir / "id_rsa").touch()
-
-    os.environ["HOME"] = str(working_dir / "home")
-    os.environ["TEMP"] = str(working_dir)
-
-    project_root = Path.cwd() # find_project_root(skip_files=())
-
-    import sys
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-    if str(project_root / "src") not in sys.path:
-        sys.path.insert(0, str(project_root / "src"))
-
-    test_workdir = tmp_path_factory.mktemp("test_workdir")
-
-    await context.initialize(
-        console=False,
-        skip_config=True, # we first need to write the ResourceDefinition to the database
-        is_test=True,
-        resource="self",
-        connection_string="none",
-        db_type=DBType.IN_MEMORY,
-        db_name=test_database_name,
-        workdir=working_dir,
-        project_root=project_root,
-        log_level="DEBUG"
-    )
-
-
-
-    from simstack.models.resource_definition import ResourceDefinition
-    test_resource_definition = ResourceDefinition(
-        resource_str="test",
-        workdir=str(test_workdir),  # Change Path to str
-        hostname="localhost",
-        is_default=False,
-        git_branch="main"
-    )
-    await context.db.save(test_resource_definition)
-    # we do not need a toml reader if we pass all arguments as kwargs
-    await context.initialize_configs(context.db, None, resource = "test", workdir=test_workdir,
-                                     project_root=project_root, python_paths = [project_root / "src"],
-                                     environment_start = "")
-
-
-    # Register the test catalogue in the isolated repository.
-    dirs = ["tests", "src/simstack/models" ,"src/simstack/methods"]  # "simstack/src/simstack/models", "simstack/src/simstack/methods", "tests"]
-    await make_model_table(context.db, dirs=dirs, drops="src", clear=True,
-                           project_root=project_root, ignore_entrypoints=True)
-    await make_node_table(context.db, dirs=dirs, drops="src", clear=True,
-                          project_root=project_root, ignore_entrypoints=True)
-
-    # Refresh mappings in context after they are filled in DB
-    await context.refresh_mappings()
-
-    # Ensure a "test" resource exists in DB for tests
-    from simstack.models.resource_definition import ResourceDefinition
-    local_resource = ResourceDefinition(
-        resource_str="test",
-        hostname="localhost",
-        workdir=working_dir,
-        routes=[]
-    )
-    await context.db.save(local_resource)
-
-    # Now re-initialize with the "local" resource after it has been saved to DB
-    from simstack.util.config_reader import ConfigReader
-    from unittest.mock import MagicMock
-    from simstack.core.resources import allowed_resources
-
-    # Reset allowed_resources to allow second initialization
-    allowed_resources.clear_resources()
-
-
-    # Mock TomlReader to avoid file access
-    mock_toml = MagicMock()
-    mock_toml.use_db.return_value = True
-    context.config = await ConfigReader.create("test", context.db, mock_toml, project_root=project_root,
-                                               workdir=working_dir, python_paths=[project_root / "src"],
-                                               environment_start="")
-
-    if hasattr(context, "log_handler") and context.log_handler:
-        root_logger = context.log_handler.root
-        root_logger.setLevel("ERROR")
-
-    # Provide the initialized context
-    yield context
-
-    # Clean up the session repository and logging handlers.
-    try:
-        from simstack.core.resources import allowed_resources
-        allowed_resources.clear_resources()
-        # TODO remove route table
+        monkeypatch.setattr(ObjectFileClient, "for_api", object_client_for_api)
+        monkeypatch.setattr(ObjectFileClient, "_json_request", object_request)
+        monkeypatch.setattr(FileTransferClient, "_json_request", object_request)
+        from simstack.models.document import Model
+        from simstack.models.document.models import _MODEL_TYPES
+        from simstack.tables.catalogue import CatalogueCollector
+        from simstack.tables.model_table import CreateModelTable
+        from simstack.tables.node_table import CreateNodeTable
+        collector = CatalogueCollector()
+        core_root = Path(__file__).resolve().parents[2]
+        catalogue_roots = [core_root / "src", core_root / "tests" / "with_context", core_root / "tests" / "data"]
+        modules = set()
+        for module in list(sys.modules.values()):
+            source = getattr(module, "__file__", None)
+            if source and any(Path(source).resolve().is_relative_to(root) for root in catalogue_roots):
+                modules.add(module)
+        model_builder = CreateModelTable(collector, project_root=Path(__file__).resolve().parents[2])
+        node_builder = CreateNodeTable(collector, project_root=Path(__file__).resolve().parents[2])
+        for module in sorted(modules, key=lambda value: value.__name__):
+            await model_builder._process_module(module, "")
+        for module in sorted(modules, key=lambda value: value.__name__):
+            await node_builder._process_module(module, "")
+        from server.storage_models import storage_model_mapping
+        for descriptor in collector.models.values():
+            await bridge.database.save(storage_model_mapping(
+                descriptor, model_class=collector.model_types[descriptor.mapping],
+            ))
+        for descriptor in collector.nodes.values():
+            await bridge.database.save(descriptor)
+        await bridge.database.save(bridge.auth.resource)
         try:
-            from simstack.tables.node_table import route_table
-            route_table.clear_routes()
-        except ImportError:
-            # route_table might have been removed or moved
-            pass
-        if context.initialized:
-            # Close the repository.
-            if hasattr(context, "db") and context.db:
-                await context.db.close()
-                context.db = None
-
-            # Close logging handlers.
-            if hasattr(context, "log_handler") and context.log_handler:
-                for handler in context.log_handler.handlers[:]:
-                    if hasattr(handler, "close"):
-                        handler.close()
-                    elif hasattr(handler, "client") and handler.client:
-                        # Fallback: directly close the client
-                        handler.client.close()
-                    context.log_handler.removeHandler(handler)
-                context.log_handler = None
-
-            # Reset context state
-            context._initialized = False
-            context.model_mappings = None
-            context.node_mappings = None
-            context.resource_config = None
-            context.config = None
-            print("Test context cleaned up")
-    except Exception as e:
-        print(f"Warning: Error during context cleanup: {e}")
+            yield bridge
+        finally:
+            if object_generator is not None:
+                try:
+                    next(object_generator)
+                except StopIteration:
+                    pass
 
 
-@pytest.fixture(autouse=True)
-def execute_nodes_in_process_with_in_memory_repository(initialized_context, monkeypatch):
-    """Keep unit execution beside its process-local repository.
-
-    Server HTTP integration tests exercise the real separate job process.
-    """
+@pytest_asyncio.fixture(autouse=True)
+async def initialized_context(domain_bridge, monkeypatch, tmp_path):
+    from simstack.util.config_reader import ConfigReader
+    from simstack.util.resource_config import ResourceConfig
     from simstack.core.node import Node
     from simstack.core.definitions import TaskStatus
+    from simstack.util.mappings import ModelMappingTable, NodeMappingTable
+
+    api = domain_bridge.api
+    await api.resource.bootstrap()
+    monkeypatch.setattr(context, "_server", api)
+    monkeypatch.setattr(context, "_initialized", True)
+    monkeypatch.setattr(context, "_config", ConfigReader(domain_bridge.auth.resource,
+        project_root=Path(__file__).resolve().parents[2], server_url=api.requests.server_url,
+        server_token=api.requests.token, account_id=api.requests.bootstrap_data["account_id"]))
+    monkeypatch.setattr(context, "_resource_config", ResourceConfig(tmp_path / "config.toml", "test"))
+    await context.refresh_mappings()
 
     async def execute_in_process(node):
-        result = await node.execute_node_locally()
-        if (
-            node.registry_entry.status == TaskStatus.FAILED
-            and node.registry_entry.return_kind == "bool"
-        ):
+        from simstack.runner_runtime.launch_claims import task_execution
+        with task_execution(node.registry_entry):
+            result = await node.execute_node_locally()
+        if node.registry_entry.status == TaskStatus.FAILED and node.registry_entry.return_kind == "bool":
             raise RuntimeError("node returned False")
         return result
 
     monkeypatch.setattr(Node, "run_node_as_process", execute_in_process)
+    original_dispatch = Node.run_somewhere
 
+    async def dispatch_local(node):
+        entry = node.registry_entry
+        if (entry is not None and entry.status == TaskStatus.SUBMITTED
+                and str(entry.parameters.resource) == str(context.config.resource)
+                and entry.parameters.queue == "default" and not entry.parameters.in_docker):
+            from simstack.runner_runtime.launch_claims import acquire_work
+            acquired = await acquire_work(domain_bridge.runner_api, capacity=1000)
+            claimed = next((candidate for candidate in acquired if candidate.id == entry.id), None)
+            if claimed is None:
+                raise AssertionError("The submitted local task was not acquired by its Runner")
+            node.registry_entry = claimed
+            node.parameters = claimed.parameters
+            node._owns_inline_nested_execution = True
+        return await original_dispatch(node)
 
-@pytest.fixture(scope="function")
-def document_repository(initialized_context):
-    """
-    Get the ODMantic engine from the context for each test.
-    """
-    return context.db
+    monkeypatch.setattr(Node, "run_somewhere", dispatch_local)
+    yield context
 
 
 @pytest.fixture
-def test_file_stack():
-    """
-    Create a temporary FileStack for testing that gets cleaned up after the test.
-    """
-    # Create temporary file content
-    test_content = "test content"
-    temp_file = context.config.workdir / "test_file.txt"
-    temp_file.write_text(test_content)
+def server_storage(domain_bridge):
+    return domain_bridge.database
 
-    # Create FileStack
-    file_stack = FileStack.from_local_file(temp_file, in_memory=True, is_hashable=True)
 
-    yield file_stack
-
-    # Cleanup
-    if temp_file.exists():
-        temp_file.unlink()
+@pytest.fixture
+def test_file_stack(initialized_context):
+    path = context.config.workdir / "test_file.txt"
+    path.write_text("test content")
+    yield FileStack.from_local_file(path, is_hashable=True)
+    path.unlink(missing_ok=True)

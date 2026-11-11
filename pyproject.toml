@@ -20,7 +20,7 @@ authors = [
 license = { text = "MIT" }
 
 dependencies = [
-    "pydantic>=2.10,<3",
+    "pydantic>=2.11,<3",
     "cloudpickle>=3.1.1,<4",
     "coolname>=2.2.0,<3",
     "nest-asyncio>=1.6.0,<2",

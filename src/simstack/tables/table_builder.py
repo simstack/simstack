@@ -9,9 +9,8 @@ from typing import Iterable, Optional, Type
 import fnmatch  # <-- added
 
 from simstack.core.context import context
-from simstack.core.definitions import DBType
 from simstack.core.find_simstack_modules import find_simstack_modules
-from simstack.util.db import Database
+from simstack.tables.catalogue import CatalogueCollector
 from simstack.util.import_module import import_module_from_file
 from simstack.util.path_manager import path_manager
 
@@ -27,8 +26,10 @@ class TableBuilderBase(ABC):
     Subclasses only implement `_process_module(module, drops)`.
     """
 
-    def __init__(self, db: Database, write_schema: bool = False, project_root: Optional[Path] = None):
-        self.db = db
+    def __init__(self, catalogue: CatalogueCollector, write_schema: bool = False, project_root: Optional[Path] = None):
+        if not isinstance(catalogue, CatalogueCollector):
+            raise TypeError("Discovery requires a local CatalogueCollector; publication is Server-owned")
+        self.catalogue = catalogue
         self.write_schema = write_schema
         self._project_root = project_root
         self._processed_modules = set()
@@ -37,7 +38,7 @@ class TableBuilderBase(ABC):
     def project_root(self) -> Path:
         if self._project_root:
             return self._project_root
-        if context.config:
+        if context.initialized and context.config:
             return context.config.project_root
         from simstack.util.project_root_finder import find_project_root
         return find_project_root()
@@ -72,7 +73,6 @@ class TableBuilderBase(ABC):
           - glob patterns (e.g. "*.generated.py")
           - nested relative paths (e.g. "src/simstack/models")
         """
-        await self._ensure_context_initialized()
         self._processed_modules.clear()
         if clear:
             await self.clear_table()
@@ -82,14 +82,6 @@ class TableBuilderBase(ABC):
 
         scan_dirs = list(dirs) if dirs else self._active_dirs_from_config()
         await self._process_dirs(scan_dirs, drops=drops, exclude=exclude or [])
-
-    async def _ensure_context_initialized(self) -> None:
-        if getattr(self.db, "databae_type", None) == DBType.API:
-            raise RuntimeError(
-                "Repository registration is Server-owned; upload the repository through Server"
-            )
-        if not context.initialized:
-            await context.initialize()
 
     async def _process_simstack_modules(self, drops: str) -> None:
         all_modules = set(find_simstack_modules())
@@ -256,13 +248,10 @@ class TableBuilderBase(ABC):
         """Subclass hook: scan/register whatever you need from `module`."""
         raise NotImplementedError
 
-    async def second_stage(self, drops: str) -> None:
-        """ an optional hook to run after all modules have been processed"""
-        pass
-
+    @abstractmethod
     async def clear_table(self) -> None:
-        """ an optional hook to clear the table before building """
-        pass
+        """Clear locally collected descriptors."""
+        raise NotImplementedError
 
     @classmethod
     def cli_main(cls, builder_cls: Type["TableBuilderBase"], write_schema: bool = False) -> None:
@@ -349,8 +338,9 @@ class TableBuilderBase(ABC):
         logging.getLogger("pymongo").setLevel(logging.INFO)
 
         async def _run() -> None:
-            await context.initialize(log_level=level, resource="self")
-            builder = builder_cls(context.db, write_schema=args.write_schema)
+            builder = builder_cls(CatalogueCollector(), write_schema=args.write_schema,
+                                  project_root=Path.cwd())
+            builder.logger.setLevel(level)
             await builder.build(
                 dirs=dirs,
                 drops=args.drops,
@@ -358,6 +348,10 @@ class TableBuilderBase(ABC):
                 clear=args.clear,
                 ignore_entrypoints=args.ignore_entrypoints,
             )
-            await builder.second_stage(args.drops)
+            import json
+            print(json.dumps({
+                "models": [item.model_dump(mode="json") for item in builder.catalogue.models.values()],
+                "nodes": [item.model_dump(mode="json") for item in builder.catalogue.nodes.values()],
+            }))
         loop.run_until_complete(_run())
         loop.close()

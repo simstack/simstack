@@ -5,12 +5,12 @@ from simstack.models.document import Model
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.hash import complex_hash_function
+from simstack.core.node import compute_arg_hash
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.node_runner import NodeRunner
 from simstack.core.process_results import process_result_helper
 from simstack.models import DataSetMetadata, DataSet, DataSetSection, BooleanData, StringData
-from simstack.runner_api.transport import RunnerAPIError
+from simstack.server_api.http_transport import RunnerAPIError
 
 class MassRunner(NodeRunner):
     def __init__(self, node: Callable[..., Any],max_concurrency: Optional[int] = None, **kwargs):
@@ -50,9 +50,9 @@ class MassRunner(NodeRunner):
         previous_node_name = self._kwargs.get("previous_node_name", None)
         previous_task_id = self._kwargs.get("previous_task_id", None)
         if previous_node_name and previous_task_id:
-            db = context.db
             previous_dataset_field_name = f"{previous_node_name}.{previous_task_id}"
-            existing_dataset = await db.find_one(DataSet, DataSet.field_name == previous_dataset_field_name)
+            datasets = await context.server.values.query_records(DataSet, "by_field_name", field_name=previous_dataset_field_name)
+            existing_dataset = datasets[0] if datasets else None
             if existing_dataset:
                 self._existing_dataset = existing_dataset
                 self.info(f"Found existing dataset: {previous_dataset_field_name}")
@@ -79,8 +79,7 @@ class MassRunner(NodeRunner):
         is_primary: bool = True,
     ):
         if combined_arg_hash is None:
-            arg_hashes = [complex_hash_function(arg) for arg in args]
-            combined_arg_hash = str(complex_hash_function(arg_hashes))
+            combined_arg_hash = compute_arg_hash(args)
         if row_name is None:
             row_name = combined_arg_hash
 
@@ -183,9 +182,9 @@ class MassRunner(NodeRunner):
 
     def create_tasks(self, *args: Model):
         args_list = list(args)
-        combined_arg_hash = str(
-            complex_hash_function([complex_hash_function(arg) for arg in args_list])
-        )
+        # Match Node identity, including materialized dataset/list members and
+        # immutable file contents, before coalescing duplicate calculations.
+        combined_arg_hash = compute_arg_hash(args_list)
         seen = self._arg_hash_counts.get(combined_arg_hash, 0)
         self._arg_hash_counts[combined_arg_hash] = seen + 1
         if seen == 0:
@@ -223,8 +222,7 @@ class MassRunner(NodeRunner):
                 return False
             raise errors[0]
         
-        db = context.db
-        await self.dataset.save(db)
+        await context.server.values.publish_value(self.dataset)
         self.info("MassRunner saving dataset")
 
         #

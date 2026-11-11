@@ -12,26 +12,18 @@ simstack.core.services.base\_service module
    :show-inheritance:
    :undoc-members:
 
+simstack.core.services.fail\_children module
+--------------------------------------------
+
+.. automodule:: simstack.core.services.fail_children
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 simstack.core.services.file\_transfer\_service module
 -----------------------------------------------------
 
 .. automodule:: simstack.core.services.file_transfer_service
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.core.services.git\_restart\_service module
----------------------------------------------------
-
-.. automodule:: simstack.core.services.git_restart_service
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-simstack.core.services.git\_uv\_update\_service module
-------------------------------------------------------
-
-.. automodule:: simstack.core.services.git_uv_update_service
    :members:
    :show-inheritance:
    :undoc-members:
@@ -44,18 +36,18 @@ simstack.core.services.node\_execution\_service module
    :show-inheritance:
    :undoc-members:
 
-simstack.core.services.resource\_branch\_monitor\_service module
-----------------------------------------------------------------
-
-.. automodule:: simstack.core.services.resource_branch_monitor_service
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 simstack.core.services.runner\_cleanup\_service module
 ------------------------------------------------------
 
 .. automodule:: simstack.core.services.runner_cleanup_service
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.core.services.runner\_control\_service module
+------------------------------------------------------
+
+.. automodule:: simstack.core.services.runner_control_service
    :members:
    :show-inheritance:
    :undoc-members:
@@ -88,6 +80,14 @@ simstack.core.services.stop\_check\_service module
 --------------------------------------------------
 
 .. automodule:: simstack.core.services.stop_check_service
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+simstack.core.services.task\_termination module
+-----------------------------------------------
+
+.. automodule:: simstack.core.services.task_termination
    :members:
    :show-inheritance:
    :undoc-members:

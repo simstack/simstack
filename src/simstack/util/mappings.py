@@ -14,8 +14,8 @@ class ModelMappingTable:
         return self._by_mapping.get(mapping)
 
     @classmethod
-    async def load(cls, engine: Any):
-        mappings = await engine.find(ModelMapping)
+    async def load(cls, api: Any):
+        mappings = await api.catalogue_models()
         return cls(list(mappings))
 
 class NodeMappingTable:
@@ -30,12 +30,5 @@ class NodeMappingTable:
         return self._by_mapping.get(mapping)
 
     @classmethod
-    async def load(cls, engine: Any):
-        try:
-            nodes = await engine.find(NodeModel)
-        except Exception as e:
-            print(f"Error loading NodeModel from database: {e}")
-            print("WARNING: Returning empty NodeMappingTable to fix obviously corrupted case.")
-            print("Rebuild the NodeMappingTable by rerunning the database initialization or migration scripts.")
-            nodes = []
-        return cls(list(nodes))
+    async def load(cls, api: Any):
+        return cls(list(await api.catalogue_nodes()))

@@ -232,7 +232,12 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.methods.html">simstack.methods package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../simstack/modules/simstack.models.html">simstack.models package</a><input aria-label="Toggle navigation of simstack.models package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../simstack/modules/simstack.models.document.html">simstack.models.document package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.runner_runtime.html">simstack.runner_runtime package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.server_api.html">simstack.server_api package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.tables.html">simstack.tables package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../simstack/modules/simstack.util.html">simstack.util package</a></li>
 </ul>
@@ -274,7 +279,7 @@
           <h1>Source code for simstack.models.datasettuple</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">KeysView</span><span class="p">,</span> <span class="n">ValuesView</span><span class="p">,</span> <span class="n">ItemsView</span><span class="p">,</span> <span class="n">List</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">odmantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">EmbeddedModel</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">Reference</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span><span class="p">,</span> <span class="n">ObjectId</span><span class="p">,</span> <span class="n">EmbeddedModel</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">Reference</span>
 
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">simstack_model</span>
@@ -314,145 +319,76 @@
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;extra&quot;</span><span class="p">:</span> <span class="s2">&quot;forbid&quot;</span><span class="p">}</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;_cache&quot;</span><span class="p">,</span> <span class="p">[])</span>
+
+<div class="viewcode-block" id="DataSetTupleSection.materialize">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTupleSection.materialize">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">materialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rows</span><span class="p">):</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">[[</span><span class="n">value</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">row</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Materialized tuple rows do not match dataset identities&quot;</span><span class="p">)</span>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_cache&quot;</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add_model_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models</span><span class="p">):</span>
+        <span class="n">models</span> <span class="o">=</span> <span class="p">(</span><span class="n">models</span><span class="p">,)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">Model</span><span class="p">)</span> <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">models</span><span class="p">)</span>
+        <span class="n">model_names</span> <span class="o">=</span> <span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span> <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_types</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_types</span> <span class="o">!=</span> <span class="n">model_names</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model types </span><span class="si">{</span><span class="n">model_names</span><span class="si">}</span><span class="s2"> don&#39;t match section&#39;s expected types </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">model_types</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">())</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Materialize existing tuple rows before editing&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_types</span> <span class="o">=</span> <span class="n">model_names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">model</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">()</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">models</span><span class="p">)</span>
+
 <div class="viewcode-block" id="DataSetTupleSection.add_model_group">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTupleSection.add_model_group">[docs]</a>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add_model_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Model</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Model</span><span class="p">,</span> <span class="o">...</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Add a tuple of models to this section.</span>
-
-<span class="sd">        :param models: Tuple of model instances to add</span>
-<span class="sd">        :raises ValueError: If the model types don&#39;t match the section&#39;s expected types</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">Model</span><span class="p">):</span>
-            <span class="n">models</span> <span class="o">=</span> <span class="p">(</span><span class="n">models</span><span class="p">,)</span>
-        <span class="n">model_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span> <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="p">]</span>
-
-        <span class="c1"># Verify that all the models are already stored, otherwise store them</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-        <span class="n">engine</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
-        <span class="n">stored_models</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">model_ids</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">model_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
-                <span class="k">continue</span>
-            <span class="n">stored_model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">engine</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
-            <span class="n">stored_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stored_model</span><span class="p">)</span>
-            <span class="n">model_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-
-
-        <span class="c1"># If this is the first tuple, set the model types</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_types</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">model_types</span> <span class="o">=</span> <span class="n">model_names</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># Verify that the model types match</span>
-            <span class="k">if</span> <span class="n">model_names</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_types</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Model types </span><span class="si">{</span><span class="n">model_names</span><span class="si">}</span><span class="s2"> don&#39;t match section&#39;s expected types </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">model_types</span><span class="si">}</span><span class="s2">&quot;</span>
-                <span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_ids</span><span class="p">)</span></div>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add_model_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_model_group</span><span class="p">(</span><span class="n">models</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="DataSetTupleSection.make_column_defs">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTupleSection.make_column_defs">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">make_column_defs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Generate ag-grid column definitions for all model types in this section.</span>
-
-<span class="sd">        :return: List of column definitions for ag-grid</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">column_defs</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">column_defs</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-        <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.importer</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_class_by_name</span>
-        <span class="k">for</span> <span class="n">model_group_id</span><span class="p">,</span> <span class="n">model_type</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_types</span><span class="p">):</span>
-            <span class="n">model_class</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_class_by_name</span><span class="p">(</span><span class="n">model_type</span><span class="p">,</span><span class="n">db</span><span class="p">)</span>
-            <span class="n">model_instance</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
-                <span class="n">model_class</span><span class="p">,</span> <span class="n">model_class</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">model_group_id</span>
-            <span class="p">)</span>
-            <span class="k">if</span> <span class="n">model_instance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DB-Save Model of type </span><span class="si">{</span><span class="n">model_type</span><span class="si">}</span><span class="s2"> with id </span><span class="si">{</span><span class="n">model_group_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
-            <span class="n">model_columns</span> <span class="o">=</span> <span class="n">make_column_defs_instance</span><span class="p">(</span><span class="n">model_instance</span><span class="p">)</span>
-            <span class="n">column_defs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">model_columns</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">column_defs</span></div>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">column</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_at</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">make_column_defs_instance</span><span class="p">(</span><span class="n">value</span><span class="p">)]</span></div>
 
 
 <div class="viewcode-block" id="DataSetTupleSection.make_table_entries">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTupleSection.make_table_entries">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">make_table_entries</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">all_data</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.importer</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_class_by_name</span>
-        <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
+        <span class="k">return</span> <span class="p">[[</span><span class="n">make_table_entries_helper</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_at</span><span class="p">(</span><span class="n">index</span><span class="p">)]</span>
+                <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">))]</span></div>
 
-        <span class="k">for</span> <span class="n">model_group_ids</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
-            <span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">model_group_id</span><span class="p">,</span> <span class="n">model_type</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">model_group_ids</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_types</span><span class="p">):</span>
-                <span class="n">model_class</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_class_by_name</span><span class="p">(</span><span class="n">model_type</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span>
-                <span class="n">model_instance</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
-                   <span class="n">model_class</span><span class="p">,</span> <span class="n">model_class</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">model_group_id</span>
-                <span class="p">)</span>
 
-                <span class="n">model_data</span> <span class="o">=</span> <span class="n">make_table_entries_helper</span><span class="p">(</span><span class="n">model_instance</span><span class="p">)</span>
-                <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_data</span><span class="p">)</span>
-            <span class="n">all_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">all_data</span></div>
-
+    <span class="k">def</span><span class="w"> </span><span class="nf">_models_at</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="ow">or</span> <span class="n">index</span> <span class="o">&lt;</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Index </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2"> out of range for section with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2"> model groups&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">())</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Tuple rows must be explicitly materialized before reading&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">()[</span><span class="n">index</span><span class="p">]</span>
 
 <div class="viewcode-block" id="DataSetTupleSection.get_model_group">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTupleSection.get_model_group">[docs]</a>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_model_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Model</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Retrieve a tuple of models at the specified index.</span>
-
-<span class="sd">        :param index: Index of the tuple to retrieve</span>
-<span class="sd">        :return: Tuple of model instances</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Index </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2"> out of range for section with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2"> model groups&quot;</span>
-            <span class="p">)</span>
-
-        <span class="n">model_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
-        <span class="n">models</span> <span class="o">=</span> <span class="p">[]</span>
-
-        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.util.importer</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_class_by_name</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-        <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
-        <span class="k">for</span> <span class="n">model_type</span><span class="p">,</span> <span class="n">model_id</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_types</span><span class="p">,</span> <span class="n">model_ids</span><span class="p">):</span>
-            <span class="n">model_class</span> <span class="o">=</span> <span class="k">await</span> <span class="n">import_class_by_name</span><span class="p">(</span><span class="n">model_type</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span>
-
-            <span class="k">if</span> <span class="n">model_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
-                <span class="k">continue</span>
-            <span class="n">model_instance</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
-                <span class="n">model_class</span><span class="p">,</span> <span class="n">model_class</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">model_id</span>
-            <span class="p">)</span>
-            <span class="k">if</span> <span class="n">model_instance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Model of type </span><span class="si">{</span><span class="n">model_type</span><span class="si">}</span><span class="s2"> with id </span><span class="si">{</span><span class="n">model_id</span><span class="si">}</span><span class="s2"> not found&quot;</span>
-                <span class="p">)</span>
-            <span class="n">models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_instance</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">models</span><span class="p">)</span></div>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_model_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_at</span><span class="p">(</span><span class="n">index</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="DataSetTupleSection.get_all_model_groups">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTupleSection.get_all_model_groups">[docs]</a>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_all_model_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Model</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Retrieve all tuples in this section.</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_all_model_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_models_at</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">))]</span></div>
 
-<span class="sd">        :return: List of tuples of model instances</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">all_tuples</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)):</span>
-            <span class="n">tuple_models</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_model_group</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-            <span class="n">all_tuples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tuple_models</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">all_tuples</span></div>
+
+<div class="viewcode-block" id="DataSetTupleSection.prepare_publication">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTupleSection.prepare_publication">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">prepare_publication</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">column_defs</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_column_defs</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">table_entries</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_table_entries</span><span class="p">()</span></div>
 
 
     <span class="c1"># List-like behavior methods</span>
@@ -471,9 +407,9 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
             <span class="n">indices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="o">*</span><span class="n">index</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">))))</span>
-            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_model_group</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">]</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_models_at</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_model_group</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_at</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Model</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -497,6 +433,7 @@
             <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">model_ids</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">()[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -509,6 +446,7 @@
                 <span class="sa">f</span><span class="s2">&quot;Index </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2"> out of range for section with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2"> model groups&quot;</span>
             <span class="p">)</span>
         <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">()[</span><span class="n">index</span><span class="p">]</span>
 
 <div class="viewcode-block" id="DataSetTupleSection.append">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTupleSection.append">[docs]</a>
@@ -543,7 +481,8 @@
                     <span class="sa">f</span><span class="s2">&quot;Model types </span><span class="si">{</span><span class="n">model_names</span><span class="si">}</span><span class="s2"> don&#39;t match section&#39;s expected types </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">model_types</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">model_ids</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">model_ids</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">()</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">models</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="DataSetTupleSection.extend">
@@ -557,7 +496,7 @@
         <span class="c1"># This used to be async but the requirement is to keep it sync.</span>
         <span class="c1"># Note: add_model_group is NOT async, so this is fine.</span>
         <span class="k">for</span> <span class="n">models</span> <span class="ow">in</span> <span class="n">models_list</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">add_model_group</span><span class="p">(</span><span class="n">models</span><span class="p">)</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add_model_group</span><span class="p">(</span><span class="n">models</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="DataSetTupleSection.pop">
@@ -575,6 +514,7 @@
         <span class="c1"># Get the models first before removing</span>
         <span class="n">models</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_model_group</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
         <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">()[</span><span class="n">index</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">models</span></div>
 
 
@@ -589,7 +529,9 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">model_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="p">]</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">model_ids</span><span class="p">)</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">model_ids</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">()</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tuple </span><span class="si">{</span><span class="n">models</span><span class="si">}</span><span class="s2"> not found in DataSetSection&quot;</span><span class="p">)</span></div>
 
@@ -599,7 +541,8 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove all model groups from the section.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model_types</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_types</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">()</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="DataSetTupleSection.index">
@@ -644,7 +587,8 @@
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTupleSection.reverse">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">reverse</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Reverse the order of model groups in the section.&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">()</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -654,7 +598,7 @@
 <span class="sd">        :return: Async iterator over tuples of model instances</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)):</span>
-            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_model_group</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_at</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Model</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -691,22 +635,6 @@
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">dataset_type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">dataset_type</span>
-
-<div class="viewcode-block" id="DataSetTuple.save">
-<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTuple.save">[docs]</a>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">engine</span><span class="p">):</span>
-        <span class="c1"># engine = current_engine_context.get()</span>
-        <span class="n">structure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_structure</span><span class="p">()</span>
-        <span class="n">ok</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">validate_dict</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">ok</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Metadata validation failed&quot;</span><span class="p">)</span>
-
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">section</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sections</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">sections</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">column_defs</span> <span class="o">=</span> <span class="k">await</span> <span class="n">section</span><span class="o">.</span><span class="n">make_column_defs</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">sections</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">table_entries</span> <span class="o">=</span> <span class="k">await</span> <span class="n">section</span><span class="o">.</span><span class="n">make_table_entries</span><span class="p">()</span>
-
-        <span class="k">await</span> <span class="n">engine</span><span class="o">.</span><span class="n">save_unchecked</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
-
 
 <div class="viewcode-block" id="DataSetTuple.custom_model_dump">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTuple.custom_model_dump">[docs]</a>
@@ -763,6 +691,7 @@
                     <span class="n">column_defs</span><span class="o">=</span><span class="p">[</span><span class="n">col_def</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">col_def</span> <span class="ow">in</span> <span class="n">section</span><span class="o">.</span><span class="n">column_defs</span><span class="p">],</span>
                     <span class="n">table_entries</span><span class="o">=</span><span class="p">[[</span><span class="n">entry</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">row</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">section</span><span class="o">.</span><span class="n">table_entries</span><span class="p">]</span>
                 <span class="p">)</span>
+                <span class="n">cloned_section</span><span class="o">.</span><span class="n">materialize</span><span class="p">(</span><span class="k">await</span> <span class="n">section</span><span class="o">.</span><span class="n">get_all_model_groups</span><span class="p">())</span>
                 <span class="n">cloned_dataset</span><span class="o">.</span><span class="n">sections</span><span class="p">[</span><span class="n">section_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">cloned_section</span>
 
         <span class="k">return</span> <span class="n">cloned_dataset</span></div>
@@ -882,11 +811,25 @@
     <span class="n">dataset_id</span><span class="p">:</span> <span class="n">ObjectId</span>
     <span class="n">dataset_selection_fields</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">DataSetTupleSelectionField</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
 
+<div class="viewcode-block" id="DataSetTupleSelection.materialize">
+<a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTupleSelection.materialize">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">materialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">dataset</span><span class="o">.</span><span class="n">id</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_id</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Selection dataset identity mismatch&quot;</span><span class="p">)</span>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_cache&quot;</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_cache&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Resolve the selection dataset explicitly before reading&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dataset</span>
+
 <div class="viewcode-block" id="DataSetTupleSelection.get_dataset">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTupleSelection.get_dataset">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">DataSetTuple</span><span class="p">,</span> <span class="n">DataSetTuple</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_id</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="DataSetTupleSelection.get_selected_elements">
@@ -898,9 +841,7 @@
 <span class="sd">        :param section_name: Optional section name to filter results. If None, returns all sections.</span>
 <span class="sd">        :return: List of tuples of model instances for all selected elements</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-        <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
-        <span class="n">dataset</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">DataSetTuple</span><span class="p">,</span> <span class="n">DataSetTuple</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_id</span><span class="p">)</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dataset with id </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
@@ -919,7 +860,7 @@
                     <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Index </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2"> out of range for section </span><span class="si">{</span><span class="n">selection_field</span><span class="o">.</span><span class="n">section_name</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">section</span><span class="p">)</span><span class="si">}</span><span class="s2"> elements&quot;</span>
                     <span class="p">)</span>
-                <span class="n">model_group</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">get_model_group</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+                <span class="n">model_group</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">_models_at</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
                 <span class="n">selected_elements</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model_group</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">selected_elements</span></div>
@@ -932,9 +873,7 @@
 <span class="sd">        :param section_name: Optional section name to filter results. If None, returns all sections.</span>
 <span class="sd">        :return: Async iterator yielding tuples of model instances</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">simstack.core.context</span><span class="w"> </span><span class="kn">import</span> <span class="n">context</span>
-        <span class="n">db</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">db</span>
-        <span class="n">dataset</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">DataSetTuple</span><span class="p">,</span> <span class="n">DataSetTuple</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_id</span><span class="p">)</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dataset with id </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
@@ -952,7 +891,7 @@
                     <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Index </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2"> out of range for section </span><span class="si">{</span><span class="n">selection_field</span><span class="o">.</span><span class="n">section_name</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">section</span><span class="p">)</span><span class="si">}</span><span class="s2"> elements&quot;</span>
                     <span class="p">)</span>
-                <span class="k">yield</span> <span class="n">section</span><span class="o">.</span><span class="n">get_model_group</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+                <span class="k">yield</span> <span class="n">section</span><span class="o">.</span><span class="n">_models_at</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
 
 <div class="viewcode-block" id="DataSetTupleSelection.ui_schema">
 <a class="viewcode-back" href="../../../simstack/modules/simstack.models.html#simstack.models.datasettuple.DataSetTupleSelection.ui_schema">[docs]</a>
@@ -1000,6 +939,6 @@
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
-    <script data-docs-built-at="2026-07-17 10:50:10 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
+    <script data-docs-built-at="2026-11-06 15:04:45 UTC" src="../../../_static/docs-build-badge.js?v=57cb9fc6"></script>
     </body>
 </html>

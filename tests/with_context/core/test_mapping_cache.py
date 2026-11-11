@@ -1,8 +1,10 @@
+from server.storage_models import StoredModelMapping
 import pytest
+from tests.with_context.core.test_simple_nodes import adder_in_tests
 from simstack.models.document import Model
 
 from simstack.core.context import context
-from simstack.models.models import ModelMapping, NodeModel, Parameters
+from simstack.models.models import NodeModel, Parameters
 from simstack.util.importer import (
     import_class,
     import_class_by_name,
@@ -35,19 +37,14 @@ def _install_late_function(function_name: str):
     return late_function
 
 
-async def _delete_saved_model(saved_model):
-    try:
-        await context.db.delete(saved_model)
-    except Exception:
-        pass
 
 
 @pytest.mark.asyncio
-async def test_import_class_refreshes_stale_model_mapping_cache(initialized_context):
+async def test_import_class_refreshes_stale_model_mapping_cache(initialized_context, server_storage):
     class_name = "LateModelMappingCacheByPath"
     model_class = _install_late_model(class_name)
     mapping_path = f"{__name__}.{class_name}"
-    model_mapping = ModelMapping(
+    model_mapping = StoredModelMapping(
         name=class_name,
         mapping=mapping_path,
         collection_name="late_model_mapping_cache_by_path",
@@ -57,25 +54,25 @@ async def test_import_class_refreshes_stale_model_mapping_cache(initialized_cont
     assert context.model_mappings.get_by_name(class_name) is None
 
     try:
-        await context.db.save(model_mapping)
+        await server_storage.save(model_mapping)
         assert context.model_mappings.get_by_name(class_name) is None
 
-        imported_class = await import_class(mapping_path, context.db)
+        imported_class = await import_class(mapping_path, context.server.values)
 
         assert imported_class is model_class
         assert context.model_mappings.get_by_name(class_name) is not None
     finally:
-        await _delete_saved_model(model_mapping)
+        await server_storage.delete(model_mapping)
         globals().pop(class_name, None)
         await context.refresh_mappings(models=True, nodes=False)
 
 
 @pytest.mark.asyncio
-async def test_import_class_by_name_refreshes_stale_model_mapping_cache():
+async def test_import_class_by_name_refreshes_stale_model_mapping_cache(server_storage):
     class_name = "LateModelMappingCacheByName"
     model_class = _install_late_model(class_name)
     mapping_path = f"{__name__}.{class_name}"
-    model_mapping = ModelMapping(
+    model_mapping = StoredModelMapping(
         name=class_name,
         mapping=mapping_path,
         collection_name="late_model_mapping_cache_by_name",
@@ -83,23 +80,23 @@ async def test_import_class_by_name_refreshes_stale_model_mapping_cache():
 
     await context.refresh_mappings(models=True, nodes=False)
     assert context.model_mappings.get_by_name(class_name) is None
-    db = context.db
+    values = context.server.values
     try:
-        await context.db.save(model_mapping)
+        await server_storage.save(model_mapping)
         assert context.model_mappings.get_by_name(class_name) is None
 
-        imported_class = await import_class_by_name(class_name, db)
+        imported_class = await import_class_by_name(class_name, values)
 
         assert imported_class is model_class
         assert context.model_mappings.get_by_name(class_name) is not None
     finally:
-        await _delete_saved_model(model_mapping)
+        await server_storage.delete(model_mapping)
         globals().pop(class_name, None)
         await context.refresh_mappings(models=True, nodes=False)
 
 
 @pytest.mark.asyncio
-async def test_import_function_refreshes_stale_node_mapping_cache():
+async def test_import_function_refreshes_stale_node_mapping_cache(server_storage):
     function_name = "late_node_mapping_cache_by_path"
     function = _install_late_function(function_name)
     function_mapping = f"{__name__}.{function_name}"
@@ -115,22 +112,22 @@ async def test_import_function_refreshes_stale_node_mapping_cache():
     assert context.node_mappings.get_by_mapping(function_mapping) is None
 
     try:
-        await context.db.save(node_model)
+        await server_storage.save(node_model)
         assert context.node_mappings.get_by_mapping(function_mapping) is None
 
-        imported_function = await import_function(function_mapping, context.db)
+        imported_function = await import_function(function_mapping, context.server.values)
 
         assert imported_function is function
         assert imported_function("fresh") == "fresh"
         assert context.node_mappings.get_by_mapping(function_mapping) is not None
     finally:
-        await _delete_saved_model(node_model)
+        await server_storage.delete(node_model)
         globals().pop(function_name, None)
         await context.refresh_mappings(models=False, nodes=True)
 
 
 @pytest.mark.asyncio
-async def test_import_function_by_name_refreshes_stale_node_mapping_cache():
+async def test_import_function_by_name_refreshes_stale_node_mapping_cache(server_storage):
     function_name = "late_node_mapping_cache_by_name"
     function = _install_late_function(function_name)
     function_mapping = f"{__name__}.{function_name}"
@@ -146,16 +143,16 @@ async def test_import_function_by_name_refreshes_stale_node_mapping_cache():
     assert context.node_mappings.get_by_name(function_name) is None
 
     try:
-        await context.db.save(node_model)
+        await server_storage.save(node_model)
         assert context.node_mappings.get_by_name(function_name) is None
 
-        imported_function = await import_function_by_name(function_name, db=context.db, task_id=None)
+        imported_function = await import_function_by_name(function_name, api=context.server.values, task_id=None)
 
         assert imported_function is function
         assert imported_function("fresh") == "fresh"
         assert context.node_mappings.get_by_name(function_name) is not None
     finally:
-        await _delete_saved_model(node_model)
+        await server_storage.delete(node_model)
         globals().pop(function_name, None)
         await context.refresh_mappings(models=False, nodes=True)
 

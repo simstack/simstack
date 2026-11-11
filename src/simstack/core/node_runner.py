@@ -224,6 +224,7 @@ class NodeRunner(SimstackResult):
             return
         scratch = Path(self.scratch_dir)
         workdir = Path(self._scratch_workdir)
+        copied_back = False
         try:
             if scratch.exists() and scratch.resolve() != workdir.resolve():
                 for item in scratch.iterdir():
@@ -232,6 +233,7 @@ class NodeRunner(SimstackResult):
                         shutil.copytree(item, dest, dirs_exist_ok=True)
                     else:
                         shutil.copy2(item, dest)
+            copied_back = True
         finally:
             if self._scratch_chdir:
                 os.chdir(workdir)
@@ -241,7 +243,8 @@ class NodeRunner(SimstackResult):
                     else:
                         os.environ[key] = previous
             if (
-                self._scratch_cleanup
+                copied_back
+                and self._scratch_cleanup
                 and scratch.exists()
                 and scratch.resolve() != workdir.resolve()
             ):
@@ -279,6 +282,8 @@ class NodeRunner(SimstackResult):
     def stage(
         self,
         input_files: Optional[List[Union[str, FileStack]]] = None,
+        *,
+        resource_config=None,
     ) -> Path:
         """Create the ResourceConfig scratch directory and copy input files into it.
 
@@ -289,6 +294,7 @@ class NodeRunner(SimstackResult):
             input_files: Files to copy into scratch. Strings are paths relative
                 to the node directory. ``FileStack`` values are materialized with
                 ``.get(local_dir=scratch)``. Omitted means copy nothing.
+            resource_config: Explicit configuration; defaults to the context.
 
         Returns:
             The scratch directory path.
@@ -299,7 +305,8 @@ class NodeRunner(SimstackResult):
         """
         if self.scratch_dir is not None:
             raise ValueError("scratch is already staged")
-        resource_config = self._require_resource_config()
+        if resource_config is None:
+            resource_config = self._require_resource_config()
         if not resource_config.get_setup_params().get("tmp_base_dir") and not os.environ.get(
             "TMP_BASE_DIR"
         ):
@@ -333,6 +340,8 @@ class NodeRunner(SimstackResult):
         command: str = "run_command",
         name: Optional[str] = None,
         env: Optional[dict[str, str]] = None,
+        *,
+        resource_config=None,
     ) -> bool:
         """Run a named command for ``program_name`` from ResourceConfig.
 
@@ -345,6 +354,7 @@ class NodeRunner(SimstackResult):
                 Defaults to ``run_command``.
             env: Environment overrides for this subprocess only.
             name: Subprocess log name. Defaults to ``program_name``.
+            resource_config: Explicit configuration; defaults to the context.
 
         Returns:
             True if the subprocess returned 0, False otherwise.
@@ -357,7 +367,8 @@ class NodeRunner(SimstackResult):
             raise ValueError("program_name is required")
         if not isinstance(command, str) or not command.strip():
             raise ValueError(f"command must be a non-empty string, got {command!r}")
-        resource_config = self._require_resource_config()
+        if resource_config is None:
+            resource_config = self._require_resource_config()
         params = resource_config.get_program(program_name)
         if not params:
             raise ValueError(f"Program {program_name!r} not found in ResourceConfig")
@@ -382,6 +393,8 @@ class NodeRunner(SimstackResult):
     def retrieve(
         self,
         output_files: Optional[List[Union[str, FileStack]]] = None,
+        *,
+        resource_config=None,
     ) -> None:
         """Copy result files from scratch back to the node directory.
 
@@ -389,6 +402,7 @@ class NodeRunner(SimstackResult):
         copies those names only. If omitted, copies every item in scratch.
         Deletes scratch only when ``scratch_cleanup`` is a bool in the program
         or post-processing config.
+        ``resource_config`` overrides the context configuration for cleanup.
 
         Raises:
             ValueError: ``stage`` was never called, or ``scratch_cleanup`` is set
@@ -417,7 +431,8 @@ class NodeRunner(SimstackResult):
                     else:
                         shutil.copy2(item, dest)
             cleanup = False
-            resource_config = self._require_resource_config()
+            if resource_config is None:
+                resource_config = self._require_resource_config()
             program_params = {}
             if self._program_name:
                 program_params = resource_config.get_program(self._program_name) or {}
