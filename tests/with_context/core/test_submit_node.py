@@ -322,3 +322,52 @@ async def test_fast_slurm_completion_is_not_rolled_back_after_sbatch_returns(
     assert registry.status == TaskStatus.COMPLETED
     assert registry.results_references == completed_references
     assert registry.job_id == "789"
+
+
+@pytest.mark.asyncio
+async def test_submit_node_fails_loudly_from_inside_a_container(
+    tmp_path, monkeypatch
+):
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    workdir = tmp_path / "work"
+    database = FakeDatabase()
+    sbatch_calls = []
+    mock_context = SimpleNamespace(
+        config=SimpleNamespace(
+            project_root=project_root,
+            python_paths=[],
+            workdir=workdir,
+            environment_start="",
+            docker=False,
+            resource="local",
+            connection_string=None,
+        ),
+        resource_config=None,
+        db=database,
+        in_docker=True,
+    )
+    monkeypatch.setattr("simstack.core.submit_node.context", mock_context)
+    monkeypatch.setattr("simstack.core.submit_node.process_is_in_docker", lambda: True)
+    monkeypatch.setattr(
+        "simstack.core.submit_node.subprocess.run",
+        lambda *args, **kwargs: sbatch_calls.append((args, kwargs))
+        or SimpleNamespace(returncode=0, stdout="Submitted batch job 1\n", stderr=""),
+    )
+    registry = _slurm_registry(
+        "container_sbatch_child",
+        Parameters(
+            resource="local",
+            queue="slurm-queue",
+            slurm_parameters=SlurmParameters(nodes=1),
+        ),
+    )
+    await database.save(registry)
+
+    with pytest.raises(RuntimeError, match="from inside a container"):
+        await submit_node(registry)
+
+    assert registry.status == TaskStatus.FAILED
+    assert "host runner" in (registry.error or "")
+    assert sbatch_calls == []
+    assert not list(workdir.rglob("slurm_script.sh"))

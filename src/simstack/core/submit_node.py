@@ -6,6 +6,7 @@ from pathlib import Path
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
+from simstack.core.node import process_is_in_docker
 from simstack.models import NodeRegistry
 from simstack.util.sanitized_output import sanitized_tail
 from simstack.util.submit_to_watchdog import submit_to_watchdog
@@ -54,8 +55,20 @@ def make_executable(file_path: str | os.PathLike[str]) -> None:
 
 
 async def submit_node(registry_entry: NodeRegistry) -> bool:
-    """Submit a node to the SLURM queue"""
+    """Submit a node to the SLURM queue.
+
+    Must run on the host. Calling ``sbatch`` from inside a container is
+    rejected with a persisted ``FAILED`` status and ``RuntimeError``.
+    """
     task_id = registry_entry.id
+    if process_is_in_docker():
+        error = (
+            f"Cannot run sbatch for task_id: {task_id} from inside a "
+            "container. Slurm submission must be done by the host runner."
+        )
+        logger.error("Task task_id: %s %s", task_id, error)
+        await _persist_submission_failure(registry_entry, error)
+        raise RuntimeError(error)
     try:
         logger.info(f"Submitting task_id: {task_id} to SLURM queue")
         # Implement SLURM submission logic here
