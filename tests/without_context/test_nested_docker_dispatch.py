@@ -219,7 +219,9 @@ def _execution_node(name: str, parameters: Parameters) -> Node:
     return execution_node
 
 
-def _patch_run_somewhere_context(monkeypatch, *, in_docker: bool, current_node_name: str | None):
+def _patch_run_somewhere_context(
+    monkeypatch, *, in_docker: bool, current_node_name: str | None, resource: str = "local"
+):
     saved_entries: list = []
 
     async def fake_find_one_and_update(query, update):
@@ -237,7 +239,7 @@ def _patch_run_somewhere_context(monkeypatch, *, in_docker: bool, current_node_n
         SimpleNamespace(
             in_docker=in_docker,
             current_node_name=current_node_name,
-            config=SimpleNamespace(resource="local"),
+            config=SimpleNamespace(resource=resource),
             resource_config=None,
             db=SimpleNamespace(
                 get_collection=lambda model: SimpleNamespace(
@@ -261,6 +263,7 @@ async def _publish_nested_node(
     parameters: Parameters,
     nested_self: bool = False,
     process_in_docker: bool = True,
+    current_resource: str = "local",
 ):
     visible_registry_entries: list[dict] = []
     project = Project(field_name="nested-publication-test")
@@ -294,7 +297,7 @@ async def _publish_nested_node(
         SimpleNamespace(
             in_docker=process_in_docker,
             current_node_name="parent_node",
-            config=SimpleNamespace(resource="local"),
+            config=SimpleNamespace(resource=current_resource),
             node_mappings=SimpleNamespace(
                 get_by_name=lambda name: SimpleNamespace(
                     function_mapping="tests.child_node"
@@ -688,3 +691,94 @@ async def test_nested_self_resource_stays_in_current_execution_context(
     assert result is sentinel
     assert saved_entries == []
     assert execution_node.registry_entry.status == TaskStatus.RETRIEVED
+
+
+@pytest.mark.asyncio
+async def test_cloud_child_of_cloud_process_stays_submitted_for_a_new_vm(monkeypatch):
+    execution_node, visible_entries = await _publish_nested_node(
+        monkeypatch,
+        child_image=PSI4_IMAGE,
+        parameters=Parameters(
+            resource="cloud", queue="default", in_docker=True
+        ),
+        current_resource="cloud",
+    )
+
+    assert visible_entries == [
+        {
+            "status": TaskStatus.SUBMITTED,
+            "in_docker": True,
+            "resource": "cloud",
+            "host_claimed": True,
+        }
+    ]
+    assert execution_node._owns_inline_nested_execution is False
+    assert execution_node._nested_execution_handoff_prepared is False
+
+    sentinel = SimpleNamespace(value="new-vm")
+
+    async def fake_wait():
+        return sentinel
+
+    async def forbidden_process():
+        raise AssertionError("explicit cloud child must not run on the caller VM")
+
+    async def forbidden_claim(entry):
+        raise AssertionError("caller must not claim a cloud child")
+
+    monkeypatch.setattr(execution_node, "_wait_for_remote_completion", fake_wait)
+    monkeypatch.setattr(execution_node, "run_node_as_process", forbidden_process)
+    monkeypatch.setattr("simstack.core.node.claim_submitted_node", forbidden_claim)
+
+    assert await execution_node.run_somewhere() is sentinel
+
+
+@pytest.mark.asyncio
+async def test_self_child_on_cloud_stays_on_the_current_vm(monkeypatch):
+    execution_node, visible_entries = await _publish_nested_node(
+        monkeypatch,
+        child_image=PSI4_IMAGE,
+        parameters=Parameters(resource="self", queue="default", in_docker=True),
+        nested_self=True,
+        current_resource="cloud",
+    )
+
+    assert visible_entries == [
+        {
+            "status": TaskStatus.RETRIEVED,
+            "in_docker": True,
+            "resource": "self",
+            "host_claimed": False,
+        }
+    ]
+    assert execution_node._owns_inline_nested_execution is True
+
+
+@pytest.mark.asyncio
+async def test_cloud_same_image_child_is_not_claimed_by_the_caller(monkeypatch):
+    saved_entries = _patch_run_somewhere_context(
+        monkeypatch,
+        in_docker=True,
+        current_node_name="pyscf_hessian_orchestrator",
+        resource="cloud",
+    )
+    execution_node = _execution_node(
+        "pyscf_hessian_partial_ext",
+        Parameters(resource="cloud", queue="default", in_docker=True),
+    )
+    sentinel = SimpleNamespace(value="new-vm")
+
+    async def fake_process(self):
+        raise AssertionError("explicit cloud child must not run on the caller VM")
+
+    async def fake_wait(self):
+        return sentinel
+
+    monkeypatch.setattr(Node, "run_node_as_process", fake_process)
+    monkeypatch.setattr(Node, "_wait_for_remote_completion", fake_wait)
+
+    result = await execution_node.run_somewhere()
+
+    assert result is sentinel
+    assert saved_entries == []
+    assert execution_node.registry_entry.status == TaskStatus.SUBMITTED
