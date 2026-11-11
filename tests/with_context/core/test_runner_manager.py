@@ -65,6 +65,7 @@ async def test_runner_manager_run_nodes_orchestration(runner_manager, tmp_path):
     # We'll mock the services and their start methods.
     
     with patch("simstack.core.services.runner_manager.context") as mock_context, \
+         patch("simstack.core.services.runner_manager.resource_uses_slurm_queue", new_callable=AsyncMock, return_value=False), \
          patch("simstack.core.services.runner_manager.NodeExecutionService") as mock_node_svc_cls, \
          patch("simstack.core.services.runner_manager.RunnerStatusService") as mock_stat_svc_cls, \
          patch("simstack.core.services.runner_manager.RunnerCleanupService") as mock_clean_svc_cls, \
@@ -95,3 +96,45 @@ async def test_runner_manager_run_nodes_orchestration(runner_manager, tmp_path):
         assert runner_manager._pid_file.exists()
         # Ensure stop was called on services
         mock_node_svc_cls.return_value.stop.assert_called()
+        mock_slurm_svc_cls.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_runner_manager_starts_slurm_status_for_slurm_queue(runner_manager, tmp_path):
+    with patch("simstack.core.services.runner_manager.context") as mock_context, \
+         patch("simstack.core.services.runner_manager.resource_uses_slurm_queue", new_callable=AsyncMock, return_value=True), \
+         patch("simstack.core.services.runner_manager.NodeExecutionService") as mock_node_svc_cls, \
+         patch("simstack.core.services.runner_manager.RunnerStatusService") as mock_stat_svc_cls, \
+         patch("simstack.core.services.runner_manager.RunnerCleanupService") as mock_clean_svc_cls, \
+         patch("simstack.core.services.runner_manager.SlurmStatusService") as mock_slurm_svc_cls, \
+         patch("simstack.core.services.runner_manager.StopCheckService") as mock_stop_svc_cls, \
+         patch("simstack.core.services.runner_manager.GitUvUpdateService") as mock_git_svc_cls, \
+         patch("simstack.core.services.runner_manager.ResourceBranchMonitorService") as mock_branch_svc_cls, \
+         patch("simstack.core.services.runner_manager.FileTransferService") as mock_ft_svc_cls:
+
+        for svc_cls in [
+            mock_node_svc_cls,
+            mock_stat_svc_cls,
+            mock_clean_svc_cls,
+            mock_slurm_svc_cls,
+            mock_stop_svc_cls,
+            mock_git_svc_cls,
+            mock_branch_svc_cls,
+            mock_ft_svc_cls,
+        ]:
+            svc_cls.return_value.stop = AsyncMock()
+            svc_cls.return_value.start = MagicMock(
+                return_value=asyncio.create_task(asyncio.sleep(0.01))
+            )
+
+        mock_context.config.workdir = tmp_path
+        runner_manager._pid_file = tmp_path / f"runner_{runner_manager._resource}.pid"
+
+        async def set_shutdown():
+            await asyncio.sleep(0.1)
+            runner_manager._shutdown_event.set()
+
+        asyncio.create_task(set_shutdown())
+        await runner_manager.run_nodes_for_resource(polling_interval=0.1)
+
+        mock_slurm_svc_cls.assert_called_once()

@@ -11,7 +11,10 @@ from simstack.core.services.node_execution_service import NodeExecutionService
 from simstack.core.services.runner_status_service import RunnerStatusService
 from simstack.core.services.runner_cleanup_service import RunnerCleanupService
 from simstack.core.services.file_transfer_service import FileTransferService
-from simstack.core.services.slurm_status_service import SlurmStatusService
+from simstack.core.services.slurm_status_service import (
+    SlurmStatusService,
+    resource_uses_slurm_queue,
+)
 from simstack.core.services.resource_branch_monitor_service import (
     ResourceBranchMonitorService,
 )
@@ -123,11 +126,14 @@ class RunnerManager:
             ),
             RunnerStatusService(self._resource, interval=60),
             RunnerCleanupService(self._resource, interval=300),
-            SlurmStatusService(self._resource, interval=60),
+        ]
+        if await resource_uses_slurm_queue(self._resource):
+            self._services.append(SlurmStatusService(self._resource, interval=60))
+        self._services.append(
             StopCheckService(
                 self._resource, interval=10, shutdown_event=self._shutdown_event
-            ),
-        ]
+            )
+        )
 
         if self._with_file_transfer:
             self._services.append(

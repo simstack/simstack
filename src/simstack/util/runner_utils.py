@@ -22,6 +22,10 @@ class SqueueQueryError(RuntimeError):
     """squeue did not return a usable listing (timeout, controller down, empty, or garbage)."""
 
 
+class SqueueNotFoundError(SqueueQueryError):
+    """squeue is not installed or not on PATH."""
+
+
 def _squeue_label(job_id: str | None) -> str:
     return f" for job {job_id}" if job_id else ""
 
@@ -32,6 +36,16 @@ def _squeue_stdout_from_result(result, *, job_id: str | None = None) -> str:
     stderr = (getattr(result, "stderr", None) or "").strip()
     label = _squeue_label(job_id)
     if returncode != 0:
+        stderr_l = stderr.lower()
+        if (
+            returncode == 127
+            or "not found" in stderr_l
+            or "is not recognized" in stderr_l
+        ):
+            raise SqueueNotFoundError(
+                f"squeue{label} is not available"
+                + (f": {stderr}" if stderr else "")
+            )
         raise SqueueQueryError(
             f"squeue{label} failed with return code {returncode}"
             + (f": {stderr}" if stderr else "")
@@ -50,6 +64,10 @@ def _run_squeue_command(command: str, *, job_id: str | None = None) -> str:
             text=True,
             timeout=SQUEUE_TIMEOUT_SECONDS,
         )
+    except FileNotFoundError as exc:
+        raise SqueueNotFoundError(
+            f"squeue{_squeue_label(job_id)} is not available"
+        ) from exc
     except subprocess.TimeoutExpired as exc:
         raise SqueueQueryError(
             f"squeue{_squeue_label(job_id)} timed out after {SQUEUE_TIMEOUT_SECONDS}s"
@@ -144,6 +162,8 @@ async def clean_slurm_info(resource: Resource, user: str | None = None) -> None:
                 await context.db.delete(job)
                 logger.info(f"Deleted SLURM info for completed job {job.job_id}")
 
+    except SqueueNotFoundError:
+        raise
     except SqueueQueryError as e:
         logger.warning(f"Skipping slurm info cleanup for {resource}: {e}")
     except Exception as e:
