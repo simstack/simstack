@@ -373,6 +373,7 @@ class ScientificValuesAPI:
             response = await self.requests.command(
                 "/values/publications",
                 self._scientific_body(graph=encode_graph(scientific)),
+                recover=True,
             )
             bind_publication_revisions(scientific, response["graph"])
             published = iter(await self._decode_values(response["graph"]))
@@ -421,7 +422,7 @@ class ScientificValuesAPI:
             **self._scientific_body(graph=graph),
             "repository_revision": repository_revision,
             "references": [value_reference(value) for value in values],
-        }, request_id=request_id)
+        }, request_id=request_id, recover=True)
         bind_publication_revisions([value for value in values if not isinstance(value, NodeRegistry)], response["graph"])
         return await self.decode_task_inputs(response), request_id
 
@@ -436,7 +437,7 @@ class ScientificValuesAPI:
             references=[value_reference(value) for value in values], repository_revision=repository_revision)
         if execution is not None:
             body["execution"] = execution
-        response = await self.requests.command("/values/output-publications", body, request_id=request_id)
+        response = await self.requests.command("/values/output-publications", body, request_id=request_id, recover=True)
         return await self.decode_task_inputs(response), request_id
 
     async def resolve_task_outputs(self, task):
@@ -564,6 +565,7 @@ class ScientificValuesAPI:
                     ],
                 }
             ),
+            recover=True,
         )
 
     async def validate_dataset_metadata(
@@ -581,6 +583,7 @@ class ScientificValuesAPI:
                     "freeze": freeze,
                 }
             ),
+            recover=True,
         )
         canonical = decode_document_value(response["metadata"])
         metadata.structure = canonical["structure"]
@@ -599,7 +602,8 @@ class ScientificValuesAPI:
 
     async def register_artifact_mapping(self, mapping):
         response = await self.requests.command(
-            "/catalogue/artifacts", self._scientific_body(graph=encode_graph([mapping]))
+            "/catalogue/artifacts", self._scientific_body(graph=encode_graph([mapping])),
+            recover=True,
         )
         return (await self._decode_values(response["graph"]))[0]
 
@@ -626,6 +630,7 @@ class ScientificValuesAPI:
         return await self.requests.command(
             f"/tasks/{quote(str(task.id), safe='')}/artifacts/clear-generated",
             self._scientific_body(task_generation=getattr(task, "_execution_generation", None)),
+            recover=True,
         )
 
     async def replace_artifacts(self, task, artifact_ids):
@@ -637,6 +642,7 @@ class ScientificValuesAPI:
                     "artifact_ids": list(map(str, artifact_ids)),
                 }
             ),
+            recover=True,
         )
 
     async def publish_progress_files(self, task_id, files):
@@ -645,6 +651,7 @@ class ScientificValuesAPI:
         return await self.requests.command(
             f"/tasks/{quote(str(task_id), safe='')}/progress-files",
             self._scientific_body(graph=encode_graph(files)),
+            recover=True,
         )
 
     async def read_task_reference(self, task_id):

@@ -348,7 +348,7 @@ class RecordingRequests:
     def revision(self):
         return "revision-a"
 
-    async def command(self, path, body):
+    async def command(self, path, body, **kwargs):
         self.calls.append((path, body))
         return {"graph": body["graph"]}
 
