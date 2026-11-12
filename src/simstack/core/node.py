@@ -294,6 +294,8 @@ def _execution_route(parameters: Optional[Parameters]) -> Optional[dict[str, Any
         "resource": payload.get("resource"),
         "queue": payload.get("queue"),
         "in_docker": bool(payload.get("in_docker")),
+        # Joining an unfinished run must respect a request for a separate VM.
+        "separate_cloud_vm": bool(payload.get("separate_cloud_vm")),
         "slurm_parameters": payload.get("slurm_parameters"),
     }
 
