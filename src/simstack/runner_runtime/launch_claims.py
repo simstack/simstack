@@ -168,7 +168,10 @@ def receipt(
         path.with_suffix(".lock").open("a+") as lock,
         credential_lock(lock, exclusive=True),
     ):
-        value = json.loads(path.read_text()) if path.exists() else None
+        try:
+            value = json.loads(path.read_text())
+        except FileNotFoundError:
+            value = None
         if (
             begin
             and value is not None
@@ -212,12 +215,15 @@ def finish(api, value, *, claimed):
         path.with_suffix(".lock").open("a+") as lock,
         credential_lock(lock, exclusive=True),
     ):
-        current = json.loads(path.read_text()) if path.exists() else None
+        try:
+            current = json.loads(path.read_text())
+        except FileNotFoundError:
+            current = None
         if current and current["claim_id"] == value["claim_id"]:
             if claimed:
                 _write(path, {**value, "state": "claimed"})
             else:
-                path.unlink()
+                path.unlink(missing_ok=True)
 
 
 def pending(api):
@@ -239,9 +245,10 @@ def record_spawn(api, entry, process_id):
     from simstack.runner_runtime.runner_credentials import credential_lock
     path = _receipt_path(api, entry.id)
     with path.with_suffix(".lock").open("a+") as lock, credential_lock(lock, exclusive=True):
-        if not path.exists():
+        try:
+            value = json.loads(path.read_text())
+        except FileNotFoundError:
             return
-        value = json.loads(path.read_text())
         _write(path, {**value, "process_id": process_id,
             "start_id": getattr(entry, "_execution_start_id", None)})
 

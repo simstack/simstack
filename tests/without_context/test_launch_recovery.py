@@ -1,10 +1,12 @@
 """Launch ownership across real process death and periodic queue handoff."""
 import asyncio
+import errno
 import json
 import os
 import subprocess
 import sys
 import time
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -601,6 +603,231 @@ def test_receipt_does_not_implicitly_grant_execution_identity(monkeypatch, tmp_p
     finish(server, value, claimed=True)
     with task_execution(SimpleNamespace(id=task_id)):
         assert current_execution() is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("retired_at", ["before_ack", "ack_read", "finish_read", "unlink"])
+async def test_retired_receipt_does_not_abort_accepted_worker(monkeypatch, tmp_path, retired_at):
+    from simstack.core.services import node_execution_service
+    from simstack.runner_runtime import launch_claims
+
+    monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
+    server, entry = api_client(), task_entry()
+    entry._execution_start_id = "admitted-slurm-start"
+    value = receipt(server, entry.id, begin=True, claim_id=entry._execution_claim_id,
+        generation=entry._execution_generation)
+    finish(server, value, claimed=True)
+    path = launch_claims._receipt_path(server, entry.id)
+    read_text, unlink, exists = Path.read_text, Path.unlink, Path.exists
+    reads = 0
+    retired = False
+
+    def read_after_retirement(target, *args, **kwargs):
+        nonlocal reads, retired
+        if target == path:
+            reads += 1
+            if (retired_at, reads) in {("ack_read", 1), ("finish_read", 2)}:
+                unlink(target)
+                retired = True
+        return read_text(target, *args, **kwargs)
+
+    def unlink_after_retirement(target, *args, **kwargs):
+        nonlocal retired
+        if target == path and retired_at == "unlink" and not retired:
+            unlink(target)
+            retired = True
+        return unlink(target, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read_after_retirement)
+    monkeypatch.setattr(Path, "unlink", unlink_after_retirement)
+    # A positive cached lookup must not make an absent optional receipt fatal.
+    monkeypatch.setattr(Path, "exists", lambda target: True if target == path else exists(target))
+    if retired_at == "before_ack":
+        unlink(path)
+        retired = True
+
+    server.tasks.start_attempt = AsyncMock(return_value=entry)
+    monkeypatch.setattr(node_execution_service, "context", SimpleNamespace(server=server))
+    starts = []
+    async def scientific_body(current, **kwargs):
+        # The node's own RUNNING transition acknowledges the same start again.
+        launch_claims.acknowledge_start(server, current, current)
+        starts.append(str(current.id))
+        return node_execution_service.NodeExecutionOutcome(True, "bool")
+    monkeypatch.setattr(node_execution_service, "_run_node_from_registry_with_outcome", scientific_body)
+    result = await node_execution_service.run_node_from_registry_with_outcome(entry)
+    assert result.success
+    assert starts == [str(entry.id)] and retired
+    assert not exists(path)
+
+
+def test_late_spawn_record_does_not_recreate_retired_receipt(monkeypatch, tmp_path):
+    from simstack.runner_runtime import launch_claims
+
+    monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
+    server, entry = api_client(), task_entry()
+    receipt(server, entry.id, begin=True, claim_id=entry._execution_claim_id)
+    path = launch_claims._receipt_path(server, entry.id)
+    read_text = Path.read_text
+    def child_acknowledged(target, *args, **kwargs):
+        if target == path:
+            path.unlink()
+        return read_text(target, *args, **kwargs)
+    monkeypatch.setattr(Path, "read_text", child_acknowledged)
+    launch_claims.record_spawn(server, entry, 1234)
+    assert not path.exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX inherited file descriptor")
+def test_retired_receipt_does_not_prevent_inherited_reservation_release(monkeypatch, tmp_path):
+    from simstack.runner_runtime import launch_claims
+
+    monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
+    server, entry = api_client(), task_entry()
+    entry._execution_start_id = "accepted-start"
+    value = receipt(server, entry.id, begin=True, claim_id=entry._execution_claim_id)
+    reservation = reserve_launch(server, entry.id)
+    with reservation:
+        descriptor = os.dup(reservation.fileno())
+    monkeypatch.setenv("SIMSTACK_LAUNCH_RESERVATION", str(descriptor))
+    for field, item in server.tasks.execution(entry).items():
+        if item is not None:
+            monkeypatch.setenv("SIMSTACK_EXECUTION_" + field.removesuffix("_id").upper(), item)
+    finish(server, value, claimed=False)
+    try:
+        launch_claims.acknowledge_start(server, entry, entry)
+        assert "SIMSTACK_LAUNCH_RESERVATION" not in os.environ
+        with pytest.raises(OSError) as error:
+            os.fstat(descriptor)
+        assert error.value.errno == errno.EBADF
+        with reserve_launch(server, entry.id):
+            pass
+    finally:
+        if os.environ.get("SIMSTACK_LAUNCH_RESERVATION") == str(descriptor):
+            os.close(descriptor)
+
+
+@pytest.mark.parametrize("failure", [PermissionError(errno.EACCES, "unlink denied"),
+    OSError(errno.EIO, "unlink failed")])
+def test_receipt_retirement_io_errors_propagate(monkeypatch, tmp_path, failure):
+    from simstack.runner_runtime import launch_claims
+
+    monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
+    server, entry = api_client(), task_entry()
+    value = receipt(server, entry.id, begin=True, claim_id=entry._execution_claim_id)
+    path = launch_claims._receipt_path(server, entry.id)
+    unlink = Path.unlink
+    def broken_unlink(target, *args, **kwargs):
+        if target == path:
+            raise failure
+        return unlink(target, *args, **kwargs)
+    monkeypatch.setattr(Path, "unlink", broken_unlink)
+    with pytest.raises(type(failure)) as error:
+        finish(server, value, claimed=False)
+    assert error.value is failure
+    assert receipt(server, entry.id) == value
+
+
+@pytest.mark.parametrize("operation", ["read", "finish", "spawn"])
+@pytest.mark.parametrize("failure", [PermissionError(errno.EACCES, "denied"),
+    OSError(errno.EIO, "I/O failure"), OSError(errno.ESTALE, "stale handle"),
+    json.JSONDecodeError("invalid receipt", "!", 0)])
+def test_receipt_errors_other_than_absence_propagate(monkeypatch, tmp_path, operation, failure):
+    from simstack.runner_runtime import launch_claims
+
+    monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
+    server, entry = api_client(), task_entry()
+    value = receipt(server, entry.id, begin=True, claim_id=entry._execution_claim_id)
+    path = launch_claims._receipt_path(server, entry.id)
+    read_text = Path.read_text
+    def broken_read(target, *args, **kwargs):
+        if target == path:
+            raise failure
+        return read_text(target, *args, **kwargs)
+    monkeypatch.setattr(Path, "read_text", broken_read)
+    with pytest.raises(type(failure)) as error:
+        if operation == "read":
+            receipt(server, entry.id)
+        elif operation == "finish":
+            finish(server, value, claimed=False)
+        else:
+            launch_claims.record_spawn(server, entry, 1234)
+    assert error.value is failure
+    assert path.exists()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", [FileNotFoundError(errno.ENOENT, "replace failed"),
+    PermissionError(errno.EACCES, "replace denied")])
+async def test_failed_receipt_persistence_prevents_queue_handoff(monkeypatch, tmp_path, failure):
+    from simstack.core.services import node_execution_service
+    from simstack.runner_runtime import launch_claims
+
+    monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
+    server, entry = api_client(), task_entry()
+    server.tasks.acquire_work.return_value = [entry]
+    path = launch_claims._receipt_path(server, entry.id)
+    replace = Path.replace
+    def failed_replace(source, target):
+        if target == path:
+            raise failure
+        return replace(source, target)
+    monkeypatch.setattr(Path, "replace", failed_replace)
+    monkeypatch.setattr(node_execution_service, "context", SimpleNamespace(server=server))
+    service = NodeExecutionService(Resource(value="local"), 1, 1, None)
+    service._started = True
+    with pytest.raises(type(failure)) as error:
+        await service.execute()
+    assert error.value is failure
+    assert not service._running_tasks and not path.exists()
+    # The Server acquisition remains replayable under its original request ID.
+    request_id = server.tasks.acquire_work.await_args.kwargs["request_id"]
+    monkeypatch.setattr(Path, "replace", replace)
+    assert await launch_claims.acquire_work(server) == [entry]
+    assert server.tasks.acquire_work.await_args.kwargs["request_id"] == request_id
+    assert receipt(server, entry.id)["claim_id"] == entry._execution_claim_id
+
+
+@pytest.mark.parametrize("authorization,managed", [("runner", True), ("user", False), ("local", False)])
+def test_start_acknowledgement_retains_docker_observation(monkeypatch, tmp_path, authorization, managed):
+    from simstack.runner_runtime import launch_claims
+
+    monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
+    server, entry = api_client(), task_entry()
+    server.requests.authorization = authorization
+    server.requests.token = "test-local-credential"
+    entry._execution_start_id = "container-start"
+    receipt(server, entry.id, begin=True, claim_id=entry._execution_claim_id,
+        generation=entry._execution_generation)
+    launch_claims.record_container_launch(server, entry, "owned-container",
+        daemon_id="original-daemon" if managed else None)
+    original = receipt(server, entry.id)
+    launch_claims.acknowledge_start(server, entry, entry)
+    assert receipt(server, entry.id) == original
+
+
+def test_missing_receipt_cannot_authorize_container_launch(monkeypatch, tmp_path):
+    from simstack.runner_runtime import launch_claims
+
+    monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
+    server, entry = api_client(), task_entry()
+    entry._execution_start_id = "container-start"
+    with pytest.raises(ValueError, match="original claim receipt"):
+        launch_claims.record_container_launch(server, entry, "owned-container")
+    assert receipt(server, entry.id) is None
+
+
+def test_stale_cleanup_preserves_competing_claim(monkeypatch, tmp_path):
+    from simstack.runner_runtime import launch_claims
+
+    monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
+    server, entry = api_client(), task_entry()
+    old = receipt(server, entry.id, begin=True, claim_id=entry._execution_claim_id,
+        generation=entry._execution_generation)
+    new = receipt(server, entry.id, begin=True, claim_id="competing-claim", generation="generation-two")
+    finish(server, old, claimed=False)
+    launch_claims.acknowledge_start(server, entry, entry)
+    assert receipt(server, entry.id) == new
 
 
 @pytest.mark.asyncio
