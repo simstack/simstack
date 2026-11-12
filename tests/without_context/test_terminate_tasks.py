@@ -112,8 +112,9 @@ def test_kill_process_tree_kills_children_then_process_on_unix(monkeypatch):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("failed_target", [None, "scancel", "docker", "process"])
 async def test_terminate_task_scancels_kills_docker_and_process_tree(
-    monkeypatch, tmp_path
+    monkeypatch, tmp_path, failed_target
 ):
     entry = _entry(job_id="4321", process_id=99)
     cidfile = tmp_path / entry.name / str(entry.id) / ".docker_cid"
@@ -123,9 +124,14 @@ async def test_terminate_task_scancels_kills_docker_and_process_tree(
 
     async def fake_exec(*args, **kwargs):
         commands.append(args)
-        return _Finished()
+        return _Finished(returncode=int(args[0] == failed_target))
 
     killed = []
+
+    def kill_process_tree(process_id):
+        killed.append(process_id)
+        return failed_target != "process"
+
     monkeypatch.setattr(
         task_termination,
         "context",
@@ -136,16 +142,21 @@ async def test_terminate_task_scancels_kills_docker_and_process_tree(
     )
     monkeypatch.setattr(task_termination.asyncio, "create_subprocess_exec", fake_exec)
     monkeypatch.setattr(
-        task_termination, "_kill_process_tree", lambda process_id: killed.append(process_id)
+        task_termination, "_kill_process_tree", kill_process_tree
     )
 
     await terminate_task(entry, runner_pid=os.getpid())
 
     assert commands == [("scancel", "4321"), ("docker", "kill", "abc123def")]
     assert killed == [99]
-    assert entry.status == TaskStatus.FAILED
-    assert entry.error == TERMINATED_BY_USER
-    assert isinstance(entry.completed_at, datetime)
+    if failed_target is None:
+        assert entry.status == TaskStatus.FAILED
+        assert entry.error == TERMINATED_BY_USER
+        assert isinstance(entry.completed_at, datetime)
+    else:
+        assert entry.status == TaskStatus.TERMINATING
+        assert entry.error is None
+        assert entry.completed_at is None
 
 
 @pytest.mark.asyncio
