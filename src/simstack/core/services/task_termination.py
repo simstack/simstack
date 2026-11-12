@@ -14,6 +14,7 @@ from simstack.models import NodeRegistry
 logger = logging.getLogger("NodeRunner")
 
 TERMINATED_BY_USER = "Terminated by user"
+PARENT_STOP_PREFIX = "Terminated because "
 
 
 async def record_process_id(registry_entry: NodeRegistry, process_id: int, database) -> None:
@@ -108,7 +109,13 @@ async def _run_command(args: list[str]) -> bool:
     return True
 
 
-async def terminate_task(registry_entry: NodeRegistry, *, runner_pid: int) -> None:
+async def terminate_task(
+    registry_entry: NodeRegistry,
+    *,
+    runner_pid: int,
+    locally_stopped_pid: int | None = None,
+    expected_error: str | None = None,
+) -> bool:
     """Stop a terminating task and mark it failed.
 
     Slurm jobs are cancelled with ``scancel``. Docker containers are killed
@@ -121,8 +128,10 @@ async def terminate_task(registry_entry: NodeRegistry, *, runner_pid: int) -> No
     fresh = await context.db.load_task_by_id(registry_entry.id)
     if fresh is None:
         raise ValueError(f"Task task_id: {registry_entry.id} could not be reloaded")
-    if fresh.status != TaskStatus.TERMINATING:
-        return
+    if fresh.status != TaskStatus.TERMINATING or (
+        expected_error is not None and fresh.error != expected_error
+    ):
+        return False
 
     stopped = True
     job_id = fresh.job_id
@@ -152,12 +161,14 @@ async def terminate_task(registry_entry: NodeRegistry, *, runner_pid: int) -> No
                 fresh.id,
                 process_id,
             )
-        elif not _kill_process_tree(process_id):
+        elif process_id != locally_stopped_pid and not _kill_process_tree(process_id):
             stopped = False
 
     if not stopped:
         logger.warning("Task task_id: %s could not be stopped and remains terminating", fresh.id)
-        return
+        return False
+    parent_cleanup = (fresh.error or "").startswith(PARENT_STOP_PREFIX)
+    error = fresh.error if parent_cleanup else TERMINATED_BY_USER
     completed_at = datetime.now()
     collection = context.db.get_collection(NodeRegistry)
     updated = await collection.find_one_and_update(
@@ -165,16 +176,22 @@ async def terminate_task(registry_entry: NodeRegistry, *, runner_pid: int) -> No
         {
             "$set": {
                 "status": TaskStatus.FAILED.value,
-                "error": TERMINATED_BY_USER,
+                "error": error,
                 "completed_at": completed_at,
             }
         },
     )
     if updated is None:
-        return
+        return False
     fresh.status = TaskStatus.FAILED
-    fresh.error = TERMINATED_BY_USER
+    fresh.error = error
     fresh.completed_at = completed_at
     registry_entry.status = TaskStatus.FAILED
-    registry_entry.error = TERMINATED_BY_USER
+    registry_entry.error = error
     registry_entry.completed_at = completed_at
+    # The assigned worker finishes a queued stop before stopping its children.
+    if parent_cleanup:
+        from simstack.core.services.fail_children import fail_and_terminate_children
+
+        await fail_and_terminate_children(fresh.id, runner_pid=runner_pid)
+    return True

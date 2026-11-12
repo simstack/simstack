@@ -1,42 +1,29 @@
 """Fail and stop child tasks when their parent fails."""
 
-import asyncio
 import logging
-import os
-import platform
-import signal
-import subprocess
-from datetime import datetime
-from pathlib import Path
+from asyncio.subprocess import Process
 
 from bson import ObjectId as BsonObjectId
 from odmantic import ObjectId
 
 from simstack.core.context import context
 from simstack.core.definitions import TaskStatus
-from simstack.core.run_docker import docker_cidfile_path, read_container_id
+from simstack.core.services.task_termination import PARENT_STOP_PREFIX, terminate_task
+from simstack.core.services.task_termination import _kill_process_tree as kill_process_tree
 from simstack.models import NodeRegistry
 
 logger = logging.getLogger("NodeRunner")
 
 _ACTIVE_STATUSES = tuple(
-    status
-    for name in (
-        "SUBMITTED",
-        "RETRIEVED",
-        "RUNNING",
-        "SLURM_QUEUED",
-        "SLURM_RUNNING",
-        "TERMINATING",
+    status.value
+    for status in (
+        TaskStatus.SUBMITTED,
+        TaskStatus.RETRIEVED,
+        TaskStatus.RUNNING,
+        TaskStatus.SLURM_QUEUED,
+        TaskStatus.SLURM_RUNNING,
     )
-    if (status := getattr(TaskStatus, name, None)) is not None
 )
-
-
-def _require_pid(process_id: object, label: str) -> int:
-    if type(process_id) is not int or process_id < 1:
-        raise ValueError(f"{label} must be a positive int, got {process_id!r}")
-    return process_id
 
 
 def _parent_object_id(parent_id: object) -> ObjectId:
@@ -54,123 +41,32 @@ def _parent_object_id(parent_id: object) -> ObjectId:
     )
 
 
-def _kill_process_tree(process_id: int) -> None:
-    """Kill a process and its children. Does not kill the process session."""
-    process_id = _require_pid(process_id, "process_id")
-    if platform.system() == "Windows":
-        subprocess.run(
-            ["taskkill", "/PID", str(process_id), "/T", "/F"],
-            capture_output=True,
-            check=False,
-        )
-        return
-    for child_pid in _child_pids(process_id):
-        _kill_process_tree(child_pid)
-    try:
-        os.kill(process_id, getattr(signal, "SIGKILL", 9))
-    except ProcessLookupError:
-        return
-    except OSError as exc:
-        logger.warning("Could not kill process %s: %s", process_id, exc)
-
-
-def _child_pids(process_id: int) -> list[int]:
-    try:
-        result = subprocess.run(
-            ["ps", "-o", "pid=", "--ppid", str(process_id)],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except OSError as exc:
-        logger.warning("Could not list children of %s: %s", process_id, exc)
-        return []
-    children: list[int] = []
-    for line in result.stdout.splitlines():
-        stripped = line.strip()
-        if stripped.isdigit():
-            children.append(int(stripped))
-    return children
-
-
-async def _run_command(args: list[str]) -> None:
-    try:
-        process = await asyncio.create_subprocess_exec(
-            *args,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr_b = await process.communicate()
-    except OSError as exc:
-        logger.warning("Could not run %s: %s", args[0], exc)
-        return
-    if process.returncode != 0:
-        stderr = stderr_b.decode("utf-8", errors="replace").strip()
-        logger.warning("%s exited %s: %s", args[0], process.returncode, stderr)
-
-
-async def _stop_task(entry: NodeRegistry, *, runner_pid: int, extra_pids: tuple[int, ...]) -> None:
-    """Stop slurm, docker, and process trees for one task. Does not change status."""
-    runner_pid = _require_pid(runner_pid, "runner_pid")
-    job_id = entry.job_id
-    if job_id is not None:
-        if not isinstance(job_id, str):
-            raise ValueError(f"Task task_id: {entry.id} job_id must be a string, got {job_id!r}")
-        if job_id.isdigit():
-            await _run_command(["scancel", job_id])
-
-    workdir = getattr(context.config, "workdir", None)
-    if workdir is None:
-        raise ValueError("runner workdir is not configured")
-    if not entry.name:
-        raise ValueError(f"Task task_id: {entry.id} has no name")
-    cidfile = docker_cidfile_path(Path(workdir) / entry.name / str(entry.id))
-    if cidfile.is_file():
-        container_id = read_container_id(cidfile)
-        if container_id:
-            await _run_command(["docker", "kill", container_id])
-
-    pids: list[int] = []
-    process_id = getattr(entry, "process_id", None)
-    if process_id is not None:
-        pids.append(_require_pid(process_id, "process_id"))
-    for extra in extra_pids:
-        pids.append(_require_pid(extra, "process_id"))
-    for process_id in dict.fromkeys(pids):
-        if process_id == runner_pid:
-            logger.warning(
-                "Task task_id: %s process_id %s is the runner; not killing it",
-                entry.id,
-                process_id,
-            )
+async def _claim_child_stop(entry: NodeRegistry, parent_id: ObjectId | None, error: str) -> bool:
+    """Reserve the stop only if no parent joined since the check."""
+    if entry.status not in _ACTIVE_STATUSES:
+        return False
+    for other_id in entry.parent_ids:
+        if other_id == parent_id:
             continue
-        _kill_process_tree(process_id)
+        other = await context.db.load_task_by_id(other_id)
+        if other is not None and (
+            other.status in _ACTIVE_STATUSES or other.status == TaskStatus.TERMINATING
+        ):
+            logger.info("Task task_id: %s still needed by workflow %s", entry.id, other_id)
+            return False
 
-
-async def _mark_failed_if_active(entry: NodeRegistry, error: str) -> bool:
-    if not error.strip():
-        raise ValueError("error message is required")
-    completed_at = datetime.now()
+    # Another workflow can join after we check the parents. Match the saved
+    # parent list in the same write that marks the child as stopping.
     collection = context.db.get_collection(NodeRegistry)
     updated = await collection.find_one_and_update(
         {
             "_id": entry.id,
-            "status": {"$in": [status.value for status in _ACTIVE_STATUSES]},
+            "parent_ids": list(entry.parent_ids),
+            "status": {"$in": _ACTIVE_STATUSES},
         },
-        {
-            "$set": {
-                "status": TaskStatus.FAILED.value,
-                "error": error,
-                "completed_at": completed_at,
-            }
-        },
+        {"$set": {"status": TaskStatus.TERMINATING.value, "error": error}},
     )
-    if updated is None:
-        return False
-    entry.status = TaskStatus.FAILED
-    entry.error = error
-    entry.completed_at = completed_at
-    return True
+    return updated is not None
 
 
 async def fail_and_terminate_task(
@@ -178,48 +74,52 @@ async def fail_and_terminate_task(
     *,
     error: str,
     runner_pid: int,
-    extra_pids: tuple[int, ...] = (),
-    seen: set[ObjectId] | None = None,
+    parent_id: ObjectId | None = None,
+    local_process: Process | None = None,
 ) -> bool:
-    """Kill an active task, mark it failed, then do the same for its children."""
+    """Request a child stop and return whether this caller stopped it locally."""
     if entry is None or entry.id is None:
         raise ValueError("task registry entry is required")
     if not error.strip():
         raise ValueError("error message is required")
-    fresh = await context.db.load_task_by_id(entry.id)
-    if fresh is None:
-        raise ValueError(f"Task task_id: {entry.id} could not be reloaded")
-    if fresh.status not in _ACTIVE_STATUSES:
+    try:
+        if not await _claim_child_stop(entry, parent_id, error):
+            return False
+    except Exception:
+        logger.exception("Task task_id: %s could not record the child stop request", entry.id)
         return False
-    if seen is None:
-        seen = set()
-    if fresh.id in seen:
+
+    logger.info("Task task_id: %s terminating with %s", entry.id, error)
+    # Named workers poll for stop requests. A self task runs inside its parent.
+    if entry.parameters.resource != "self":
         return False
-    seen.add(fresh.id)
-    logger.info(
-        "Task task_id: %s terminating with %s",
-        fresh.id,
-        error,
-    )
-    await _stop_task(fresh, runner_pid=runner_pid, extra_pids=extra_pids)
-    if not await _mark_failed_if_active(fresh, error):
-        return False
-    entry.status = TaskStatus.FAILED
-    entry.error = error
-    entry.completed_at = fresh.completed_at
-    await fail_and_terminate_children(fresh.id, runner_pid=runner_pid, seen=seen)
-    return True
+
+    stopped_pid = None
+    if local_process is not None and local_process.pid != runner_pid:
+        if local_process.returncode is None and not kill_process_tree(local_process.pid):
+            return False
+        stopped_pid = local_process.pid
+    try:
+        finished = await terminate_task(
+            entry,
+            runner_pid=runner_pid,
+            locally_stopped_pid=stopped_pid,
+            expected_error=error,
+        )
+        return finished or stopped_pid is not None
+    except Exception:
+        logger.exception("Task task_id: %s could not finish local child cleanup", entry.id)
+        return stopped_pid is not None
 
 
 async def fail_and_terminate_children(
     parent_id: object,
     *,
     runner_pid: int,
-    seen: set[ObjectId] | None = None,
 ) -> None:
     """Fail and stop tasks whose parent_ids include this parent."""
     parent = _parent_object_id(parent_id)
-    error = f"Terminated because parent task {parent} failed"
+    error = f"{PARENT_STOP_PREFIX}parent task {parent} failed"
     children = await context.db.find(NodeRegistry, NodeRegistry.parent_ids.in_([parent]))
     if children is None:
         raise ValueError(f"child lookup for task_id: {parent} returned None")
@@ -228,7 +128,7 @@ async def fail_and_terminate_children(
             child,
             error=error,
             runner_pid=runner_pid,
-            seen=seen,
+            parent_id=parent,
         )
 
 
@@ -237,22 +137,24 @@ async def fail_abandoned_child(
     *,
     parent_id: object,
     runner_pid: int,
-    extra_pids: tuple[int, ...] = (),
-) -> None:
+    local_process: Process | None = None,
+) -> bool:
     """Fail a child whose parent stopped waiting. Logs and swallows termination errors."""
     if parent_id is None:
-        error = "Terminated because the parent task failed"
+        error = f"{PARENT_STOP_PREFIX}the parent task failed"
     else:
-        error = f"Terminated because parent task {parent_id} failed"
+        error = f"{PARENT_STOP_PREFIX}parent task {parent_id} failed"
     try:
-        await fail_and_terminate_task(
+        return await fail_and_terminate_task(
             entry,
             error=error,
             runner_pid=runner_pid,
-            extra_pids=extra_pids,
+            parent_id=_parent_object_id(parent_id) if parent_id is not None else None,
+            local_process=local_process,
         )
     except Exception:
         logger.exception(
             "Task task_id: %s could not be terminated after the parent failed",
             getattr(entry, "id", None),
         )
+        return False
