@@ -2,6 +2,7 @@ import hashlib
 import shutil
 import uuid
 from pathlib import Path
+from typing import Any
 
 from odmantic import EmbeddedModel, Model
 
@@ -88,6 +89,16 @@ def test_compute_arg_hash_serializes_nested_models_by_value():
 
     assert hash_1 == hash_1_again
     assert hash_1 != hash_2
+
+
+def test_compute_arg_hash_distinguishes_binary_data_from_text_in_a_model():
+    class Input(Model):
+        values: dict[str, Any]
+
+    binary = Input(values={"value": b"abc"})
+    text = Input(values={"value": "abc"})
+
+    assert compute_arg_hash([binary]) != compute_arg_hash([text])
 
 
 def test_filestack_in_memory_hash():
