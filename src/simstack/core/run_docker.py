@@ -178,12 +178,12 @@ def docker_memory_limit(slurm: object | None, *, uppercase: bool = False) -> str
 
 
 def container_resource_args(docker_cmd: str, slurm: object | None) -> list[str]:
-    """Runtime flags that pin CPU and memory for docker.
+    """CPU and memory flags for Docker and direct Apptainer runs.
 
-    Apptainer ``--cpus`` / ``--memory`` need cgroups v2 unified mode, which HPC
-    nodes (Justus) do not provide. Slurm already enforces the job's CPU and memory.
+    Inside a Slurm job, Apptainer inherits the limits applied by the scheduler.
+    A direct launch uses the configured runtime limits.
     """
-    if docker_cmd == "apptainer":
+    if docker_cmd == "apptainer" and os.environ.get("SLURM_JOB_ID"):
         return []
 
     args: list[str] = []
@@ -191,7 +191,7 @@ def container_resource_args(docker_cmd: str, slurm: object | None) -> list[str]:
     if cpu_limit is not None:
         args.extend(["--cpus", str(cpu_limit)])
 
-    memory_limit = docker_memory_limit(slurm, uppercase=False)
+    memory_limit = docker_memory_limit(slurm, uppercase=docker_cmd == "apptainer")
     if memory_limit is not None:
         args.extend(["--memory", memory_limit])
     return args
