@@ -86,7 +86,7 @@ def _publication_objects(roots):
     return objects
 
 
-def encode_graph(roots: list[Model]) -> dict:
+def encode_graph(roots: list[Model], *, field_occurrences=None) -> dict:
     nodes: dict[tuple[str, str], dict] = {}
     objects = _publication_objects(roots)
     active: set[tuple[str, str]] = set()
@@ -153,6 +153,8 @@ def encode_graph(roots: list[Model]) -> dict:
             elif escaped and key in cls.model_computed_fields:
                 key = scientific_computed_names(cls)[key]
             result[key] = encoded
+        if field_occurrences is not None and id(value) in field_occurrences:
+            field_occurrences[id(value)].append(result)
         return result
 
     def members(value: BaseModel) -> dict:

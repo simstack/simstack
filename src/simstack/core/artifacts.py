@@ -58,8 +58,15 @@ async def find_all_artifacts(node_registry: NodeRegistry, api=None):
 
 
 async def create_artifacts(
-    artifact_arguments: ArtifactArguments, node_registry: NodeRegistry
+    artifact_arguments: ArtifactArguments, node_registry: NodeRegistry, *, replacements=None
 ) -> List[ObjectId]:
+    """Collect models for an atomic rebuild, or publish them during normal execution."""
+    async def save(artifact):
+        if replacements is None:
+            return await context.server.values.publish_value(artifact)
+        replacements.append(artifact)
+        return artifact
+
     try:
         call_path = node_registry.call_path
         task_id = node_registry.id
@@ -89,7 +96,7 @@ async def create_artifacts(
                         node_registry.name: loaded_artifacts
                     },  # Store all artifacts in a single field
                 )
-                await context.server.values.publish_value(consolidated_artifact)
+                await save(consolidated_artifact)
                 child_artifacts.append(consolidated_artifact)
 
         # child_artifacts = consolidate_artifacts(child_artifacts, call_path, task_id)
@@ -126,6 +133,8 @@ async def create_artifacts(
                     if result["success"]:
                         artifact_result = result["result"]
                     else:
+                        if replacements is not None:
+                            raise ValueError(f"{log_string_mapping}: {result['error']}")
                         logger.error(
                             f"{log_string_mapping} Code execution failed with error: {result['error']}"
                         )
@@ -145,7 +154,7 @@ async def create_artifacts(
                         artifact.parent_id = node_registry.id
                         if isinstance(artifact, ArtifactModel):
                             artifact.path = call_path
-                        saved_artifact = await context.server.values.publish_value(artifact)
+                        saved_artifact = await save(artifact)
                         if isinstance(artifact, ArtifactModel):
                             artifact_list.append(saved_artifact)
                         logger.debug(
@@ -162,6 +171,8 @@ async def create_artifacts(
     except RunnerAPIError:
         raise
     except Exception as e:
+        if replacements is not None:
+            raise
         logger.exception(f"Error creating artifacts for node {node_registry.name}: {e}")
         return []
 

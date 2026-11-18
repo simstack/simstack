@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import http.client
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -158,30 +159,39 @@ class ObjectFileClient(FileTransferClient):
     def _publish_parts(self, prepared, path):
         multipart = prepared["multipart"]
         full_digest = hashlib.sha256()
-        with Path(path).open("rb") as handle:
-            for number in range(1, multipart["part_count"] + 1):
-                offset = (number - 1) * multipart["part_size"]
-                length = min(multipart["part_size"], Path(path).stat().st_size - offset)
-                digest = hashlib.sha256()
-                handle.seek(offset)
-                remaining = length
-                while remaining:
-                    chunk = handle.read(min(1024 * 1024, remaining))
-                    if not chunk:
-                        raise FileTransferError("Upload source was truncated")
-                    digest.update(chunk)
-                    full_digest.update(chunk)
-                    remaining -= len(chunk)
-                payload = {"part_number": number, "size_bytes": length,
-                           "checksum_sha256": digest.hexdigest()}
-                for attempt in range(3):
-                    signed = self._json_request("POST",
-                        f"{self.object_api_prefix}/{prepared['upload_id']}/parts/prepare", payload)
-                    try:
-                        upload_object(signed["upload_url"], path, signed["upload_headers"],
-                                      self.timeout_seconds, offset=offset, length=length)
-                        break
-                    except (FileTransferError, OSError):
-                        if attempt == 2:
-                            raise
+        part_size = multipart["part_size"]
+        size = Path(path).stat().st_size
+
+        def send(number, offset, length, checksum):
+            payload = {"part_number": number, "size_bytes": length, "checksum_sha256": checksum}
+            for attempt in range(3):
+                signed = self._json_request("POST",
+                    f"{self.object_api_prefix}/{prepared['upload_id']}/parts/prepare", payload)
+                try:
+                    upload_object(signed["upload_url"], path, signed["upload_headers"],
+                                  self.timeout_seconds, offset=offset, length=length)
+                    return
+                except (FileTransferError, OSError):
+                    if attempt == 2:
+                        raise
+
+        # Feed a bounded group of signed transfers while hashing the source in order.
+        with Path(path).open("rb") as handle, ThreadPoolExecutor(max_workers=3) as pool:
+            for first in range(1, multipart["part_count"] + 1, 3):
+                group = []
+                for number in range(first, min(first + 3, multipart["part_count"] + 1)):
+                    offset = (number - 1) * part_size
+                    length = min(part_size, size - offset)
+                    digest = hashlib.sha256()
+                    remaining = length
+                    while remaining > 0:
+                        chunk = handle.read(min(1024 * 1024, remaining))
+                        if not chunk:
+                            raise FileTransferError("Upload source was truncated")
+                        digest.update(chunk)
+                        full_digest.update(chunk)
+                        remaining -= len(chunk)
+                    group.append(pool.submit(send, number, offset, length, digest.hexdigest()))
+                for transfer in group:
+                    transfer.result()
         return full_digest.hexdigest()

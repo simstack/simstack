@@ -53,7 +53,7 @@ class SlurmJobsAPI:
         return await self.requests.read(f"/scheduler/executions/{execution['task_id']}/control",
             **{key: value for key, value in execution.items() if key != "task_id"})
 
-    async def start_incarnation(self, execution, submission_id, job_id, restart_count, process_id):
+    async def start_incarnation(self, execution, submission_id, job_id, restart_count, process_id, *, array_index=None):
         from asyncio import sleep
         from uuid import uuid4
         from simstack.server_api.http_transport import RunnerAPIError
@@ -64,7 +64,7 @@ class SlurmJobsAPI:
             try:
                 result = await self.requests.command(f"/scheduler/submissions/{submission_id}/start",
                     {"execution": execution, "job_id": job_id, "restart_count": restart_count,
-                     "process_id": process_id}, request_id=request_id)
+                     "process_id": process_id, **({"array_index": array_index} if array_index is not None else {})}, request_id=request_id)
                 if result["disposition"] == "waiting_for_stop":
                     # This command committed only a stop request, not admission.
                     # Retrying admission uses a new command after its old response

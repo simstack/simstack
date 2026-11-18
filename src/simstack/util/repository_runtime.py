@@ -12,10 +12,8 @@ import shlex
 import shutil
 import subprocess
 import sys
-import tarfile
 import tempfile
 import time
-import urllib.request
 import urllib.parse
 from pathlib import Path
 from simstack.runner_runtime.core_build import core_build_identity
@@ -134,44 +132,76 @@ def _git(root: Path, *arguments: str, environment: dict[str, str]) -> str:
     return result.stdout
 
 
+def fetch_pinned_object(repository: Path, sha: str, *, ref: str | None,
+                        environment: dict[str, str]):
+    """Obtain the exact object, including history behind advertised branches and tags."""
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha):
+        raise ValueError("Invalid pinned Git object")
+
+    def available():
+        try:
+            _git(repository, "cat-file", "-e", sha, environment=environment)
+            return True
+        except RuntimeError:
+            return False
+
+    if available():
+        return
+    refspecs = []
+    if ref:
+        _git(repository, "check-ref-format", ref, environment=environment)
+        refspecs.append((ref,))
+    refspecs.extend([(sha,), ("+refs/heads/*:refs/remotes/origin/*", "+refs/tags/*:refs/tags/*")])
+    for refspec in refspecs:
+        try:
+            _git(repository, "fetch", "--quiet", "--no-tags", "origin", *refspec, environment=environment)
+        except RuntimeError:
+            continue
+        if available():
+            return
+    raise RuntimeError("Pinned Git object is unavailable from the configured repository")
+
+
+def restore_pinned_tags(repository: Path, tags: list[dict], *, environment: dict[str, str]):
+    for tag in tags:
+        if not tag["name"].startswith("refs/tags/"):
+            raise ValueError("Invalid pinned Git tag")
+        _git(repository, "check-ref-format", tag["name"], environment=environment)
+        fetch_pinned_object(repository, tag["object_sha"], ref=tag["name"], environment=environment)
+
+    # Fetching advertised history can bring in current tags. Install only the
+    # published names and point each at its original object, including annotations.
+    existing = _git(repository, "for-each-ref", "--format=%(refname)", "refs/tags", environment=environment)
+    for name in existing.splitlines():
+        _git(repository, "update-ref", "-d", name, environment=environment)
+    for tag in tags:
+        _git(repository, "update-ref", tag["name"], tag["object_sha"], environment=environment)
+
+
+def checkout_pinned_commit(repository: Path, url: str, sha: str, *, branch: str | None,
+                           environment: dict[str, str]):
+    object_format = "sha256" if len(sha) == 64 else "sha1"
+    _git(repository, "init", "--quiet", "--object-format=" + object_format, environment=environment)
+    _git(repository, "remote", "add", "origin", url, environment=environment)
+    fetch_pinned_object(repository, sha, ref="refs/heads/" + branch if branch else None, environment=environment)
+    _git(repository, "checkout", "--quiet", "--detach", sha, environment=environment)
+
+
 def _checkout_git(source: Path, descriptor: dict, environment: dict[str, str]):
     url = validate_clone_url(descriptor["clone_url"])
     commit = descriptor["commit_sha"]
     if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit):
         raise ValueError("Invalid pinned Git commit")
-    _git(source.parent, "clone", "--no-checkout", "--no-tags", "--", url, str(source), environment=environment)
-    _git(source, "fetch", "--no-tags", "origin", commit, environment=environment)
-    _git(source, "checkout", "--detach", commit, environment=environment)
-    _git(source, "submodule", "update", "--init", "--recursive", environment=environment)
-    for metadata in descriptor.get("git_metadata", []):
+    source.mkdir()
+    checkout_pinned_commit(source, url, commit, branch=descriptor.get("ref"), environment=environment)
+    _git(source, "submodule", "update", "--init", "--recursive", "--no-recommend-shallow", environment=environment)
+    for metadata in descriptor.get("git_metadata") or [{"path": ".", "tags": []}]:
         repository = (source / metadata["path"]).resolve()
         if not repository.is_relative_to(source.resolve()):
             raise RuntimeError("Git metadata is outside the repository cache")
         # Tags are part of the published package version (e.g. setuptools-scm).
         # A later tag on the remote must not silently change an old runtime.
-        existing = _git(repository, "for-each-ref", "--format=%(refname)", "refs/tags", environment=environment)
-        for tag in existing.splitlines():
-            _git(repository, "update-ref", "-d", tag, environment=environment)
-        for tag in metadata["tags"]:
-            name, sha = tag["name"], tag["object_sha"]
-            if not name.startswith("refs/tags/") or not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha):
-                raise ValueError("Invalid pinned Git tag")
-            _git(repository, "check-ref-format", name, environment=environment)
-            _git(repository, "fetch", "--no-tags", "origin", sha, environment=environment)
-            _git(repository, "update-ref", name, sha, environment=environment)
-
-
-def _download(client, path: str, destination: Path):
-    request = urllib.request.Request(client.server_url.rstrip("/") + "/" + path.lstrip("/"),
-        headers={"Authorization": "Bearer "+client.token})
-    with urllib.request.urlopen(request, timeout=600) as response, destination.open("wb") as output:
-        digest = hashlib.sha256()
-        while chunk := response.read(1024*1024):
-            digest.update(chunk)
-            output.write(chunk)
-        expected = response.headers.get("X-Repository-SHA256")
-        if not expected or digest.hexdigest() != expected:
-            raise RuntimeError("Repository source download checksum mismatch")
+        restore_pinned_tags(repository, metadata["tags"], environment=environment)
 
 
 def verify_source(root: Path, descriptor: dict):
@@ -270,7 +300,11 @@ def _rebuild_runtime(root: Path, descriptor, environment):
             raise
 
 
-def _cache_revision(client, descriptor, *, cache: Path, repair_runtime=False) -> Path:
+def _cache_revision(descriptor, *, cache: Path, repair_runtime=False) -> Path:
+    url = descriptor.get("clone_url")
+    if not url:
+        raise RuntimeError("Ask an administrator to migrate this archived revision to a Git clone URL")
+    validate_clone_url(url)
     revision = descriptor["repository_revision"]
     if len(revision) != 64 or any(c not in "0123456789abcdef" for c in revision):
         raise ValueError("Invalid repository revision")
@@ -295,26 +329,13 @@ def _cache_revision(client, descriptor, *, cache: Path, repair_runtime=False) ->
             except (OSError, RuntimeError, subprocess.SubprocessError):
                 if not repair_runtime:
                     raise
-                url = descriptor.get("clone_url") or ""
-                environment = git_environment(require_key=bool(url and not url.startswith("https://")))
+                environment = git_environment(require_key=not url.startswith("https://"))
                 _rebuild_runtime(root, descriptor, environment)
             return root
-        url = descriptor.get("clone_url")
-        from_git = descriptor.get("source_mode") == "git" or bool(url)
-        if from_git:
-            validate_clone_url(url)
-        environment = git_environment(require_key=bool(from_git and not url.startswith("https://")))
+        environment = git_environment(require_key=not url.startswith("https://"))
         with tempfile.TemporaryDirectory(prefix="source-", dir=cache) as temporary:
-            staging = Path(temporary)
-            archive = staging/"repository.tar.gz"
-            source = staging/"source"
-            if from_git:
-                _checkout_git(source, descriptor, environment)
-            else:
-                source.mkdir()
-                _download(client, descriptor["archive_url"], archive)
-                with tarfile.open(archive, "r:gz") as package:
-                    package.extractall(source, filter="data")
+            source = Path(temporary)/"source"
+            _checkout_git(source, descriptor, environment)
             verify_source(source, descriptor)
             verify_workflow_protocol(source)
             # Virtual environments contain absolute paths, so prepare at the final location.
@@ -372,8 +393,8 @@ async def reconcile_prepared_repositories(resources):
     await resources.reconcile_repositories(inventory)
 
 
-async def prepare_repository(client, descriptor: dict, *, repair_runtime=False) -> Path:
-    return await asyncio.to_thread(_cache_revision, client, descriptor, cache=repository_cache(), repair_runtime=repair_runtime)
+async def prepare_repository(descriptor: dict, *, repair_runtime=False) -> Path:
+    return await asyncio.to_thread(_cache_revision, descriptor, cache=repository_cache(), repair_runtime=repair_runtime)
 
 
 async def prepare_task_runtime(entry) -> Path | None:
@@ -403,4 +424,4 @@ async def prepare_task_runtime(entry) -> Path | None:
             raise RuntimeError("Mounted repository does not match the task revision")
         return root
     descriptor = await context.server.resource.repository_revision(revision)
-    return await prepare_repository(context.server.requests, descriptor)
+    return await prepare_repository(descriptor)

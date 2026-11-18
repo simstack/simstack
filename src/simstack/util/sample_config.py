@@ -1,92 +1,17 @@
 """Write a complete API-only setup example without a TOML writer dependency."""
 
-_SAMPLE_SIMSTACK_TOML = r'''
-# API-only Runner configuration; MongoDB is configured only on Server.
-
-[parameters]
-
-[parameters.common]
-resources = ["local", "int-nano", "horeka", "justus", "self", "exchange", "uploads"]
-
-[parameters.local]
-ssh-key = "C:\\Users\\bj7610\\Documents\\etc\\.ssh\\surface11_openssh"
-resource = "local"
-workdir = "C:\\Users\\bj7610\\simstack"
-python_path = ["C:\\Users\\bj7610\\PyCharmProjects\\simstack-model", "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model\\src"]
-
-[parameters.self]
-ssh-key = "C:\\Users\\bj7610\\Documents\\etc\\.ssh\\surface11_openssh"
-resource = "local"
-workdir = "C:\\Users\\bj7610\\simstack"
-python_path = ["C:\\Users\\bj7610\\PyCharmProjects\\simstack-model", "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model\\src"]
-
-[parameters.uploads]
-ssh-key = "C:\\Users\\bj7610\\Documents\\etc\\.ssh\\surface11_openssh"
-resource = "self"
-workdir = "C:\\Users\\bj7610\\simstack"
-python_path = ["C:\\Users\\bj7610\\PyCharmProjects\\simstack-model", "C:\\Users\\bj7610\\PyCharmProjects\\simstack-model\\src"]
-
-[parameters.int-nano]
-ssh-key = "/home/ws/bj7610/.ssh/idrsa"
-workdir = "/home/ws/bj7610/simstack"
-python_path = ["/home/ws/bj7610/projects/simstack-model", "/home/ws/bj7610/projects/simstack-model/src"]
-environment_start = "conda activate simstack-env"
-
+_SAMPLE_SIMSTACK_TOML = '''# Enrollment starts the Runner. For a manual foreground launch after it stops,
+# replace <slug> with the directory name from the installer's runner.log path.
+# runner_dir="$HOME/.local/share/simstack/runners/<slug>"
+# "$runner_dir/bin/simstack_runner" --credentials "$runner_dir/credentials.json" --project-root "$runner_dir/runtime" --config "$PWD/simstack.toml"
+# The enrollment file supplies the token and URL. Update the fallback URL for your site.
 [parameters.server]
-url = "https://your-simstack-server.example/api"
-token = "RESOURCE_TOKEN"
+url = "https://simstack.example.org/api"
 
-[hosts]
-local = "localhost"
-int-nano = "int-nano.int.kit.edu"
-justus = "justus.int.kit.edu"
-horeka = "horeka.int.kit.edu"
-
-[[routes]]
-source = "local"
-target = "int-nano"
-host = "local"
-
-[[routes]]
-source = "int-nano"
-target = "local"
-host = "local"
-
-[[routes]]
-source = "horeka"
-target = "local"
-host = "horeka"
-
-[[routes]]
-source = "local"
-target = "horeka"
-host = "horeka"
-
-[[routes]]
-source = "justus"
-target = "local"
-host = "justus"
-
-[[routes]]
-source = "local"
-target = "justus"
-host = "justus"
-
-[paths]
-
-[paths.models]
-path = "src/simstack/models"
-drops = "src"
-
-[paths.methods]
-path = "src/simstack/methods"
-drops = "src"
-
-[paths.tests]
-path = "tests"
-drops = ""
-use_pickle = true
-'''.lstrip()
+# Use the same resource name as in the UI. It receives its workdir from Server.
+[workstation.program.python]
+run = "python --version"
+'''
 
 
 def sample_config_writer_entrypoint() -> None:

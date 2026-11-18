@@ -48,6 +48,24 @@ To add data to a section, you can use the ``add_row`` method:
 
     section.add_row({"model_a": instance_a, "model_b": instance_b})
 
+Reading large sections
+----------------------
+
+For a dataset overview, request ``GET /dataset/{id}?membership=summary``.
+Read its rows in order with ``GET /dataset/{id}/sections/{section}/rows?offset=0&limit=100``.
+The response includes ``rows``, their starting ``offset`` and the section's
+``total``. Advance by the number of rows actually returned. A page accepts
+up to 500 rows and can end earlier at its byte limit. Model references and
+display cells share the same row index. When a single row's display cells
+exceed the page limit, the response keeps its references and marks
+``table_entries_omitted``. For a complete export download the dataset ZIP
+or a section CSV. A Python client can iterate references with
+``async for row in api.values.iter_dataset_rows(dataset_id, section_name)``.
+
+An S3-enabled Server writes new nonempty memberships to workspace-scoped
+pages. MongoDB holds the section headers and page references. Existing
+inline datasets remain readable.
+
 DataSetSelection
 ----------------
 

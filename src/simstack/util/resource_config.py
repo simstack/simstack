@@ -2,6 +2,7 @@ import copy
 import tomllib
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -13,6 +14,107 @@ from simstack.models.document import ObjectId
 
 import logging
 logger = logging.getLogger("ResourceConfig")
+
+
+# Site configs use POSIX path expressions, including ${TMPDIR:-/tmp/${USER}}.
+_SCRATCH_VAR = re.compile(r"\$(?:([A-Za-z_]\w*)|\{([A-Za-z_]\w*)(?::-((?:[^{}]|\$\{\w+\})*))?\})")
+
+
+def _expand_scratch_word(word: str, *, condition: bool = False) -> str:
+    def variable(match):
+        name, braced, fallback = match.groups()
+        value = os.environ.get(name or braced)
+        if not value and fallback is not None:
+            return _expand_scratch_word(fallback, condition=condition)
+        return value if value is not None else ("" if condition else match[0])
+
+    return _SCRATCH_VAR.sub(variable, word)
+
+
+def _scratch_condition(condition: str) -> bool:
+    # Site selectors use POSIX test operands (-a, -e, -d, !=, ...) and &&.
+    # Each expanded operand is passed as data, including paths containing spaces.
+    words = shlex.split(condition)
+    while words:
+        end = words.index("&&") if "&&" in words else len(words)
+        clause, words = words[:end], words[end + 1:]
+        if clause[:1] == ["["] and clause[-1:] == ["]"]:
+            operands = clause[1:-1]
+        elif clause[:1] == ["test"]:
+            operands = clause[1:]
+        else:
+            raise ValueError("Expected a test condition in tmp_base_dir")
+        args = [_expand_scratch_word(word, condition=True) for word in operands]
+        status = subprocess.run(["test", *args], env={"PATH": os.defpath}).returncode
+        if status not in (0, 1):
+            raise ValueError("Invalid test expression in tmp_base_dir")
+        if status == 1:
+            return False
+    return True
+
+
+def _configured_scratch(text: str) -> str:
+    # Evaluate only the site config's test and selected path assignment. The
+    # config may come from a workflow repository and is never a shell command.
+    text = "\n".join(line for line in text.splitlines()
+                     if line.strip() and not line.lstrip().startswith("#")).strip()
+    # Some site definitions print the selection as a final diagnostic.
+    text = re.sub(r"(?:;|\n)\s*echo\s+[^;\n]+$", "", text).strip()
+    conditional = re.match(r"if\s", text)
+    if conditional:
+        choice = re.fullmatch(
+            r"if\s+([^;\n]+)[;\n]\s*then\s+(.+?)[;\n]\s*"
+            r"(?:else\s+(.+?)[;\n]\s*)?fi",
+            text, re.DOTALL,
+        )
+        if not choice:
+            raise ValueError("Unsupported tmp_base_dir conditional")
+        condition, when_true, when_false = choice.groups()
+        text = when_true if _scratch_condition(condition) else when_false
+        if text is None:
+            return ""
+
+    assignment = re.fullmatch(r"(?:set\s+|export\s+)?TMP_BASE_DIR\s*=\s*([^\n]*)", text.strip(), re.I)
+    if conditional and not assignment:
+        raise ValueError("Expected a TMP_BASE_DIR assignment in the selected branch")
+    value = (assignment[1] if assignment else text).strip()
+    if "\n" in value:
+        raise ValueError("Unsupported tmp_base_dir assignment")
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        value = value[1:-1]
+    return _expand_scratch_word(value)
+
+
+def resolve_tmp_base_dir(configured: str | None) -> Path:
+    """Resolve the site's scratch selection in the current host environment."""
+    value = _configured_scratch(str(configured or "").strip())
+    last_error = None
+    for raw in (value, _expand_scratch_word(os.environ.get("TMP_BASE_DIR", ""))):
+        expanded = os.path.expanduser(raw)
+        if os.name == "nt":
+            expanded = os.path.expandvars(expanded)
+        if not expanded or "$" in expanded or (os.name == "nt" and "%" in expanded):
+            continue
+        path = Path(expanded)
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            last_error = exc
+            continue
+        return path
+    if configured:
+        raise ValueError(f"Could not resolve tmp_base_dir from {configured!r}") from last_error
+    return Path(tempfile.gettempdir())
+
+
+def slurm_task_scratch(task_id: ObjectId | str) -> Path | None:
+    """The directory selected by the batch wrapper for this task or array member."""
+    value = os.environ.get("SIMSTACK_SLURM_TASK_SCRATCH")
+    if value:
+        path = Path(value)
+        if path.is_absolute() and path.name == str(task_id):
+            return path
+    return None
 
 
 def _deep_merge_dicts(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
@@ -151,49 +253,15 @@ class ResourceConfig:
                 subprocess.run(script, shell=True, check=True)
 
     def tmp_dir(self, task_id: ObjectId | str) -> Path:
-        if isinstance(task_id, ObjectId):
-            task_id = str(task_id)
-        tmp_dir = self.tmp_base_dir / str(task_id)
-        Path(tmp_dir).mkdir(parents=True, exist_ok=True)
+        # The batch wrapper and calculation must keep using the same directory
+        # even if a program changes TMPDIR. Nested tasks have their own IDs.
+        tmp_dir = slurm_task_scratch(task_id) or self.tmp_base_dir / str(task_id)
+        tmp_dir.mkdir(parents=True, exist_ok=True)
         return tmp_dir
 
     @property
     def tmp_base_dir(self) -> Path:
-        configured = self.get_setup_params().get("tmp_base_dir", None)
-        candidates = []
-        if configured:
-            text = str(configured).strip()
-            for match in re.finditer(
-                r'(?:^|\n)\s*(?:set\s+|export\s+)?TMP_BASE_DIR\s*=\s*["\']?([^\n"\']+)',
-                text,
-                re.IGNORECASE,
-            ):
-                candidates.append(match.group(1).strip())
-            if "\n" not in text and not re.search(r"\bif\b", text, re.IGNORECASE):
-                if not re.search(r"TMP_BASE_DIR\s*=", text, re.IGNORECASE):
-                    candidates.append(text)
-        env_tmp_base = os.environ.get("TMP_BASE_DIR")
-        if env_tmp_base:
-            candidates.append(env_tmp_base)
-
-        last_error = None
-        for raw in candidates:
-            expanded = os.path.expandvars(os.path.expanduser(raw.strip().strip('"')))
-            if not expanded or "$" in expanded or (os.name == "nt" and "%" in expanded):
-                continue
-            path = Path(expanded)
-            try:
-                path.mkdir(parents=True, exist_ok=True)
-                return path
-            except OSError as exc:
-                last_error = exc
-
-        if configured:
-            raise ValueError(
-                f"Could not resolve tmp_base_dir from {configured!r}"
-                + (f": {last_error}" if last_error else "")
-            )
-        return Path(tempfile.gettempdir())
+        return resolve_tmp_base_dir(self.get_setup_params().get("tmp_base_dir"))
 
     def run(self,
         program_name: str,

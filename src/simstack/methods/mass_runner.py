@@ -9,7 +9,7 @@ from simstack.core.node import compute_arg_hash
 from simstack.core.simstack_result import SimstackResult
 from simstack.core.node_runner import NodeRunner
 from simstack.core.process_results import process_result_helper
-from simstack.models import DataSetMetadata, DataSet, DataSetSection, BooleanData, StringData
+from simstack.models import DataSetMetadata, DataSet, DataSetSection, BooleanData, IntData, StringData
 from simstack.server_api.http_transport import RunnerAPIError
 
 class MassRunner(NodeRunner):
@@ -217,6 +217,16 @@ class MassRunner(NodeRunner):
                 return False
             for error in errors:
                 if isinstance(error, RunnerAPIError):
+                    if self._primary_api_errors:
+                        # Keep the metadata schema shared by earlier runs of this workflow.
+                        self.dataset["batch_status"].add_row({
+                            "partial": BooleanData(value=True),
+                            "submitted_rows": IntData(value=len(self._tasks)),
+                        }, name="summary")
+                        try:
+                            await context.server.values.publish_value(self.dataset)
+                        except Exception as publication_error:
+                            raise error from publication_error
                     raise error
             if exc_val is not None:
                 return False

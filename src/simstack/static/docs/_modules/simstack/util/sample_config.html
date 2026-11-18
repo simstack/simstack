@@ -279,93 +279,18 @@
           <h1>Source code for simstack.util.sample_config</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Write a complete API-only setup example without a TOML writer dependency.&quot;&quot;&quot;</span>
 
-<span class="n">_SAMPLE_SIMSTACK_TOML</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;&#39;&#39;</span>
-<span class="s1"># API-only Runner configuration; MongoDB is configured only on Server.</span>
-
-<span class="s1">[parameters]</span>
-
-<span class="s1">[parameters.common]</span>
-<span class="s1">resources = [&quot;local&quot;, &quot;int-nano&quot;, &quot;horeka&quot;, &quot;justus&quot;, &quot;self&quot;, &quot;exchange&quot;, &quot;uploads&quot;]</span>
-
-<span class="s1">[parameters.local]</span>
-<span class="s1">ssh-key = &quot;C:\\Users\\bj7610\\Documents\\etc\\.ssh\\surface11_openssh&quot;</span>
-<span class="s1">resource = &quot;local&quot;</span>
-<span class="s1">workdir = &quot;C:\\Users\\bj7610\\simstack&quot;</span>
-<span class="s1">python_path = [&quot;C:\\Users\\bj7610\\PyCharmProjects\\simstack-model&quot;, &quot;C:\\Users\\bj7610\\PyCharmProjects\\simstack-model\\src&quot;]</span>
-
-<span class="s1">[parameters.self]</span>
-<span class="s1">ssh-key = &quot;C:\\Users\\bj7610\\Documents\\etc\\.ssh\\surface11_openssh&quot;</span>
-<span class="s1">resource = &quot;local&quot;</span>
-<span class="s1">workdir = &quot;C:\\Users\\bj7610\\simstack&quot;</span>
-<span class="s1">python_path = [&quot;C:\\Users\\bj7610\\PyCharmProjects\\simstack-model&quot;, &quot;C:\\Users\\bj7610\\PyCharmProjects\\simstack-model\\src&quot;]</span>
-
-<span class="s1">[parameters.uploads]</span>
-<span class="s1">ssh-key = &quot;C:\\Users\\bj7610\\Documents\\etc\\.ssh\\surface11_openssh&quot;</span>
-<span class="s1">resource = &quot;self&quot;</span>
-<span class="s1">workdir = &quot;C:\\Users\\bj7610\\simstack&quot;</span>
-<span class="s1">python_path = [&quot;C:\\Users\\bj7610\\PyCharmProjects\\simstack-model&quot;, &quot;C:\\Users\\bj7610\\PyCharmProjects\\simstack-model\\src&quot;]</span>
-
-<span class="s1">[parameters.int-nano]</span>
-<span class="s1">ssh-key = &quot;/home/ws/bj7610/.ssh/idrsa&quot;</span>
-<span class="s1">workdir = &quot;/home/ws/bj7610/simstack&quot;</span>
-<span class="s1">python_path = [&quot;/home/ws/bj7610/projects/simstack-model&quot;, &quot;/home/ws/bj7610/projects/simstack-model/src&quot;]</span>
-<span class="s1">environment_start = &quot;conda activate simstack-env&quot;</span>
-
+<span class="n">_SAMPLE_SIMSTACK_TOML</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;# Enrollment starts the Runner. For a manual foreground launch after it stops,</span>
+<span class="s1"># replace &lt;slug&gt; with the directory name from the installer&#39;s runner.log path.</span>
+<span class="s1"># runner_dir=&quot;$HOME/.local/share/simstack/runners/&lt;slug&gt;&quot;</span>
+<span class="s1"># &quot;$runner_dir/bin/simstack_runner&quot; --credentials &quot;$runner_dir/credentials.json&quot; --project-root &quot;$runner_dir/runtime&quot; --config &quot;$PWD/simstack.toml&quot;</span>
+<span class="s1"># The enrollment file supplies the token and URL. Update the fallback URL for your site.</span>
 <span class="s1">[parameters.server]</span>
-<span class="s1">url = &quot;https://your-simstack-server.example/api&quot;</span>
-<span class="s1">token = &quot;RESOURCE_TOKEN&quot;</span>
+<span class="s1">url = &quot;https://simstack.example.org/api&quot;</span>
 
-<span class="s1">[hosts]</span>
-<span class="s1">local = &quot;localhost&quot;</span>
-<span class="s1">int-nano = &quot;int-nano.int.kit.edu&quot;</span>
-<span class="s1">justus = &quot;justus.int.kit.edu&quot;</span>
-<span class="s1">horeka = &quot;horeka.int.kit.edu&quot;</span>
-
-<span class="s1">[[routes]]</span>
-<span class="s1">source = &quot;local&quot;</span>
-<span class="s1">target = &quot;int-nano&quot;</span>
-<span class="s1">host = &quot;local&quot;</span>
-
-<span class="s1">[[routes]]</span>
-<span class="s1">source = &quot;int-nano&quot;</span>
-<span class="s1">target = &quot;local&quot;</span>
-<span class="s1">host = &quot;local&quot;</span>
-
-<span class="s1">[[routes]]</span>
-<span class="s1">source = &quot;horeka&quot;</span>
-<span class="s1">target = &quot;local&quot;</span>
-<span class="s1">host = &quot;horeka&quot;</span>
-
-<span class="s1">[[routes]]</span>
-<span class="s1">source = &quot;local&quot;</span>
-<span class="s1">target = &quot;horeka&quot;</span>
-<span class="s1">host = &quot;horeka&quot;</span>
-
-<span class="s1">[[routes]]</span>
-<span class="s1">source = &quot;justus&quot;</span>
-<span class="s1">target = &quot;local&quot;</span>
-<span class="s1">host = &quot;justus&quot;</span>
-
-<span class="s1">[[routes]]</span>
-<span class="s1">source = &quot;local&quot;</span>
-<span class="s1">target = &quot;justus&quot;</span>
-<span class="s1">host = &quot;justus&quot;</span>
-
-<span class="s1">[paths]</span>
-
-<span class="s1">[paths.models]</span>
-<span class="s1">path = &quot;src/simstack/models&quot;</span>
-<span class="s1">drops = &quot;src&quot;</span>
-
-<span class="s1">[paths.methods]</span>
-<span class="s1">path = &quot;src/simstack/methods&quot;</span>
-<span class="s1">drops = &quot;src&quot;</span>
-
-<span class="s1">[paths.tests]</span>
-<span class="s1">path = &quot;tests&quot;</span>
-<span class="s1">drops = &quot;&quot;</span>
-<span class="s1">use_pickle = true</span>
-<span class="s1">&#39;&#39;&#39;</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()</span>
+<span class="s1"># Use the same resource name as in the UI. It receives its workdir from Server.</span>
+<span class="s1">[workstation.program.python]</span>
+<span class="s1">run = &quot;python --version&quot;</span>
+<span class="s1">&#39;&#39;&#39;</span>
 
 
 <div class="viewcode-block" id="sample_config_writer_entrypoint">

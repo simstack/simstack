@@ -294,124 +294,32 @@
 </ol>
 <p>Database credentials are configured by the Server administrator and are never
 issued to Runner or workflow environments.</p>
-<section id="example-resources-configuration">
-<h3>Example resources configuration<a class="headerlink" href="#example-resources-configuration" title="Link to this heading">¶</a></h3>
-<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">[</span>
-<span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;object-id&gt;&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;resource_str&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;local-home&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;hostname&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;localhost&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;workdir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$HOME/simstack&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;python_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">    </span><span class="nt">&quot;environment_start&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ssh_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$HOME/.ssh/id_rsa&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;routes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">      </span><span class="s2">&quot;int-nano&quot;</span>
-<span class="w">    </span><span class="p">],</span>
-<span class="w">    </span><span class="nt">&quot;queue&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;default&quot;</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;object-id&gt;&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;resource_str&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;int-nano&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;hostname&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;int-nano.int.kit.edu&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;workdir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$HOME/simstack&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;python_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">    </span><span class="nt">&quot;environment_start&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ssh_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$HOME/.ssh/id_rsa&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;routes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">    </span><span class="nt">&quot;queue&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;default&quot;</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;object-id&gt;&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;resource_str&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;justus&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;hostname&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;justus2.uni-ulm.de&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;workdir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$HOME/simstack&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;python_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">    </span><span class="nt">&quot;environment_start&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ssh_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$HOME/.ssh/id_rsa&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;routes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">      </span><span class="s2">&quot;int-nano&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="s2">&quot;local-home&quot;</span>
-<span class="w">    </span><span class="p">],</span>
-<span class="w">    </span><span class="nt">&quot;queue&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;slurm-queue&quot;</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">]</span>
-</pre></div>
-</div>
 </section>
-</section>
-<section id="installation-of-runners">
-<h2>Installation of Runners<a class="headerlink" href="#installation-of-runners" title="Link to this heading">¶</a></h2>
-<section id="prerequisites">
-<h3>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">¶</a></h3>
-<ul class="simple">
-<li><p>Install <code class="docutils literal notranslate"><span class="pre">uv</span></code>:
-<a class="reference external" href="https://docs.astral.sh/uv/getting-started/installation/">https://docs.astral.sh/uv/getting-started/installation/</a></p></li>
-<li><p>Create directories:</p>
-<ul>
-<li><p><code class="docutils literal notranslate"><span class="pre">$HOME/simstack</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">$HOME/projects</span></code></p></li>
-</ul>
-</li>
-</ul>
-</section>
-<section id="clone-the-repository">
-<h3>Clone the repository<a class="headerlink" href="#clone-the-repository" title="Link to this heading">¶</a></h3>
-<p>In <code class="docutils literal notranslate"><span class="pre">$HOME/projects</span></code> clone the repository:</p>
-<ul>
-<li><p>SSH (if your SSH key is added to GitLab):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>git@gitlab.kit.edu:kit/ag_wenzel/simstack-model.git
-</pre></div>
-</div>
-</li>
-<li><p>HTTPS (if you have a token):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://gitlab.kit.edu/kit/ag_wenzel/simstack-model.git
-</pre></div>
-</div>
-</li>
-</ul>
-<p>Then:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>simstack-model
-</pre></div>
-</div>
-</section>
-<section id="host-specific-environment-notes">
-<h3>Host-specific environment notes<a class="headerlink" href="#host-specific-environment-notes" title="Link to this heading">¶</a></h3>
-<p>On <code class="docutils literal notranslate"><span class="pre">int-nano</span></code> you may need to override the C/C++ toolchain because the default compiler is too old.
-Add the following to your <code class="docutils literal notranslate"><span class="pre">~/.bashrc</span></code>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span>/path/to/gcc-12.3/bin:<span class="nv">$PATH</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/path/to/gcc-12.3/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">CC</span><span class="o">=</span>/path/to/gcc-12.3/bin/gcc
-<span class="nb">export</span><span class="w"> </span><span class="nv">CXX</span><span class="o">=</span>/path/to/gcc-12.3/bin/g++
-</pre></div>
-</div>
-<p>Set the paths to the location where gcc-12.3 is installed (e.g. <code class="docutils literal notranslate"><span class="pre">/shared/user/ww</span></code> or <code class="docutils literal notranslate"><span class="pre">/home/ws/&lt;user&gt;</span></code>).
-It is unclear what you need on other systems.</p>
-<p>On <code class="docutils literal notranslate"><span class="pre">justus</span></code> you may need:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$HOME</span>/local/lib:<span class="nv">$MKLROOT</span>/lib/intel64:<span class="nv">$LD_LIBRARY_PATH</span>
-</pre></div>
-</div>
-</section>
-<section id="sync-dependencies">
-<h3>Sync dependencies<a class="headerlink" href="#sync-dependencies" title="Link to this heading">¶</a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span><span class="w"> </span>~/.bashrc
-uv<span class="w"> </span>sync<span class="w"> </span>--locked
-</pre></div>
-</div>
-<p>Core depends on the Server API rather than a database driver. Storage integration tests run with the sibling Server checkout and its development dependencies.</p>
-</section>
+<section id="install-the-runner">
+<h2>Install the Runner<a class="headerlink" href="#install-the-runner" title="Link to this heading">¶</a></h2>
+<p>Choose a writable work directory in the resource settings. For this example,
+name the resource <code class="docutils literal notranslate"><span class="pre">workstation</span></code>. On the worker, run the enrollment command
+shown in the UI. The installer installs Core and starts the Runner. Its output
+gives the path to <code class="docutils literal notranslate"><span class="pre">runner.log</span></code>. The same directory contains <code class="docutils literal notranslate"><span class="pre">credentials.json</span></code>.
+Private workflow repositories use the workspace SSH key registered on the Git host.</p>
 <section id="create-simstack-toml">
 <span id="configuration-file"></span><h3>Create <code class="docutils literal notranslate"><span class="pre">simstack.toml</span></code><a class="headerlink" href="#create-simstack-toml" title="Link to this heading">¶</a></h3>
-<p>Create a <code class="docutils literal notranslate"><span class="pre">simstack.toml</span></code> file (placeholders shown below):</p>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[parameters.server]</span>
-<span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://&lt;SIMSTACK_SERVER&gt;&quot;</span>
+<p>Use the Resources page to restart a running managed Runner. For a manual
+foreground launch after the enrolled Runner has stopped, generate the optional
+machine configuration in your chosen directory. Replace <code class="docutils literal notranslate"><span class="pre">&lt;slug&gt;</span></code> below with
+the directory name shown in the installer’s log path.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">runner_dir</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.local/share/simstack/runners/&lt;slug&gt;&quot;</span>
+<span class="s2">&quot;</span><span class="nv">$runner_dir</span><span class="s2">/bin/simstack_write_sample_config&quot;</span>
+<span class="s2">&quot;</span><span class="nv">$runner_dir</span><span class="s2">/bin/simstack_runner&quot;</span><span class="w"> </span>--credentials<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$runner_dir</span><span class="s2">/credentials.json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--project-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$runner_dir</span><span class="s2">/runtime&quot;</span><span class="w"> </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/simstack.toml&quot;</span>
 </pre></div>
 </div>
-<p>Runner receives its resource token through enrollment. Set
-<code class="docutils literal notranslate"><span class="pre">SIMSTACK_RUNNER_TOKEN</span></code> and <code class="docutils literal notranslate"><span class="pre">SIMSTACK_RUNNER_WORKDIR</span></code> in its environment;
-MongoDB and S3 credentials belong only to the Server deployment. Do not add a
-<code class="docutils literal notranslate"><span class="pre">[parameters.db]</span></code> section or a database connection string to workflow or
-Runner configuration.</p>
+<p>The generated <code class="docutils literal notranslate"><span class="pre">[workstation.program.python]</span></code> section is a machine-local
+command override. Use your enrolled resource name for that section.
+Server supplies the resource’s work directory and Python
+paths. <code class="docutils literal notranslate"><span class="pre">SIMSTACK_RUNNER_WORKDIR</span></code> overrides the directory on this machine.
+The credentials file supplies the Server URL and Runner token. MongoDB and
+S3 credentials belong to Server.</p>
 <p>For a Python user session, initialize <code class="docutils literal notranslate"><span class="pre">context</span></code> with <code class="docutils literal notranslate"><span class="pre">server_url</span></code>,
 <code class="docutils literal notranslate"><span class="pre">user_token</span></code> and the selected resource, or supply
 <code class="docutils literal notranslate"><span class="pre">ServerAPI.for_user(server_url,</span> <span class="pre">user_token,</span> <span class="pre">resource=...)</span></code> as <code class="docutils literal notranslate"><span class="pre">server</span></code>.
@@ -426,32 +334,6 @@ and reports readiness before tasks are admitted.</p>
 catalogue inspection tools. They collect descriptors and do not write a
 database from Runner.</p>
 </section>
-<section id="configure-git-identity-required">
-<h3>Configure Git identity (required)<a class="headerlink" href="#configure-git-identity-required" title="Link to this heading">¶</a></h3>
-<p>Because the runner performs Git operations, ensure you have:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.email<span class="w"> </span><span class="s2">&quot;&lt;YOUR_EMAIL_ADDRESS&gt;&quot;</span>
-git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>user.name<span class="w"> </span><span class="s2">&quot;&lt;YOUR_NAME&gt;&quot;</span>
-</pre></div>
-</div>
-</section>
-<section id="start-the-runner">
-<h3>Start the runner<a class="headerlink" href="#start-the-runner" title="Link to this heading">¶</a></h3>
-<p>From <code class="docutils literal notranslate"><span class="pre">$HOME/projects/simstack-model</span></code>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>nohup<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>simstack_runner<span class="w"> </span>--resource<span class="w"> </span>&lt;RESOURCE_NAME&gt;<span class="w"> </span><span class="p">&amp;</span>
-</pre></div>
-</div>
-<p>Where <code class="docutils literal notranslate"><span class="pre">&lt;RESOURCE_NAME&gt;</span></code> is one of the resources you defined in the UI.</p>
-</section>
-</section>
-<section id="ignore-after-this-line">
-<h2>Ignore after this line<a class="headerlink" href="#ignore-after-this-line" title="Link to this heading">¶</a></h2>
-<p>Notes / scratch commands:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>submodule<span class="w"> </span>add<span class="w"> </span>-b<span class="w"> </span>new-init<span class="w"> </span>https://git@github.com/simstack/simstack.git<span class="w"> </span>simstack
-</pre></div>
-</div>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>lock<span class="w"> </span>--upgrade-package<span class="w"> </span>&lt;package-name&gt;
-</pre></div>
-</div>
 </section>
 </section>
 
@@ -511,22 +393,12 @@ git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Simstack II Setup</a><ul>
-<li><a class="reference internal" href="#ui-setup">UI Setup</a><ul>
-<li><a class="reference internal" href="#example-resources-configuration">Example resources configuration</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#installation-of-runners">Installation of Runners</a><ul>
-<li><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
-<li><a class="reference internal" href="#clone-the-repository">Clone the repository</a></li>
-<li><a class="reference internal" href="#host-specific-environment-notes">Host-specific environment notes</a></li>
-<li><a class="reference internal" href="#sync-dependencies">Sync dependencies</a></li>
+<li><a class="reference internal" href="#ui-setup">UI Setup</a></li>
+<li><a class="reference internal" href="#install-the-runner">Install the Runner</a><ul>
 <li><a class="reference internal" href="#create-simstack-toml">Create <code class="docutils literal notranslate"><span class="pre">simstack.toml</span></code></a></li>
 <li><a class="reference internal" href="#initialize-the-system">Initialize the system</a></li>
-<li><a class="reference internal" href="#configure-git-identity-required">Configure Git identity (required)</a></li>
-<li><a class="reference internal" href="#start-the-runner">Start the runner</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#ignore-after-this-line">Ignore after this line</a></li>
 </ul>
 </li>
 </ul>

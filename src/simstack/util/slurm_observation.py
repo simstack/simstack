@@ -64,7 +64,31 @@ def _state(value):
     return parts[0].rstrip("+").upper() if parts else ""
 
 
-def observe_job(job_id, *, restart_count=None):
+def read_job_queue(*, array_elements=False):
+    """Index this sweep's queue rows by exact job ID and by array allocation."""
+    identity = "%i" if array_elements else "%F"
+    command = ["squeue", "--noheader", "--states=all"]
+    if array_elements:
+        command.append("--array")
+    command.append(f"--format={identity}|%T|%t|%j|%u|%M|%N|%R")
+    rows = {}
+    try:
+        for line in _run(command).splitlines():
+            if not line.strip():
+                continue
+            fields = [part.strip() for part in line.split("|", 7)]
+            if len(fields) != 8:
+                raise ValueError("Unexpected scheduler queue response")
+            job_id = fields[0]
+            rows.setdefault(job_id, []).append(fields)
+            if "_" in job_id:
+                rows.setdefault(job_id.partition("_")[0], []).append(fields)
+    except QUERY_ERRORS as exc:
+        return rows, str(exc)
+    return rows, None
+
+
+def observe_job(job_id, *, restart_count=None, queue=None):
     if not re.fullmatch(r"\d+(?:_\d+)?", str(job_id)):
         raise ValueError("Invalid Slurm job identity")
     observed = {
@@ -78,22 +102,8 @@ def observe_job(job_id, *, restart_count=None):
         return identity == str(job_id) or array_base and identity.partition("_")[0] == str(job_id)
 
     try:
-        output = _run(
-            [
-                "squeue",
-                "--noheader",
-                "--states=all",
-                "--format=" + ("%F" if array_base else "%i") + "|%T|%t|%j|%u|%M|%N|%R",
-            ]
-        )
-        for line in output.splitlines():
-            if not line.strip():
-                continue
-            fields = [part.strip() for part in line.split("|", 7)]
-            if len(fields) != 8:
-                raise ValueError("Unexpected scheduler queue response")
-            if not matches(fields[0]):
-                continue
+        rows, error = queue if queue is not None else read_job_queue(array_elements=not array_base)
+        for fields in rows.get(str(job_id), ()):
             state = _state(fields[1])
             if state in ACTIVE_STATES:
                 return {
@@ -110,6 +120,8 @@ def observe_job(job_id, *, restart_count=None):
                 }
             if state not in TERMINAL_STATES:
                 raise ValueError("Unexpected scheduler queue state")
+        if error is not None:
+            raise RuntimeError(error)
         queue_known = True
     except QUERY_ERRORS as exc:
         errors.append(str(exc))

@@ -133,7 +133,7 @@ async def test_duplicate_arg_hash_records_primary_failure():
 
 
 @pytest.mark.asyncio
-async def test_api_failure_propagates_after_siblings_finish(monkeypatch):
+async def test_api_failure_propagates_after_siblings_finish():
     sibling_started = asyncio.Event()
     api_failed = asyncio.Event()
     finish_sibling = asyncio.Event()
@@ -159,8 +159,10 @@ async def test_api_failure_propagates_after_siblings_finish(monkeypatch):
         return FloatData(value=value.value)
 
     runner = _runner("mass_runner_api_failure", calculate)
-    publication = AsyncMock(wraps=context.server.values.publish_value)
-    monkeypatch.setattr(context.server.values, "publish_value", publication)
+    # The same workflow may already have published its normal dataset template.
+    previous = _runner("mass_runner_api_failure", calculate)
+    previous.dataset.field_name = "earlier-completed-batch"
+    await context.server.values.publish_value(previous.dataset)
 
     async def run():
         async with runner:
@@ -191,7 +193,35 @@ async def test_api_failure_propagates_after_siblings_finish(monkeypatch):
     assert rows[0]["arg_value"].value == 2.0
     assert rows[0]["success"].value is True
     assert runner.status != TaskStatus.COMPLETED
-    assert not any(isinstance(call.args[0], DataSet) for call in publication.await_args_list)
+    saved = await context.server.values.get_value(DataSet, runner.dataset.id)
+    status = saved["batch_status"].get_item("summary")
+    assert status["partial"].value is True
+    assert status["submitted_rows"].value == 3
+    assert [row["arg_value"].value for row in saved["tasks"].values()] == [2.0]
+
+    parent = NodeRunner(runner.name, "retry-task")
+    async with MassRunner(calculate, node_runner=parent, arg_hash="parent-hash",
+                          previous_node_name=runner.name, previous_task_id=runner.task_id) as retry:
+        retry.create_tasks(FloatData(value=2.0))
+    assert sorted(calls) == [1.0, 2.0]
+    assert list(retry.dataset["tasks"].values())[0]["success"].value is True
+
+
+@pytest.mark.asyncio
+async def test_partial_summary_publication_error_keeps_original_api_failure(monkeypatch):
+    failure = RunnerAPIError("Child request failed")
+    storage_failure = RunnerAPIError("Summary publication unavailable")
+
+    async def calculate(value, **kwargs):
+        raise failure
+
+    runner = _runner("mass_runner_partial_publication", calculate)
+    monkeypatch.setattr(context.server.values, "publish_value", AsyncMock(side_effect=storage_failure))
+    with pytest.raises(RunnerAPIError) as raised:
+        async with runner:
+            runner.create_tasks(FloatData(value=1.0))
+    assert raised.value is failure
+    assert raised.value.__cause__ is storage_failure
 
 
 @pytest.mark.asyncio

@@ -12,6 +12,25 @@ from simstack.models.files import FileStack
 
 
 class TestNodeRunner:
+    @pytest.mark.parametrize("exit_code", [0, 7])
+    def test_watchdog_reports_command_exit(self, node_runner, tmp_path, monkeypatch, exit_code):
+        from simstack.util import queue_watcher, submit_to_watchdog
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(submit_to_watchdog, "POLL_INTERVAL", 0.01)
+        monkeypatch.setattr(submit_to_watchdog, "TIMEOUT_SEC", 10)
+        watcher = subprocess.Popen([sys.executable, queue_watcher.__file__, "--poll-interval", "0.01"])
+        try:
+            ok = node_runner.submit_to_watchdog("external", f'echo watched && exit {exit_code}')
+        finally:
+            watcher.terminate()
+            watcher.wait(timeout=5)
+        assert ok is (exit_code == 0)
+        assert node_runner.last_stdout.strip() == "watched"
+        assert f"Process return code:\n{exit_code}" in (tmp_path / "external.log").read_text()
+        if exit_code:
+            assert node_runner.error_message == f"watchdog submission failed: {exit_code}"
+
     @pytest.fixture
     def mock_logger(self):
         return MagicMock()

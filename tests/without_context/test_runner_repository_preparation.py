@@ -44,7 +44,7 @@ async def test_control_acknowledges_ready_only_after_successful_preparation(monk
             return {"status": "preparing"}
         assert calls[-2] == ("prepared", descriptor)
         return {"acknowledged": True}
-    async def prepare(api, payload, *, repair_runtime):
+    async def prepare(payload, *, repair_runtime):
         assert repair_runtime is True
         assert payload is descriptor
         calls.append(("prepared", payload))

@@ -28,7 +28,7 @@ def submit_to_watchdog(
 ) -> WatchdogResult:
     """
     Submit a command to be executed by the file-queue watcher.
-    Returns a WatchdogResult with status, exit_code, stdout, stderr, and paths.
+    Returns a WatchdogResult with status, returncode, stdout, stderr, and paths.
     """
     base = queue_dir / job_id
     cmd_file_tmp = base.with_suffix(".cmd.tmp")

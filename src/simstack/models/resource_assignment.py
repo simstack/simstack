@@ -3,6 +3,7 @@ from typing import Optional, ClassVar, Dict, Any
 
 from simstack.models.document import Field, Model, EmbeddedModel
 from pydantic import field_validator, model_validator
+from simstack.util.slurm_array import index_ranges, normalize_array_option
 
 from simstack.models.parameters import normalize_execution_queue
 
@@ -38,6 +39,17 @@ class SlurmParametersPatch(EmbeddedModel):
     signal: Optional[str] = None
     requeue: Optional[bool] = None
     no_requeue: Optional[bool] = None
+
+    array: Optional[str] = Field(default=None, description="Native Slurm array indices, for example 0-8:2%2")
+
+    _normalize_array = model_validator(mode="before")(normalize_array_option)
+
+    @field_validator("array")
+    @classmethod
+    def validate_array(cls, value):
+        if value is not None:
+            index_ranges(value)
+        return value
 
     @field_validator("extra_options")
     @classmethod

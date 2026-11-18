@@ -91,12 +91,11 @@ And the parallel execution utilities (see :doc:`mass_runner` and :doc:`fire_and_
 - MassRunner
 - FireAndForgetRunner
 
-:class:`simstack.models.array_storage.ArrayStorage` is an example of a class which
-packs its content by serializing and deserializing it. This is the
-recommended procedure for all content which MongoDB cannot natively store. To
-interact with such classes, the developer has to provide access functions and
-a member function ``custom_model_dump`` which the fast-api server to convert
-the content of the class into a dict which can be visualized in the GUI.
+:class:`simstack.models.array_storage.ArrayStorage` keeps a compressed array
+inside the model and materializes the full array when read. For large arrays or
+binary data, stage a file locally with :doc:`FileStack <files>` and publish it.
+Server stores the bytes in S3 and the file metadata in MongoDB. For tabular
+results, :doc:`tables` describes how Server stores and pages large tables.
 
 .. _model-appearance:
 

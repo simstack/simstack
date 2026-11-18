@@ -301,6 +301,8 @@ async def _run_node_from_id(
     host_controller = bool(os.environ.get("SIMSTACK_LOCAL_EXECUTION_TOKEN") and not in_docker and local_worker is None)
     logger.info(f"Initializing node run: node_id={node_id}, resource={resource_str}, project_root={project_root}, in_docker={in_docker}")
     from simstack.server_api.http_transport import RunnerAPIError
+    scheduler_batch = (os.environ.get("SIMSTACK_SLURM_SUBMISSION_TASK") == str(node_id)
+        and not in_docker)
     while True:
         try:
             init_kwargs = {
@@ -323,27 +325,32 @@ async def _run_node_from_id(
             error = _clean_error(e)
             logger.error("Failed to initialize context: %s", error)
             from simstack.runner_runtime.pending_execution_failures import record_failure
-            record_failure(error, phase="bootstrap", exit_code=1, resource=resource_str)
+            if not (scheduler_batch and "SLURM_ARRAY_TASK_ID" in os.environ):
+                record_failure(error, phase="bootstrap", exit_code=1, resource=resource_str)
             return RunNodeResult(False, "none", error)
     registry_entry = None
-    scheduler_batch = (os.environ.get("SIMSTACK_SLURM_SUBMISSION_TASK") == str(node_id)
-        and not in_docker)
     if scheduler_batch:
         # A restarted batch script carries the original immutable launch, not
         # the admitted execution of its previous process. Admission happens
         # before any failure can be attributed to a scientific attempt.
         try:
-            if os.environ.get("SLURM_ARRAY_TASK_ID") is not None:
-                return RunNodeResult(False, "none", "Slurm arrays require explicit child tasks or MassRunner")
+            index = os.environ.get("SLURM_ARRAY_TASK_ID")
+            job_id = os.environ["SLURM_ARRAY_JOB_ID"] if index is not None else os.environ["SLURM_JOB_ID"]
             admitted = await context.server.slurm.start_incarnation(execution,
-                os.environ["SIMSTACK_SLURM_SUBMISSION"], os.environ["SLURM_JOB_ID"],
-                int(os.environ.get("SLURM_RESTART_COUNT", "0")), os.getpid())
+                os.environ["SIMSTACK_SLURM_SUBMISSION"], job_id,
+                int(os.environ.get("SLURM_RESTART_COUNT", "0")), os.getpid(),
+                **({"array_index": int(index)} if index is not None else {}))
             registry_entry = admitted["task"]
             if admitted["disposition"] == "completed":
                 return RunNodeResult(True, registry_entry.return_kind or "none")
             execution = context.server.tasks.execution(registry_entry)
             from simstack.runner_runtime.launch_claims import adopt_execution
             adopt_execution(execution)
+            if index is not None:
+                node_id = execution["task_id"]
+                os.environ["SIMSTACK_EXECUTION_TASK"] = node_id
+                os.environ["SIMSTACK_EXECUTION_CLAIM"] = execution["claim_id"]
+                os.environ["SIMSTACK_EXECUTION_GENERATION"] = execution["generation"]
             os.environ["SIMSTACK_EXECUTION_START"] = execution["start_id"]
         except (Exception, SystemExit) as exc:
             error = _clean_error(exc)

@@ -291,7 +291,7 @@
 <p><code class="docutils literal notranslate"><span class="pre">ArrayStorage</span></code> is the model used to store an individual array. It handles compression and serialization of the array data.</p>
 <p><strong>Key Features:</strong></p>
 <ul class="simple">
-<li><p><strong>Compression</strong>: Array data is automatically compressed before being stored in the database.</p></li>
+<li><p><strong>Encoding</strong>: Assigning <code class="docutils literal notranslate"><span class="pre">array</span></code> records the shape and the compressed, flattened JSON in <code class="docutils literal notranslate"><span class="pre">data_json</span></code>. Reading the property materializes the full NumPy array in memory. For a large binary array, publish a <code class="docutils literal notranslate"><span class="pre">.npy</span></code> file via <a class="reference internal" href="files.html"><span class="doc">File Management</span></a>. Large table and chart rows use paged Parquet objects on Server.</p></li>
 <li><p><strong>Shape Preservation</strong>: Automatically stores and restores the shape of the array.</p></li>
 <li><p><strong>Property Access</strong>: Use the <code class="docutils literal notranslate"><span class="pre">array</span></code> property to get or set the numpy array directly.</p></li>
 </ul>

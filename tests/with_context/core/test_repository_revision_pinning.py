@@ -18,7 +18,7 @@ async def seed_revision(domain_bridge, revision, version):
     from server.mongo_repository import MongoRepository
     from server.storage import Database
     await domain_bridge.raw.repository_versions.insert_one({"_id": revision, "status": "ready", "version": version,
-        "runner_protocol": 3})
+        "runner_protocol": 3, "source_mode": "git", "clone_url": "git@fixtures.invalid:team/workflow.git"})
     repository = MongoRepository(client=domain_bridge.database.client,
         database=domain_bridge.database.database_name, repository_revision=revision,
         user=domain_bridge.auth.user)

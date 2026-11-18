@@ -27,7 +27,7 @@ async def recompute_artifacts(node_registry: NodeRegistry):
     arguments.add_attributes(function, *inputs, parent_id=node_registry.id,
         task_id=node_registry.id, call_path=node_registry.call_path,
         parent_parameters=node_registry.parameters)
-    await context.server.values.clear_generated_artifacts(node_registry)
-    artifact_ids = await create_artifacts(arguments, node_registry)
-    await context.server.values.replace_artifacts(node_registry, artifact_ids)
+    replacements = []
+    artifact_ids = await create_artifacts(arguments, node_registry, replacements=replacements)
+    await context.server.values.replace_artifacts(node_registry, artifact_ids, replacements=replacements)
     node_registry.artifact_ids = artifact_ids

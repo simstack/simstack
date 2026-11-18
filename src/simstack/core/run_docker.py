@@ -224,13 +224,9 @@ def docker_memory_limit(slurm: object | None, *, uppercase: bool = False) -> str
     return _format_container_memory(amount * cpu_count, unit, uppercase=uppercase)
 
 
-def container_resource_args(docker_cmd: str, slurm: object | None) -> list[str]:
-    """Runtime flags that pin CPU and memory for docker.
-
-    Apptainer ``--cpus`` / ``--memory`` need cgroups v2 unified mode, which HPC
-    nodes (Justus) do not provide. Slurm already enforces the job's CPU and memory.
-    """
-    if docker_cmd == "apptainer":
+def container_resource_args(docker_cmd: str, slurm: object | None, *, in_allocation: bool = False) -> list[str]:
+    """Leave Apptainer limits to Slurm only inside a scheduler allocation."""
+    if docker_cmd == "apptainer" and in_allocation:
         return []
 
     args: list[str] = []
@@ -238,7 +234,7 @@ def container_resource_args(docker_cmd: str, slurm: object | None) -> list[str]:
     if cpu_limit is not None:
         args.extend(["--cpus", str(cpu_limit)])
 
-    memory_limit = docker_memory_limit(slurm, uppercase=False)
+    memory_limit = docker_memory_limit(slurm, uppercase=docker_cmd == "apptainer")
     if memory_limit is not None:
         args.extend(["--memory", memory_limit])
     return args
@@ -289,6 +285,7 @@ def format_container_failure_error(
     *,
     oom_killed: bool | None = None,
     memory_limit: str | None = None,
+    allocation_memory: str | None = None,
     docker_cmd: str = "docker",
 ) -> str:
     """Human-readable task error for a dead docker/apptainer container."""
@@ -299,7 +296,9 @@ def format_container_failure_error(
     elif oom_killed is False:
         oom_suffix = ", OOMKilled=false"
 
-    if memory_limit:
+    if allocation_memory:
+        mem_hint = f"Requested Slurm memory was {allocation_memory}."
+    elif memory_limit:
         mem_hint = f"{docker_cmd} --memory was {memory_limit}."
     else:
         mem_hint = (
@@ -560,6 +559,10 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry, *, on_observed_p
     if context.server.requests.bootstrap_data is None:
         await context.server.resource.bootstrap()
     container_environment = task_environment(registry_entry, server=context.server)
+    slurm_keys = ("SLURM_JOB_ID", "SLURM_RESTART_COUNT", "SLURM_ARRAY_JOB_ID", "SLURM_ARRAY_TASK_ID",
+                  "SLURM_ARRAY_TASK_COUNT", "SLURM_ARRAY_TASK_MIN", "SLURM_ARRAY_TASK_MAX",
+                  "SLURM_ARRAY_TASK_STEP") if "SLURM_ARRAY_TASK_ID" in container_environment else ()
+
     for name in ("SIMSTACK_NATIVE_OBSERVATION_ID", "SIMSTACK_NATIVE_OBSERVATION_EXECUTION"):
         container_environment.pop(name, None)
         container_environment.pop("APPTAINERENV_" + name, None)
@@ -569,6 +572,14 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry, *, on_observed_p
     managed_container = docker_cmd == "docker" and not local_owner and not slurm_container
     if slurm_container:
         container_environment["SIMSTACK_SLURM_CONTAINER_EXECUTION"] = "1"
+        from simstack.util.resource_config import slurm_task_scratch
+        checkpoint = slurm_task_scratch(registry_entry.id)
+        if checkpoint:
+            # Share the job's selected scratch directory with the host signal handler.
+            project_file_mounts.append((checkpoint, str(checkpoint)))
+            slurm_keys += ("SIMSTACK_SLURM_TASK_SCRATCH",)
+            if "TMP_BASE_DIR" in container_environment:
+                slurm_keys += ("TMP_BASE_DIR",)
     container_auth_args = []
     if container_environment.get("SIMSTACK_MACHINE_CONFIG"):
         machine_config = Path(container_environment["SIMSTACK_MACHINE_CONFIG"])
@@ -591,7 +602,8 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry, *, on_observed_p
             project_file_mounts.append((credentials_path, "/simstack-runner-credentials.json:ro"))
             container_environment["SIMSTACK_RUNNER_CREDENTIALS"] = "/simstack-runner-credentials.json"
     slurm_parameters = getattr(registry_entry.parameters, "slurm_parameters", None)
-    resource_args = container_resource_args(docker_cmd, slurm_parameters)
+    in_allocation = slurm_container or bool(os.environ.get("SLURM_JOB_ID"))
+    resource_args = container_resource_args(docker_cmd, slurm_parameters, in_allocation=in_allocation)
     if resource_args:
         logger.info(
             "task_id: %s applying container resource limits from slurm_parameters: %s",
@@ -650,7 +662,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry, *, on_observed_p
             *container_auth_args,
             *resource_args,
             *(
-                [item for key in ("SIMSTACK_SERVER_URL", "SIMSTACK_USER_TOKEN", "SIMSTACK_LOCAL_EXECUTION_TOKEN", "SIMSTACK_RUNNER_TOKEN", "SIMSTACK_RUNNER_CREDENTIALS", "SIMSTACK_REPOSITORY_REVISION", "SIMSTACK_REPOSITORY_ROOT", "SIMSTACK_MACHINE_CONFIG", "SIMSTACK_EXECUTION_TASK", "SIMSTACK_EXECUTION_GENERATION", "SIMSTACK_EXECUTION_CLAIM", "SIMSTACK_EXECUTION_START", "SIMSTACK_EXECUTION_RESOURCE", "SIMSTACK_EXECUTION_ACCOUNT_ID", "SIMSTACK_PENDING_FAILURE_DIR", "SIMSTACK_SLURM_CONTAINER_EXECUTION", "SIMSTACK_CONTAINER_BACKEND", "PYTHONPATH") if key in container_environment for item in ("-e", key)]
+                [item for key in ("SIMSTACK_SERVER_URL", "SIMSTACK_USER_TOKEN", "SIMSTACK_LOCAL_EXECUTION_TOKEN", "SIMSTACK_RUNNER_TOKEN", "SIMSTACK_RUNNER_CREDENTIALS", "SIMSTACK_REPOSITORY_REVISION", "SIMSTACK_REPOSITORY_ROOT", "SIMSTACK_MACHINE_CONFIG", "SIMSTACK_EXECUTION_TASK", "SIMSTACK_EXECUTION_GENERATION", "SIMSTACK_EXECUTION_CLAIM", "SIMSTACK_EXECUTION_START", "SIMSTACK_EXECUTION_RESOURCE", "SIMSTACK_EXECUTION_ACCOUNT_ID", "SIMSTACK_PENDING_FAILURE_DIR", "SIMSTACK_SLURM_CONTAINER_EXECUTION", "SIMSTACK_CONTAINER_BACKEND", "PYTHONPATH", *slurm_keys) if key in container_environment for item in ("-e", key)]
             ),
             "-v", f"{workdir}:{CONTAINER_WORKDIR}",
             "-v", f"{workdir}:{LEGACY_CONTAINER_WORKDIR}",
@@ -697,7 +709,7 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry, *, on_observed_p
         return DockerRunResult(False, "none", error)
 
     if docker_cmd == "apptainer":
-        for key in ("SIMSTACK_SERVER_URL", "SIMSTACK_USER_TOKEN", "SIMSTACK_LOCAL_EXECUTION_TOKEN", "SIMSTACK_RUNNER_TOKEN", "SIMSTACK_RUNNER_CREDENTIALS", "SIMSTACK_REPOSITORY_REVISION", "SIMSTACK_REPOSITORY_ROOT", "SIMSTACK_MACHINE_CONFIG", "SIMSTACK_EXECUTION_TASK", "SIMSTACK_EXECUTION_GENERATION", "SIMSTACK_EXECUTION_CLAIM", "SIMSTACK_EXECUTION_START", "SIMSTACK_EXECUTION_RESOURCE", "SIMSTACK_EXECUTION_ACCOUNT_ID", "SIMSTACK_PENDING_FAILURE_DIR", "SIMSTACK_SLURM_CONTAINER_EXECUTION", "SIMSTACK_CONTAINER_BACKEND", "PYTHONPATH"):
+        for key in ("SIMSTACK_SERVER_URL", "SIMSTACK_USER_TOKEN", "SIMSTACK_LOCAL_EXECUTION_TOKEN", "SIMSTACK_RUNNER_TOKEN", "SIMSTACK_RUNNER_CREDENTIALS", "SIMSTACK_REPOSITORY_REVISION", "SIMSTACK_REPOSITORY_ROOT", "SIMSTACK_MACHINE_CONFIG", "SIMSTACK_EXECUTION_TASK", "SIMSTACK_EXECUTION_GENERATION", "SIMSTACK_EXECUTION_CLAIM", "SIMSTACK_EXECUTION_START", "SIMSTACK_EXECUTION_RESOURCE", "SIMSTACK_EXECUTION_ACCOUNT_ID", "SIMSTACK_PENDING_FAILURE_DIR", "SIMSTACK_SLURM_CONTAINER_EXECUTION", "SIMSTACK_CONTAINER_BACKEND", "PYTHONPATH", *slurm_keys):
             if key in container_environment:
                 container_environment["APPTAINERENV_" + key] = container_environment[key]
 
@@ -862,9 +874,11 @@ async def run_docker_with_outcome(registry_entry: NodeRegistry, *, on_observed_p
             outcome = DockerRunResult(True, canonical.return_kind or (
                 child_outcome.return_kind if child_outcome else "none"))
         elif exit_code != 0 or child_outcome is None or not child_outcome.success:
+            memory = docker_memory_limit(slurm_parameters, uppercase=docker_cmd == "apptainer")
+            allocated = docker_cmd == "apptainer" and in_allocation
             base_error = format_container_failure_error(exit_code,
                 oom_killed=_container_oom_killed(docker_cmd, cidfile),
-                memory_limit=docker_memory_limit(slurm_parameters) if docker_cmd == "docker" else None,
+                memory_limit=None if allocated else memory, allocation_memory=memory if allocated else None,
                 docker_cmd=docker_cmd)
             error = canonical.error or (child_outcome.error if child_outcome else None) or base_error
             error = sanitized_tail(error, None, limit=None)

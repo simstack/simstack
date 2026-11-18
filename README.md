@@ -13,7 +13,7 @@ fastapi app that connects to the Simstack II database. a
 You can use the [simstack-example](https://github.com/simstack/simstack-example) project 
 to get started. 
 
-### API/S3 installation on `feature-api-s3`
+### API/S3 installation
 
 For API/S3 deployments, use the [Server project](https://github.com/simstack/simstack-server)
 and the [Runner/workflow adjustment guide](doc/api_s3_runner.md). Create a
@@ -34,6 +34,8 @@ extras, and reports ready after Git and `uv` succeed. Busy resources defer new
 preparation while existing tasks continue with their original versions.
 Existing workflow functions, resource assignments and machine execution
 profiles remain the execution contract.
+
+For a portable Runner profile, see [Runner setup](doc/source/installation.rst). Published files use signed S3 transfers. Large table and chart payloads are paged on Server.
 
 The manual MongoDB, catalogue and repository checkout instructions below
 describe older deployments and must not be used to configure this branch.

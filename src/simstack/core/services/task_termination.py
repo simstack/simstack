@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import platform
+import re
 import signal
 import subprocess
 from pathlib import Path
@@ -143,14 +144,15 @@ async def _run_command(args: list[str]) -> str:
 async def _slurm_job_present(job_id: str) -> bool:
     # A job-specific squeue query may fail when the job has already vanished.
     # %F reports the numeric base ID for both ordinary jobs and array elements.
+    identity = ["--array", "--format=%i|%T"] if "_" in job_id else ["--format=%F|%T"]
     output = await _run_command([
-        "squeue", "--noheader", "--me", "--all", "--local", "--states=all", "--format=%F|%T",
+        "squeue", "--noheader", "--me", "--all", "--local", "--states=all", *identity,
     ])
     terminal = {"COMPLETED", "CANCELLED", "FAILED", "TIMEOUT", "NODE_FAIL",
                 "BOOT_FAIL", "OUT_OF_MEMORY", "PREEMPTED", "DEADLINE"}
     for line in output.splitlines():
         fields = line.strip().split("|")
-        if len(fields) != 2 or not fields[0].isdigit() or not fields[1]:
+        if len(fields) != 2 or not re.fullmatch(r"[0-9]+(?:_[0-9]+)?", fields[0]) or not fields[1]:
             raise TaskTerminationError("Unexpected response while checking Slurm cancellation")
         if fields[0] == job_id and fields[1].upper() not in terminal:
             return True
@@ -345,7 +347,7 @@ async def stop_task_execution(entry, *, server, runner_pid: int, workdir, extra_
             or getattr(entry, "_execution_launch_kind", None) == "inline" and queue == "slurm-queue"):
         raise TaskTerminationError("An inline Slurm child must be stopped by its launching process")
     if local_process is None and (job_id is not None or queue == "slurm-queue"):
-        if not isinstance(job_id, str) or not job_id.isdigit():
+        if not isinstance(job_id, str) or not re.fullmatch(r"[0-9]+(?:_[0-9]+)?", job_id):
             raise TaskTerminationError("Cannot stop a Slurm task without a valid job ID")
         if await _slurm_job_present(job_id):
             await _run_command(["scancel", job_id])

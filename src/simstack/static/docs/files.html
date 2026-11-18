@@ -288,10 +288,10 @@
 <p>SimStack II provides a robust way to handle files within workflows. The core model for file management is <code class="docutils literal notranslate"><span class="pre">FileStack</span></code>, which manages the storage and retrieval of individual files across different computational resources. For collections of files, <code class="docutils literal notranslate"><span class="pre">FileList</span></code> and <code class="docutils literal notranslate"><span class="pre">FileListModel</span></code> are provided.</p>
 <section id="filestack">
 <h2>FileStack<a class="headerlink" href="#filestack" title="Link to this heading">¶</a></h2>
-<p>A <code class="docutils literal notranslate"><span class="pre">FileStack</span></code> represents a single file that can be stored in the database (in-memory) or tracked on various computational resources.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">FileStack</span></code> records a file’s identity, size, checksum and locations. When a workflow publishes it, the bytes go to S3-compatible object storage and Server saves the metadata in the workspace database.</p>
 <p><strong>Key Features:</strong></p>
 <ul class="simple">
-<li><p><strong>Storage Flexibility:</strong> Files can be stored directly in MongoDB (compressed) or kept on disk at various locations.</p></li>
+<li><p><strong>Local staging:</strong> The default <code class="docutils literal notranslate"><span class="pre">from_local_file()</span></code> captures a local copy until publication. With <code class="docutils literal notranslate"><span class="pre">in_memory=False</span></code>, keep the original path readable until publication completes.</p></li>
 <li><p><strong>Automatic Transfer:</strong> When a node requires a <code class="docutils literal notranslate"><span class="pre">FileStack</span></code> that is not locally available, SimStack automatically handles the transfer.</p></li>
 <li><p><strong>Hashing:</strong> Supports content-based hashing for verification and caching.</p></li>
 </ul>
@@ -299,7 +299,7 @@
 <p>To create a <code class="docutils literal notranslate"><span class="pre">FileStack</span></code> from a local file:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">simstack.models.files</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileStack</span>
 
-<span class="c1"># Create a FileStack and store its content in the database</span>
+<span class="c1"># Stage a local snapshot for publication with the workflow</span>
 <span class="n">file_stack</span> <span class="o">=</span> <span class="n">FileStack</span><span class="o">.</span><span class="n">from_local_file</span><span class="p">(</span><span class="s2">&quot;path/to/my_file.txt&quot;</span><span class="p">,</span> <span class="n">in_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -318,6 +318,7 @@
     <span class="o">...</span>
 </pre></div>
 </div>
+<p>Server issues short-lived signed links for file and ZIP downloads. When a saved task supplies the file, the link refers to the version recorded in its snapshot.</p>
 </section>
 <section id="filelist-and-filelistmodel">
 <h2>FileList and FileListModel<a class="headerlink" href="#filelist-and-filelistmodel" title="Link to this heading">¶</a></h2>

@@ -301,6 +301,18 @@ async def test_suspended_array_job_is_cancelled_and_retained_terminal_rows_are_n
 
 
 @pytest.mark.asyncio
+async def test_cancel_single_array_element_while_sibling_keeps_running(monkeypatch, tmp_path):
+    entry = _entry(job_id="4321_2")
+    command = AsyncMock(side_effect=["4321_2|RUNNING\n4321_3|RUNNING", "", "4321_3|RUNNING"])
+    monkeypatch.setattr(task_termination, "context", SimpleNamespace(server=_server(_TaskAPI(entry)), config=SimpleNamespace(workdir=tmp_path)))
+    monkeypatch.setattr(task_termination, "_run_command", command)
+    await terminate_task(entry, runner_pid=os.getpid())
+    assert command.call_args_list[1].args[0] == ["scancel", "4321_2"]
+    assert "--array" in command.call_args_list[0].args[0]
+    assert entry.status == TaskStatus.FAILED
+
+
+@pytest.mark.asyncio
 async def test_api_cancellation_sends_observed_generation(monkeypatch, tmp_path):
     entry = _entry(job_id="4321", _execution_generation="old-attempt")
     tasks = _TaskAPI(entry)

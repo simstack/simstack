@@ -27,6 +27,16 @@ def test_accounting_distinguishes_terminal_outcomes(monkeypatch, state):
     assert result["ended_at"].endswith("+00:00")
 
 
+def test_observed_running_job_survives_a_later_malformed_queue_row(monkeypatch):
+    def run(command):
+        if command[0] == "squeue":
+            return "42|RUNNING|R|active|user|1:00|node01|None\ninvalid row"
+        return "42|FAILED|17:0|2026-11-09T12:00:00|Previous incarnation"
+
+    monkeypatch.setattr(slurm_observation, "_run", run)
+    assert slurm_observation.observe_job("42")["kind"] == "active"
+
+
 def test_absence_and_query_failure_are_unknown(monkeypatch):
     monkeypatch.setattr(slurm_observation, "_run", lambda command: "")
     absent = slurm_observation.observe_job("42")
@@ -339,23 +349,42 @@ def test_normal_batch_exec_preserves_child_exit_code(tmp_path):
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Slurm checkpoint signals require a POSIX host")
-def test_checkpoint_does_not_turn_child_failure_into_success(tmp_path):
+@pytest.mark.parametrize("checkpoint_signal", ["SIGUSR1", "SIGUSR2"])
+@pytest.mark.parametrize("array", [False, True])
+def test_checkpoint_does_not_turn_child_failure_into_success(tmp_path, checkpoint_signal, array):
     import simstack
     script = Path(simstack.__file__).parent / "static" / "slurm_checkpoint.sh"
-    scratch, recovery = tmp_path / "scratch", tmp_path / "recovery"
-    scratch.mkdir()
-    (scratch / "checkpoint.txt").write_text("saved")
+    from simstack.util.slurm_array import element_id
+    scratch, recovery = tmp_path / "scratch" / "parent", tmp_path / "work" / "parent" / "recovery"
+    env = dict(os.environ, TMPDIR=str(scratch.parent), SIMSTACK_SLURM_SUBMISSION_TASK="parent")
+    expected_scratch, expected_recovery = scratch, recovery
+    if array:
+        env.update(SLURM_ARRAY_TASK_ID="4", SIMSTACK_SLURM_SUBMISSION="test-submission")
+        member = element_id("test-submission", 4)
+        expected_scratch = scratch.parent / member
+        expected_recovery = recovery.parent.parent / member / "recovery"
+    expected_scratch.mkdir(parents=True)
     ready = tmp_path / "ready"
-    code = "from pathlib import Path; import time; Path(" + repr(str(ready)) + ").touch(); time.sleep(0.5); raise SystemExit(17)"
-    proc = subprocess.Popen(["bash", str(script), str(scratch), str(recovery), sys.executable, "-c", code])
+    code = """import os, sys, time
+from pathlib import Path
+from simstack.util.resource_config import ResourceConfig
+os.environ["TMPDIR"] = sys.argv[3]
+config = ResourceConfig(Path.cwd(), "test")
+(config.tmp_dir(sys.argv[1]) / "checkpoint.txt").write_text("saved")
+Path(sys.argv[2]).touch()
+time.sleep(0.5)
+raise SystemExit(17)
+"""
+    proc = subprocess.Popen(["bash", str(script), "--tmp-base", "$TMPDIR", str(recovery), sys.executable, "-c", code,
+                             expected_scratch.name, str(ready), str(tmp_path / "changed TMPDIR")], env=env)
     try:
         deadline = time.monotonic() + 5
         while not ready.exists() and time.monotonic() < deadline:
             time.sleep(0.01)
         assert ready.exists()
-        proc.send_signal(signal.SIGUSR1)
+        proc.send_signal(getattr(signal, checkpoint_signal))
         assert proc.wait(timeout=5) == 17
-        assert (recovery / "checkpoint.txt").read_text() == "saved"
+        assert (expected_recovery / "checkpoint.txt").read_text() == "saved"
     finally:
         if proc.poll() is None:
             proc.kill()

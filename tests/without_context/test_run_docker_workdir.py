@@ -92,7 +92,8 @@ def test_docker_memory_limit_uses_mem_and_mem_per_cpu():
 def test_container_resource_args_for_docker_and_apptainer():
     slurm = SimpleNamespace(cpus_per_task=4, tasks=2, mem="8G")
     assert container_resource_args("docker", slurm) == ["--cpus", "8", "--memory", "8g"]
-    assert container_resource_args("apptainer", slurm) == []
+    assert container_resource_args("apptainer", slurm) == ["--cpus", "8", "--memory", "8G"]
+    assert container_resource_args("apptainer", slurm, in_allocation=True) == []
     assert container_resource_args("docker", None) == []
 
 
@@ -278,7 +279,13 @@ async def test_run_docker_applies_slurm_cpu_and_memory_limits(tmp_path: Path):
 
 
 @pytest.mark.asyncio
-async def test_run_docker_apptainer_omits_cpu_and_memory_flags(tmp_path: Path):
+@pytest.mark.parametrize("allocated", [False, True])
+async def test_apptainer_direct_limits_and_slurm_allocation(tmp_path: Path, monkeypatch, allocated):
+    if allocated:
+        monkeypatch.setenv("SLURM_JOB_ID", "531")
+        monkeypatch.setenv("SLURM_ARRAY_TASK_ID", "3")
+    else:
+        monkeypatch.delenv("SLURM_JOB_ID", raising=False)
     config_file = tmp_path / "config.toml"
     config_file.write_text(
         "[local.program.psi4_calculator]\n"
@@ -304,10 +311,42 @@ async def test_run_docker_apptainer_omits_cpu_and_memory_flags(tmp_path: Path):
     assert result is True
     command = list(mock_exec.await_args.args)
     assert command[:2] == ["apptainer", "run"]
-    assert "--cpus" not in command
-    assert "--memory" not in command
+    if allocated:
+        assert "--cpus" not in command and "--memory" not in command
+        assert mock_exec.await_args.kwargs["env"]["APPTAINERENV_SLURM_ARRAY_TASK_ID"] == "3"
+    else:
+        assert command[2:6] == ["--cpus", "8", "--memory", "8G"]
     assert mock_exec.await_args.kwargs["env"]["APPTAINERENV_SIMSTACK_CONTAINER_BACKEND"] == "apptainer"
     assert mock_context.server.tasks.record_process.await_args.kwargs["container_backend"] == "apptainer"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("backend", ["docker", "apptainer"])
+async def test_slurm_container_uses_the_batch_checkpoint_directory(tmp_path, monkeypatch, backend):
+    (tmp_path / "config.toml").write_text(
+        f'[local.program.psi4_calculator]\ndocker_cmd = "{backend}"\ndocker_image = "science"\n'
+    )
+    entry = _registry_entry()
+    entry.parameters.queue = "slurm-queue"
+    scratch = tmp_path / "compute temp" / entry.id
+    scratch.mkdir(parents=True)
+    monkeypatch.setenv("SIMSTACK_SLURM_TASK_SCRATCH", str(scratch))
+    active = _mock_context(tmp_path, ResourceConfig(tmp_path, "local"))
+    process = AsyncMock(pid=4242, returncode=0)
+    process.communicate = AsyncMock(return_value=(_SUCCESS_PROTOCOL, b""))
+    with (
+        patch("simstack.core.run_docker.context", active),
+        patch("simstack.core.run_docker.pull_docker_image", AsyncMock()),
+        patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)) as launch,
+    ):
+        assert await run_docker(entry)
+    science = next(call for call in launch.await_args_list if entry.id in call.args)
+    command = science.args
+    assert f"{scratch}:{scratch}" in command
+    if backend == "docker":
+        assert ("-e", "SIMSTACK_SLURM_TASK_SCRATCH") in zip(command, command[1:])
+    else:
+        assert science.kwargs["env"]["APPTAINERENV_SIMSTACK_SLURM_TASK_SCRATCH"] == str(scratch)
 
 
 @pytest.mark.asyncio
@@ -628,7 +667,7 @@ async def test_run_docker_apptainer_sigkill_uses_exit_code_heuristic(tmp_path: P
     )
     resource_config = ResourceConfig(tmp_path, "local")
     mock_context = _mock_context(tmp_path, resource_config)
-    registry_entry = _registry_entry()
+    registry_entry = _registry_entry(slurm_parameters=SimpleNamespace(mem="64M"))
     mock_context.server.tasks.app_status = TaskStatus.RUNNING
 
     proc = AsyncMock(pid=4242)
@@ -649,6 +688,7 @@ async def test_run_docker_apptainer_sigkill_uses_exit_code_heuristic(tmp_path: P
     assert registry_entry.error is not None
     assert "exit 137" in registry_entry.error
     assert "Likely OOM / SIGKILL" in registry_entry.error
+    assert "apptainer --memory was 64M" in registry_entry.error
     assert "OOMKilled" not in registry_entry.error
     command = list(mock_exec.await_args.args)
     assert f"{tmp_path}:{CONTAINER_WORKDIR}" in command

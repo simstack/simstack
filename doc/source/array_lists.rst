@@ -12,7 +12,7 @@ ArrayStorage
 
 **Key Features:**
 
-* **Compression**: Array data is automatically compressed before being stored in the database.
+* **Encoding**: Assigning ``array`` records the shape and the compressed, flattened JSON in ``data_json``. Reading the property materializes the full NumPy array in memory. For a large binary array, publish a ``.npy`` file via :doc:`files`. Large table and chart rows use paged Parquet objects on Server.
 * **Shape Preservation**: Automatically stores and restores the shape of the array.
 * **Property Access**: Use the ``array`` property to get or set the numpy array directly.
 

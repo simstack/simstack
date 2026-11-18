@@ -6,7 +6,7 @@ import subprocess
 from datetime import datetime, timezone
 from simstack.core.context import context
 from simstack.core.services.base_service import BaseService
-from simstack.util.slurm_observation import observe_job, find_submission
+from simstack.util.slurm_observation import observe_job, find_submission, read_job_queue
 from simstack.runner_runtime.pending_execution_failures import reconcile_failures
 from simstack.server_api.http_transport import RunnerAPIError
 
@@ -59,6 +59,7 @@ class SlurmStatusService(BaseService):
                 if context.server.tasks.execution(entry) != identity or entry.status in {"failed", "timeout", "completed"}:
                     forget_intent(context.server, intent)
         observations = []
+        jobs = []
         for item in watchlist["submissions"]:
             job_id = item["job_id"]
             if not job_id:
@@ -102,7 +103,13 @@ class SlurmStatusService(BaseService):
                         }
                     )
                     continue
-            observation = await asyncio.to_thread(observe_job, job_id,
+            jobs.append((job_id, item))
+        queue_options = {}
+        if len(jobs) > 1:
+            queue_options["queue"] = await asyncio.to_thread(read_job_queue,
+                array_elements=any("_" in job_id for job_id, _ in jobs))
+        for job_id, item in jobs:
+            observation = await asyncio.to_thread(observe_job, job_id, **queue_options,
                 **({"restart_count": item["restart_count"]} if item.get("restart_count") is not None else {}))
             observations.append(
                 {

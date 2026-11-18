@@ -41,8 +41,10 @@ class ResourceControlAPI:
         result = await self.requests.read("/work/containers")
         return [decode_task_response(item) for item in result.get("tasks", [])]
 
-    async def cache_locations(self):
-        return await self.requests.read("/cache/locations")
+    async def cache_locations(self, *, cutoff=None, cursor=None, limit=200):
+        if cutoff is None:
+            return await self.requests.read("/cache/locations")
+        return await self.requests.read("/cache/locations", cutoff=cutoff.isoformat(), cursor=cursor, limit=limit)
 
     async def cache_deleted(self, file_id, path, *, observed_instance_id=None):
         return await self.requests.command(

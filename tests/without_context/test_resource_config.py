@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from pathlib import Path
 import tomllib
@@ -291,3 +293,69 @@ async def test_global_state_uses_explicit_machine_configuration(tmp_path, monkey
     assert state.resource_config._config_path == config
     assert state.resource_config.get_program("orca")["cmd"] == "run"
     allowed_resources.clear_resources()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX site configuration")
+@pytest.mark.parametrize("candidate", ["unset", "missing", "excluded", "available"])
+def test_conditional_scratch_uses_the_configured_branch(tmp_path, monkeypatch, candidate):
+    scratch = tmp_path / "fast scratch"
+    fallback = tmp_path / "fallback space"
+    config = ResourceConfig(tmp_path, "local")
+    config._config = {"local": {"setup": {"tmp_base_dir": """
+if test -n "${SCRATCH}" -a -d "${SCRATCH}" -a "${SCRATCH}" != "/tmp"; then
+    TMP_BASE_DIR="${SCRATCH}"
+else
+    TMP_BASE_DIR="${TMPDIR:-/tmp/${USER}}"
+fi
+"""}}}
+    monkeypatch.delenv("TMP_BASE_DIR", raising=False)
+    monkeypatch.setenv("TMPDIR", str(fallback))
+    if candidate == "unset":
+        monkeypatch.delenv("SCRATCH", raising=False)
+    else:
+        monkeypatch.setenv("SCRATCH", "/tmp" if candidate == "excluded" else str(scratch))
+    if candidate == "available":
+        scratch.mkdir()
+
+    expected = scratch if candidate == "available" else fallback
+    assert config.tmp_dir("task") == expected / "task"
+    assert scratch.exists() == (candidate == "available")
+
+
+def test_scratch_assignment_with_site_comments_and_echo(tmp_path, monkeypatch):
+    target = tmp_path / "scratch with spaces"
+    monkeypatch.setenv("TMPDIR", str(target))
+    config = ResourceConfig(tmp_path, "local")
+    config.get_setup_params = lambda: {"tmp_base_dir": """
+# Select the per-job directory.
+export TMP_BASE_DIR="${TMPDIR}"
+echo TMP_BASE_DIR=$TMP_BASE_DIR
+"""}
+    assert config.tmp_base_dir == target
+
+
+def test_empty_scratch_assignment_uses_the_environment(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    fallback = tmp_path / "existing root"
+    monkeypatch.setenv("TMP_BASE_DIR", str(fallback))
+    config = ResourceConfig(tmp_path, "local")
+    config.get_setup_params = lambda: {"tmp_base_dir": "TMP_BASE_DIR="}
+    assert config.tmp_base_dir == fallback
+    assert not (tmp_path / "TMP_BASE_DIR=").exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX site configuration")
+def test_bracket_conditions_select_only_path_assignments(tmp_path, monkeypatch):
+    monkeypatch.setenv("SCRATCH", str(tmp_path))
+    config = ResourceConfig(tmp_path, "local")
+    config.get_setup_params = lambda: {"tmp_base_dir": """
+if [ -n "$SCRATCH" ] && [ -d "$SCRATCH" ]; then
+    TMP_BASE_DIR="$SCRATCH"
+else
+    unsupported statement
+fi
+"""}
+    assert config.tmp_base_dir == tmp_path
+    monkeypatch.delenv("SCRATCH")
+    with pytest.raises(ValueError, match="assignment"):
+        _ = config.tmp_base_dir

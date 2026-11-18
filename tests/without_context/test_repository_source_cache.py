@@ -160,6 +160,14 @@ async def test_standalone_pinned_runtime_verifies_current_sdk_source_without_pre
         await runtime.prepare_task_runtime(SimpleNamespace(repository_revision=revision))
 
 
+def test_archive_only_descriptor_requires_git_migration(tmp_path):
+    from simstack.util import repository_runtime
+    descriptor = {"repository_revision": "a" * 64, "commit_sha": "b" * 40, "submodules": [],
+                  "archive_url": "/runner/repositories/old/archive"}
+    with pytest.raises(RuntimeError, match="migrate"):
+        repository_runtime._cache_revision(descriptor, cache=tmp_path)
+
+
 def test_git_cache_pins_old_commit_submodules_and_tags_and_keeps_versions(tmp_path, monkeypatch):
     from simstack.util import repository_runtime as runtime
     child, source, cache = tmp_path / "child", tmp_path / "remote", tmp_path / "cache"
@@ -168,22 +176,40 @@ def test_git_cache_pins_old_commit_submodules_and_tags_and_keeps_versions(tmp_pa
     git(child, "add", ".")
     git(child, "commit", "--quiet", "-m", "Child")
     git(child, "tag", "-a", "v1", "-m", "Child release")
+    git(child, "commit", "--quiet", "--allow-empty", "-m", "Pinned child")
     init(source)
     (source / "value.py").write_text("VERSION = 1\n")
-    git(source, "-c", "protocol.file.allow=always", "submodule", "add", "--quiet", str(child), "nested lib")
+    git(source, "-c", "protocol.file.allow=always", "submodule", "add", "--quiet", child.as_uri(), "nested lib")
+    git(source, "config", "-f", ".gitmodules", "submodule.nested lib.shallow", "true")
     git(source, "add", ".")
     git(source, "commit", "--quiet", "-m", "First")
     git(source, "tag", "-a", "v1", "-m", "First release")
+    git(source, "commit", "--quiet", "--allow-empty", "-m", "Published between releases")
     first = _descriptor(source, "a" * 64, extras=["machine-a"])
+    first["clone_url"] = source.as_uri()
+    (child / "value.py").write_text("VERSION = 2\n")
+    git(child, "commit", "--quiet", "-am", "Child update")
+    git(child, "tag", "v2")
+    old_child_branch = git(child, "symbolic-ref", "--short", "HEAD")
+    git(child, "checkout", "--quiet", "--orphan", "replacement")
+    git(child, "commit", "--quiet", "-m", "New child history")
+    git(child, "branch", "-D", old_child_branch)
     (source / "value.py").write_text("VERSION = 2\n")
     git(source, "commit", "--quiet", "-am", "Second")
     git(source, "tag", "v2")
     second = _descriptor(source, "b" * 64, extras=["machine-b"])
+    second["clone_url"] = source.as_uri()
+    # The original branch is retired. v2 still advertises its entire history.
+    old_branch = git(source, "symbolic-ref", "--short", "HEAD")
+    git(source, "checkout", "--quiet", "--orphan", "replacement")
+    git(source, "commit", "--quiet", "-m", "New branch history")
+    git(source, "branch", "-D", old_branch)
     # A local bare/working Git fixture exercises real Git checkout operations;
     # production validation and allowed transports are tested separately above.
     monkeypatch.setattr(runtime, "validate_clone_url", lambda value: value)
-    monkeypatch.setattr(runtime, "git_environment", lambda **kwargs: {**os.environ, "GIT_ALLOW_PROTOCOL": "file"})
-    monkeypatch.setattr(runtime, "_download", lambda *args: pytest.fail("Git sources must not use API archives"))
+    monkeypatch.setattr(runtime, "git_environment", lambda **kwargs: {
+        **os.environ, "GIT_ALLOW_PROTOCOL": "file", "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": "protocol.version", "GIT_CONFIG_VALUE_0": "0"})
     prepared = []
     def prepare(root, *, extras, **kwargs):
         prepared.append((root, extras))
@@ -191,12 +217,12 @@ def test_git_cache_pins_old_commit_submodules_and_tags_and_keeps_versions(tmp_pa
         (root / ".venv" / "preserved").write_text("old runtime")
     monkeypatch.setattr(runtime, "prepare_environment", prepare)
     monkeypatch.setattr(runtime, "verify_runtime_core", lambda _root: None)
-    first_root = runtime._cache_revision(None, first, cache=cache)
+    first_root = runtime._cache_revision(first, cache=cache)
     assert (first_root / "value.py").read_text() == "VERSION = 1\n"
     verify_source(first_root, first)
-    assert runtime._cache_revision(None, first, cache=cache) == first_root
+    assert runtime._cache_revision(first, cache=cache) == first_root
     assert len(prepared) == 1
-    second_root = runtime._cache_revision(None, second, cache=cache)
+    second_root = runtime._cache_revision(second, cache=cache)
     assert second_root != first_root
     assert prepared[-1][1] == ["machine-b"]
     assert (first_root / ".venv" / "preserved").read_text() == "old runtime"
@@ -204,7 +230,7 @@ def test_git_cache_pins_old_commit_submodules_and_tags_and_keeps_versions(tmp_pa
     verify_source(second_root, second)
     (first_root / "value.py").write_text("changed")
     with pytest.raises(RuntimeError, match="modified"):
-        runtime._cache_revision(None, first, cache=cache)
+        runtime._cache_revision(first, cache=cache)
     assert (first_root / ".venv" / "preserved").is_file()
 
 
@@ -223,12 +249,28 @@ def test_failed_git_runtime_preparation_is_retryable_without_touching_ready_vers
     monkeypatch.setattr(runtime, "prepare_environment", fail)
     cache = tmp_path / "cache"
     with pytest.raises(RuntimeError, match="uv failed"):
-        runtime._cache_revision(None, descriptor, cache=cache)
+        runtime._cache_revision(descriptor, cache=cache)
     assert not list(cache.glob("*/.simstack-repository.json"))
     monkeypatch.setattr(runtime, "prepare_environment", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "verify_runtime_core", lambda _root: None)
-    root = runtime._cache_revision(None, descriptor, cache=cache)
+    root = runtime._cache_revision(descriptor, cache=cache)
     assert (root / ".simstack-repository.json").is_file()
+
+
+def test_exact_checkout_supports_sha256_repositories(tmp_path, monkeypatch):
+    from simstack.util import repository_runtime as runtime
+    source = tmp_path / "remote"
+    source.mkdir()
+    git(source, "init", "--quiet", "--object-format=sha256", "-b", "main")
+    git(source, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+        "commit", "--quiet", "--allow-empty", "-m", "Pin")
+    descriptor = _descriptor(source, "a" * 64)
+    descriptor.update(ref="main", clone_url=source.as_uri())
+    assert len(descriptor["commit_sha"]) == 64
+    monkeypatch.setattr(runtime, "validate_clone_url", lambda value: value)
+    checkout = tmp_path / "checkout"
+    runtime._checkout_git(checkout, descriptor, {**os.environ, "GIT_ALLOW_PROTOCOL": "file"})
+    verify_source(checkout, descriptor)
 
 
 @pytest.mark.skipif(not (os.environ.get("UV_EXECUTABLE") or shutil.which("uv")), reason="uv executable is required")
@@ -247,7 +289,7 @@ def test_cold_git_cache_runs_real_locked_uv_sync_and_preserves_installed_core(tm
     descriptor = _descriptor(source, "d" * 64, extras=["machine"])
     monkeypatch.setattr(runtime, "validate_clone_url", lambda value: value)
     monkeypatch.setattr(runtime, "git_environment", lambda **kwargs: {**os.environ, "GIT_ALLOW_PROTOCOL": "file"})
-    root = runtime._cache_revision(None, descriptor, cache=tmp_path / "cache")
+    root = runtime._cache_revision(descriptor, cache=tmp_path / "cache")
     output = subprocess.check_output([str(runtime.runtime_python(root)), "-c",
         "import simstack,fixture_workflow,importlib.metadata;print(fixture_workflow.RESULT);print(importlib.metadata.version('simstack'))"],
         cwd=root, text=True).splitlines()
@@ -326,11 +368,11 @@ def test_core_upgrade_prepares_separate_runtime_and_never_changes_old_one(tmp_pa
     monkeypatch.setattr(runtime, 'verify_runtime_core', lambda root: None)
     monkeypatch.setattr(runtime, 'core_build_identity', lambda: '1' * 64)
     cache = tmp_path / 'cache'
-    old_root = runtime._cache_revision(None, descriptor, cache=cache)
+    old_root = runtime._cache_revision(descriptor, cache=cache)
     old_marker = (old_root / '.simstack-repository.json').read_bytes()
     monkeypatch.setattr(runtime, 'core_build_identity', lambda: '2' * 64)
     assert runtime.prepared_repositories(cache=cache) == []
-    new_root = runtime._cache_revision(None, descriptor, cache=cache)
+    new_root = runtime._cache_revision(descriptor, cache=cache)
     assert new_root != old_root
     assert (old_root / '.simstack-repository.json').read_bytes() == old_marker
     assert (old_root / '.venv' / 'scientific-dependencies').read_text() == 'pinned dependencies'
@@ -445,7 +487,7 @@ def test_invalid_current_binding_is_not_ready_and_only_explicit_preparation_repa
     monkeypatch.setattr(runtime, 'git_environment', lambda **kwargs: {**os.environ, 'GIT_ALLOW_PROTOCOL': 'file'})
     monkeypatch.setattr(runtime, 'prepare_environment', _create_runtime_for_core_probe)
     cache = tmp_path / 'cache'
-    root = runtime._cache_revision(None, descriptor, cache=cache)
+    root = runtime._cache_revision(descriptor, cache=cache)
     current = json.loads((root / '.simstack-repository.json').read_text())
     assert current['core_build'] == runtime.core_build_identity()
     python = runtime.runtime_python(root)
@@ -457,9 +499,9 @@ def test_invalid_current_binding_is_not_ready_and_only_explicit_preparation_repa
     assert runtime.prepared_repositories(cache=cache) == []
     stale = binding.read_bytes()
     with pytest.raises(subprocess.CalledProcessError):
-        runtime._cache_revision(None, descriptor, cache=cache)
+        runtime._cache_revision(descriptor, cache=cache)
     assert binding.read_bytes() == stale
-    repaired = runtime._cache_revision(None, descriptor, cache=cache, repair_runtime=True)
+    repaired = runtime._cache_revision(descriptor, cache=cache, repair_runtime=True)
     assert repaired == root
     runtime.verify_runtime_core(root)
     assert runtime.prepared_repositories(cache=cache) == [{'repository_revision': 'f' * 64, 'extras': []}]
@@ -478,7 +520,7 @@ def test_failed_explicit_runtime_repair_restores_previous_environment(tmp_path, 
     monkeypatch.setattr(runtime, 'prepare_environment', lambda root, **kwargs: (root / '.venv').mkdir())
     monkeypatch.setattr(runtime, 'verify_runtime_core', lambda root: None)
     cache = tmp_path / 'cache'
-    root = runtime._cache_revision(None, descriptor, cache=cache)
+    root = runtime._cache_revision(descriptor, cache=cache)
     previous = root / '.venv' / 'scientific-dependency'
     previous.write_text('original locked dependency')
     def stale(root):
@@ -490,7 +532,7 @@ def test_failed_explicit_runtime_repair_restores_previous_environment(tmp_path, 
         raise RuntimeError('uv unavailable')
     monkeypatch.setattr(runtime, 'prepare_environment', fail_preparation)
     with pytest.raises(RuntimeError, match='uv unavailable'):
-        runtime._cache_revision(None, descriptor, cache=cache, repair_runtime=True)
+        runtime._cache_revision(descriptor, cache=cache, repair_runtime=True)
     assert previous.read_text() == 'original locked dependency'
     assert not (root / '.venv' / 'incomplete').exists()
     assert not list(cache.glob('runtime-*'))

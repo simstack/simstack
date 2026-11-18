@@ -15,8 +15,8 @@ from simstack.models import (
 
 @node
 def remote_runner_process_identity(_input: FloatData, **_kwargs) -> FloatData:
-    """Return the PID so the test can prove execution happened in the runner."""
-    return FloatData(field_name="runner_pid", value=float(os.getpid()))
+    """Report the native controller that launched this science process."""
+    return FloatData(field_name="controller_pid", value=float(os.getppid()))
 
 
 @pytest.mark.asyncio
@@ -28,15 +28,16 @@ async def test_subprocess_runner_completes_submitted_node(test_runner):
         )
 
     api = test_runner.simstack_user_api
-    input_value = await api.values.publish_value(FloatData(field_name="input", value=1.0))
+    inputs, input_publication = await api.values.publish_task_inputs([FloatData(field_name="input", value=1.0)])
     function_mapping = (f"{remote_runner_process_identity.__module__}."
         f"{remote_runner_process_identity.__name__}")
     submitted = (await api.tasks.submit_root({
         "requested_task_id": str(ObjectId()), "invocation_id": str(uuid4()),
         "name": remote_runner_process_identity.__name__, "function_mapping": function_mapping,
-        "arg_hash": compute_arg_hash([input_value]), "call_path": "." + remote_runner_process_identity.__name__,
+        "arg_hash": compute_arg_hash(inputs), "call_path": "." + remote_runner_process_identity.__name__,
+        "input_publication": input_publication,
         "input_references": [{"variable_name": "_input", "variable_mapping": "simstack.models.base_types.FloatData",
-            "reference": str(input_value.id)}],
+            "reference": str(inputs[0].id)}],
         "parameters": Parameters(resource="test", force_rerun=True, in_docker=False).model_dump(mode="json"),
     }, request_id=str(uuid4())))["task"]
 
@@ -74,6 +75,8 @@ async def test_subprocess_runner_completes_submitted_node(test_runner):
     assert result_reference.variable_mapping == "simstack.models.base_types.FloatData"
     result = await api.values.get_value(FloatData, result_reference.reference)
     assert result is not None
-    assert result.field_name == "runner_pid"
-    assert int(result.value) == test_runner.pid
-    assert int(result.value) != os.getpid()
+    assert result.field_name == "controller_pid"
+    assert int(result.value) == completed.process_id
+    assert completed.process_id not in {test_runner.pid, os.getpid()}
+    launch = f"task_id: {submitted.id} with PID: {completed.process_id}"
+    assert any(launch in line for line in test_runner.simstack_output_lines)

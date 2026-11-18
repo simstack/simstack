@@ -298,6 +298,13 @@ The :class:`simstack.models.parameters.Parameters` can specify
 The slurm parameters are specified in Parameters has an attribute
 ``slurm_parameters`` of type: :class:`simstack.models.parameters.SlurmParameters`.
 
+Set ``SlurmParameters(array="0-9%2")`` to submit ten native array elements
+and run up to two at once. The node can read its index from
+``SLURM_ARRAY_TASK_ID``. Each element has a child task with its own results,
+logs and scratch directory. After every element succeeds, the workflow receives
+the lowest-index element's result with the node's usual return type.
+An element failure makes the group fail once the other elements finish.
+
 When specifying parameters in the @node decoration, the developer should
 specify sensible default parameters for node execution. These can be overwritten
 on-the-fly when calling the node:

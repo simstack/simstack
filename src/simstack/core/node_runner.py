@@ -734,13 +734,13 @@ class NodeRunner(SimstackResult):
                 job_id = str(self.task_id) + "_" + uuid.uuid4().hex
                 result = submit_to_watchdog(command, job_id, queue_dir)
                 if result.status == "ok":
-                    self.info(f"watchdog {result.exit_code}")
+                    self.info(f"watchdog {result.returncode}")
                 else:
                     err_msg = f"watchdog submission failed: {result.returncode}"
                     self.fail(err_msg)
                 self.last_stdout = result.stdout
                 self.last_stderr = result.stderr
-                process_log.write(f"Process return code:\n{result.exit_code}\n\n")
+                process_log.write(f"Process return code:\n{result.returncode}\n\n")
                 process_log.write(f"Process output:\n{result.stdout}\n\n")
                 process_log.write(f"Process error:\n{result.stderr}\n\n")
             file_stack = FileStack.from_local_file(

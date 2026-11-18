@@ -39,8 +39,8 @@ async def test_recompute_preserves_outputs_and_removes_generated_artifacts(
     await module.recompute_artifacts(registry)
     node.load_results.assert_awaited_once()
     create.assert_awaited_once()
-    api.clear_generated_artifacts.assert_awaited_once_with(registry)
-    api.replace_artifacts.assert_awaited_once_with(registry, [generated[0].id])
+    api.clear_generated_artifacts.assert_not_awaited()
+    api.replace_artifacts.assert_awaited_once_with(registry, [generated[0].id], replacements=[])
     assert registry.results_references == [SimpleNamespace(reference=item.id) for item in outputs]
 
 

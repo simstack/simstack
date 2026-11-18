@@ -289,6 +289,9 @@
 <section id="simpletable">
 <h2>SimpleTable<a class="headerlink" href="#simpletable" title="Link to this heading">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">SimpleTable</span></code> model allows you to define a table with headings, data types for columns, and rows of data.</p>
+<p>When a published table or chart outgrows inline storage, Server writes its rows
+to a Parquet object in S3 and keeps a reference in MongoDB. The UI reads pages
+through Server as the researcher browses the table.</p>
 <p><strong>Key Features:</strong></p>
 <ul class="simple">
 <li><p><strong>UI Ready</strong>: Designed to be used with a specialized UI field (<code class="docutils literal notranslate"><span class="pre">SimpleTableField</span></code>) that renders the data in an ag-grid component.</p></li>

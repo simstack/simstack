@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Optional, List, ClassVar, Dict, Any
 from simstack.models.document import Field, EmbeddedModel
 from pydantic import field_validator, model_validator
+from simstack.util.slurm_array import index_ranges, normalize_array_option
 
 from simstack.core.resources import allowed_resources
 
@@ -111,7 +112,7 @@ def _extra_sbatch_flag(option: str) -> str:
     for argument in shlex.split(option):
         flag = argument.split("=", 1)[0]
         if flag.startswith("-a") or (flag.startswith("--") and "--array".startswith(flag)):
-            raise ValueError("Slurm job arrays are unsupported; use explicit child tasks or MassRunner")
+            raise ValueError("Use the array field or a standalone --array option")
     token = option.split(None, 1)[0]
     flag, separator, value = token.partition("=")
     if separator and value == "":
@@ -236,6 +237,17 @@ class SlurmParameters(EmbeddedModel):
         default=None, description="Prevent job from being requeued"
     )
 
+    array: Optional[str] = Field(default=None, description="Native Slurm array indices, for example 0-8:2%2")
+
+    _normalize_array = model_validator(mode="before")(normalize_array_option)
+
+    @field_validator("array")
+    @classmethod
+    def validate_array(cls, value):
+        if value is not None:
+            index_ranges(value)
+        return value
+
     @field_validator("extra_options")
     @classmethod
     def validate_extra_options(cls, value: List[str]) -> List[str]:
@@ -322,6 +334,7 @@ class SlurmParameters(EmbeddedModel):
             "reservation": "--reservation",
             "constraint": "--constraint",
             "dependency": "--dependency",
+            "array": "--array",
             "chdir": "--chdir",
             "export": "--export",
             "signal": "--signal",

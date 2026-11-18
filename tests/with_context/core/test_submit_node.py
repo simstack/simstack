@@ -59,8 +59,9 @@ def configure(tmp_path, monkeypatch, program=None):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("array", [None, "1,4%2"])
 async def test_generated_script_preserves_allocation_and_original_parameters(
-    tmp_path, monkeypatch, server_storage
+    tmp_path, monkeypatch, server_storage, array
 ):
     configure(tmp_path, monkeypatch)
     secret = "mongodb://slurm-env:slurm-password@db.internal:27017/simstack"
@@ -76,6 +77,7 @@ async def test_generated_script_preserves_allocation_and_original_parameters(
     monkeypatch.setattr("simstack.core.submit_node.subprocess.Popen", sbatch)
     params = SlurmParameters(
         nodes=2,
+        array=array,
         tasks=None,
         tasks_per_node=1,
         mem="8G",
@@ -98,6 +100,10 @@ async def test_generated_script_preserves_allocation_and_original_parameters(
     ).read_text()
     assert script.count(f"run_node --node-id {entry.id}") == 1
     assert "#SBATCH --job-name=ss-" in script
+    assert len(submitted) == 1
+    if array:
+        assert script.count("#SBATCH --array=" + array) == 1
+        assert "%A_%a.out" in script and "%A_%a.err" in script
     assert "#SBATCH --nodes=2" in script
     assert "#SBATCH --mem=8G" in script
     assert "module load orca" in script
@@ -192,23 +198,30 @@ async def test_slurm_docker_uses_task_resource_program(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("configured_signal", [None, "B:SIGUSR1@120"])
+@pytest.mark.parametrize(("configured_signal", "expected_signal"), [
+    (None, "B:SIGUSR1@60"), ("B:SIGUSR1@120", "B:SIGUSR1@120"),
+    ("B:USR2@90", "B:USR2@90"), ("SIGUSR2@45", "B:SIGUSR2@45"),
+    ("USR1", "B:USR1"), ("R:USR1@30", "R:USR1@30"), ("TERM@15", "TERM@15"),
+    ("12@25", "12@25"), ("B:12@25", "B:12@25"),
+])
 async def test_scratch_checkpoint_installs_handler_and_preserves_configured_signal(
-    tmp_path, monkeypatch, server_storage, configured_signal
+    tmp_path, monkeypatch, server_storage, configured_signal, expected_signal
 ):
     configure(tmp_path, monkeypatch, {"use_tmp": True})
-    scratch = tmp_path / "scratch"
-    scratch.mkdir()
-    monkeypatch.setattr(context._resource_config, "tmp_dir", lambda task_id: scratch, raising=False)
+    scratch = tmp_path / "submit host scratch"
+    monkeypatch.setenv("TMPDIR", str(scratch))
+    monkeypatch.setattr(context._resource_config, "get_setup_params",
+        lambda: {"tmp_base_dir": "$TMPDIR"}, raising=False)
     monkeypatch.setattr("simstack.core.submit_node.subprocess.Popen",
         lambda *args, **kwargs: completed_submission(stdout="42\n"))
     entry = await claimed_task(server_storage, "checkpoint_child", Parameters(resource="test", queue="slurm-queue",
         slurm_parameters=SlurmParameters(signal=configured_signal)))
     assert await submit_node(entry)
     script = (context.config.workdir / entry.name / str(entry.id) / "slurm_script.sh").read_text()
-    assert "#SBATCH --signal=" + (configured_signal or "B:SIGUSR1@60") in script
+    assert "#SBATCH --signal=" + expected_signal in script
     assert "slurm_checkpoint.sh" in script
-    assert str(scratch) in script
+    assert str(scratch) not in script
+    assert not scratch.exists()
     assert entry.parameters.slurm_parameters.signal == configured_signal
 
 

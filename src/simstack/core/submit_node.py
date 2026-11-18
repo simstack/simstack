@@ -94,15 +94,12 @@ async def submit_node(entry):
         if params is None:
             raise ValueError(f"Task {entry.id} has no Slurm parameters")
         params = params.model_copy(deep=True)
-        if os.environ.get("SBATCH_ARRAY_INX"):
-            raise ValueError("Slurm job arrays are unsupported; use explicit child tasks or MassRunner")
+        if os.environ.get("SBATCH_ARRAY_INX") and not params.array:
+            raise ValueError("Declare the Slurm array in task parameters instead of SBATCH_ARRAY_INX")
         workdir = Path(context.config.workdir) / entry.name / str(entry.id)
         workdir.mkdir(parents=True, exist_ok=True)
         checkpoint_args = []
         if use_tmp:
-            scratch = config.tmp_dir(entry.id)
-            if not scratch.is_dir():
-                raise ValueError(f"Scratch directory does not exist: {scratch}")
             destination = workdir / "recovery"
             checkpoint_script = (
                 Path(__file__).parents[1] / "static" / "slurm_checkpoint.sh"
@@ -110,14 +107,19 @@ async def submit_node(entry):
             checkpoint_args = [
                 "bash",
                 str(checkpoint_script),
-                str(scratch),
+                "--tmp-base",
+                config.get_setup_params().get("tmp_base_dir") or "",
                 str(destination),
             ]
             if params.signal is None:
                 params.signal = "B:SIGUSR1@60"
+            elif params.signal.partition("@")[0].upper() in {"USR1", "USR2", "SIGUSR1", "SIGUSR2"}:
+                # The scratch handler runs in the batch shell, outside the job steps.
+                params.signal = "B:" + params.signal
         paths = list(dict.fromkeys([str(base), *map(str, context.config.python_paths)]))
-        params.output = str(workdir / "%j.out")
-        params.error = str(workdir / "%j.err")
+        log_id = "%A_%a" if params.array else "%j"
+        params.output = str(workdir / f"{log_id}.out")
+        params.error = str(workdir / f"{log_id}.err")
         params.chdir = str(workdir)
         params.startup_commands.append("source ~/.bashrc")
         if context.config.environment_start:
@@ -146,6 +148,7 @@ async def submit_node(entry):
             return True
         params.job_name = "ss-" + submission_id
         environment = task_environment(entry, server=context.server)
+        environment.pop("SBATCH_ARRAY_INX", None)
         environment["SIMSTACK_SLURM_SUBMISSION"] = submission_id
         environment["SIMSTACK_SLURM_SUBMISSION_TASK"] = str(entry.id)
         launch_environment = workdir / ("slurm_environment_" + submission_id + ".sh")

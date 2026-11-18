@@ -6,11 +6,11 @@ SimStack II provides a robust way to handle files within workflows. The core mod
 FileStack
 ---------
 
-A ``FileStack`` represents a single file that can be stored in the database (in-memory) or tracked on various computational resources.
+A ``FileStack`` records a file’s identity, size, checksum and locations. When a workflow publishes it, the bytes go to S3-compatible object storage and Server saves the metadata in the workspace database.
 
 **Key Features:**
 
-* **Storage Flexibility:** Files can be stored directly in MongoDB (compressed) or kept on disk at various locations.
+* **Local staging:** The default ``from_local_file()`` captures a local copy until publication. With ``in_memory=False``, keep the original path readable until publication completes.
 * **Automatic Transfer:** When a node requires a ``FileStack`` that is not locally available, SimStack automatically handles the transfer.
 * **Hashing:** Supports content-based hashing for verification and caching.
 
@@ -22,7 +22,7 @@ To create a ``FileStack`` from a local file:
 
    from simstack.models.files import FileStack
 
-   # Create a FileStack and store its content in the database
+   # Stage a local snapshot for publication with the workflow
    file_stack = FileStack.from_local_file("path/to/my_file.txt", in_memory=True)
 
 To create a ``FileStack`` from a string:
@@ -43,6 +43,8 @@ To retrieve the file in a node:
        with open(local_path, "r") as f:
            content = f.read()
        ...
+
+Server issues short-lived signed links for file and ZIP downloads. When a saved task supplies the file, the link refers to the version recorded in its snapshot.
 
 FileList and FileListModel
 --------------------------

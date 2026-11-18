@@ -298,10 +298,11 @@ with a backend implemented using FastAPI, which in turn interacts with a
 MongoDB database to persist data. The backend also interacts with remote
 resources, so called runners, where the python code is actually executed. The graphical user interface
 is decribed in more detail in <span class="xref std std-ref">using_gui_section</span>.</p>
-<p>In a typical installation Simstack II requrires only one instance of the
-Next-JS frontend, one instance of the FastAPI backend and one instance of
-the MongoDB database server. Each user has his/her own database in the
-MongoDB server. The runners are installed for each user on the required remote resources.
+<p>A typical installation uses the Next.js frontend, the FastAPI backend, MongoDB
+and S3-compatible object storage. Each user’s MongoDB database holds scientific
+records, task history and references to objects in S3. The bucket holds published
+files, large table payloads and dataset membership pages. Runners on the user’s
+resources transfer files using signed URLs issued by Server.
 Server publishes approved repository revisions and requests preparation of their
 pinned runtimes through the Runner API. Running tasks retain their original
 revision and environment when a new revision is prepared.</p>

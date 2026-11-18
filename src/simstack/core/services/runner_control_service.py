@@ -62,7 +62,7 @@ class RunnerControlService(BaseService):
             })
             return
         try:
-            await prepare_repository(context.server.requests, command["payload"], repair_runtime=True)
+            await prepare_repository(command["payload"], repair_runtime=True)
         except Exception:
             await self.control.acknowledge_control(command["id"], {
                 "status": "failed",

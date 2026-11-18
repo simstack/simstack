@@ -10,6 +10,10 @@ SimpleTable
 
 The ``SimpleTable`` model allows you to define a table with headings, data types for columns, and rows of data.
 
+When a published table or chart outgrows inline storage, Server writes its rows
+to a Parquet object in S3 and keeps a reference in MongoDB. The UI reads pages
+through Server as the researcher browses the table.
+
 **Key Features:**
 
 * **UI Ready**: Designed to be used with a specialized UI field (``SimpleTableField``) that renders the data in an ag-grid component.

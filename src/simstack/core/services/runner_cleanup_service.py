@@ -8,10 +8,12 @@ from simstack.core.services.base_service import BaseService
 from simstack.models.document.codec import decode_document_value
 
 logger = logging.getLogger("NodeRunner")
+CACHE_PAGE_SIZE = 200
 
 class RunnerCleanupService(BaseService):
     def __init__(self, resource, interval=300):
         super().__init__("RunnerCleanup", resource, interval)
+        self._cache_cursor = None
 
     async def execute(self):
         if os.environ.get("SIMSTACK_FILE_CACHE_CLEANUP_ENABLED", "1").lower() not in {"0", "false", "no"}:
@@ -21,7 +23,11 @@ class RunnerCleanupService(BaseService):
         ttl_days = max(int(os.environ.get("SIMSTACK_FILE_CACHE_TTL_DAYS", "14")), 0)
         cutoff = datetime.now(timezone.utc) - timedelta(days=ttl_days)
         workdir = Path(context.config.workdir).resolve()
-        manifest = decode_document_value(await context.server.resource.cache_locations())
+        manifest = decode_document_value(await context.server.resource.cache_locations(
+            cutoff=cutoff, cursor=self._cache_cursor, limit=CACHE_PAGE_SIZE))
+        # Advance even past pinned files or a failed acknowledgement. Remaining
+        # eligible copies are retried when the next scan wraps to the beginning.
+        self._cache_cursor = manifest.get("next_cursor")
         for location in manifest.get("locations", []):
             resource = location.get("resource")
             resource = resource.get("value") if isinstance(resource, dict) else resource

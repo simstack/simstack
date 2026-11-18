@@ -55,3 +55,39 @@ async def test_bootstrap_failure_is_delivered_from_local_journal(server_storage)
     assert stored.status == "failed"
     assert stored.error == "API bootstrap unavailable"
     assert list(pending_failures()) == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("queue_error", [False, True])
+async def test_sweep_reads_queue_once_and_checks_accounting_per_missing_job(monkeypatch, queue_error):
+    from unittest.mock import AsyncMock
+    from simstack.util import slurm_observation
+
+    jobs = ["42", "42_1", "42_2", "43", "44"]
+    submissions = [{"job_id": job, "execution": {"task_id": job}, "submission_id": str(uuid4())}
+                   for job in jobs]
+    monkeypatch.setattr(context.server.slurm, "scheduler_watchlist", AsyncMock(return_value={"submissions": submissions}))
+    record = AsyncMock()
+    monkeypatch.setattr(context.server.slurm, "scheduler_observations", record)
+    calls = []
+    def query(command):
+        calls.append(command)
+        if command[0] == "squeue":
+            assert "--array" in command
+            if queue_error:
+                raise RuntimeError("queue unavailable")
+            return "42_1|RUNNING|R|active|user|1:00|node01|None"
+        job = command[command.index("--jobs") + 1]
+        return "43|COMPLETED|0:0|2026-11-09T12:00:00|None" if job == "43" else ""
+    monkeypatch.setattr(slurm_observation, "_run", query)
+    await SlurmStatusService("test", 60).execute()
+    assert [command[0] for command in calls].count("squeue") == 1
+    assert [command[command.index("--jobs") + 1] for command in calls if command[0] == "sacct"] == (
+        jobs if queue_error else ["42_2", "43", "44"])
+    facts = {fact["job_id"]: fact for fact in record.await_args.args[0]}
+    assert facts["43"]["kind"] == "terminal"
+    assert facts["44"]["kind"] == "unknown"
+    assert facts["44"]["job_absent"] is (not queue_error)
+    assert facts["42_2"]["job_absent"] is (not queue_error)
+    for job in jobs[:2]:
+        assert facts[job]["kind"] == ("unknown" if queue_error else "active")

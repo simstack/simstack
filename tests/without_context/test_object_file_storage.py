@@ -286,12 +286,12 @@ def test_multipart_streams_ranges_and_retries_only_failed_part(tmp_path, monkeyp
     uploads = []
     def upload(url, source, headers, timeout, offset, length):
         uploads.append((int(url), offset, length, source.read_bytes()[offset:offset + length]))
-        if len(uploads) == 1:
+        if url == "1" and sum(number == 1 for number, *_ in uploads) == 1:
             raise FileTransferError("Object upload returned HTTP 503")
     monkeypatch.setattr(transfers, "upload_object", upload)
     digest = client._publish_parts({"upload_id": "u", "multipart": {"part_size": 8, "part_count": 2}}, path)
-    assert [part["part_number"] for part in requests] == [1, 1, 2]
-    assert uploads == [(1, 0, 8, b"abcdefgh"), (1, 0, 8, b"abcdefgh"), (2, 8, 3, b"ijk")]
+    assert sorted(part["part_number"] for part in requests) == [1, 1, 2]
+    assert sorted(uploads) == [(1, 0, 8, b"abcdefgh"), (1, 0, 8, b"abcdefgh"), (2, 8, 3, b"ijk")]
     assert digest == hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -347,3 +347,47 @@ def test_concurrent_publication_consumes_staging_or_copy_only_once(tmp_path, mon
         list(pool.map(lambda _: publish(), range(2)))
     assert calls == (["source-id"] if copy_source else ["upload"])
     assert len([item for item in value.locations if item.location_type == "s3"]) == 1
+
+def test_multipart_overlaps_transfers_with_bounded_concurrency(tmp_path, monkeypatch):
+    import time
+    from simstack.util import object_transfer
+    path = tmp_path / "source"
+    path.write_bytes(bytes(range(20)))
+    client = ObjectFileClient(server_url="https://api.test", runner_token="test")
+    monkeypatch.setattr(client, "_json_request", lambda *args: {"upload_url": "part", "upload_headers": {}})
+    active = peak = 0
+    guard = threading.Lock()
+    def transfer(*args, **kwargs):
+        nonlocal active, peak
+        with guard:
+            active += 1
+            peak = max(active, peak)
+        time.sleep(0.015)
+        with guard:
+            active -= 1
+    monkeypatch.setattr(object_transfer, "upload_object", transfer)
+    digest = client._publish_parts({"upload_id": "u", "multipart": {"part_size": 2, "part_count": 10}}, path)
+    assert digest == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert 1 < peak <= 4
+
+
+@pytest.mark.asyncio
+async def test_scientific_publication_overlaps_independent_files(monkeypatch):
+    import time
+    from simstack.server_api.scientific_values import ScientificValuesAPI
+    api = ScientificValuesAPI(SimpleNamespace())
+    guard = threading.Lock()
+    active = peak = 0
+    def upload(self, *, client):
+        nonlocal active, peak
+        with guard:
+            active += 1
+            peak = max(active, peak)
+        time.sleep(0.015)
+        with guard:
+            active -= 1
+    monkeypatch.setattr(ObjectFileClient, "for_api", lambda *_: None)
+    monkeypatch.setattr(FileStack, "ensure_uploaded", upload)
+    files = [FileStack(name=f"file-{i}") for i in range(12)]
+    assert await api._prepare_values(files) == files
+    assert 1 < peak <= 4

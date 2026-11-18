@@ -55,28 +55,19 @@ def contains_file_values(roots):
     return any(visit(root) for root in roots)
 
 
-def _refresh_file_metadata(graph, files):
-    """Refresh only object-control fields, without rerunning scientific serializers."""
+def _refresh_file_metadata(files, field_occurrences):
+    """Update each serialized occurrence from the FileStack instance that supplied it."""
     from simstack.models.files import FileStack
 
-    metadata = {}
     for value in files:
-        base = FileStack.model_construct(**{name: getattr(value, name) for name in FileStack.model_fields})
-        fields = encode_graph([base])["nodes"][0]["value"]
-        names = type(value).model_json_schema()["x-simstack-file-storage-fields"]
-        metadata[reference_key(type_name(type(value)), value.id)] = {
-            wire_name: fields[name] for name, wire_name in names.items()}
-    field_models = {node["mapping"] for node in graph["nodes"]}
-    for node in graph["nodes"]:
-        key = reference_key(node["mapping"], node["id"])
-        if key in metadata:
-            node["value"].update(metadata[key])
-        for fields, value in ((True, node["value"]), (False, node.get("members"))):
-            for item in graph_values(value, fields=fields, field_models=field_models):
-                if item.get("__simstack_value__") == "embedded" and isinstance(item.get("value"), dict):
-                    key = reference_key(item["mapping"], item["value"].get("id"))
-                    if key in metadata:
-                        item["value"].update(metadata[key])
+        targets = field_occurrences[id(value)]
+        if targets:
+            base = FileStack.model_construct(**{name: getattr(value, name) for name in FileStack.model_fields})
+            fields = encode_graph([base])["nodes"][0]["value"]
+            names = type(value).model_json_schema()["x-simstack-file-storage-fields"]
+            metadata = {wire_name: fields[name] for name, wire_name in names.items()}
+            for target in targets:
+                target.update(metadata)
 
 
 class ScientificValuesAPI:
@@ -323,8 +314,6 @@ class ScientificValuesAPI:
             seen.add(id(value))
             if isinstance(value, FileStack):
                 files.append(value)
-                if upload_files:
-                    await self._upload_files([value])
             if isinstance(value, (DataSetSection, DataSetTupleSection)):
                 if "_cache" not in vars(value):
                     await self.materialize_references([value])
@@ -355,13 +344,20 @@ class ScientificValuesAPI:
 
         for root in roots:
             await visit(root)
+        if upload_files:
+            await self._upload_files(files)
         return files
 
     async def _upload_files(self, files):
         from simstack.util.object_transfer import ObjectFileClient
 
-        for value in files:
-            await asyncio.to_thread(value.ensure_uploaded, client=ObjectFileClient.for_api(self.requests))
+        for offset in range(0, len(files), 3):
+            results = await asyncio.gather(*(
+                asyncio.to_thread(value.ensure_uploaded, client=ObjectFileClient.for_api(self.requests))
+                for value in files[offset:offset + 3]), return_exceptions=True)
+            for result in results:
+                if isinstance(result, BaseException):
+                    raise result
 
     async def publish_values(self, values: list[Model]) -> list[Model]:
         from simstack.models.node_registry import NodeRegistry
@@ -395,8 +391,10 @@ class ScientificValuesAPI:
 
         values = list(values)
         files = await self._prepare_values(values, upload_files=False)
-        graph = encode_graph([value for value in values if not isinstance(value, NodeRegistry)])
-        _refresh_file_metadata(graph, files)
+        occurrences = {id(value): [] for value in files}
+        graph = encode_graph([value for value in values if not isinstance(value, NodeRegistry)],
+                             field_occurrences=occurrences)
+        _refresh_file_metadata(files, occurrences)
         response = await self.requests.query("/values/input-preview", {
             **self._scientific_body(graph=graph), "request_id": str(uuid4()),
             "repository_revision": repository_revision,
@@ -404,7 +402,7 @@ class ScientificValuesAPI:
         })
         # Keep the original graph: serializing its decoded preview again would
         # apply custom serializers twice on a cache miss.
-        return await self.decode_task_inputs(response), {"graph": graph, "files": files}
+        return await self.decode_task_inputs(response), {"graph": graph, "files": files, "occurrences": occurrences}
 
     async def publish_task_inputs(self, values, *, repository_revision=None, prepared=None):
         """Publish once and pin the exact accepted graph for this invocation."""
@@ -416,7 +414,7 @@ class ScientificValuesAPI:
         else:
             await self._upload_files(prepared["files"])
             graph = prepared["graph"]
-            _refresh_file_metadata(graph, prepared["files"])
+            _refresh_file_metadata(prepared["files"], prepared["occurrences"])
         request_id = str(uuid4())
         response = await self.requests.command("/values/input-publications", {
             **self._scientific_body(graph=graph),
@@ -511,6 +509,22 @@ class ScientificValuesAPI:
             if ref["mapping"] == task_mapping and key not in resolved:
                 resolved[key] = await self.read_task_reference(ref["id"])
         return [resolved[reference_key(ref["mapping"], ref["id"])] for ref in refs]
+
+    async def iter_dataset_rows(self, identity, section: str, *, page_size: int = 100, tuple_dataset: bool = False):
+        """Yield ordered row names and model IDs without materializing the scientific graph."""
+        if not 1 <= page_size <= 500:
+            raise ValueError("Dataset page size must be between 1 and 500")
+        offset = 0
+        while True:
+            page = await self.requests.read(f"/datasets/{quote(str(identity), safe='')}/rows", section=section,
+                offset=offset, limit=page_size, tuple_dataset=str(tuple_dataset).lower(),
+                repository_revision=self.requests.revision())
+            rows = page["rows"]
+            for row in rows:
+                yield row
+            offset += len(rows)
+            if not rows or offset >= page["total"]:
+                break
 
     async def get_value(self, mapping: str | type, identity) -> Model:
         mapping = type_name(mapping) if isinstance(mapping, type) else mapping
@@ -633,15 +647,15 @@ class ScientificValuesAPI:
             recover=True,
         )
 
-    async def replace_artifacts(self, task, artifact_ids):
+    async def replace_artifacts(self, task, artifact_ids, *, replacements=None):
+        body = self._scientific_body(task_generation=getattr(task, "_execution_generation", None),
+                                     artifact_ids=list(map(str, artifact_ids)))
+        if replacements is not None:
+            await self._prepare_values(replacements)
+            body["graph"] = encode_graph(replacements)
         return await self.requests.command(
             f"/tasks/{quote(str(task.id), safe='')}/artifacts/replace",
-            self._scientific_body(
-                **{
-                    "task_generation": getattr(task, "_execution_generation", None),
-                    "artifact_ids": list(map(str, artifact_ids)),
-                }
-            ),
+            body,
             recover=True,
         )
 
