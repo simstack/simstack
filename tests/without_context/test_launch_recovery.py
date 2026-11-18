@@ -437,7 +437,7 @@ async def test_user_root_submission_does_not_enter_runner_claim_recovery(monkeyp
     monkeypatch.setattr("simstack.core.node.context", SimpleNamespace(server=api,
         config=SimpleNamespace(resource="local"), in_docker=False, current_node_name=None,
         node_mappings=SimpleNamespace(get_by_name=lambda name: SimpleNamespace(function_mapping="test.root_probe"))))
-    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: False)
+    monkeypatch.setattr("simstack.core.node_submission.process_is_in_docker", lambda: False)
     def root_probe(**kwargs):
         return True
     invocation = Node(func=root_probe, is_async=False, parameters=Parameters())

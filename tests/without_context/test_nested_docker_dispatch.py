@@ -41,7 +41,7 @@ def test_docker_image_for_node_looks_up_program(monkeypatch, tmp_path):
     )
     resource_config = ResourceConfig(config_file, "local")
     monkeypatch.setattr(
-        "simstack.core.node.context",
+        "simstack.core.node_submission.context",
         SimpleNamespace(
             resource_config=resource_config,
             config=SimpleNamespace(resource="local"),
@@ -61,7 +61,7 @@ def test_docker_image_for_node_maps_self_to_current_resource(monkeypatch, tmp_pa
     )
     resource_config = ResourceConfig(config_file, "cluster")
     monkeypatch.setattr(
-        "simstack.core.node.context",
+        "simstack.core.node_submission.context",
         SimpleNamespace(
             resource_config=resource_config,
             config=SimpleNamespace(resource="cluster"),
@@ -72,19 +72,19 @@ def test_docker_image_for_node_maps_self_to_current_resource(monkeypatch, tmp_pa
 
 
 def test_should_dispatch_true_on_host_when_task_requires_docker(monkeypatch):
-    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: False)
+    monkeypatch.setattr("simstack.core.node_submission.process_is_in_docker", lambda: False)
     params = Parameters(resource="local", queue="default", in_docker=True)
     assert should_handoff_nested_execution(params, "dftb_calculator") is True
 
 
 def test_should_handoff_when_container_child_explicitly_disables_docker(monkeypatch):
-    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: True)
+    monkeypatch.setattr("simstack.core.node_submission.process_is_in_docker", lambda: True)
     monkeypatch.setattr(
-        "simstack.core.node.docker_image_for_node",
+        "simstack.core.node_submission.docker_image_for_node",
         lambda name, resource=None: DFTB_IMAGE if name == "dftb_calculator" else PSI4_IMAGE,
     )
     monkeypatch.setattr(
-        "simstack.core.node.context",
+        "simstack.core.node_submission.context",
         SimpleNamespace(
             current_node_name="multistep_optimizer",
             config=SimpleNamespace(resource="local"),
@@ -95,13 +95,13 @@ def test_should_handoff_when_container_child_explicitly_disables_docker(monkeypa
 
 
 def test_should_dispatch_true_when_child_image_missing(monkeypatch):
-    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: True)
+    monkeypatch.setattr("simstack.core.node_submission.process_is_in_docker", lambda: True)
     monkeypatch.setattr(
-        "simstack.core.node.docker_image_for_node",
+        "simstack.core.node_submission.docker_image_for_node",
         lambda name, resource=None: PSI4_IMAGE if name == "multistep_optimizer" else None,
     )
     monkeypatch.setattr(
-        "simstack.core.node.context",
+        "simstack.core.node_submission.context",
         SimpleNamespace(
             current_node_name="multistep_optimizer",
             config=SimpleNamespace(resource="local"),
@@ -112,13 +112,13 @@ def test_should_dispatch_true_when_child_image_missing(monkeypatch):
 
 
 def test_should_dispatch_false_when_same_image(monkeypatch):
-    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: True)
+    monkeypatch.setattr("simstack.core.node_submission.process_is_in_docker", lambda: True)
     monkeypatch.setattr(
-        "simstack.core.node.docker_image_for_node",
+        "simstack.core.node_submission.docker_image_for_node",
         lambda name, resource=None: PSI4_IMAGE,
     )
     monkeypatch.setattr(
-        "simstack.core.node.context",
+        "simstack.core.node_submission.context",
         SimpleNamespace(
             current_node_name="multistep_optimizer",
             config=SimpleNamespace(resource="local"),
@@ -129,13 +129,13 @@ def test_should_dispatch_false_when_same_image(monkeypatch):
 
 
 def test_separate_cloud_vm_hands_off_even_when_the_image_matches(monkeypatch):
-    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: True)
+    monkeypatch.setattr("simstack.core.node_submission.process_is_in_docker", lambda: True)
     monkeypatch.setattr(
-        "simstack.core.node.docker_image_for_node",
+        "simstack.core.node_submission.docker_image_for_node",
         lambda name, resource=None: PSI4_IMAGE,
     )
     monkeypatch.setattr(
-        "simstack.core.node.context",
+        "simstack.core.node_submission.context",
         SimpleNamespace(
             current_node_name="pyscf_hessian",
             config=SimpleNamespace(resource="cloud"),
@@ -148,15 +148,15 @@ def test_separate_cloud_vm_hands_off_even_when_the_image_matches(monkeypatch):
 
 
 def test_should_dispatch_true_when_images_differ(monkeypatch):
-    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: True)
+    monkeypatch.setattr("simstack.core.node_submission.process_is_in_docker", lambda: True)
     monkeypatch.setattr(
-        "simstack.core.node.docker_image_for_node",
+        "simstack.core.node_submission.docker_image_for_node",
         lambda name, resource=None: (
             DFTB_IMAGE if name == "dftb_calculator" else PSI4_IMAGE
         ),
     )
     monkeypatch.setattr(
-        "simstack.core.node.context",
+        "simstack.core.node_submission.context",
         SimpleNamespace(
             current_node_name="multistep_optimizer",
             config=SimpleNamespace(resource="local"),
@@ -167,16 +167,16 @@ def test_should_dispatch_true_when_images_differ(monkeypatch):
 
 
 def test_should_dispatch_true_when_hub_prefix_differs_but_image_same(monkeypatch):
-    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: True)
+    monkeypatch.setattr("simstack.core.node_submission.process_is_in_docker", lambda: True)
 
     def fake_image(name, resource=None):
         if name == "multistep_optimizer":
             return PSI4_IMAGE
         return "molecular-qm-psi4:latest"
 
-    monkeypatch.setattr("simstack.core.node.docker_image_for_node", fake_image)
+    monkeypatch.setattr("simstack.core.node_submission.docker_image_for_node", fake_image)
     monkeypatch.setattr(
-        "simstack.core.node.context",
+        "simstack.core.node_submission.context",
         SimpleNamespace(
             current_node_name="multistep_optimizer",
             config=SimpleNamespace(resource="local"),
@@ -188,19 +188,19 @@ def test_should_dispatch_true_when_hub_prefix_differs_but_image_same(monkeypatch
 
 def test_process_is_in_docker_reads_context_flag(monkeypatch):
     monkeypatch.setattr(
-        "simstack.core.node.context",
+        "simstack.core.node_submission.context",
         SimpleNamespace(in_docker=True),
     )
-    monkeypatch.setattr("simstack.core.node._DOCKERENV_PATH", MagicMock(exists=lambda: False))
+    monkeypatch.setattr("simstack.core.node_submission._DOCKERENV_PATH", MagicMock(exists=lambda: False))
     assert process_is_in_docker() is True
 
 
 def test_process_is_in_docker_false_without_flag_or_dockerenv(monkeypatch):
     monkeypatch.setattr(
-        "simstack.core.node.context",
+        "simstack.core.node_submission.context",
         SimpleNamespace(in_docker=False),
     )
-    monkeypatch.setattr("simstack.core.node._DOCKERENV_PATH", MagicMock(exists=lambda: False))
+    monkeypatch.setattr("simstack.core.node_submission._DOCKERENV_PATH", MagicMock(exists=lambda: False))
     assert process_is_in_docker() is False
 
 
@@ -236,8 +236,9 @@ async def test_nested_publication_hints_keep_container_and_cloud_semantics(
         current_node_name="parent_node", config=SimpleNamespace(resource=current_resource),
         node_mappings=SimpleNamespace(get_by_name=lambda name: mapping))
     monkeypatch.setattr("simstack.core.node.context", active)
-    monkeypatch.setattr("simstack.core.node.process_is_in_docker", lambda: process_in_docker)
-    monkeypatch.setattr("simstack.core.node.docker_image_for_node",
+    monkeypatch.setattr("simstack.core.node_submission.context", active)
+    monkeypatch.setattr("simstack.core.node_submission.process_is_in_docker", lambda: process_in_docker)
+    monkeypatch.setattr("simstack.core.node_submission.docker_image_for_node",
         lambda name, resource=None: PSI4_IMAGE if name == "parent_node" else child_image)
     async def publish(payload, *, request_id):
         assert payload["input_publication"] == input_publication

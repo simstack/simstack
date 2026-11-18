@@ -1353,10 +1353,10 @@ async def test_rejected_fallback_retains_original_attempt_evidence(monkeypatch, 
         bootstrap_data={"account_id": "account"})
     api = SimpleNamespace(requests=requests, tasks=SimpleNamespace(execution=WorkflowTasksAPI.execution,
         fail_attempt=AsyncMock(side_effect=RunnerAPIError("superseded or forbidden", status_code=status))))
-    monkeypatch.setattr("simstack.core.node.context", SimpleNamespace(server=api))
     invocation = Node.__new__(Node)
     invocation.registry_entry = SimpleNamespace(error="primary scientific error")
-    await invocation._record_process_failure(entry, "original process was killed", returncode=-9)
+    from simstack.runner_runtime.node_process import record_process_failure
+    await record_process_failure(invocation, SimpleNamespace(server=api), entry, "original process was killed", returncode=-9)
     records = [json.loads(path.read_text()) for path in (tmp_path / ".pending-execution-failures").glob("*.json")]
     assert len(records) == 1
     assert records[0]["execution"] == WorkflowTasksAPI.execution(entry)
@@ -1467,7 +1467,7 @@ async def test_windows_inline_child_replaces_parent_job_after_breakaway(monkeypa
         authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"}))
     monkeypatch.setattr(node_module, "context", SimpleNamespace(server=server, in_docker=False,
         config=SimpleNamespace(resource="local", project_root=tmp_path, workdir=tmp_path)))
-    monkeypatch.setattr(node_module, "os", SimpleNamespace(**{**vars(os), "name": "nt"}))
+    monkeypatch.setattr("simstack.runner_runtime.node_process.os", SimpleNamespace(**{**vars(os), "name": "nt"}))
     monkeypatch.setattr(jobs, "child_creationflags", lambda: 0x01000000)
     captured = []
     job = SimpleNamespace(stop=AsyncMock())

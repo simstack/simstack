@@ -70,6 +70,10 @@ def _fanout_hash_input(index: int, payload_count: int = 20) -> FanoutHashInput:
     )
 
 
+def test_persisted_node_argument_hash_is_stable():
+    assert compute_arg_hash([IntData(value=42)]) == "0e3ba2a87076f5fec9d2504c1073c7e2420e16d4f5e625cda91df82ef4547765"
+
+
 def test_compute_arg_hash_preserves_top_level_custom_hash_contract():
     TopLevelCustomHashInput.hash_calls = 0
 
