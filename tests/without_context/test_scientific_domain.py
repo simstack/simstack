@@ -445,3 +445,89 @@ def test_nested_filestack_hash_uses_bytes_and_ignores_staging_and_transport(tmp_
     assert compute_arg_hash([InputWithFile(hsd_file=first)]) == before
     different = FileStack.from_string("changed scientific input", "input.hsd")
     assert compute_arg_hash([InputWithFile(hsd_file=different)]) != before
+
+
+@pytest.mark.asyncio
+async def test_table_rows_travel_once_and_keep_the_preview_cache_key(monkeypatch):
+    from copy import deepcopy
+    from unittest.mock import AsyncMock
+
+    from simstack.core.node_argument_hash import compute_arg_hash
+    from simstack.models.simple_table import SimpleTable
+
+    class AliasedTable(SimpleTable):
+        row: list[dict] = Field(default_factory=list, alias="readings")
+
+    class Experiment(Model):
+        first: AliasedTable
+        second: AliasedTable
+
+    class Measurements(Model):
+        row: list[dict]
+
+    # Two independent embedded values can retain the same record identity.
+    first = AliasedTable(readings=[{"signal": "first" * 1000}])
+    second = AliasedTable(id=first.id, readings=[{"signal": "second" * 1000}])
+    experiment = Experiment(first=first, second=second)
+    table = SimpleTable(row=[{"signal": "original row" * 1000}])
+    opaque = SimpleTable(row=[{"signal": "mixed literal" * 1000}, {"sample": StringData(value="nested science")}])
+    ordinary = Measurements(row=[{"signal": "ordinary graph"}])
+    file = FileStack(name="file.bin", hash="valid", is_hashable=True)
+    roots = [table, experiment, opaque, ordinary, file]
+    sent = {}
+
+    async def post(path, body, **options):
+        wire = json.loads(json.dumps(body))
+        sent[path] = wire["graph"]
+        graph = deepcopy(wire["graph"])
+        # Server supplies a canonical file value; reverse node order to make
+        # restoration depend on identity rather than response array order.
+        graph["nodes"].reverse()
+        next(node for node in graph["nodes"] if node["id"] == str(file.id))["value"]["name"] = "canonical.bin"
+        return {"graph": graph, "references": wire["references"], "tasks": {}}
+
+    api = ScientificValuesAPI(types.SimpleNamespace(revision=lambda: None, query=post, command=post))
+    monkeypatch.setattr(api, "_upload_files", AsyncMock())
+    preview, prepared = await api.preview_task_inputs(roots)
+    expected = [*roots[:-1], file.model_copy(update={"name": "canonical.bin"})]
+    assert compute_arg_hash(preview) == compute_arg_hash(expected)
+    assert preview[1].first.row == first.row and preview[1].second.row == second.row
+    assert preview[-1].name == "canonical.bin"
+    text = json.dumps(sent["/values/input-preview"])
+    assert "original row" not in text
+    assert "firstfirst" not in text and "secondsecond" not in text
+    assert "mixed literal" not in text and "nested science" in text and "ordinary graph" in text
+
+    table.row[0]["signal"] = "after preview"
+    published, _ = await api.publish_task_inputs(roots, prepared=prepared)
+    wire = json.dumps(sent["/values/input-publications"])
+    assert all(value in wire for value in ["original row", "firstfirst", "secondsecond", "mixed literal"])
+    assert "after preview" not in wire
+    assert compute_arg_hash(published) == compute_arg_hash(preview)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("row_kind", ["task", "typed", "file", "non-finite"])
+async def test_scientific_envelopes_in_table_preview_reach_server(row_kind):
+    from simstack.models.node_registry import NodeRegistry
+    from simstack.models.parameters import Parameters
+    from simstack.models.simple_table import SimpleTable
+    from simstack.server_api.http_transport import RunnerAPIError
+
+    class HeterogeneousTable(SimpleTable):
+        row: list
+
+    task = NodeRegistry(name="solver", status="running", function_hash="", arg_hash="input",
+                        func_mapping="test.solver", parameters=Parameters(resource="local"))
+    rows = {"task": [task], "typed": [bytes(5)], "file": [{"sample": FileStack(name="source")}],
+            "non-finite": [{"value": float("nan")}]}
+    value = HeterogeneousTable(row=rows[row_kind])
+    expected = encode_graph([value])["nodes"][0]["value"]["row"]
+
+    async def invalid_preview(path, body):
+        assert body["graph"]["nodes"][0]["value"]["row"] == expected
+        raise RunnerAPIError("Server rejected this scientific value")
+
+    api = ScientificValuesAPI(types.SimpleNamespace(revision=lambda: None, query=invalid_preview))
+    with pytest.raises(RunnerAPIError, match="rejected"):
+        await api.preview_task_inputs([value])

@@ -20,6 +20,10 @@ class FileTransferError(RuntimeError):
     """Raised when the SimStack file transfer API cannot satisfy a request."""
 
 
+class FileTransferTimeout(FileTransferError):
+    """The source did not upload before the target's polling deadline."""
+
+
 @dataclass
 class DownloadResult:
     path: Path
@@ -172,7 +176,7 @@ class FileTransferClient:
                 )
             time.sleep(max(interval, 0.1))
 
-        raise FileTransferError(
+        raise FileTransferTimeout(
             f"Timed out waiting for transfer {transfer_id} to upload; last status was {last_status}."
         )
 

@@ -11,8 +11,10 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from simstack.models.document import Model
-from simstack.models.document.codec import decode_document_value, encode_document_value
+from simstack.models.document.codec import TYPE_KEY, decode_document_value, encode_document_value
+from simstack.models.document.schema import scientific_field_names
 from simstack.server_api.scientific_value_graph import (
+    TAG,
     bind_publication_revisions,
     bind_read_revisions,
     decode_graph,
@@ -68,6 +70,57 @@ def _refresh_file_metadata(files, field_occurrences):
             metadata = {wire_name: fields[name] for name, wire_name in names.items()}
             for target in targets:
                 target.update(metadata)
+
+
+def _table_preview_graph(graph, tables, occurrences):
+    """Keep literal table cells client-side for cache lookup. Scientific envelopes need Server."""
+    def literal_row(row):
+        return (isinstance(row, dict) and TAG not in row and TYPE_KEY not in row
+                and all(cell is None or type(cell) in (str, bool, int, float) for cell in row.values()))
+
+    row_ids = set()
+    for table in tables:
+        row_name = scientific_field_names(type(table))["row"]
+        for fields in occurrences[id(table)]:
+            rows = fields.get(row_name)
+            if isinstance(rows, list) and rows:
+                row_ids.add(id(rows))
+    if not row_ids:
+        return graph, {}
+
+    saved = {}
+
+    def project(value, path, originals):
+        if id(value) in row_ids:
+            literal = bytearray(map(literal_row, value))
+            if all(literal):
+                originals.append((path, value, None))
+                return []
+            if any(literal):
+                # Keep positions and all Server-resolved data in mixed tables.
+                originals.append((path, value, literal))
+                return [{} if local else project(row, (*path, i), originals)
+                        for i, (local, row) in enumerate(zip(literal, value))]
+        if not isinstance(value, (list, tuple, dict)):
+            return value
+        compact = value
+        items = value.items() if isinstance(value, dict) else enumerate(value)
+        for key, child in items:
+            if isinstance(child, (list, tuple, dict)):
+                replacement = project(child, (*path, key), originals)
+                if replacement is not child:
+                    if compact is value:
+                        compact = list(value) if isinstance(value, tuple) else value.copy()
+                    compact[key] = replacement
+        return compact
+
+    nodes = []
+    for node in graph["nodes"]:
+        originals = []
+        nodes.append(project(node, (), originals))
+        if originals:
+            saved[reference_key(node["mapping"], node["id"])] = originals
+    return {**graph, "nodes": nodes}, saved
 
 
 class ScientificValuesAPI:
@@ -300,10 +353,11 @@ class ScientificValuesAPI:
             if token is not None:
                 _materializing_values.reset(token)
 
-    async def _prepare_values(self, roots, *, upload_files=True):
+    async def _prepare_values(self, roots, *, upload_files=True, preview_tables=None):
         from simstack.models.dataset import DataSet, DataSetSection
         from simstack.models.datasettuple import DataSetTuple, DataSetTupleSection
         from simstack.models.files import FileStack
+        from simstack.models.simple_table import SimpleTable
 
         seen = set()
         files = []
@@ -314,6 +368,8 @@ class ScientificValuesAPI:
             seen.add(id(value))
             if isinstance(value, FileStack):
                 files.append(value)
+            if preview_tables is not None and isinstance(value, SimpleTable):
+                preview_tables.append(value)
             if isinstance(value, (DataSetSection, DataSetTupleSection)):
                 if "_cache" not in vars(value):
                     await self.materialize_references([value])
@@ -390,16 +446,31 @@ class ScientificValuesAPI:
         from simstack.models.node_registry import NodeRegistry
 
         values = list(values)
-        files = await self._prepare_values(values, upload_files=False)
-        occurrences = {id(value): [] for value in files}
+        tables = []
+        files = await self._prepare_values(values, upload_files=False, preview_tables=tables)
+        occurrences = {id(value): [] for value in (*files, *tables)}
         graph = encode_graph([value for value in values if not isinstance(value, NodeRegistry)],
                              field_occurrences=occurrences)
         _refresh_file_metadata(files, occurrences)
+        preview_graph, saved = _table_preview_graph(graph, tables, occurrences)
         response = await self.requests.query("/values/input-preview", {
-            **self._scientific_body(graph=graph), "request_id": str(uuid4()),
+            **self._scientific_body(graph=preview_graph), "request_id": str(uuid4()),
             "repository_revision": repository_revision,
             "references": [value_reference(value) for value in values],
         })
+        # Only restore cells at their original occurrence within a submitted node.
+        # Server may add resolved nodes or replace file metadata during preview.
+        for node in response["graph"]["nodes"]:
+            for path, rows, literal in saved.get(reference_key(node["mapping"], node["id"]), ()):
+                parent = node
+                for key in path[:-1]:
+                    parent = parent[key]
+                field = path[-1]
+                if literal is None:
+                    parent[field] = rows
+                else:
+                    parent[field] = [source if local else resolved for source, local, resolved
+                                     in zip(rows, literal, parent[field], strict=True)]
         # Keep the original graph: serializing its decoded preview again would
         # apply custom serializers twice on a cache miss.
         return await self.decode_task_inputs(response), {"graph": graph, "files": files, "occurrences": occurrences}

@@ -49,9 +49,21 @@ def upload_object(url, path, headers, timeout=60, offset=0, length=None):
         connection.close()
 
 
+def existing_snapshot_file(target_path, size, checksum):
+    if target_path.is_symlink():
+        raise FileExistsError(f"File {target_path} already exists.")
+    if not target_path.exists():
+        return False
+    if target_path.is_file() and (size is None or target_path.stat().st_size == size) and hash_file(target_path) == checksum:
+        return True
+    raise FileExistsError(f"File {target_path} already exists.")
+
+
 def download_object(metadata, target_path, timeout=60):
     target_path = Path(target_path)
     target_path.parent.mkdir(parents=True, exist_ok=True)
+    if existing_snapshot_file(target_path, metadata["size_bytes"], metadata["checksum_sha256"]):
+        return DownloadResult(target_path, metadata["size_bytes"], metadata["checksum_sha256"])
     connection, request_path = object_connection(metadata["download_url"], timeout)
     temporary = None
     try:

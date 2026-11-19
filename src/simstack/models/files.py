@@ -18,6 +18,7 @@ from simstack.models.file_instance import FileInstance
 from simstack.models.parameters import Resource
 from simstack.util.file_transfer_client import (
     FileTransferClient,
+    FileTransferTimeout,
     first_available_remote_location,
     path_for_file_instance,
     transfer_resource_name,
@@ -402,7 +403,12 @@ class FileStack(Model):
                         continue
                 else:
                     import shutil
+                    from simstack.util.object_transfer import existing_snapshot_file
                     local_dir.mkdir(parents=True, exist_ok=True)
+                    size = snapshot.size_bytes if snapshot else instance.size_bytes
+                    if checksum and existing_snapshot_file(target, size, checksum):
+                        instance.last_accessed_at = datetime.now()
+                        return target
                     with path.open("rb") as source, target.open("xb") as destination:
                         shutil.copyfileobj(source, destination)
                     if checksum and hash_file(target) != checksum:
@@ -457,7 +463,7 @@ class FileStack(Model):
 
         try:
             client.wait_until_uploaded(transfer_id)
-        except Exception as exc:
+        except FileTransferTimeout as exc:
             try:
                 client.fail_transfer(
                     transfer_id,
@@ -470,7 +476,7 @@ class FileStack(Model):
                 )
             raise
         target_path = local_dir / (self.name or Path(str(remote_instance.path)).name)
-        if target_path.exists():
+        if target_path.is_symlink():
             raise FileExistsError(f"File {target_path} already exists.")
         from simstack.runner_runtime.file_cache import pin_cached_file
         if not pin_cached_file(target_path, workdir=context.config.workdir, allow_missing=True):

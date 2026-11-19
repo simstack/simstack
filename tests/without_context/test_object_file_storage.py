@@ -27,6 +27,7 @@ def object_http():
             self.end_headers()
 
         def do_GET(self):
+            received["gets"] = received.get("gets", 0) + 1
             self.send_response(200)
             self.send_header("Content-Length", str(len(received["body"])))
             self.end_headers()
@@ -55,6 +56,22 @@ def test_direct_streaming_put_get_checksums_without_api_token(tmp_path, object_h
     assert received["authorization"] is None
 
 
+def test_repeated_download_checks_local_bytes_before_fetching(tmp_path, object_http):
+    url, storage = object_http
+    storage["body"] = b"snapshot"
+    metadata = {"download_url": url, "size_bytes": 8, "checksum_sha256": hashlib.sha256(b"snapshot").hexdigest()}
+    target = tmp_path / "data.bin"
+    first = download_object(metadata, target)
+    assert download_object(metadata, target) == first
+    assert storage["gets"] == 1
+
+    target.write_bytes(b"modified")
+    with pytest.raises(FileExistsError):
+        download_object(metadata, target)
+    assert storage["gets"] == 1
+    assert target.read_bytes() == b"modified"
+
+
 def test_corrupt_download_never_publishes_cache_file(tmp_path, object_http):
     url, received = object_http
     received["body"] = b"wrong"
@@ -76,6 +93,30 @@ def test_existing_local_file_never_requests_api(tmp_path, monkeypatch):
     value = FileStack(name="file", locations=[FileInstance(path="file", resource="local", created_at=datetime.now())])
     monkeypatch.setattr(value.__class__, "_get_via_server_transfer", lambda *args: pytest.fail("API called for local file"))
     assert value.get_raw(Resource(value="local")) == source
+
+
+def test_runner_reuses_verified_snapshot_in_requested_directory(tmp_path, monkeypatch, object_http):
+    configure_context(tmp_path, monkeypatch)
+    url, storage = object_http
+    storage["body"] = b"snapshot"
+    checksum = hashlib.sha256(storage["body"]).hexdigest()
+    ticket = {"download_url": url, "size_bytes": 8, "checksum_sha256": checksum}
+    snapshot = FileInstance(path="key", resource="__s3__", created_at=datetime.now(), location_type="s3",
+                            bucket="bucket", object_key="key", size_bytes=8, checksum_sha256=checksum)
+    value = FileStack(name="sample.bin", locations=[snapshot])
+    fresh = value.model_copy(deep=True)
+    client = SimpleNamespace(create_transfer=lambda **kw: {"transfer_id": "t"},
+                             wait_until_uploaded=lambda identity: None,
+                             download_file=lambda identity, path: download_object(ticket, path),
+                             complete_transfer=lambda **kw: {"file_instance_id": "cached"})
+    monkeypatch.setattr("simstack.models.files.FileTransferClient.from_context", lambda **kw: client)
+
+    target = value.get(tmp_path / "first")
+    assert fresh.get(target.parent) == target
+    copied = value.get(tmp_path / "second")
+    assert value.get(copied.parent) == copied
+    assert copied.read_bytes() == target.read_bytes() == storage["body"]
+    assert storage["gets"] == 1
 
 
 def test_missing_local_file_falls_back_to_s3(tmp_path, monkeypatch):
