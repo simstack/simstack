@@ -130,6 +130,8 @@ class FileTransferClient:
         limit: int = 20,
     ) -> list[Dict[str, Any]]:
         query = {"role": role, "limit": str(limit)}
+        if role == "source":
+            query["supports_snapshot_uploads"] = "true"
         if status:
             query["status"] = status
         response = self._json_request("GET", f"/api/file-transfers?{urlencode(query)}")
@@ -181,7 +183,7 @@ class FileTransferClient:
         )
 
     def upload_file(
-        self, path: Path, *, file_stack_id: str, source_resource: str
+        self, path: Path, *, file_stack_id: str, source_resource: str, snapshot_transfer_id: str | None = None
     ) -> Dict[str, Any]:
         """Publish a requested resource-local file through the object API."""
         from datetime import datetime
@@ -198,7 +200,7 @@ class FileTransferClient:
         client = ObjectFileClient(server_url=self.server_url, runner_token=self._runner_token,
             timeout_seconds=self.timeout_seconds, rotate_credentials=self.rotate_credentials,
             account_id=self.account_id)
-        return client.publish(value, path)
+        return client.publish(value, path, snapshot_transfer_id=snapshot_transfer_id)
 
     def download_file(self, transfer_id: str, target_path: Path) -> DownloadResult:
         from simstack.util.object_transfer import download_object

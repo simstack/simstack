@@ -9,12 +9,11 @@ from simstack.core.context import context
 from simstack.core.node import node
 from simstack.models import (
     simstack_model,
-    ModelMapping,
     BinaryOperationInput,
     FloatData,
 )
 from simstack.util.async_zip_utils import async_zip
-from simstack.util.importer import import_function, import_class
+from simstack.util.importer import import_function
 from simstack.util.make_table import make_table_entries
 from simstack.server_api.http_transport import RunnerAPIError
 
@@ -63,25 +62,6 @@ async def get_mappings(func: Callable[[Model], Model]):
 
 T = TypeVar("T", bound=Model)
 R = TypeVar("R", bound=Model)
-
-
-def _prefix_dict_keys(original_dict, prefix):
-    """Helper method to prefix dictionary keys."""
-    return {f"{prefix}{key}": value for key, value in original_dict.items()}
-
-
-async def _get_formatted_column_defs(mapping, prefix):
-    """Get column definitions for a model with proper field prefixes."""
-    model_class = await import_class(mapping)
-    column_defs = model_class.make_column_defs()
-
-    # Add prefix to field names
-    for col in column_defs:
-        if "field" in col:
-            col["field"] = f"{prefix}{col['field']}"
-
-    # Filter out id fields
-    return [col for col in column_defs if col.get("field") != f"{prefix}id"]
 
 
 @simstack_model

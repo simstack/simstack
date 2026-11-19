@@ -14,13 +14,23 @@ from simstack.models.document import ObjectId as OdmanticObjectId
 from simstack.models.document import ObjectId
 
 from simstack.core.resources import allowed_resources
-from simstack.models.files import FileStack
+from simstack.methods.get_file import get_file
+from simstack.models.files import FileGetterArgs, FileStack
 from simstack.models.file_instance import FileInstance
 from simstack.models.parameters import Resource
 from simstack.util.file_transfer_client import DownloadResult
 
 # Define a TypeVar for classes
 T = TypeVar("T", bound=Type)
+
+
+def test_get_file_workflow_materializes_published_input(tmp_path):
+    value = FileStack.from_string("calculation input", "input.txt")
+    destination = tmp_path / "inputs"
+    result = get_file(FileGetterArgs(file_stack=value, local_resource=Resource(value="test"),
+                                     local_dir=destination))
+    assert result.id == value.id
+    assert (destination / "input.txt").read_text() == "calculation input"
 
 # TODO why do filetests not use the context fixture from conftest?
 

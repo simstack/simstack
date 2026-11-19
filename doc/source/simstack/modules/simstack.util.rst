@@ -116,14 +116,6 @@ simstack.util.generic\_list\_mixin module
    :show-inheritance:
    :undoc-members:
 
-simstack.util.geometry\_utils module
-------------------------------------
-
-.. automodule:: simstack.util.geometry_utils
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 simstack.util.get\_module\_path module
 --------------------------------------
 

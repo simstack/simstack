@@ -12,7 +12,6 @@ from simstack.core.context import context
 from simstack.core.find_simstack_modules import find_simstack_modules
 from simstack.tables.catalogue import CatalogueCollector
 from simstack.util.import_module import import_module_from_file
-from simstack.util.path_manager import path_manager
 
 
 
@@ -100,20 +99,6 @@ class TableBuilderBase(ABC):
             if exc.code in (None, 0):
                 raise SystemExit(1) from None
             raise
-
-    async def _process_configured_paths(self) -> None:
-        for path_name in path_manager.paths.keys():
-            await self._process_path(path_name)
-
-    async def _process_path(self, path_name: str) -> None:
-        path_info = path_manager.get_path(path_name)
-        base_path = path_info["path"]
-        drops = path_info.get("drops", "")
-
-        self.logger.info("Processing configured path %s: %s", path_name, base_path)
-
-        for file_path in path_manager.find_python_files(path_name):
-            await self._process_file(file_path, drops)
 
     def _active_dirs_from_config(self) -> list[Path]:
         config_path = self.project_root / "config.toml"

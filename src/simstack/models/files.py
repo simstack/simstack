@@ -320,13 +320,15 @@ class FileStack(Model):
         from simstack.core.context import context
         return self.get_raw(context.config.resource, local_dir)
 
-    def get_raw(self, local_resource: Resource, local_dir: Path | None = None) -> Path:
+    def get_raw(self, local_resource: Resource, local_dir: Path | None = None, *,
+                copy_local_source: bool = False) -> Path:
         """
         Copies the file stack to a local directory, assumes no context.
 
         :param local_resource: the local resource to copy the file stack to. Defaults to the current resource.
         :param local_dir: The local directory to copy the file stack to.
         :type local_dir: Path
+        :param copy_local_source: Also stage an unpublished local source in the requested directory.
         """
 
         # select the best instance
@@ -385,7 +387,7 @@ class FileStack(Model):
                     from simstack.runner_runtime.file_cache import pin_cached_file
                     if not pin_cached_file(path, workdir=context.config.workdir):
                         continue
-                if snapshot is None and not instance.is_cached:
+                if snapshot is None and not instance.is_cached and not copy_local_source:
                     # Explicit local sources retain their original path until
                     # publication turns them into immutable snapshots.
                     instance.last_accessed_at = datetime.now()
@@ -394,7 +396,7 @@ class FileStack(Model):
                 # Only reuse bytes belonging to the published snapshot, and
                 # honor staging's requested destination even on a cache hit.
                 checksum = ((snapshot.checksum_sha256 or self.hash) if snapshot
-                            else instance.checksum_sha256 if instance.is_cached else None)
+                            else instance.checksum_sha256)
                 if snapshot is not None and not checksum:
                     continue
                 target = local_dir / (Path(self.name).name if self.name else path.name)
@@ -409,8 +411,14 @@ class FileStack(Model):
                     if checksum and existing_snapshot_file(target, size, checksum):
                         instance.last_accessed_at = datetime.now()
                         return target
-                    with path.open("rb") as source, target.open("xb") as destination:
-                        shutil.copyfileobj(source, destination)
+                    with path.open("rb") as source:
+                        destination = target.open("xb")
+                        try:
+                            with destination:
+                                shutil.copyfileobj(source, destination)
+                        except OSError:
+                            target.unlink(missing_ok=True)
+                            raise
                     if checksum and hash_file(target) != checksum:
                         target.unlink()
                         continue

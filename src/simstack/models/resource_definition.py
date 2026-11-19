@@ -104,10 +104,7 @@ class ResourceDefinition(Model):
 
     def validate_python_path(self):
         for path_str in self.python_paths:
-            path = Path(path_str)
-            real_path = transform_file_name(path)
-            if not path.exists():
-                raise ValueError(f"Python path does not exist: {path}")
+            path = transform_file_name(path_str)
             if not path.is_dir():
                 raise ValueError(f"Python path is not a directory: {path}")
 

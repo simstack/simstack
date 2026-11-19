@@ -8,7 +8,6 @@ from simstack.models.document import Model, EmbeddedModel
 from simstack.models.models import ModelMapping
 from simstack.models.simstack_model import is_simstack_model
 from simstack.tables.catalogue import CatalogueCollector
-from simstack.util.path_manager import path_manager
 from simstack.tables.table_builder import TableBuilderBase
 
 logger = logging.getLogger("ModelTable")
@@ -97,17 +96,6 @@ class CreateModelTable(TableBuilderBase):
             if model_entry.json_schema is None:
                 model_entry.json_schema = model_entry.value_schema
             self.catalogue.register_model(model_entry, model_class=new_class)
-
-    async def _make_models_for_path(self, path_name: str):
-        """Build model mappings for all Python files under a configured path."""
-        path_info = path_manager.get_path(path_name)
-        path = path_info["path"]
-        drops = path_info.get("drops", "")
-        logger.info(f"Making model_table entries for files in {path}")
-
-        # Process each file in this path
-        for file_path in path_manager.find_python_files(path_name):
-            await self._create_model_models_from_file(file_path, drops)
 
     async def clear_table(self) -> None:
         self.logger.info("Clearing discovered model descriptors")

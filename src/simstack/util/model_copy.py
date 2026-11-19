@@ -218,7 +218,6 @@ def _reconstruct_pydantic_model(
     model_fields = type(source).model_fields
     model_values = copied.__dict__
     for field_name, field_info in model_fields.items():
-        field_value = model_values.get(field_name)
         if field_name not in model_values:
             if field_info.is_required():
                 raise ValueError(

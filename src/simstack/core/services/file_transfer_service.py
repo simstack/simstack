@@ -116,8 +116,9 @@ class FileTransferService(BaseService):
 
         path = resolve_instance_path(str(source_path), Path(context.config.workdir))
         try:
+            options = {"snapshot_transfer_id": transfer_id} if transfer.get("request_type") == "snapshot_to_ui" else {}
             client.upload_file(path, file_stack_id=transfer["file_stack_id"],
-                source_resource=transfer["source_resource_name"])
+                source_resource=transfer["source_resource_name"], **options)
             logger.info("Uploaded FileStack transfer %s from %s", transfer_id, path)
             return True
         except FileTransferError as exc:

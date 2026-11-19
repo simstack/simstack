@@ -95,6 +95,66 @@ def test_existing_local_file_never_requests_api(tmp_path, monkeypatch):
     assert value.get_raw(Resource(value="local")) == source
 
 
+@pytest.mark.parametrize("location", ["local", "s3"])
+def test_get_file_node_materializes_requested_location(tmp_path, monkeypatch, location):
+    from simstack.methods.get_file import get_file
+    from simstack.models.files import FileGetterArgs
+    from tests.object_storage_fakes import OBJECTS
+
+    configure_context(tmp_path, monkeypatch)
+    source = tmp_path / "sample.bin"
+    data = b"scientific input"
+    if location == "local":
+        source.write_bytes(data)
+        instance = FileInstance(path=source.name, resource="local", created_at=datetime.now())
+    else:
+        OBJECTS["sample"] = data
+        instance = FileInstance(path="sample", resource="__s3__", location_type="s3",
+                                object_key="sample", size_bytes=len(data), created_at=datetime.now())
+    value = FileStack(name=source.name, locations=[instance])
+    target_dir = tmp_path / "requested"
+    args = FileGetterArgs(file_stack=value, local_resource=Resource(value="local"), local_dir=target_dir)
+
+    result = get_file.__wrapped__(args)
+
+    assert result.id == value.id
+    assert (target_dir / source.name).read_bytes() == data
+    assert sum(loc.resource.value == "local" and tmp_path / loc.path == target_dir / source.name
+               for loc in result.locations) == 1
+
+
+def test_get_file_node_requires_the_target_runner(tmp_path, monkeypatch):
+    from simstack.methods.get_file import get_file
+    from simstack.models.files import FileGetterArgs
+
+    configure_context(tmp_path, monkeypatch)
+    args = FileGetterArgs(file_stack=FileStack(name="sample.bin"),
+                          local_resource=Resource(value="other"), local_dir=tmp_path)
+    with pytest.raises(ValueError, match="other.*local"):
+        get_file.__wrapped__(args)
+
+
+def test_interrupted_local_materialization_can_be_retried(tmp_path, monkeypatch):
+    configure_context(tmp_path, monkeypatch)
+    source = tmp_path / "data.bin"
+    source.write_bytes(b"complete data")
+    target_dir = tmp_path / "work"
+    value = FileStack(name=source.name, locations=[
+        FileInstance(path=source.name, resource="local", created_at=datetime.now())
+    ])
+    resource = Resource(value="local")
+
+    def interrupted(source, destination):
+        destination.write(source.read(1))
+        raise OSError("disk full")
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr("shutil.copyfileobj", interrupted)
+        with pytest.raises(OSError, match="disk full"):
+            value.get_raw(resource, target_dir, copy_local_source=True)
+    assert value.get_raw(resource, target_dir, copy_local_source=True).read_bytes() == b"complete data"
+
+
 def test_runner_reuses_verified_snapshot_in_requested_directory(tmp_path, monkeypatch, object_http):
     configure_context(tmp_path, monkeypatch)
     url, storage = object_http

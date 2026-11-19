@@ -291,24 +291,24 @@ class TestIntegration:
 class TestAllowedResourcesIntegration:
     """Test integration with the AllowedResources singleton."""
 
-    def test_allowed_resources_singleton_behavior(self):
+    def test_allowed_resources_singleton_behavior(self, monkeypatch):
         """Test that AllowedResources behaves as a singleton."""
         from simstack.core.resources import AllowedResources
 
-        # Create two instances
         instance1 = AllowedResources()
+        monkeypatch.setattr(instance1, "_resources", [])
+        monkeypatch.setattr(instance1, "_initialized", False)
+        assert not instance1.initialized
+        instance1.set_resources(["test1", "test2"])
+
         instance2 = AllowedResources()
-
-        # They should be the same object
         assert instance1 is instance2
-
-        # Changes to one should affect the other
-        original_resources = instance1.get_resources()
-        try:
-            instance1.set_resources(["test1", "test2"])
-            assert instance2.get_resources() == ["test1", "test2"]
-        finally:
-            instance1._resources = original_resources
+        assert instance2.initialized
+        assert not instance2.has_resource("unknown")
+        with pytest.raises(RuntimeError):
+            instance2.set_resources(["replacement"])
+        instance2.clear_resources()
+        assert not instance1.initialized
 
 
 if __name__ == "__main__":

@@ -252,14 +252,6 @@ simstack.models.tag module
    :show-inheritance:
    :undoc-members:
 
-simstack.models.unused\_test\_file module
------------------------------------------
-
-.. automodule:: simstack.models.unused_test_file
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 Module contents
 ---------------
 

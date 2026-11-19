@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 import pytest
@@ -57,8 +58,9 @@ def calling_failing_node(arg: IntData, **kwargs) -> IntData:
     return IntData(value=arg.value + 1)
 
 
-def node_returns_nothing(arg: IntData, **kwargs):
-    pass
+@node
+def node_returns_nothing(arg: IntData, **kwargs) -> None:
+    return None
 
 
 @node
@@ -88,8 +90,14 @@ def test_node_returns_bool_false():
 
 
 def test_node_returns_nothing():
-    result = node_returns_nothing(IntData(value=1))
-    assert result is None
+    with pytest.raises(RuntimeError, match="node_returns_nothing failed"):
+        node_returns_nothing(IntData(value=1))
+    tasks = asyncio.get_event_loop().run_until_complete(
+        context.server.tasks.query_tasks(name="node_returns_nothing")
+    )
+    assert len(tasks) == 1
+    assert tasks[0].status == TaskStatus.FAILED
+    assert tasks[0].return_kind == "none"
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Union, Dict, Any, List, Optional, Set
 
-from simstack.models.document import Model
+from pydantic import BaseModel
 
 
 def make_table_entries_helper(
@@ -37,27 +37,17 @@ def make_table_entries_helper(
     if id(model_instance) in visited:
         return {"tableData": {}}
 
-    # Mark this instance as visited
-    visited.add(id(model_instance))
-
-    # Get model class and fields
-    model_class = type(model_instance)
-
     if hasattr(model_instance, "make_table_entries"):
-        field_prefix = f"{field_prefix}." if field_prefix else ""
-        field_prefix = (
-            f"{field_prefix}{model_instance.__class__.__name__}"
-            if field_prefix
-            else model_instance.__class__.__name__
-        )
         return model_instance.make_table_entries(
-            max_recursion_level=1,
-            drop_id=True,
-            current_level=0,
-            visited=None,
-            field_prefix="",
+            max_recursion_level=max_recursion_level,
+            drop_id=drop_id,
+            current_level=current_level,
+            visited=visited,
+            field_prefix=field_prefix,
         )
 
+    visited.add(id(model_instance))
+    model_class = type(model_instance)
     model_fields = getattr(model_instance, "model_fields", {})
 
     # Use class name if table_name not provided
@@ -133,19 +123,6 @@ def make_table_entries_helper(
             raise ValueError(
                 f"Self-referential field '{field_name}' is not supported in make_table_entries."
             )
-            if field_value is not None and id(field_value) not in visited:
-                # Process only the direct fields of the self-reference
-                nested_result = make_table_entries_helper(
-                    field_value,
-                    f"{table_name}_{field_name}",
-                    0,  # Only process direct fields, no further recursion
-                    drop_id,
-                    current_level + 1,
-                    visited,
-                    f"{field_path}.",
-                )
-                nested_summary = nested_result["tableData"]
-                summary[field_name] = nested_summary
         else:
             # Handle lists/arrays
             if isinstance(field_value, list):
@@ -451,7 +428,7 @@ def make_column_defs_helper(
 
 
 def make_column_defs_instance(
-        model_instance: Model,
+        model_instance: BaseModel,
         table_name: Optional[str] = None,
         max_recursion_level: int = 1,
         drop_id: bool = True,
@@ -767,7 +744,7 @@ def make_table_entries(
         )
         row_data.append(instance_result)
 
-    return {"tableName": "Table", "rowData": row_data, "columnDefs": column_defs}
+    return {"tableName": table_name or "Table", "rowData": row_data, "columnDefs": column_defs}
 
 
 def create_column_def(field_name, field_type, field_value, field_path):

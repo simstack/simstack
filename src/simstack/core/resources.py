@@ -22,11 +22,8 @@ class AllowedResources:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(AllowedResources, cls).__new__(cls)
+            cls._instance._initialized = False
         return cls._instance
-
-    def __init__(self):
-        # Only initialize once
-        self._initialized = False
 
     def set_resources(self, resources: List[str]) -> None:
         """Set the list of allowed resources."""
@@ -45,9 +42,9 @@ class AllowedResources:
             self._resources.append(resource)
 
     def remove_resource(self, resource: str) -> None:
+        """Remove a resource from the list."""
         if resource == "self":
             raise ValueError("Cannot remove 'self' resource")
-        """Remove a resource from the list."""
         if resource in self._resources:
             self._resources.remove(resource)
 
@@ -58,10 +55,7 @@ class AllowedResources:
 
     def has_resource(self, resource: str) -> bool:
         """Check if a resource exists in the list."""
-        if hasattr(self, "_initialized") and self._initialized:
-            return resource in self._resources
-        else:
-            return True # before this is initialized, any resource is allowed
+        return not self._initialized or resource in self._resources
 
     def __len__(self) -> int:
         """Return the number of resources."""
@@ -85,6 +79,6 @@ class AllowedResources:
 
     @property
     def initialized(self):
-        return hasattr(self, "_initialized")
+        return self._initialized
 
 allowed_resources = AllowedResources()

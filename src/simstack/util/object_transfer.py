@@ -115,7 +115,7 @@ class ObjectFileClient(FileTransferClient):
                    object_api_prefix=requests.object_api_prefix,
                    rotate_credentials=requests.object_api_prefix == "/runner/objects")
 
-    def publish(self, file_stack, path):
+    def publish(self, file_stack, path, *, snapshot_transfer_id=None):
         checksum = hash_file(path)
         payload = {
             "file_stack_id": str(file_stack.id), "name": file_stack.name,
@@ -123,6 +123,8 @@ class ObjectFileClient(FileTransferClient):
             "is_hashable": file_stack.is_hashable,
             "multipart": Path(path).stat().st_size > 8 * 1024 * 1024,
         }
+        if snapshot_transfer_id is not None:
+            payload["snapshot_transfer_id"] = snapshot_transfer_id
         staging_directory = getattr(file_stack, "_staging_directory", None)
         staged = staging_directory is not None and Path(path).resolve().is_relative_to(Path(staging_directory).resolve())
         if self.object_api_prefix == "/runner/objects" and not staged:

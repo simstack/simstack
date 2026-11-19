@@ -83,6 +83,12 @@ class TestResourceDefinition:
             )
             resource_definition.validate_python_path()
 
+    def test_validate_expanded_python_path(self, valid_paths, monkeypatch):
+        monkeypatch.setenv("PROJECT", str(valid_paths["python_path"].parent))
+        resource = ResourceDefinition(resource_str="local", workdir=".", hostname="localhost",
+                                      python_paths=["$PROJECT/python_lib"])
+        resource.validate_python_path()
+
     def test_assignment_validation(self, valid_paths):
         """Test that validation runs on assignment."""
 
