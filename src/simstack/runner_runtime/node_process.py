@@ -95,6 +95,17 @@ async def _confirm_owned_process_exit(context: GlobalState, launch_entry, proces
             await asyncio.sleep(1)
 
 
+async def _spawn_child(*command, server, job_entry, ownership, **options):
+    """Start the inline worker with the same ownership as its admitted attempt."""
+    if os.name == "nt" and job_entry is not None:
+        from simstack.runner_runtime.windows_science_job import job_name, spawn_job_process
+        return spawn_job_process(command, name=job_name(server, job_entry),
+            startupinfo=ownership.get("startupinfo"), retain_in_child=True, **options)
+    return await asyncio.create_subprocess_exec(
+        *command, start_new_session=os.name != "nt", **options, **ownership
+    )
+
+
 async def run_node_as_process(
     node: Node, context: GlobalState,
 ) -> Union[Model, SimstackResult, bool, None]:
@@ -169,27 +180,12 @@ async def run_node_as_process(
                     if getattr(launch_entry, "_execution_local", False) and not node.parameters.in_docker:
                         job_context = controller_job(context.server, launch_entry, environment, ownership)
                 with job_context as (science_job, child_ownership):
-                    if (os.name == "nt" and science_job is None
-                            and not node.parameters.in_docker):
-                        from simstack.runner_runtime.windows_science_job import (
-                            job_name,
-                            spawn_job_process,
-                        )
-                        proc = spawn_job_process(cmd, name=job_name(context.server, launch_entry),
-                            cwd=project_root, env=environment, stdout=stdout_file, stderr=stderr_file,
-                            startupinfo=child_ownership.get("startupinfo"), retain_in_child=True,
-                            creationflags=creationflags)
-                    else:
-                        proc = await asyncio.create_subprocess_exec(
-                            *cmd,
-                            stdout=stdout_file,
-                            stderr=stderr_file,
-                            cwd=project_root,
-                            env=environment,
-                            start_new_session=os.name != "nt",
-                            creationflags=creationflags,
-                            **child_ownership,
-                        )
+                    proc = await _spawn_child(
+                        *cmd, server=context.server,
+                        job_entry=launch_entry if science_job is None and not node.parameters.in_docker else None,
+                        ownership=child_ownership, stdout=stdout_file, stderr=stderr_file,
+                        cwd=project_root, env=environment, creationflags=creationflags,
+                    )
                     if science_job is not None:
                         import weakref
                         proc._simstack_windows_job = science_job

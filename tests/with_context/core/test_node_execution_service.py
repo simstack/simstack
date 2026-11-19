@@ -14,6 +14,7 @@ from simstack.core.definitions import TaskStatus
 from simstack.core.services.node_execution_service import NodeExecutionService
 from simstack.models import NodeRegistry, FloatData
 from simstack.models.parameters import Parameters, Queue, Resource
+from simstack.runner_runtime import node_process
 from simstack.runner_runtime.launch_claims import task_execution, current_execution
 from simstack.server_api.http_transport import RunnerAPIError
 
@@ -365,7 +366,7 @@ async def test_native_parent_preserves_committed_result_after_launcher_failure(
     scientific_result = await context.server.values.publish_value(FloatData(value=42.0))
     references = [NamedDataReference(variable_name="result", variable_mapping="simstack.models.base_types.FloatData",
         reference=scientific_result.id)]
-    spawn = asyncio.create_subprocess_exec
+    spawn = node_process._spawn_child
     async def child_process(*args, **kwargs):
         output = encode_run_node_result(RunNodeResult(True, "model")) if protocol else "cleanup diagnostics"
         process = await spawn(sys.executable, "-c", f"import sys; print({output!r}); sys.exit({returncode})", **kwargs)
@@ -375,7 +376,7 @@ async def test_native_parent_preserves_committed_result_after_launcher_failure(
         object.__setattr__(entry, "_output_publication", publication)
         await context.server.tasks.complete_attempt(entry, outputs=references, return_kind="model")
         return process
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", child_process)
+    monkeypatch.setattr(node_process, "_spawn_child", child_process)
     invocation = Node.__new__(Node)
     invocation.name, invocation.registry_entry, invocation.parameters = entry.name, entry, entry.parameters
     result = await _NATIVE_PROCESS_LAUNCH(invocation)
@@ -407,7 +408,7 @@ async def test_inline_slurm_child_is_stopped_by_its_actual_parent_process(server
     child = response["task"]
     assert response["disposition"] == "launch_inline" and child.job_id is None
     assert child._execution_launch_kind == "inline"
-    spawn = asyncio.create_subprocess_exec
+    spawn = node_process._spawn_child
     processes, cancellations = [], []
     read_outcome = context.server.tasks.get_outcome
     failed_polls = []
@@ -430,7 +431,7 @@ async def test_inline_slurm_child_is_stopped_by_its_actual_parent_process(server
         await context.server.tasks.start_attempt(child, process_id=process.pid)
         cancellations.append(asyncio.create_task(cancel_from_host()))
         return process
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", child_process)
+    monkeypatch.setattr(node_process, "_spawn_child", child_process)
     monkeypatch.setattr(task_termination, "_run_command", AsyncMock(side_effect=AssertionError("shared allocation was cancelled")))
     invocation = Node.__new__(Node)
     invocation.name, invocation.registry_entry, invocation.parameters = child.name, child, child.parameters
@@ -461,7 +462,7 @@ async def test_taskgroup_cancellation_uses_the_published_parent_execution(server
     with task_execution(parent):
         await invocation.get_node_registry()
     original_parent = dict(invocation._parent_execution)
-    spawn = asyncio.create_subprocess_exec
+    spawn = node_process._spawn_child
     started = asyncio.Event()
     processes = []
     async def child_process(*args, **kwargs):
@@ -470,7 +471,7 @@ async def test_taskgroup_cancellation_uses_the_published_parent_execution(server
         await context.server.tasks.start_attempt(invocation.registry_entry, process_id=process.pid)
         started.set()
         return process
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", child_process)
+    monkeypatch.setattr(node_process, "_spawn_child", child_process)
     monkeypatch.setattr(task_termination, "_run_command", AsyncMock(side_effect=AssertionError("shared allocation was cancelled")))
     try:
         async with asyncio.TaskGroup() as group:
@@ -583,19 +584,19 @@ async def test_managed_docker_parent_releases_capacity_before_queued_child(serve
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("journal_error", [False, True], ids=["sigkill-after-start", "spawn-journal-error"])
+@pytest.mark.parametrize("journal_error", [False, True], ids=["kill-after-start", "spawn-journal-error"])
 async def test_native_handle_is_stopped_before_failure_is_recorded(server_storage, resource, monkeypatch, journal_error):
     import sys
+    from simstack.core.services.node_execution_service import _spawn_native_process
     from simstack.runner_runtime import execution_environment, launch_claims
     entry = await acquired(server_storage)
     service = NodeExecutionService(resource, 1, 1, None)
     service.write_node_event = AsyncMock()
     monkeypatch.setattr(execution_environment, "task_launch_command",
         lambda *args: [sys.executable, "-c", "import time; time.sleep(60)"])
-    spawn = asyncio.create_subprocess_exec
     processes = []
     async def launch(*args, **kwargs):
-        process = await spawn(*args, **kwargs)
+        process = await _spawn_native_process(*args, **kwargs)
         processes.append(process)
         if not journal_error:
             await context.server.tasks.start_attempt(entry, process_id=process.pid)
@@ -614,10 +615,13 @@ async def test_native_handle_is_stopped_before_failure_is_recorded(server_storag
         assert processes[0].returncode is not None
         outcome = await context.server.tasks.get_outcome(entry)
         assert outcome.status == TaskStatus.FAILED
-        if not journal_error:
-            assert outcome.signal == 9
-        else:
+        if journal_error:
             assert "journal disk full" in outcome.error
+        elif sys.platform == "win32":
+            assert processes[0].returncode > 0
+            assert outcome.exit_code == processes[0].returncode and outcome.signal is None
+        else:
+            assert outcome.signal == 9 and outcome.exit_code is None
     finally:
         for process in processes:
             if process.returncode is None:
@@ -628,16 +632,16 @@ async def test_native_handle_is_stopped_before_failure_is_recorded(server_storag
 @pytest.mark.asyncio
 async def test_restarted_service_recovers_native_outcome_without_guessed_exit(server_storage, resource, monkeypatch):
     import sys
+    from simstack.core.services.node_execution_service import _spawn_native_process
     from simstack.runner_runtime import execution_environment, native_observations
     entry = await acquired(server_storage)
     service = NodeExecutionService(resource, 1, 1, None)
     service.write_node_event = AsyncMock()
     monkeypatch.setattr(execution_environment, "task_launch_command",
         lambda *args: [sys.executable, "-c", "import time; time.sleep(60)"])
-    original_spawn = asyncio.create_subprocess_exec
     processes = []
     async def spawn(*args, **kwargs):
-        process = await original_spawn(*args, **kwargs)
+        process = await _spawn_native_process(*args, **kwargs)
         processes.append(process)
         await context.server.tasks.start_attempt(entry, process_id=process.pid)
         return process
@@ -732,7 +736,7 @@ async def test_same_parent_waiter_cancellation_keeps_other_consumer(server_stora
             parameters=Parameters(resource="self"))
         await second.get_node_registry()
     assert first.id == second.id and first._owns_inline_nested_execution and not second._owns_inline_nested_execution
-    spawn, processes, started = asyncio.create_subprocess_exec, [], asyncio.Event()
+    spawn, processes, started = node_process._spawn_child, [], asyncio.Event()
     release = tmp_path / "release-science"
     protocol = encode_run_node_result(RunNodeResult(True, "bool"))
     async def child_process(*args, **kwargs):
@@ -743,7 +747,7 @@ async def test_same_parent_waiter_cancellation_keeps_other_consumer(server_stora
         await context.server.tasks.start_attempt(first.registry_entry, process_id=process.pid)
         started.set()
         return process
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", child_process)
+    monkeypatch.setattr(node_process, "_spawn_child", child_process)
     first.run_node_as_process = lambda: _NATIVE_PROCESS_LAUNCH(first)
     previous_operations = set(_consumer_operations)
     initial = asyncio.create_task(first.run_somewhere())

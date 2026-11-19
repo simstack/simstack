@@ -66,16 +66,18 @@ jobs:
       - name: Use both checked-out source trees
         run: uv run --project simstack-server --no-sync python -c "import os,pathlib; p=pathlib.Path.cwd(); f=open(os.environ['GITHUB_ENV'],'a',encoding='utf-8'); print('PYTHONPATH='+os.pathsep.join([str(p/'simstack'/'src'),str(p/'simstack-server')]),file=f); f.close()"
       - name: Verify the shared API checksum against the paired Server
+        id: contract
         shell: bash
         run: |
           uv run --project simstack-server --no-sync python simstack-server/scripts/export_openapi.py
           diff --strip-trailing-cr simstack/.github/contracts/server-openapi.sha256 simstack-server/openapi.sha256
-      - name: Run HTTP integration scenarios
-        run: uv run --project simstack-server --no-sync python -m pytest simstack/tests/with_context --junitxml=pytest-domain.xml -q
       - name: Run the actual HTTP-only Runner
         env:
           START_LOCAL_RUNNER: "true"
         run: uv run --project simstack-server --no-sync python -m pytest simstack/tests/with_context/with_runner/test_runner_completed.py --junitxml=pytest-runner.xml -q
+      - name: Run HTTP integration scenarios
+        if: ${{ !cancelled() && steps.contract.outcome == 'success' }}
+        run: uv run --project simstack-server --no-sync python -m pytest simstack/tests/with_context --junitxml=pytest-domain.xml -q
 
   package-html-docs:
     name: Build Package HTML Docs
