@@ -108,7 +108,9 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
                     + "            fi\n"
                     + sync_data_end
                 )
-                logger.info(f"task_id: {task_id} full_sync_data {full_sync_data}")
+                logger.info(
+                    f"task_id: {task_id} full_sync_data appended ({len(full_sync_data)} chars)"
+                )
                 slurm_parameters.startup_commands.append(full_sync_data)
                 slurm_parameters.startup_commands.append("trap 'sync_data' SIGUSR1")
             else:
@@ -127,7 +129,9 @@ async def submit_node(registry_entry: NodeRegistry) -> bool:
                     + sync_data_end
                 )
 
-                logger.info(f"task_id: {task_id} full_sync_data {full_sync_data}")
+                logger.info(
+                    f"task_id: {task_id} full_sync_data appended ({len(full_sync_data)} chars)"
+                )
                 slurm_parameters.startup_commands.append(full_sync_data)
                 slurm_parameters.startup_commands.append("trap 'sync_data' SIGUSR1")
 

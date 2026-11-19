@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 
 from pymongo import MongoClient
+from pymongo.errors import InvalidOperation
 
 # Regular expression patterns
 task_pattern = re.compile(r"task_id: ([\w\-\.]+)")
@@ -51,8 +52,19 @@ class DBLogHandler(logging.Handler):
         self.db = self.client[self.db_name]
         self.collection = self.db[self.collection_name]
 
+        # True once close() ran; emit() drops records silently afterwards
+        # (e.g. asyncio teardown warnings logged during interpreter shutdown).
+        self._closed = False
+
     def emit(self, record: logging.LogRecord) -> None:
         """Process a log record by converting it to a log entry and inserting it into MongoDB."""
+        # The client may already be closed (process teardown, log handler
+        # re-creation in long-running services). Writing there raises
+        # pymongo.errors.InvalidOperation; drop such records quietly instead
+        # of emitting a "--- Logging error ---" traceback.
+        if getattr(self, "_closed", False):
+            return
+
         try:
             # Create log entry as a dictionary
             log_entry = self.create_log_entry(record)
@@ -60,6 +72,10 @@ class DBLogHandler(logging.Handler):
             # Insert the log entry into the collection
             self.collection.insert_one(log_entry)
 
+        except InvalidOperation:
+            # Client was closed concurrently (e.g. during shutdown). Drop the
+            # record rather than recursing into handleError / logging again.
+            return
         except Exception as e:
             # Use print instead of logging to avoid potential recursion
             print(f"Error in emit: {e}")
@@ -108,6 +124,7 @@ class DBLogHandler(logging.Handler):
         """Close the MongoDB client connection."""
         try:
             if hasattr(self, "client") and self.client:
+                self._closed = True
                 self.client.close()
         except Exception as e:
             print(f"Error closing DB log handler client: {e}")

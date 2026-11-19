@@ -161,3 +161,12 @@ class RunnerManager:
             )
         finally:
             await self.stop_all_services()
+            # Reap the shutdown watcher: it awaits Event.wait() and is *not*
+            # part of `services`, so on a normal FIRST_COMPLETED exit it would
+            # be left pending and later garbage-collected at interpreter
+            # shutdown ("Task was destroyed but it is pending!" noise hitting
+            # the DB log handler). Wake it up or cancel it so the event loop
+            # has no pending tasks when the runner exits.
+            self._shutdown_event.set()
+            shutdown_task.cancel()
+            await asyncio.gather(shutdown_task, return_exceptions=True)
