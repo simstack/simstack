@@ -10,6 +10,7 @@ import os
 import re
 import shlex
 import shutil
+import site
 import subprocess
 import sys
 import tempfile
@@ -61,7 +62,17 @@ def prepare_environment(source: Path, *, extras: list[str], runtime: Path | None
             copied.unlink()
         if not copied.exists():
             shutil.copytree(original, copied, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-    Path(sites[0], "simstack-platform.pth").write_text(str(platform)+"\n")
+    bindings = [str(platform)]
+    if "project" not in manifest:
+        # --system-site-packages exposes base Python, but skips the Runner's own venv.
+        bindings.extend(site.getsitepackages([sys.prefix]))
+    Path(sites[0], "simstack-platform.pth").write_text("\n".join(bindings) + "\n")
+    if "project" not in manifest:
+        probe = subprocess.run([str(python), "-I", "-c", "import simstack.core.run_node"],
+                               cwd=source, env=env, capture_output=True, text=True, timeout=30)
+        if probe.returncode:
+            reason = probe.stderr.strip().splitlines()
+            raise RuntimeError(f"Prepared repository cannot load the Runner entry point: {reason[-1] if reason else probe.returncode}")
     return python
 
 

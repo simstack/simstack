@@ -408,6 +408,7 @@ def test_real_interpreter_rejects_stale_copied_core_binding(tmp_path):
 
 def test_prepared_core_snapshot_survives_in_place_runner_upgrade(tmp_path, monkeypatch):
     """Even a late import in an old environment must use its prepared Core."""
+    import site
     import venv
     import simstack
     from types import SimpleNamespace
@@ -418,6 +419,11 @@ def test_prepared_core_snapshot_survives_in_place_runner_upgrade(tmp_path, monke
     package.mkdir(parents=True)
     (package / "__init__.py").write_text("")
     (package / "late_science.py").write_text("VALUE = 'old'\n")
+    (package / "core").mkdir()
+    (package / "core" / "run_node.py").write_text("import runner_only_science_dependency\n")
+    dependency = installed / "runner_only_science_dependency.py"
+    dependency.touch()
+    monkeypatch.setattr(site, "getsitepackages", lambda prefixes=None: [str(installed)])
     metadata = installed / "simstack-1.0.dist-info"
     metadata.mkdir()
     (metadata / "METADATA").write_text("Name: simstack\nVersion: 1.0\n")
@@ -438,10 +444,13 @@ def test_prepared_core_snapshot_survives_in_place_runner_upgrade(tmp_path, monke
     first = runtime.prepare_environment(source, extras=[], runtime=tmp_path / "old-runtime")
     (package / "late_science.py").write_text("VALUE = 'new'\n")
     second = runtime.prepare_environment(source, extras=[], runtime=tmp_path / "new-runtime")
-    command = ["-I", "-c", "from simstack.late_science import VALUE; print(VALUE)"]
+    command = ["-I", "-c", "from simstack.core import run_node; from simstack.late_science import VALUE; print(VALUE)"]
     assert subprocess.check_output([str(first), *command], text=True).strip() == "old"
     assert subprocess.check_output([str(second), *command], text=True).strip() == "new"
     assert not (first.parent.parent / ".simstack-platform" / "simstack").is_symlink()
+    dependency.unlink()
+    with pytest.raises(RuntimeError, match="runner_only_science_dependency"):
+        runtime.prepare_environment(source, extras=[], runtime=tmp_path / "incomplete-runtime")
 
 
 @pytest.mark.parametrize("manifest", [None, "[tool.simstack]\nrunner-protocol=2\n", '[tool.simstack]\nrunner-protocol="3"\n'])
