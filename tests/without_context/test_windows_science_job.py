@@ -58,7 +58,8 @@ class Kernel:
         startup = C.cast(startup, C.POINTER(jobs._StartupEx)).contents
         assert startup.startup.flags == 0x100
         self.calls.append(("create",))
-        self.creations.append({"flags": flags, "environment": "".join(environment), "inherited": inherit})
+        self.creations.append({"flags": flags, "environment": "".join(environment), "inherited": inherit,
+                               "executable": executable, "command": command.value})
         info = C.cast(result, C.POINTER(jobs._ProcessInfo)).contents
         info.process, info.thread, info.pid = 800, 801, 1234
         return 1
@@ -129,6 +130,26 @@ def test_atomic_job_spawn_preserves_launch_handles_and_console_flags(kernel, tmp
     kernel.exited = True
     assert process.returncode == 17
     assert 100 not in kernel.closed  # The live observer owns the original Job handle.
+    process._simstack_windows_job.close()
+
+
+def test_venv_launch_gives_the_interpreter_the_process_id_and_lease(kernel, tmp_path):
+    venv = tmp_path / "task venv"
+    launcher = venv / "Scripts" / "python.exe"
+    launcher.parent.mkdir(parents=True)
+    launcher.touch()
+    base = tmp_path / "base python" / "python.exe"
+    base.parent.mkdir()
+    base.touch()
+    (venv / "pyvenv.cfg").write_text(f"home = {base.parent}\n", encoding="utf-8")
+    command = [str(launcher), "-c", "print('science')"]
+
+    process = jobs.spawn_job_process(command, name="venv-job", cwd=tmp_path, env={},
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    creation, = kernel.creations
+    assert creation["executable"] == str(base)
+    assert creation["command"] == subprocess.list2cmdline(command)
+    assert f"__PYVENV_LAUNCHER__={launcher}" in creation["environment"].split("\0")
     process._simstack_windows_job.close()
 
 

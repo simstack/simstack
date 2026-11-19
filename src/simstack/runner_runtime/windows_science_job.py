@@ -11,6 +11,7 @@ import ctypes as C
 import hashlib
 import json
 import os
+from pathlib import Path
 import subprocess
 import weakref
 
@@ -246,6 +247,28 @@ class WindowsProcess:
     terminate = kill
 
 
+def _venv_application(command, environment):
+    """Run the worker itself: Windows venv redirectors retain inherited handles until exit."""
+    launcher = Path(command[0])
+    if not launcher.is_absolute() or launcher.name.lower() != "python.exe" or launcher.parent.name.lower() != "scripts":
+        return None
+    config = launcher.parent.parent / "pyvenv.cfg"
+    if not launcher.is_file() or not config.is_file():
+        return None
+    settings = {}
+    for line in config.read_text(encoding="utf-8").splitlines():
+        key, _, value = line.partition("=")
+        settings[key.strip().lower()] = value.strip()
+    if settings.get("implementation", "CPython").lower() != "cpython":
+        return None
+    base = Path(settings.get("home", "")) / "python.exe"
+    if base.is_absolute() and base.is_file():
+        # CPython and uv use this variable to activate the selected venv in the real interpreter.
+        environment["__PYVENV_LAUNCHER__"] = str(launcher)
+        return str(base)
+    return None
+
+
 def spawn_job_process(command, *, name, cwd, env, stdout, stderr, startupinfo=None,
                       retain_in_child=False, job=None, creationflags=0):
     """Create science atomically inside its Job (Windows 10+ JOB_LIST attribute)."""
@@ -293,9 +316,10 @@ def spawn_job_process(command, *, name, cwd, env, stdout, stderr, startupinfo=No
             startup.startup.stdin, startup.startup.stdout, startup.startup.stderr = standard
             startup.attributes = C.cast(attributes, C.c_void_p)
             info = _ProcessInfo()
+            application = _venv_application(command, environment)
             command_line = C.create_unicode_buffer(subprocess.list2cmdline([str(part) for part in command]))
             block = C.create_unicode_buffer("\0".join(f"{key}={value}" for key, value in sorted(environment.items(), key=lambda item: item[0].upper())) + "\0\0")
-            _check(kernel.CreateProcessW(None, command_line, None, None, True,
+            _check(kernel.CreateProcessW(application, command_line, None, None, True,
                 0x00080000 | 0x00000400 | creationflags, block, str(cwd), C.byref(startup), C.byref(info)))
             process = WindowsProcess(info, job)
             if own_job:

@@ -132,7 +132,11 @@ def git_environment(*, require_key: bool = False) -> dict[str, str]:
 
 def _git_command(root: Path, *arguments: str) -> list[str]:
     # Git for Windows must also support nested submodules inside revision-keyed caches.
-    return ["git", "-c", "core.longpaths=true", "-C", str(root), *arguments]
+    command = ["git", "-c", "core.longpaths=true", "-C", str(root)]
+    if (root / ".git").is_file():
+        # A submodule's gitfile may resolve beyond Git's discovery length limit.
+        command.append("--git-dir=.git")
+    return [*command, *arguments]
 
 
 def _git(root: Path, *arguments: str, environment: dict[str, str]) -> str:

@@ -13,7 +13,7 @@ def assert_private_file(path):
     # Windows inherits the user's DACL. Only the user, SYSTEM and admins may have access.
     script = """
     $ErrorActionPreference = 'Stop'
-    $acl = Get-Acl -LiteralPath $env:SIMSTACK_TEST_FILE
+    $acl = [System.IO.File]::GetAccessControl($env:SIMSTACK_TEST_FILE)
     $allowed = @([Security.Principal.WindowsIdentity]::GetCurrent().User.Value,
                  'S-1-5-18', 'S-1-5-32-544')
     $owner = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
