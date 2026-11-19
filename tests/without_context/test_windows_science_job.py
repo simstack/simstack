@@ -278,6 +278,36 @@ async def test_absent_job_is_unknown_not_a_process_exit_barrier(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_job_member_waits_for_exit_after_its_job_is_drained(kernel, monkeypatch, tmp_path):
+    from unittest.mock import AsyncMock
+    from simstack.core.services import task_termination as termination
+
+    process = jobs.spawn_job_process(["python"], name="test-job", cwd=tmp_path, env={},
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    kernel.active = 1
+    terminate_job = kernel.TerminateJobObject
+
+    def drain_job(handle, code):
+        # The job can report zero active members before this process handle signals.
+        asyncio.get_running_loop().call_soon(setattr, kernel, "exited", True)
+        return terminate_job(handle, code)
+
+    def terminate_dying_member(handle, code):
+        raise PermissionError("process is already terminating")
+
+    monkeypatch.setattr(kernel, "TerminateJobObject", drain_job)
+    monkeypatch.setattr(kernel, "TerminateProcess", terminate_dying_member, raising=False)
+    monkeypatch.setattr(termination, "protected_child_processes", AsyncMock(return_value=set()))
+    entry = SimpleNamespace(job_id=None, parameters=SimpleNamespace(in_docker=False, queue="local"))
+    try:
+        await termination.stop_task_execution(entry, server=None, runner_pid=7, workdir=None, local_process=process)
+        assert process.returncode == 17
+        assert kernel.calls.count(("terminate", 100)) == 1
+    finally:
+        process._simstack_windows_job.close()
+
+
+@pytest.mark.asyncio
 async def test_owned_windows_job_avoids_pid_tree_and_waits_for_exact_controller_handle(monkeypatch):
     from unittest.mock import AsyncMock, Mock
     from simstack.core.services import task_termination as termination

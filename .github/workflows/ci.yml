@@ -27,12 +27,19 @@ jobs:
         run: uv run python -m pytest tests/without_context --junitxml=pytest-unit.xml -q
 
   domain-integration:
-    name: Core through Server domain HTTP
+    name: Core through Server domain HTTP (${{ matrix.label || matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            tests: simstack/tests/with_context
+          - os: windows-latest
+            tests: simstack/tests/with_context --ignore=simstack/tests/with_context/core/test_node_execution_service.py
+          - os: windows-latest
+            label: Windows native process lifecycle
+            tests: simstack/tests/with_context/core/test_node_execution_service.py
     env:
       SIMSTACK_SERVER_TEST_REF: ${{ vars.SIMSTACK_SERVER_TEST_REF || '48ab3f01ae0eb17b30f59bb987aba28a6d8f536e' }}
       SECRET_KEY: ci-only-domain-tests
@@ -72,12 +79,13 @@ jobs:
           uv run --project simstack-server --no-sync python simstack-server/scripts/export_openapi.py
           diff --strip-trailing-cr simstack/.github/contracts/server-openapi.sha256 simstack-server/openapi.sha256
       - name: Run the actual HTTP-only Runner
+        if: ${{ !matrix.label }}
         env:
           START_LOCAL_RUNNER: "true"
         run: uv run --project simstack-server --no-sync python -m pytest simstack/tests/with_context/with_runner/test_runner_completed.py --junitxml=pytest-runner.xml -q
       - name: Run HTTP integration scenarios
         if: ${{ !cancelled() && steps.contract.outcome == 'success' }}
-        run: uv run --project simstack-server --no-sync python -m pytest simstack/tests/with_context --junitxml=pytest-domain.xml -q
+        run: uv run --project simstack-server --no-sync python -m pytest ${{ matrix.tests }} --junitxml=pytest-domain.xml -q
 
   package-html-docs:
     name: Build Package HTML Docs

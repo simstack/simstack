@@ -418,12 +418,16 @@ async def stop_task_execution(entry, *, server, runner_pid: int, workdir, extra_
             else [pid for pid in (entry.process_id, *extra_pids) if pid is not None])
     protected = await protected_child_processes(entry, server) if any(pid != runner_pid for pid in pids) else set()
     if local_process is not None and getattr(local_process, "_simstack_windows_job", None) is not None:
+        from simstack.runner_runtime.windows_science_job import WindowsProcess
+
         # Shared SDK children have their own Jobs. An exact Job handle drains
         # science without relying on a PID tree, which can lose or misidentify
         # descendants after controller death.
         await stop_owned_process_group(local_process)
-        if local_process.returncode is None:
-            local_process.kill()  # A local controller itself is outside its science Job.
+        # A WindowsProcess is created inside the Job. Its handle may signal
+        # after the Job drains. Only the separate controller still needs a kill.
+        if not isinstance(local_process, WindowsProcess) and local_process.returncode is None:
+            local_process.kill()
         await local_process.wait()
         return
     for process_id in dict.fromkeys(pids):
