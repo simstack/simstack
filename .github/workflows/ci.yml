@@ -34,7 +34,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     env:
-      SIMSTACK_SERVER_TEST_REF: ${{ vars.SIMSTACK_SERVER_TEST_REF }}
+      SIMSTACK_SERVER_TEST_REF: ${{ vars.SIMSTACK_SERVER_TEST_REF || '48ab3f01ae0eb17b30f59bb987aba28a6d8f536e' }}
+      SECRET_KEY: ci-only-domain-tests
+      WORKDIR: ${{ github.workspace }}/test-workdir
     steps:
       - uses: actions/checkout@v6
         with:
@@ -42,8 +44,8 @@ jobs:
       - uses: astral-sh/setup-uv@v8.3.2
         with:
           version: "0.11.29"
-          enable-cache: true
-          cache-dependency-glob: "simstack-server/uv.lock"
+          # The Server package is private, while this repository's Actions caches are public to PRs.
+          enable-cache: false
       - run: uv python install 3.12
       - name: Validate the reviewed Server revision
         run: uv run --no-project --python 3.12 python -c "import os,re; assert re.fullmatch('[0-9a-f]{40}', os.environ['SIMSTACK_SERVER_TEST_REF']), 'Set SIMSTACK_SERVER_TEST_REF to the reviewed compatible Server commit SHA'"
@@ -52,6 +54,12 @@ jobs:
           repository: simstack/simstack-server
           ref: ${{ env.SIMSTACK_SERVER_TEST_REF }}
           path: simstack-server
+          token: >-
+            ${{ secrets.SIMSTACK_SERVER_READ_TOKEN ||
+                (github.repository == 'simstack/simstack' &&
+                 (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+                 secrets.SIMSTACK_SERVER_DISPATCH_TOKEN) || '' }}
+          persist-credentials: false
       - run: uv sync --project simstack-server --dev --frozen --no-install-package simstack
       - name: Install the checked-out Core in the Server environment
         run: uv pip install --no-config --python simstack-server/.venv --no-deps ./simstack

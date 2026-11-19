@@ -1,8 +1,10 @@
-from types import SimpleNamespace
 import json
 import os
+import shutil
 import subprocess
 import sys
+from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -12,6 +14,16 @@ from simstack.core.submit_node import submit_node
 from simstack.models import NodeRegistry
 from simstack.models.parameters import Parameters, SlurmParameters
 from simstack.runner_runtime.launch_claims import acquire_work
+from tests.support.file_permissions import assert_private_file
+
+
+@pytest.fixture
+def bash():
+    if os.name == "nt":
+        # Git for Windows includes a native Bash. The System32 launcher uses WSL.
+        git = Path(shutil.which("git"))
+        return git.parent.parent / "bin" / "bash.exe"
+    return shutil.which("bash")
 
 
 def completed_submission(*, returncode=0, stdout="", stderr=""):
@@ -119,7 +131,7 @@ async def test_generated_script_preserves_allocation_and_original_parameters(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("export", [None, "ALL", "NONE", "NIL", "CUSTOM_SETTING"])
 async def test_restricted_slurm_export_preserves_launcher_identity(
-    tmp_path, monkeypatch, server_storage, export
+    tmp_path, monkeypatch, server_storage, export, bash
 ):
     configure(tmp_path, monkeypatch)
     real_popen = subprocess.Popen
@@ -131,7 +143,7 @@ async def test_restricted_slurm_export_preserves_launcher_identity(
         lambda *args, **kwargs: completed_submission(stdout="12345\n"))
     target = tmp_path / "observed.json"
     monkeypatch.setattr("simstack.runner_runtime.execution_environment.task_launch_command",
-        lambda *args: [sys.executable, "-c",
+        lambda *args: [Path(sys.executable).as_posix(), "-c",
             "import json, os; from pathlib import Path; Path(" + repr(str(target)) +
             ").write_text(json.dumps(dict(os.environ)))"])
     entry = await claimed_task(server_storage, "export_test", Parameters(resource="test",
@@ -148,13 +160,16 @@ async def test_restricted_slurm_export_preserves_launcher_identity(
     if export is not None:
         assert f"#SBATCH --export={export}" in script.read_text()
     launch_environment, = workdir.glob("slurm_environment_*.sh")
-    assert launch_environment.stat().st_mode & 0o777 == 0o600
+    monkeypatch.setattr(subprocess, "Popen", real_popen)
+    assert_private_file(launch_environment)
     assert "SIMSTACK_DB_CONNECTION_STRING" not in launch_environment.read_text()
     # Execute the generated wrapper in the stripped environment Slurm permits
     # under NONE/NIL. No Slurm installation or scientific program is mocked here.
-    monkeypatch.setattr(subprocess, "Popen", real_popen)
     (tmp_path / ".bashrc").write_text("")
-    subprocess.run(["/bin/bash", str(script)], env={"HOME": str(tmp_path), "PATH": os.defpath}, check=True)
+    environment = {"HOME": tmp_path.as_posix(), "PATH": os.defpath}
+    if os.name == "nt":
+        environment["SystemRoot"] = os.environ["SystemRoot"]
+    subprocess.run([bash, script.as_posix()], env=environment, check=True)
     observed = json.loads(target.read_text())
     assert observed["SIMSTACK_RUNNER_TOKEN"] == token
     assert observed["SIMSTACK_EXECUTION_TASK"] == str(entry.id)
@@ -228,13 +243,13 @@ async def test_scratch_checkpoint_installs_handler_and_preserves_configured_sign
 @pytest.mark.asyncio
 @pytest.mark.skipif(os.name == "nt", reason="Slurm batch execution requires a POSIX host")
 async def test_actual_generated_batch_propagates_the_child_process_exit(
-    tmp_path, monkeypatch, server_storage
+    tmp_path, monkeypatch, server_storage, bash
 ):
     configure(tmp_path, monkeypatch)
     marker = tmp_path / "child-task-id"
     code = "import sys; from pathlib import Path; Path(" + repr(str(marker)) + ").write_text(sys.argv[1]); raise SystemExit(17)"
     monkeypatch.setattr("simstack.runner_runtime.execution_environment.task_launch_command",
-        lambda task, *args: [sys.executable, "-c", code, str(task.id)])
+        lambda task, *args: [Path(sys.executable).as_posix(), "-c", code, str(task.id)])
     native_popen = subprocess.Popen
     monkeypatch.setattr("simstack.core.submit_node.subprocess.Popen",
         lambda *args, **kwargs: completed_submission(stdout="42\n"))
@@ -242,9 +257,9 @@ async def test_actual_generated_batch_propagates_the_child_process_exit(
         slurm_parameters=SlurmParameters()))
     assert await submit_node(entry)
     (tmp_path / ".bashrc").write_text("")
-    environment = {**os.environ, "HOME": str(tmp_path)}
+    environment = {**os.environ, "HOME": tmp_path.as_posix()}
     script = context.config.workdir / entry.name / str(entry.id) / "slurm_script.sh"
-    with native_popen(["bash", str(script)], env=environment) as batch:
+    with native_popen([bash, script.as_posix()], env=environment) as batch:
         assert batch.wait(timeout=5) == 17
     assert marker.read_text() == str(entry.id)
 

@@ -175,7 +175,9 @@ async def test_root_does_not_inherit_unpersisted_parent_kwargs(server_storage,
         assert entry.parameters.slurm_parameters.mem == "1G"
         assert n.parameters.slurm_parameters.mem == "1G"
     finally:
-        n._inline_launch_reservation.close()
+        reservation = getattr(n, "_inline_launch_reservation", None)
+        if reservation is not None:
+            reservation.close()
         await server_storage.delete(entry)
         await server_storage.delete(data)
 

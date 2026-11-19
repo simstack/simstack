@@ -1,8 +1,8 @@
-import stat
 import tomllib
 
 from simstack.util.sample_config import sample_config_writer_entrypoint
 from simstack.util.resource_config import ResourceConfig
+from tests.support.file_permissions import assert_private_file
 
 
 def test_sample_config_defines_a_portable_local_runner(tmp_path, monkeypatch):
@@ -18,6 +18,6 @@ def test_sample_config_defines_a_portable_local_runner(tmp_path, monkeypatch):
     assert '--credentials "$runner_dir/credentials.json"' in before.decode()
     profile = ResourceConfig(path, "workstation")
     assert profile.get_program("python")["run"] == "python --version"
-    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    assert_private_file(path)
     sample_config_writer_entrypoint()
     assert path.read_bytes() == before

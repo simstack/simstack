@@ -16,6 +16,36 @@ from simstack.models.parameters import SlurmParameters
 from simstack.util import slurm_observation
 
 
+def test_launch_environment_replaces_existing_file_privately_without_fchmod(tmp_path, monkeypatch):
+    from simstack.core.submit_node import _write_launch_environment
+    from tests.support.file_permissions import assert_private_file
+
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    if os.name == "nt":
+        # Grant Everyone inherited read access, as on a shared resource workdir.
+        subprocess.run(["icacls.exe", str(shared), "/grant", "*S-1-1-0:(OI)(CI)(RX)"], check=True)
+    else:
+        shared.chmod(0o755)
+    path = shared / "environment.sh"
+    path.write_text("old")
+    path.chmod(0o644)
+    monkeypatch.delattr(os, "fchmod", raising=False)
+    _write_launch_environment(path, {"SIMSTACK_RUNNER_TOKEN": "test token"})
+    assert_private_file(path)
+    assert path.read_bytes().endswith(b"export SIMSTACK_RUNNER_TOKEN='test token'\n")
+    assert list(shared.iterdir()) == [path]
+
+
+def test_windows_without_private_mkdir_fails_before_creating_credentials(tmp_path, monkeypatch):
+    submit_module = importlib.import_module("simstack.core.submit_node")
+    monkeypatch.setattr(submit_module, "os", SimpleNamespace(name="nt"))
+    monkeypatch.setattr(submit_module, "sys", SimpleNamespace(version_info=(3, 12, 3)))
+    with pytest.raises(RuntimeError, match="3.12.4"):
+        submit_module._write_launch_environment(tmp_path / "env.sh", {"SIMSTACK_RUNNER_TOKEN": "test"})
+    assert not list(tmp_path.iterdir())
+
+
 @pytest.mark.parametrize("state", ["FAILED", "TIMEOUT", "OUT_OF_MEMORY", "NODE_FAIL", "CANCELLED", "COMPLETED"])
 def test_accounting_distinguishes_terminal_outcomes(monkeypatch, state):
     replies = iter(["", f"42|{state}|17:0|2026-11-09T12:00:00|reason\n"])

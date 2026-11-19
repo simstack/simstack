@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from tests.support.native_process import mock_native_spawn
+
 import simstack.core.run_node as run_node_module
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import Node
@@ -124,7 +126,7 @@ async def test_inline_early_failure_preserves_exit_signal_in_command_and_journal
         authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"}))
     monkeypatch.setattr("simstack.core.node.context", SimpleNamespace(server=server, in_docker=False,
         config=SimpleNamespace(resource="local", project_root=tmp_path)))
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", AsyncMock(return_value=_Process(returncode, "")))
+    mock_native_spawn(monkeypatch, lambda *args, **kwargs: _Process(returncode, ""))
     with pytest.raises(RuntimeError, match=f"exited with code {returncode}"):
         await _process_node(entry).run_node_as_process()
     payload = api.fail_attempt.await_args.kwargs if unavailable else api.saved[-1][2]
@@ -156,7 +158,7 @@ async def test_process_for_self_uses_actual_resource_and_preserves_true(
     monkeypatch.setenv("SIMSTACK_RUNNER_TOKEN", "runner-test-token")
     monkeypatch.setenv("SIMSTACK_DB_CONNECTION_STRING", "must-not-reach-child")
 
-    async def fake_create_subprocess_exec(*cmd, **kwargs):
+    def fake_create_subprocess_exec(*cmd, **kwargs):
         captured.append((cmd, kwargs))
         return _Process(0, encode_run_node_result(RunNodeResult(True, "bool")), streams=kwargs)
 
@@ -175,10 +177,7 @@ async def test_process_for_self_uses_actual_resource_and_preserves_true(
                 server_url="https://server.example/api", authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"})),
         ),
     )
-    monkeypatch.setattr(
-        "simstack.core.node.asyncio.create_subprocess_exec",
-        fake_create_subprocess_exec,
-    )
+    mock_native_spawn(monkeypatch, fake_create_subprocess_exec)
 
     result = await _process_node(entry).run_node_as_process()
 
@@ -209,7 +208,7 @@ async def test_process_preserves_successful_none_return(monkeypatch, tmp_path):
     )
     database = _DomainClient(entry)
 
-    async def fake_create_subprocess_exec(*cmd, **kwargs):
+    def fake_create_subprocess_exec(*cmd, **kwargs):
         return _Process(0, encode_run_node_result(RunNodeResult(True, "none")), streams=kwargs)
 
     monkeypatch.setattr(
@@ -225,10 +224,7 @@ async def test_process_preserves_successful_none_return(monkeypatch, tmp_path):
                 server_url="https://server.example/api", authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"})),
         ),
     )
-    monkeypatch.setattr(
-        "simstack.core.node.asyncio.create_subprocess_exec",
-        fake_create_subprocess_exec,
-    )
+    mock_native_spawn(monkeypatch, fake_create_subprocess_exec)
 
     assert await _process_node(entry).run_node_as_process() is None
 
@@ -247,7 +243,7 @@ async def test_process_reloads_persisted_model_results(
     database = _DomainClient(entry)
     sentinel = SimpleNamespace(kind=return_kind)
 
-    async def fake_create_subprocess_exec(*cmd, **kwargs):
+    def fake_create_subprocess_exec(*cmd, **kwargs):
         return _Process(
             0, encode_run_node_result(RunNodeResult(True, return_kind)), streams=kwargs
         )
@@ -271,10 +267,7 @@ async def test_process_reloads_persisted_model_results(
                 server_url="https://server.example/api", authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"})),
         ),
     )
-    monkeypatch.setattr(
-        "simstack.core.node.asyncio.create_subprocess_exec",
-        fake_create_subprocess_exec,
-    )
+    mock_native_spawn(monkeypatch, fake_create_subprocess_exec)
     monkeypatch.setattr(Node, "load_results", fake_load_results)
 
     assert await _process_node(entry).run_node_as_process() is sentinel
@@ -298,9 +291,9 @@ async def test_successful_child_accepts_only_transient_read_failure_for_bool(mon
         config=SimpleNamespace(resource="local", project_root=tmp_path, python_paths=[]),
         server=SimpleNamespace(tasks=api, requests=SimpleNamespace(server_url="https://server.example/api",
             authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"}))))
-    async def spawn(*args, **kwargs):
+    def spawn(*args, **kwargs):
         return _Process(0, encode_run_node_result(RunNodeResult(True, return_kind)), streams=kwargs)
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", spawn)
+    mock_native_spawn(monkeypatch, spawn)
     node = _process_node(entry)
     if return_kind == "bool" and failure in {503, None}:
         assert await node.run_node_as_process() is True
@@ -329,7 +322,7 @@ async def test_process_failure_is_nonzero_bounded_and_redacts_child_output(
         RunNodeResult(False, "exception", f"child failed at {secret}")
     )
 
-    async def fake_create_subprocess_exec(*cmd, **kwargs):
+    def fake_create_subprocess_exec(*cmd, **kwargs):
         return _Process(
             1,
             f"{'x' * 5000}{secret}\n{protocol}",
@@ -349,10 +342,7 @@ async def test_process_failure_is_nonzero_bounded_and_redacts_child_output(
                 server_url="https://server.example/api", authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"})),
         ),
     )
-    monkeypatch.setattr(
-        "simstack.core.node.asyncio.create_subprocess_exec",
-        fake_create_subprocess_exec,
-    )
+    mock_native_spawn(monkeypatch, fake_create_subprocess_exec)
 
     with pytest.raises(RuntimeError) as caught:
         await _process_node(entry).run_node_as_process()
@@ -379,7 +369,7 @@ async def test_process_spawn_failure_is_saved_without_database_credentials(
     )
     database = _DomainClient(entry)
 
-    async def fake_create_subprocess_exec(*cmd, **kwargs):
+    def fake_create_subprocess_exec(*cmd, **kwargs):
         raise OSError(f"cannot spawn with {secret}")
 
     monkeypatch.setattr(
@@ -395,10 +385,7 @@ async def test_process_spawn_failure_is_saved_without_database_credentials(
                 server_url="https://server.example/api", authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"})),
         ),
     )
-    monkeypatch.setattr(
-        "simstack.core.node.asyncio.create_subprocess_exec",
-        fake_create_subprocess_exec,
-    )
+    mock_native_spawn(monkeypatch, fake_create_subprocess_exec)
 
     with pytest.raises(RuntimeError) as caught:
         await _process_node(entry).run_node_as_process()
@@ -713,7 +700,7 @@ async def test_stored_child_error_wins_over_different_protocol_error_and_fallbac
         _execution_generation="original-generation")
     captured = {}
 
-    async def spawn(*args, **kwargs):
+    def spawn(*args, **kwargs):
         captured.update(kwargs["env"])
         return _Process(17, encode_run_node_result(
             RunNodeResult(False, "exception", "different protocol diagnostic")), streams=kwargs)
@@ -725,12 +712,12 @@ async def test_stored_child_error_wins_over_different_protocol_error_and_fallbac
         assert entry._execution_generation == "original-generation"
         raise RuntimeError("failure write unavailable")
 
-    api = SimpleNamespace(get_outcome=AsyncMock(return_value=stored),
+    api = SimpleNamespace(execution=WorkflowTasksAPI.execution, get_outcome=AsyncMock(return_value=stored),
         fail_attempt=AsyncMock(side_effect=fail_attempt), reconcile_attempts=AsyncMock())
     monkeypatch.setattr("simstack.core.node.context", SimpleNamespace(server=SimpleNamespace(tasks=api, requests=SimpleNamespace(server_url="https://server.example/api",
         authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"})),
         in_docker=False, config=SimpleNamespace(resource="local", project_root=tmp_path)))
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", spawn)
+    mock_native_spawn(monkeypatch, spawn)
     parent = SimpleNamespace(id=ObjectId(), _execution_claim_id="parent-claim")
     with task_execution(parent):
         parent_identity = dict(current_execution())
@@ -913,13 +900,15 @@ def native_controller(monkeypatch, tmp_path):
         config=SimpleNamespace(resource="local", project_root=tmp_path, workdir=tmp_path)))
     scenario = SimpleNamespace(entry=entry, server=server, tasks=tasks, command=None, process=None,
         result=RunNodeResult(True, "bool"), returncode=0, root=tmp_path)
-    async def spawn(*command, **kwargs):
+    def spawn(*command, **kwargs):
         scenario.command = command
         scenario.process = _Process(scenario.returncode,
             encode_run_node_result(scenario.result) if scenario.result is not None else "", streams=kwargs)
         scenario.process.communicate = AsyncMock(wraps=scenario.process.communicate)
         return scenario.process
-    monkeypatch.setattr(run_node_module.asyncio, "create_subprocess_exec", spawn)
+    monkeypatch.setattr("simstack.runner_runtime.windows_science_job.inherited_job",
+                        lambda server, entry: SimpleNamespace(name="controller-job"))
+    mock_native_spawn(monkeypatch, spawn)
     return scenario
 
 
@@ -1493,7 +1482,8 @@ async def test_slurm_container_success_retries_physical_ack(native_controller, m
     from simstack.server_api.http_transport import RunnerAPIError
     scenario = native_controller
     monkeypatch.setenv("SIMSTACK_SLURM_CONTAINER_EXECUTION", "1")
-    monkeypatch.setattr(run_node_module.os, "setsid", lambda: None)
+    if os.name != "nt":
+        monkeypatch.setattr(run_node_module.os, "setsid", lambda: None)
     scenario.server.slurm = SimpleNamespace(container_intent=AsyncMock())
     if not protocol_survived:
         scenario.result = None
@@ -1536,11 +1526,11 @@ async def test_inline_terminal_exit_retains_evidence_without_changing_science(
         tasks.reconcile_attempts.side_effect = error
     monkeypatch.setattr("simstack.core.node.context", SimpleNamespace(server=SimpleNamespace(tasks=tasks, requests=requests),
         in_docker=False, config=SimpleNamespace(resource="local", project_root=tmp_path)))
-    async def spawn(*args, **kwargs):
+    def spawn(*args, **kwargs):
         protocol = RunNodeResult(stored_status == TaskStatus.COMPLETED,
             "bool" if stored_status == TaskStatus.COMPLETED else "exception", "different protocol error")
         return _Process(code, encode_run_node_result(protocol), streams=kwargs)
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", spawn)
+    mock_native_spawn(monkeypatch, spawn)
     node = _process_node(launch)
     if stored_status == TaskStatus.COMPLETED:
         assert await node.run_node_as_process() is True
@@ -1583,9 +1573,9 @@ async def test_inline_exit_outage_keeps_one_original_receipt_before_outcome_read
         authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"}))
     monkeypatch.setattr("simstack.core.node.context", SimpleNamespace(server=server,
         in_docker=False, config=SimpleNamespace(resource="local", project_root=tmp_path)))
-    async def spawn(*args, **kwargs):
+    def spawn(*args, **kwargs):
         return _Process(-9, encode_run_node_result(RunNodeResult(False, "exception", "primary protocol error")), streams=kwargs)
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", spawn)
+    mock_native_spawn(monkeypatch, spawn)
     with pytest.raises(RuntimeError, match="primary protocol error"):
         await _process_node(launch).run_node_as_process()
     record, = pending_failures()
@@ -1610,9 +1600,9 @@ async def test_inline_late_exit_receipt_never_uses_new_canonical_generation(monk
         authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"}))
     monkeypatch.setattr("simstack.core.node.context", SimpleNamespace(server=server,
         in_docker=False, config=SimpleNamespace(resource="local", project_root=tmp_path)))
-    async def spawn(*args, **kwargs):
+    def spawn(*args, **kwargs):
         return _Process(17, "", streams=kwargs)
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", spawn)
+    mock_native_spawn(monkeypatch, spawn)
     assert await _process_node(launch).run_node_as_process() is True
     receipt, = tasks.reconcile_attempts.await_args.kwargs["outcomes"]
     assert receipt["execution"] == WorkflowTasksAPI.execution(launch)
@@ -1647,9 +1637,9 @@ async def test_inline_exit_retained_when_durable_sinks_recover(monkeypatch, tmp_
         raise PermissionError("journal unavailable")
     monkeypatch.setattr(failures, "record_failure", write)
     monkeypatch.setattr(run_node_module.asyncio, "sleep", AsyncMock())
-    async def spawn(*args, **kwargs):
+    def spawn(*args, **kwargs):
         return _Process(17, "", streams=kwargs)
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", spawn)
+    mock_native_spawn(monkeypatch, spawn)
     assert await _process_node(launch).run_node_as_process() is True
     calls = api.reconcile_attempts.await_args_list
     assert len(calls) == (1 if journal_recovers else 2)
@@ -1687,14 +1677,14 @@ async def test_inline_exit_is_durable_before_owned_cleanup_without_false_stop_ac
             raise OSError("owned cleanup unavailable")
     monkeypatch.setattr("simstack.core.services.task_termination.stop_task_execution", cleanup)
     monkeypatch.setattr("simstack.core.services.task_termination.stop_owned_process_group", cleanup)
-    async def spawn(*args, **kwargs):
+    def spawn(*args, **kwargs):
         process = _Process(-9, "", streams=kwargs)
         if backend == "process_group":
             process._simstack_process_group = True
         else:
             process._simstack_windows_job = object()
         return process
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", spawn)
+    mock_native_spawn(monkeypatch, spawn)
     monkeypatch.setattr("simstack.core.node.asyncio.sleep", AsyncMock())
     assert await _process_node(launch).run_node_as_process() is True
     assert cleaned
@@ -1729,11 +1719,11 @@ async def test_verified_inline_cleanup_retries_unpersisted_receipt_release(monke
     monkeypatch.setattr(failures, "record_failure", write)
     monkeypatch.setattr("simstack.core.node.asyncio.sleep", AsyncMock())
     monkeypatch.setattr("simstack.core.services.task_termination.stop_task_execution", AsyncMock())
-    async def spawn(*args, **kwargs):
+    def spawn(*args, **kwargs):
         process = _Process(17, "", streams=kwargs)
         process._simstack_process_group = True
         return process
-    monkeypatch.setattr("simstack.core.node.asyncio.create_subprocess_exec", spawn)
+    mock_native_spawn(monkeypatch, spawn)
     assert await _process_node(launch).run_node_as_process() is True
     path, stored = next(failures.pending_failures())
     assert stored["exit_code"] == 17 and "cleanup" not in stored

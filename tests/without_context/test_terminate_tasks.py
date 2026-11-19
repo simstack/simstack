@@ -366,6 +366,7 @@ def test_process_tree_stop_preserves_shared_subtree_on_windows(monkeypatch):
 
 def test_windows_child_lookup_reports_only_requested_parent_children(monkeypatch):
     commands = []
+    monkeypatch.setattr(task_termination, "os", SimpleNamespace(name="nt"))
     monkeypatch.setattr(task_termination.platform, "system", lambda: "Windows")
     def run(args, **kwargs):
         commands.append(args)

@@ -845,6 +845,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from simstack.runner_runtime.launch_claims import acknowledge_start
 root = Path(os.environ["SIMSTACK_RUNNER_WORKDIR"])
+(root / f"child-ready-{os.getpid()}").touch()
 while not (root / "child-release").exists():
     if (root / "child-start").exists() and not (root / "child-acknowledged").exists():
         execution = {field: os.environ["SIMSTACK_EXECUTION_" + key] for field, key in
@@ -855,6 +856,7 @@ while not (root / "child-release").exists():
         acknowledge_start(server, SimpleNamespace(id=execution["task_id"]), True)
         (root / "child-acknowledged").touch()
     time.sleep(0.01)
+(root / "child-stopped").touch()
 '''
     launcher_code = '''
 import asyncio, os, sys
@@ -865,6 +867,7 @@ from simstack.models import NodeRegistry
 from simstack.models.parameters import Parameters, Resource
 from simstack.runner_runtime import execution_environment, launch_claims
 from simstack.core.services import node_execution_service
+from simstack.server_api.workflow_tasks import WorkflowTasksAPI
 root = Path(os.environ["SIMSTACK_RUNNER_WORKDIR"])
 entry = NodeRegistry(id=TASK_ID, name="launch_probe", status="retrieved",
     function_hash="", arg_hash="hash", func_mapping="test.launch_probe", parameters=Parameters(resource="local"))
@@ -872,7 +875,8 @@ entry._execution_claim_id = "original-claim"
 entry._execution_generation = "generation-one"
 entry._execution_resource = "local"
 server = SimpleNamespace(requests=SimpleNamespace(server_url="https://example.invalid/api",
-    authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"}))
+    authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"}),
+    tasks=SimpleNamespace(execution=WorkflowTasksAPI.execution))
 reservation = launch_claims.reserve_launch(server, entry.id)
 intent = launch_claims.receipt(server, entry.id, begin=True,
     claim_id="original-claim", generation="generation-one")
@@ -895,23 +899,26 @@ asyncio.run(service._run_with_semaphore(entry))
 '''.replace("TASK_ID", repr(task_id)).replace("CHILD_CODE", repr(child_code)).replace("RECORDED", repr(recorded))
     launcher = subprocess.Popen([sys.executable, "-c", launcher_code], env=dict(os.environ),
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    async def wait_for_marker(name):
+        path = tmp_path / name
+        async with asyncio.timeout(10):
+            while not path.exists():
+                await asyncio.sleep(0.01)
+
     child_pid = None
     try:
         stdout, stderr = await asyncio.wait_for(asyncio.to_thread(launcher.communicate), 10)
         assert launcher.returncode == 0, stdout + stderr
         child_pid = int((tmp_path / "child-pid").read_text())
-        os.kill(child_pid, 0)
+        await wait_for_marker(f"child-ready-{child_pid}")
         assert bool(list(pending(server))[0].get("process_id")) == recorded
         assert await recover_launches(server) == []
         server.tasks.reconcile_attempts.assert_not_awaited()
         assert reserve_launch(server, task_id) is None
         if acknowledge:
             (tmp_path / "child-start").touch()
-            deadline = time.monotonic() + 5
-            while not (tmp_path / "child-acknowledged").exists() and time.monotonic() < deadline:
-                await asyncio.sleep(0.01)
-            assert (tmp_path / "child-acknowledged").exists()
-            os.kill(child_pid, 0)
+            await wait_for_marker("child-acknowledged")
             assert not list(pending(server))
         else:
             (tmp_path / "child-release").touch()
@@ -934,10 +941,7 @@ asyncio.run(service._run_with_semaphore(entry))
             launcher.kill()
             await asyncio.to_thread(launcher.wait)
         if child_pid is not None:
-            try:
-                os.kill(child_pid, 15)
-            except ProcessLookupError:
-                pass
+            await wait_for_marker("child-stopped")
 
 
 def test_inherited_reservation_only_follows_the_same_execution(monkeypatch, tmp_path):
@@ -1234,6 +1238,7 @@ async def test_stale_task_cid_cannot_stop_a_competing_container(docker_claim, tm
 @pytest.mark.asyncio
 async def test_sdk_cached_invocation_recovers_its_lost_local_publication(monkeypatch, tmp_path):
     from simstack.core.node import Node
+    monkeypatch.setattr("simstack.core.node_submission.process_is_in_docker", lambda: False)
     monkeypatch.setenv("SIMSTACK_RUNNER_WORKDIR", str(tmp_path))
     api = api_client()
     api.requests.authorization = "user"

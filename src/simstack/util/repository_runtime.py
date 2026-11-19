@@ -130,9 +130,14 @@ def git_environment(*, require_key: bool = False) -> dict[str, str]:
     return env
 
 
+def _git_command(root: Path, *arguments: str) -> list[str]:
+    # Git for Windows must also support nested submodules inside revision-keyed caches.
+    return ["git", "-c", "core.longpaths=true", "-C", str(root), *arguments]
+
+
 def _git(root: Path, *arguments: str, environment: dict[str, str]) -> str:
     try:
-        result = subprocess.run(["git", "-C", str(root), *arguments], env=environment,
+        result = subprocess.run(_git_command(root, *arguments), env=environment,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=600)
     except (OSError, subprocess.SubprocessError):
         raise RuntimeError("Repository Git checkout failed; check Git installation and network access") from None
@@ -217,10 +222,10 @@ def _checkout_git(source: Path, descriptor: dict, environment: dict[str, str]):
 
 def verify_source(root: Path, descriptor: dict):
     def git(*arguments):
-        return subprocess.check_output(["git", "-C", str(root), *arguments], text=True)
+        return subprocess.check_output(_git_command(root, *arguments), text=True)
     if git("rev-parse", "HEAD").strip() != descriptor["commit_sha"]:
         raise RuntimeError("Cached repository commit differs from the pinned revision")
-    if subprocess.run(["git", "-C", str(root), "diff", "--ignore-submodules=untracked", "--quiet", "HEAD", "--"], check=False).returncode:
+    if subprocess.run(_git_command(root, "diff", "--ignore-submodules=untracked", "--quiet", "HEAD", "--"), check=False).returncode:
         raise RuntimeError("Cached repository source was modified")
     statuses = git("submodule", "status", "--recursive")
     if any(line and line[0] != " " for line in statuses.splitlines()):
@@ -236,8 +241,8 @@ def verify_source(root: Path, descriptor: dict):
         repository = (root/metadata["path"]).resolve()
         if not repository.is_relative_to(root.resolve()):
             raise RuntimeError("Git metadata is outside the repository cache")
-        refs = subprocess.check_output(["git", "-C", str(repository), "for-each-ref",
-            "--format=%(refname)%00%(objectname)", "refs/tags"], text=True)
+        refs = subprocess.check_output(_git_command(repository, "for-each-ref",
+            "--format=%(refname)%00%(objectname)", "refs/tags"), text=True)
         tags = [dict(zip(("name", "object_sha"), row.split("\0"))) for row in refs.splitlines()]
         if tags != metadata["tags"]:
             raise RuntimeError("Cached Git tags differ from the pinned package version")
@@ -245,7 +250,7 @@ def verify_source(root: Path, descriptor: dict):
         child = (root/item["path"]).resolve()
         if not child.is_relative_to(root.resolve()):
             raise RuntimeError("Submodule is outside the repository cache")
-        if subprocess.run(["git", "-C", str(child), "diff", "--ignore-submodules=untracked", "--quiet", "HEAD", "--"], check=False).returncode:
+        if subprocess.run(_git_command(child, "diff", "--ignore-submodules=untracked", "--quiet", "HEAD", "--"), check=False).returncode:
             raise RuntimeError("Cached recursive submodule source was modified")
 
 
@@ -360,7 +365,7 @@ def _cache_revision(descriptor, *, cache: Path, repair_runtime=False) -> Path:
             except BaseException:
                 # This directory was never published as ready. Existing pinned
                 # runtimes are untouched, and a failed preparation can retry.
-                shutil.rmtree(root, ignore_errors=True)
+                root.rename(source)  # TemporaryDirectory also removes read-only Git objects on Windows.
                 raise
         return root
 

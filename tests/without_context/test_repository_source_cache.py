@@ -111,8 +111,12 @@ def test_ssh_environment_uses_installed_key_and_explicit_host_trust(tmp_path, mo
     assert env["GIT_ALLOW_PROTOCOL"] == "https:ssh"
     assert env["GIT_TERMINAL_PROMPT"] == "0"
     assert "private-key-bytes" not in env["GIT_SSH_COMMAND"]
-    key.chmod(0o644)
-    with pytest.raises(RuntimeError, match="0600"):
+    if os.name != "nt":
+        key.chmod(0o644)
+        with pytest.raises(RuntimeError, match="0600"):
+            git_environment(require_key=True)
+    key.unlink()
+    with pytest.raises(RuntimeError, match="missing"):
         git_environment(require_key=True)
 
 
@@ -294,7 +298,8 @@ def test_cold_git_cache_runs_real_locked_uv_sync_and_preserves_installed_core(tm
         "import simstack,fixture_workflow,importlib.metadata;print(fixture_workflow.RESULT);print(importlib.metadata.version('simstack'))"],
         cwd=root, text=True).splitlines()
     assert output == ["42", importlib.metadata.version("simstack")]
-    assert (root / "uv.lock").read_bytes() == (source / "uv.lock").read_bytes()
+    pinned_lock = subprocess.check_output(["git", "-C", str(root), "cat-file", "--filters", "HEAD:uv.lock"])
+    assert (root / "uv.lock").read_bytes() == pinned_lock
     verify_source(root, descriptor)
 
 

@@ -310,6 +310,9 @@ async def recover(server, *, live=(), task_id=None):
                     retained.discard(key)
             finally:
                 lease.close()
+                if not path.exists():
+                    # Windows keeps the lease file until its exclusive handle is closed.
+                    path.with_suffix(".lease").unlink(missing_ok=True)
         except (RunnerAPIError, OSError, ValueError, KeyError, subprocess.SubprocessError):
             logger.warning("Native observation %s awaits reconciliation", path.name, exc_info=True)
     return retained

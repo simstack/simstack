@@ -6,6 +6,8 @@ import re
 import shlex
 import stat
 import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 from simstack.core.context import context
@@ -28,13 +30,18 @@ def _write_launch_environment(path, environment):
         "SIMSTACK_SLURM_SUBMISSION", "SIMSTACK_SLURM_SUBMISSION_TASK",
     }
     values = {key: value for key, value in environment.items() if key in names}
-    # The batch script may be readable by others; credentials remain private.
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(descriptor, "w") as stream:
-        os.fchmod(stream.fileno(), 0o600)
-        stream.write("unset SIMSTACK_USER_TOKEN " + " ".join(sorted(names)) + "\n")
-        for key, value in sorted(values.items()):
-            stream.write(f"export {key}={shlex.quote(value)}\n")
+    # Windows files inherit their parent's ACL. Create the token in a private
+    # directory, even when the job's workdir grants read access to other users.
+    if os.name == "nt" and sys.version_info < (3, 12, 4):
+        raise RuntimeError("Writing private Slurm credentials on Windows requires Python 3.12.4 or newer")
+    with tempfile.TemporaryDirectory(dir=path.parent, prefix=".slurm-environment-") as private:
+        temporary = Path(private) / "environment.sh"
+        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
+            stream.write("unset SIMSTACK_USER_TOKEN " + " ".join(sorted(names)) + "\n")
+            for key, value in sorted(values.items()):
+                stream.write(f"export {key}={shlex.quote(value)}\n")
+        os.replace(temporary, path)
 
 
 async def _persist_submission_failure(entry, error):
@@ -153,11 +160,11 @@ async def submit_node(entry):
         environment["SIMSTACK_SLURM_SUBMISSION_TASK"] = str(entry.id)
         launch_environment = workdir / ("slurm_environment_" + submission_id + ".sh")
         _write_launch_environment(launch_environment, environment)
-        params.startup_commands.append("source " + shlex.quote(str(launch_environment)) + " || exit $?")
+        params.startup_commands.append("source " + shlex.quote(launch_environment.as_posix()) + " || exit $?")
         params.startup_commands.append(
             "exec " + shlex.join([*checkpoint_args, *command])
         )
-        script.write_text(params.to_sbatch_header())
+        script.write_text(params.to_sbatch_header(), encoding="utf-8", newline="\n")
         make_executable(script)
         # Phase replay is safe while the local journal still says prepared:
         # no external process has been created yet.

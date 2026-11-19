@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 from simstack.models.document import ObjectId
+from tests.support.native_process import mock_native_spawn
 
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import Node
@@ -25,7 +26,14 @@ class _Finished:
         return self.stdout, b""
 
 
-def test_process_children_use_portable_pid_parent_listing(monkeypatch):
+@pytest.fixture
+def posix_without_procfs(monkeypatch, tmp_path):
+    monkeypatch.setattr(task_termination, "os", SimpleNamespace(name="posix"))
+    monkeypatch.setattr(task_termination, "platform", SimpleNamespace(system=lambda: "Darwin"))
+    monkeypatch.setattr(task_termination, "Path", lambda _: tmp_path / "missing-stat")
+
+
+def test_process_children_use_portable_pid_parent_listing(monkeypatch, posix_without_procfs):
     calls = []
     def run(arguments, **kwargs):
         calls.append(arguments)
@@ -35,7 +43,7 @@ def test_process_children_use_portable_pid_parent_listing(monkeypatch):
     assert calls == [["ps", "-axo", "pid=,ppid="]]
 
 
-def test_process_tree_enumeration_failure_cannot_confirm_stop(monkeypatch):
+def test_process_tree_enumeration_failure_cannot_confirm_stop(monkeypatch, posix_without_procfs):
     monkeypatch.setattr(task_termination.subprocess, "run",
         lambda *args, **kwargs: SimpleNamespace(returncode=1, stdout=""))
     with pytest.raises(task_termination.TaskTerminationError, match="Could not list children"):
@@ -334,8 +342,6 @@ async def test_cancelled_run_node_kills_and_fails_the_child(monkeypatch, tmp_pat
         return await children(parent)
     database.children = observed_children
 
-    async def fake_create_subprocess_exec(*cmd, **kwargs):
-        return proc
 
     monkeypatch.setattr(fail_children, "context", _context(database, tmp_path))
     monkeypatch.setattr(
@@ -356,16 +362,13 @@ async def test_cancelled_run_node_kills_and_fails_the_child(monkeypatch, tmp_pat
             server=SimpleNamespace(tasks=database, requests=SimpleNamespace(server_url="https://example.invalid/api", authorization="runner", resource="local", bootstrap_data={"account_id": "test-account"})),
         ),
     )
-    monkeypatch.setattr(
-        "simstack.core.node.asyncio.create_subprocess_exec",
-        fake_create_subprocess_exec,
-    )
+    mock_native_spawn(monkeypatch, lambda *cmd, **kwargs: proc)
     execution_node = Node.__new__(Node)
     execution_node.name = "partial"
     execution_node.registry_entry = entry
     execution_node.parent_id = parent_id
     execution_node._parent_execution = parent_execution(parent_id)
-    execution_node.parameters = SimpleNamespace(resource="local")
+    execution_node.parameters = SimpleNamespace(resource="local", in_docker=False)
 
     with pytest.raises(asyncio.CancelledError):
         await execution_node.run_node_as_process()

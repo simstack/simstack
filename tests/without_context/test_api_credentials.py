@@ -1,7 +1,6 @@
 import json
 import os
 from pathlib import Path
-import stat
 import subprocess
 import sys
 import threading
@@ -14,6 +13,7 @@ from simstack.runner_runtime.runner_credentials import (
 )
 from simstack.server_api.http_transport import RunnerAPIClient
 from simstack.util.file_transfer_client import FileTransferClient
+from tests.support.file_permissions import assert_private_file
 
 
 def test_existing_clients_reload_rotated_token_without_restart(tmp_path, monkeypatch):
@@ -88,7 +88,7 @@ def test_container_credential_copy_stays_outside_workflow_data(tmp_path):
             capture_output=True, check=True)
         assert not result.stdout
         assert list(task.rglob("*")) == []
-        assert stat.S_IMODE(Path(target).stat().st_mode) == 0o600
+        assert_private_file(Path(target))
         assert json.loads(Path(target).read_text())["token"] == "private"
     finally:
         root.chmod(0o755)
@@ -120,7 +120,7 @@ def test_restart_restores_git_paths_and_explicit_server_host_trust(tmp_path, mon
     trusted = "example.test ssh-ed25519 explicit-user-approved-key\n"
     update_known_hosts(trusted)
     assert hosts.read_text() == trusted
-    assert stat.S_IMODE(hosts.stat().st_mode) == 0o600
+    assert_private_file(hosts)
     inode = hosts.stat().st_ino
     update_known_hosts(trusted)
     assert hosts.stat().st_ino == inode

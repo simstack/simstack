@@ -10,7 +10,6 @@ from simstack.util.resource_config import ResourceConfig
 @pytest.mark.parametrize("initialized", [False, True])
 def test_run_uses_explicit_config_with_real_node_runner(tmp_path, monkeypatch, use_temp, initialized):
     import json
-    import shlex
     import sys
     from simstack.core.context import context
     from simstack.core.node_runner import NodeRunner
@@ -24,15 +23,17 @@ def test_run_uses_explicit_config_with_real_node_runner(tmp_path, monkeypatch, u
     )
     ambient = ResourceConfig(ambient_file, "local")
     monkeypatch.setattr(context, "_resource_config", ambient)
-    command = shlex.join([sys.executable, "-c",
-        "import os; from pathlib import Path; "
-        "Path('result.txt').write_text(Path('input.txt').read_text() + os.environ['PROBE_VALUE'])"])
+    (tmp_path / "probe.py").write_text(
+        "import os\nfrom pathlib import Path\n"
+        "Path('result.txt').write_text(Path('input.txt').read_text() + os.environ['PROBE_VALUE'])\n"
+    )
+    command = f'"{sys.executable}" probe.py'
     explicit_file = tmp_path / "explicit.toml"
     explicit_file.write_text(
         '[local.setup]\ntmp_base_dir = "explicit-scratch"\n'
         '[local.program.probe]\n'
         f'run_command = {json.dumps(command)}\nuse_tmp = {str(use_temp).lower()}\n'
-        'scratch_cleanup = true\ninput_files = ["input.txt"]\noutput_files = ["result.txt"]\n'
+        'scratch_cleanup = true\ninput_files = ["input.txt", "probe.py"]\noutput_files = ["result.txt"]\n'
     )
     config = ResourceConfig(explicit_file, "local")
     (tmp_path / "input.txt").write_text("explicit:")
