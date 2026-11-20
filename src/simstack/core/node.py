@@ -148,6 +148,7 @@ class Node:
         )
         self.registry_entry: NodeRegistry | None = None
         self._execution_return_kind: str | None = None
+        self._single_output: Model | None = None
         self._owns_inline_nested_execution = False
 
     @property
@@ -475,6 +476,7 @@ def node(
 
     Cached-result identity is the node name and argument hash. Function identity
     is versioned by git rather than by hashing the function body.
+    A call returns a single published model directly or a SimstackResult for multiple named outputs.
 
     """
 
@@ -517,8 +519,15 @@ def node(
                 call_path = call_path + "." + func.__name__
             kwargs["call_path"] = call_path
 
+        def workflow_result(execution_node: Node, result: Any, named_outputs: bool) -> T:
+            # Batch runners keep the original output names for dataset columns.
+            if named_outputs or execution_node._single_output is None:
+                return cast(T, result)
+            return cast(T, execution_node._single_output)
+
         @functools.wraps(func)
         async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            named_outputs = kwargs.pop("_simstack_named_outputs", False)
             update_kwargs(kwargs)
             # Create Node with the remaining kwargs
             execution_node = Node(*args, **kwargs)
@@ -569,12 +578,13 @@ def node(
                 raise RuntimeError(
                     f"Task task_id: {current_registry_entry.id} node: {current_registry_entry.name} terminated with status {current_registry_entry.status}"
                 )
-            return cast(T, result)
+            return workflow_result(execution_node, result, named_outputs)
 
         @functools.wraps(func)
         def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             import asyncio
 
+            named_outputs = kwargs.pop("_simstack_named_outputs", False)
             update_kwargs(kwargs)
             # Create Node with the remaining kwargs
             execution_node = Node(*args, **kwargs)
@@ -637,7 +647,7 @@ def node(
                 raise RuntimeError(
                     f"Task task_id: {execution_node.id} node: {execution_node.name} terminated with status {execution_node.status}"
                 )
-            return cast(T, result)
+            return workflow_result(execution_node, result, named_outputs)
 
         setattr(async_wrapper, "is_node", True)
         setattr(sync_wrapper, "is_node", True)

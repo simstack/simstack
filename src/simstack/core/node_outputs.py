@@ -10,7 +10,7 @@ from simstack.core.definitions import TaskStatus
 from simstack.core.process_results import process_result_helper
 from simstack.core.simstack_result import SimstackResult
 from simstack.models.document import Model
-from simstack.models.file_list import FileList
+from simstack.models.file_list import FileList, FileListModel
 from simstack.models.files import FileStack
 from simstack.models.simstack_model import is_simstack_model
 from simstack.util.sanitized_output import sanitized_tail
@@ -40,6 +40,7 @@ async def load_results(
     :return: The retrieved scientific task outputs.
     """
     assert node.registry_entry is not None
+    node._single_output = None
     logger.info(
         f"Task task_id: {node.id} loading results with task status {node.status}"
     )
@@ -75,6 +76,8 @@ async def load_results(
         values = await context.server.values.resolve_task_outputs(node.registry_entry)
         if len(values) != len(node.registry_entry.results_references):
             raise ValueError("Task output snapshot does not match its result references")
+        if len(values) == 1:
+            node._single_output = values[0]
         for ref, result in zip(node.registry_entry.results_references, values):
             if result is None:
                 logger.error(
@@ -83,7 +86,12 @@ async def load_results(
                 raise ValueError(
                     f"Task task_id: {node.id} could not find result with id {ref.reference} in table {ref.variable_mapping}"
                 )
-            simstack_result.__setattr__(ref.variable_name, result)
+            value = (
+                list(result)
+                if ref.variable_name == "files" and isinstance(result, FileListModel)
+                else result
+            )
+            setattr(simstack_result, ref.variable_name, value)
 
         logger.info(f"Task task_id: {node.id} loaded outputs")
 
@@ -102,6 +110,7 @@ async def load_results(
 
 async def publish_results(node: Node, context: GlobalState, result: Any) -> tuple[TaskStatus, Any]:
     assert node.registry_entry is not None
+    node._single_output = None
     # each of the following if sets the result either to a valid value or None
     new_task_status = TaskStatus.COMPLETED
     if result is None:
@@ -174,6 +183,8 @@ async def publish_results(node: Node, context: GlobalState, result: Any) -> tupl
         node.registry_entry.status = new_task_status
 
         if isinstance(result, SimstackResult):
+            if len(result_models) == 1:
+                node._single_output = result_models[0]
             for reference, value in zip(results_references, result_models):
                 # The immediate SimstackResult.files API remains a list;
                 # its stored result reference is the FileListModel wrapper.

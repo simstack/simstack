@@ -18,7 +18,8 @@ class MassRunner(NodeRunner):
         node_runner = kwargs["node_runner"]
         arg_hash = kwargs["arg_hash"]
         self._kwargs = kwargs.copy()
-
+        if getattr(node, "is_node", False):
+            self._kwargs["_simstack_named_outputs"] = True
 
         database_metadata = DataSetMetadata(
             field_name=node_runner.name,

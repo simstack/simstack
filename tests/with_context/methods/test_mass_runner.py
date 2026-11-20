@@ -5,7 +5,10 @@ import pytest
 
 from simstack.core.definitions import TaskStatus
 from simstack.core.context import context
+from simstack.core.node import node
 from simstack.core.node_runner import NodeRunner
+from simstack.core.simstack_result import SimstackResult
+from simstack.methods.fire_and_forget_runner import FireAndForgetRunner
 from simstack.methods.mass_runner import MassRunner
 from simstack.models import DataSet, FloatData
 from simstack.server_api.http_transport import RunnerAPIError
@@ -16,11 +19,44 @@ def _runner(name: str, node) -> MassRunner:
     return MassRunner(node, max_concurrency=2, node_runner=parent, arg_hash="parent-hash")
 
 
+@node
+async def batch_named_output(sample: FloatData, **kwargs) -> SimstackResult:
+    """Returns:
+        SimstackResult:
+            orca_result (FloatData): The calculated value.
+    """
+    return SimstackResult(status=TaskStatus.COMPLETED, orca_result=FloatData(value=sample.value + 1))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("batch_type", [MassRunner, FireAndForgetRunner])
+async def test_single_child_output_keeps_its_column_name_for_batch_consumers(batch_type):
+    sample = FloatData(value=2)
+    parent = NodeRunner("named_batch", "parent-task")
+    output_ids = []
+    for _ in range(2):
+        async with batch_type(batch_named_output, node_runner=parent, arg_hash="parent-hash") as batch:
+            task = batch.create_tasks(sample)
+        if batch_type is MassRunner:
+            row = next(iter(batch.dataset["tasks"].values()))
+            assert row["success"].value
+        else:
+            stored = task.result()
+            assert stored.success
+            row = stored.models
+        assert row["result_orca_result"].value == 3
+        output_ids.append(row["result_orca_result"].id)
+
+    direct_result = await batch_named_output(sample)
+    assert isinstance(direct_result, FloatData)
+    assert output_ids == [direct_result.id, direct_result.id]
+
+
 @pytest.mark.asyncio
 async def test_duplicate_arg_hash_reuses_one_result_per_input():
     calls: list[float] = []
 
-    async def echo(value: FloatData, **kwargs):
+    async def echo(value: FloatData, *, node_runner, arg_hash):
         calls.append(value.value)
         await asyncio.sleep(0.05)
         return FloatData(field_name="echoed", value=value.value + 10)

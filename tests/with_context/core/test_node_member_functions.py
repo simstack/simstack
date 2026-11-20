@@ -448,6 +448,22 @@ async def test_process_results_variants(initialized_context):
 
 
 @pytest.mark.asyncio
+async def test_single_named_output_feeds_another_node_fresh_and_cached():
+    data = FloatData(value=2.5)
+    child = await custom_name_cached_child_in_tests(data, custom_name="producer")
+    assert isinstance(child, FloatData)
+    assert child.value == 2.5
+    direct = await async_node(child)
+    assert direct.value == 4.5
+
+    cached_child = await custom_name_cached_child_in_tests(data, custom_name="producer")
+    assert isinstance(cached_child, FloatData)
+    assert cached_child.id == child.id
+    cached = await async_node(data=cached_child)
+    assert cached.id == direct.id
+
+
+@pytest.mark.asyncio
 async def test_process_results_persists_simstack_result_metadata_and_files(
     initialized_context, caplog
 ):
@@ -496,7 +512,9 @@ async def test_process_results_persists_simstack_result_metadata_and_files(
     assert "non-fatal diagnostic" in (loaded.error_message or "")
     assert secret not in (loaded.error_message or "")
     assert loaded.info_files[0].name == "info.txt"
-    assert loaded.files.elements == [result_file.id]
+    for output in (processed, loaded):
+        assert isinstance(output.files, list)
+        assert [file.id for file in output.files] == [result_file.id]
 
 
 @pytest.mark.asyncio

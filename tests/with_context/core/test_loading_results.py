@@ -7,6 +7,7 @@ from simstack.core.simstack_result import SimstackResult
 from simstack.core.node import node
 from simstack.core.node_runner import NodeRunner
 from simstack.models import BinaryOperationInput, FloatData
+from simstack.models.file_list import FileListModel
 from simstack.models.files import FileStack
 from simstack.models.parameters import Resource
 from tests.with_context.core.test_simple_nodes import adder_in_tests
@@ -38,6 +39,23 @@ def node_with_files(
     node_runner.files.append(test_file)
 
     return node_runner.succeed()
+
+
+@node
+def files_only_in_tests(test_file: FileStack, **kwargs) -> SimstackResult:
+    return SimstackResult(status="completed", files=[test_file])
+
+
+def test_files_only_returns_the_published_file_list_fresh_and_cached(test_file_stack):
+    first = files_only_in_tests(test_file_stack)
+    cached = files_only_in_tests(test_file_stack)
+    assert isinstance(first, FileListModel)
+    assert isinstance(cached, FileListModel)
+    assert first._scientific_revision
+    assert cached._scientific_revision == first._scientific_revision
+    assert cached.id == first.id
+    assert [file.id for file in first] == [test_file_stack.id]
+    assert [file.id for file in cached] == [test_file_stack.id]
 
 
 def test_loading_results():

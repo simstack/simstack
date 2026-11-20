@@ -31,6 +31,8 @@ class FireAndForgetRunner(NodeRunner):
         self._semaphore = asyncio.Semaphore(max_concurrency) if max_concurrency else None
         self._tasks = []
         self._kwargs = kwargs.copy()
+        if getattr(node, "is_node", False):
+            self._kwargs["_simstack_named_outputs"] = True
 
     async def _run_node(self, args: List[Model]):
         sig = inspect.signature(self._node)
