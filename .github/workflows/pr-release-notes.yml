@@ -1,0 +1,43 @@
+name: PR release notes
+
+on:
+  pull_request_target:
+    branches: [main, develop]
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled, ready_for_review]
+
+# Only inspect GitHub event metadata; never check out or execute PR code.
+permissions: {}
+
+concurrency:
+  group: pr-release-notes-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  release-note-labels:
+    name: Release-note labels
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR labels
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          import os
+          import sys
+
+          with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as event_file:
+              event = json.load(event_file)
+          labels = {label["name"] for label in event["pull_request"]["labels"]}
+          categories = {
+              "breaking-change", "enhancement", "bug", "documentation",
+              "dependencies", "maintenance",
+          }
+          selected = labels & categories
+          print(f"PR #{event['pull_request']['number']}: labels={json.dumps(sorted(labels))}")
+          if "skip-changelog" in labels and selected:
+              print("::error::Remove skip-changelog or the release-note category labels; they cannot be combined.")
+              sys.exit(1)
+          if not selected and "skip-changelog" not in labels:
+              print("::error::Add at least one release-note label: " + ", ".join(sorted(categories)) + ", or skip-changelog.")
+              sys.exit(1)
+          print("Release-note labels are valid; multiple categories and other operational labels are allowed.")
+          PYTHON
