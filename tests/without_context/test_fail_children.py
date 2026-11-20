@@ -9,7 +9,7 @@ from odmantic import ObjectId
 
 from simstack.core.definitions import TaskStatus
 from simstack.core.node import Node
-from simstack.core.services import fail_children
+from simstack.core.services import fail_children, task_termination
 from simstack.core.services.fail_children import (
     fail_and_terminate_children,
     fail_and_terminate_task,
@@ -47,11 +47,18 @@ class _Collection:
         entry = self.entries.get(query["_id"])
         if entry is None:
             return None
-        if entry.status.value not in query["status"]["$in"]:
+        status = query["status"]
+        if isinstance(status, dict) and entry.status.value not in status["$in"]:
             return None
-        entry.status = TaskStatus.FAILED
-        entry.error = update["$set"]["error"]
-        entry.completed_at = update["$set"]["completed_at"]
+        if isinstance(status, str) and entry.status.value != status:
+            return None
+        if "parent_ids" in query and entry.parent_ids != query["parent_ids"]:
+            return None
+        fields = update["$set"]
+        entry.status = TaskStatus(fields["status"])
+        entry.error = fields["error"]
+        if "completed_at" in fields:
+            entry.completed_at = fields["completed_at"]
         return entry
 
 
@@ -68,7 +75,8 @@ class _Database:
         return None
 
     async def find(self, model, query):
-        return list(self.entries)
+        parents = query["parent_ids"]["$in"]
+        return [entry for entry in self.entries if any(parent in entry.parent_ids for parent in parents)]
 
     async def save(self, entry):
         self.saved.append(entry)
@@ -87,21 +95,30 @@ def _entry(**overrides):
         "process_id": None,
         "error": None,
         "completed_at": None,
+        "parent_ids": [],
+        "parameters": SimpleNamespace(resource="self"),
     }
     values.update(overrides)
     return SimpleNamespace(**values)
 
 
-def _context(database, tmp_path):
-    return SimpleNamespace(db=database, config=SimpleNamespace(workdir=tmp_path))
+def _context(monkeypatch, database, tmp_path):
+    fake_context = SimpleNamespace(db=database, config=SimpleNamespace(workdir=tmp_path))
+    monkeypatch.setattr(fail_children, "context", fake_context)
+    monkeypatch.setattr(task_termination, "context", fake_context)
+    return fake_context
 
 
 @pytest.mark.asyncio
-async def test_failed_parent_kills_running_children_and_leaves_completed(monkeypatch, tmp_path):
+async def test_assigned_worker_stops_child_then_requests_grandchild_stop(monkeypatch, tmp_path):
     parent_id = ObjectId()
-    running = _entry(job_id="4321", process_id=99)
-    completed = _entry(status=TaskStatus.COMPLETED, error=None)
-    database = _Database([running, completed])
+    named_resource = SimpleNamespace(resource="local")
+    running = _entry(
+        parent_ids=[parent_id], parameters=named_resource, job_id="4321", process_id=99,
+    )
+    completed = _entry(parent_ids=[parent_id], status=TaskStatus.COMPLETED)
+    grandchild = _entry(parent_ids=[running.id], parameters=named_resource)
+    database = _Database([running, completed, grandchild])
     cidfile = tmp_path / running.name / str(running.id) / ".docker_cid"
     cidfile.parent.mkdir(parents=True)
     cidfile.write_text("abc123def\n", encoding="utf-8")
@@ -112,13 +129,20 @@ async def test_failed_parent_kills_running_children_and_leaves_completed(monkeyp
         commands.append(args)
         return _Finished()
 
-    monkeypatch.setattr(fail_children, "context", _context(database, tmp_path))
-    monkeypatch.setattr(fail_children.asyncio, "create_subprocess_exec", fake_exec)
+    _context(monkeypatch, database, tmp_path)
+    monkeypatch.setattr(task_termination.asyncio, "create_subprocess_exec", fake_exec)
     monkeypatch.setattr(
-        fail_children, "_kill_process_tree", lambda process_id: killed.append(process_id)
+        task_termination, "_kill_process_tree", lambda pid: killed.append(pid) or True,
     )
 
     await fail_and_terminate_children(parent_id, runner_pid=os.getpid())
+
+    assert commands == []
+    assert killed == []
+    assert running.status == TaskStatus.TERMINATING
+    assert grandchild.status == TaskStatus.RUNNING
+
+    await task_termination.terminate_task(running, runner_pid=os.getpid())
 
     assert commands == [("scancel", "4321"), ("docker", "kill", "abc123def")]
     assert killed == [99]
@@ -127,19 +151,21 @@ async def test_failed_parent_kills_running_children_and_leaves_completed(monkeyp
     assert isinstance(running.completed_at, datetime)
     assert completed.status == TaskStatus.COMPLETED
     assert completed.error is None
+    assert grandchild.status == TaskStatus.TERMINATING
+    assert grandchild.error == f"Terminated because parent task {running.id} failed"
 
 
 @pytest.mark.asyncio
 async def test_loaded_bson_parent_id_terminates_children(monkeypatch, tmp_path):
     parent_id = BsonObjectId("6acc94fd41c9db0721eb8ac0")
     assert not isinstance(parent_id, ObjectId)
-    running = _entry(process_id=41)
+    running = _entry(parent_ids=[parent_id], process_id=41)
     database = _Database([running])
     killed = []
 
-    monkeypatch.setattr(fail_children, "context", _context(database, tmp_path))
+    _context(monkeypatch, database, tmp_path)
     monkeypatch.setattr(
-        fail_children, "_kill_process_tree", lambda process_id: killed.append(process_id)
+        task_termination, "_kill_process_tree", lambda pid: killed.append(pid) or True,
     )
 
     await fail_and_terminate_children(parent_id, runner_pid=os.getpid())
@@ -156,21 +182,25 @@ async def test_terminate_task_does_not_kill_the_runner(monkeypatch, tmp_path):
     database = _Database([entry])
     killed = []
 
-    monkeypatch.setattr(fail_children, "context", _context(database, tmp_path))
+    _context(monkeypatch, database, tmp_path)
     monkeypatch.setattr(
-        fail_children.asyncio,
+        task_termination.asyncio,
         "create_subprocess_exec",
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("command ran")),
     )
-    monkeypatch.setattr(
-        fail_children, "_kill_process_tree", lambda process_id: killed.append(process_id)
-    )
+
+    def kill_local(pid):
+        killed.append(pid)
+        return True
+
+    monkeypatch.setattr(fail_children, "kill_process_tree", kill_local)
+    monkeypatch.setattr(task_termination, "_kill_process_tree", kill_local)
 
     marked = await fail_and_terminate_task(
         entry,
         error=f"Terminated because parent task {ObjectId()} failed",
         runner_pid=runner_pid,
-        extra_pids=(runner_pid,),
+        local_process=_CancelledProcess(runner_pid),
     )
 
     assert marked is True
@@ -179,20 +209,39 @@ async def test_terminate_task_does_not_kill_the_runner(monkeypatch, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_cancelled_run_node_kills_and_fails_the_child(monkeypatch, tmp_path):
+@pytest.mark.parametrize("failure", ["none", "lookup", "shared", "database"])
+@pytest.mark.parametrize("resource", ["self", "local"])
+async def test_cancelled_run_node_requests_child_stop(
+    monkeypatch, tmp_path, caplog, failure, resource,
+):
     parent_id = ObjectId()
-    entry = _entry()
-    database = _Database([entry])
+    other_parent = _entry()
+    parent_ids = [parent_id, other_parent.id] if failure == "shared" else [parent_id]
+    entry = _entry(
+        parent_ids=parent_ids, parameters=SimpleNamespace(resource=resource), process_id=4321,
+    )
+    database = _Database([entry, other_parent])
+
+    async def unavailable(*args, **kwargs):
+        raise ConnectionError("child database unavailable")
+
+    if failure == "lookup":
+        monkeypatch.setattr(database, "load_task_by_id", unavailable)
+    if failure == "database":
+        monkeypatch.setattr(database.collection, "find_one_and_update", unavailable)
     proc = _CancelledProcess(4321)
     killed = []
 
     async def fake_create_subprocess_exec(*cmd, **kwargs):
         return proc
 
-    monkeypatch.setattr(fail_children, "context", _context(database, tmp_path))
-    monkeypatch.setattr(
-        fail_children, "_kill_process_tree", lambda process_id: killed.append(process_id)
-    )
+    def kill_local(pid):
+        killed.append(pid)
+        return True
+
+    monkeypatch.setattr(fail_children, "kill_process_tree", kill_local)
+    monkeypatch.setattr(task_termination, "_kill_process_tree", kill_local)
+    _context(monkeypatch, database, tmp_path)
     monkeypatch.setattr(
         "simstack.core.node.context",
         SimpleNamespace(
@@ -216,28 +265,60 @@ async def test_cancelled_run_node_kills_and_fails_the_child(monkeypatch, tmp_pat
     execution_node.name = "partial"
     execution_node.registry_entry = entry
     execution_node.parent_id = parent_id
-    execution_node.parameters = SimpleNamespace(resource="local")
+    execution_node.parameters = entry.parameters
 
     with pytest.raises(asyncio.CancelledError):
         await execution_node.run_node_as_process()
 
-    assert killed == [4321]
-    assert proc.waited is True
-    assert entry.status == TaskStatus.FAILED
-    assert entry.error == f"Terminated because parent task {parent_id} failed"
+    if failure in {"shared", "database"}:
+        assert killed == []
+        assert proc.waited is False
+        assert entry.status == TaskStatus.RUNNING
+        assert entry.error is None
+        if failure == "database":
+            assert "could not record the child stop request" in caplog.text
+    elif resource != "self":
+        assert killed == []
+        assert proc.waited is False
+        assert entry.status == TaskStatus.TERMINATING
+        assert entry.error == f"Terminated because parent task {parent_id} failed"
+    else:
+        assert killed == [4321]
+        assert proc.waited is True
+        expected_status = TaskStatus.TERMINATING if failure == "lookup" else TaskStatus.FAILED
+        assert entry.status == expected_status
+        assert entry.error == f"Terminated because parent task {parent_id} failed"
+
+
+@pytest.mark.asyncio
+async def test_parent_joining_during_cleanup_prevents_the_stop(monkeypatch, tmp_path):
+    parent_id = ObjectId()
+    child = _entry(parent_ids=[parent_id])
+    database = _Database([child])
+    _context(monkeypatch, database, tmp_path)
+    update = database.collection.find_one_and_update
+
+    async def join_before_claim(query, change):
+        child.parent_ids.append(ObjectId())
+        return await update(query, change)
+
+    monkeypatch.setattr(database.collection, "find_one_and_update", join_before_claim)
+
+    await fail_and_terminate_children(parent_id, runner_pid=os.getpid())
+
+    assert child.status == TaskStatus.RUNNING
 
 
 @pytest.mark.asyncio
 async def test_set_status_failed_terminates_children(monkeypatch, tmp_path):
     parent_id = ObjectId()
-    running = _entry(process_id=41)
+    running = _entry(parent_ids=[parent_id], process_id=41)
     database = _Database([running])
     killed = []
-    fake_context = _context(database, tmp_path)
+    fake_context = _context(monkeypatch, database, tmp_path)
     monkeypatch.setattr("simstack.core.node.context", fake_context)
-    monkeypatch.setattr(fail_children, "context", fake_context)
     monkeypatch.setattr(
-        fail_children, "_kill_process_tree", lambda process_id: killed.append(process_id)
+        task_termination, "_kill_process_tree", lambda pid: killed.append(pid) or True,
     )
     node = Node.__new__(Node)
     node.name = "orchestrator"

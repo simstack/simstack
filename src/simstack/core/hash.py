@@ -130,8 +130,8 @@ class ComplexHash:
         if isinstance(obj, type):
             return hash_class_def(obj)
         elif isinstance(obj, (bytes, bytearray)):
-            # hash() of bytes is salted per process (PYTHONHASHSEED).
-            return hashlib.sha256(bytes(obj)).hexdigest()
+            # SHA-256 sees the same bytes for b"abc" and "abc". Tag only the binary digest.
+            return f"binary-{hashlib.sha256(obj).hexdigest()}"
         elif is_primitive_type(obj):
             return hash(obj)
         elif isinstance(obj, ObjectId):

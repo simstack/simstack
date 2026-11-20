@@ -128,6 +128,29 @@ async def test_active_task_is_reusable_only_on_the_same_execution_route():
 
 
 @pytest.mark.asyncio
+async def test_separate_cloud_vm_does_not_reuse_active_shared_execution():
+    active = _slurm_registry("active_cloud_cache", TaskStatus.RUNNING)
+    active.parameters = Parameters(resource="cloud", in_docker=True)
+    db = SimpleNamespace(find=AsyncMock(return_value=[active]))
+    request = Parameters(resource="cloud", in_docker=True, separate_cloud_vm=True)
+
+    assert await _find_reusable_task(
+        db,
+        name=active.name,
+        arg_hash=active.arg_hash,
+        execution_parameters=request,
+    ) is None
+
+    active.status = TaskStatus.COMPLETED
+    assert await _find_reusable_task(
+        db,
+        name=active.name,
+        arg_hash=active.arg_hash,
+        execution_parameters=request,
+    ) is active
+
+
+@pytest.mark.asyncio
 async def test_changed_nested_route_ignores_stale_self_cache_and_waits_for_runner(
     monkeypatch,
 ):

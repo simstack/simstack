@@ -294,6 +294,8 @@ def _execution_route(parameters: Optional[Parameters]) -> Optional[dict[str, Any
         "resource": payload.get("resource"),
         "queue": payload.get("queue"),
         "in_docker": bool(payload.get("in_docker")),
+        # Joining an unfinished run must respect a request for a separate VM.
+        "separate_cloud_vm": bool(payload.get("separate_cloud_vm")),
         "slurm_parameters": payload.get("slurm_parameters"),
     }
 
@@ -321,30 +323,39 @@ async def _find_reusable_task(
         if candidate.status == TaskStatus.COMPLETED:
             return candidate
     for candidate in candidates:
-        if _same_execution_route(candidate.parameters, execution_parameters):
+        if candidate.status != TaskStatus.TERMINATING and _same_execution_route(
+            candidate.parameters, execution_parameters
+        ):
             return candidate
     if candidates:
         logger.info(
-            "Ignoring %d cached task(s) for %s because the execution route changed",
+            "No match among %d cached task(s) for %s: stopping or different execution route",
             len(candidates),
             name,
         )
     return None
 
 
-async def _link_parent_id(registry_entry: NodeRegistry, parent_id: ObjectId) -> None:
+async def _link_parent_id(registry_entry: NodeRegistry, parent_id: ObjectId) -> bool:
     """Record a parent without replacing the persisted registry document.
 
     A full ``db.save`` of a previously loaded entry can clobber fields the
     child already wrote, including ``custom_name``.
     """
     collection = context.db.get_collection(NodeRegistry)
-    await collection.update_one(
-        {"_id": registry_entry.id},
+    # A stop can be requested or finish between finding the run and joining it.
+    blocked_statuses = [TaskStatus.TERMINATING.value]
+    if registry_entry.status != TaskStatus.FAILED:
+        blocked_statuses.append(TaskStatus.FAILED.value)
+    result = await collection.update_one(
+        {"_id": registry_entry.id, "status": {"$nin": blocked_statuses}},
         {"$addToSet": {"parent_ids": parent_id}},
     )
+    if not result.matched_count:
+        return False
     if parent_id not in registry_entry.parent_ids:
         registry_entry.parent_ids.append(parent_id)
+    return True
 
 
 def _slurm_parameters_are_unset(slurm: Optional[SlurmParameters]) -> bool:
@@ -722,6 +733,17 @@ class Node:
                 execution_parameters=self.parameters,
             )
 
+        if self.registry_entry is not None and self.parent_id:
+            if isinstance(self.parent_id, str):
+                self.parent_id = ObjectId(self.parent_id)
+            if not await _link_parent_id(self.registry_entry, self.parent_id):
+                logger.info(
+                    "Task task_id: %s could not be joined by parent %s",
+                    self.id,
+                    self.parent_id,
+                )
+                self.registry_entry = None
+
         if self.registry_entry is None:
             self._pending_resource_assignment_resolution = resolution
             try:
@@ -732,16 +754,6 @@ class Node:
             persisted_parameters = getattr(self.registry_entry, "parameters", None)
             if isinstance(persisted_parameters, Parameters):
                 self.parameters = persisted_parameters
-            if self.parent_id:
-                logger.debug(
-                    f"Task task_id: {self.id} adding parent_id {self.parent_id} to task: {self.name}"
-                )
-                if isinstance(self.parent_id, str):
-                    logger.error(
-                        f"Task task_id: {self.id} parent_id is a string: {self.parent_id}"
-                    )
-                    self.parent_id = ObjectId(self.parent_id)
-                await _link_parent_id(self.registry_entry, self.parent_id)
             # whenever a task is found in the database, we may have to redo all child artifacts because the children
             # will not be loaded
             if self.recompute_artifacts:
@@ -912,28 +924,17 @@ class Node:
             )
             stdout_b, stderr_b = await proc.communicate()
         except asyncio.CancelledError:
-            # TaskGroup cancellation is a BaseException, so the handler below
-            # never runs. Kill this child or its row stays RUNNING.
+            # Cancelling the wait does not stop the subprocess we launched.
             from simstack.core.services.fail_children import fail_abandoned_child
 
-            pids: tuple[int, ...] = ()
-            if proc is not None and proc.returncode is None:
-                pid = getattr(proc, "pid", None)
-                if type(pid) is int and pid > 0:
-                    pids = (pid,)
-                elif pid is not None:
-                    logger.error(
-                        "Task task_id: %s process_id must be a positive int, got %r",
-                        self.id,
-                        pid,
-                    )
-            await fail_abandoned_child(
+            stopped = await fail_abandoned_child(
                 self.registry_entry,
                 parent_id=self.parent_id,
                 runner_pid=os.getpid(),
-                extra_pids=pids,
+                local_process=proc,
             )
-            if proc is not None and proc.returncode is None:
+            # Skip waiting when cleanup could not stop the child.
+            if stopped and proc is not None and proc.returncode is None:
                 try:
                     await proc.wait()
                 except Exception:

@@ -76,10 +76,9 @@ def test_docker_memory_limit_uses_mem_and_mem_per_cpu():
     )
 
 
-def test_container_resource_args_for_docker_and_apptainer():
+def test_container_resource_args_for_docker():
     slurm = SimpleNamespace(cpus_per_task=4, tasks=2, mem="8G")
     assert container_resource_args("docker", slurm) == ["--cpus", "8", "--memory", "8g"]
-    assert container_resource_args("apptainer", slurm) == []
     assert container_resource_args("docker", None) == []
 
 
@@ -242,7 +241,12 @@ async def test_run_docker_applies_slurm_cpu_and_memory_limits(tmp_path: Path):
 
 
 @pytest.mark.asyncio
-async def test_run_docker_apptainer_omits_cpu_and_memory_flags(tmp_path: Path):
+@pytest.mark.parametrize("slurm_job_id", [None, "12345"], ids=["direct", "slurm"])
+async def test_run_docker_apptainer_cpu_and_memory_limits(tmp_path: Path, monkeypatch, slurm_job_id):
+    if slurm_job_id is None:
+        monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+    else:
+        monkeypatch.setenv("SLURM_JOB_ID", slurm_job_id)
     config_file = tmp_path / "config.toml"
     config_file.write_text(
         "[local.program.psi4_calculator]\n"
@@ -268,8 +272,11 @@ async def test_run_docker_apptainer_omits_cpu_and_memory_flags(tmp_path: Path):
     assert result is True
     command = list(mock_exec.await_args.args)
     assert command[:2] == ["apptainer", "run"]
-    assert "--cpus" not in command
-    assert "--memory" not in command
+    if slurm_job_id is None:
+        assert command[2:6] == ["--cpus", "8", "--memory", "8G"]
+    else:
+        assert "--cpus" not in command
+        assert "--memory" not in command
 
 
 @pytest.mark.asyncio
