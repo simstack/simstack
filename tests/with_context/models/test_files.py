@@ -366,6 +366,47 @@ def test_get_same_resource(file_stack, file_instance, setup_test_env):
         assert result_path == Path(context.config.workdir) / file_instance.path
 
 
+def test_same_resource_workdir_file_is_returned_without_copy(setup_test_env, tmp_path):
+    """A file already on this resource's workdir is the handle. get() does not copy or transfer it."""
+    context = setup_test_env
+    workdir = Path(context.config.workdir)
+    source = workdir / "integrals" / "df_integrals.h5"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"integrals")
+    try:
+        with patch("simstack.core.context.context", context):
+            instance = FileInstance.from_local_file(
+                path=source, file_stack_id=ObjectId(), make_copy=True
+            )
+
+        assert Path(instance.path) == Path("integrals") / "df_integrals.h5"
+        assert list(workdir.rglob("df_integrals.h5")) == [source]
+        stack = FileStack(
+            name="df_integrals.h5",
+            in_memory=False,
+            is_hashable=False,
+            locations=[instance],
+        )
+
+        def fail_transfer(*_args, **_kwargs):
+            raise AssertionError("same-resource file must not be transferred")
+
+        with patch(
+            "simstack.util.file_transfer_client.FileTransferClient.from_context",
+            fail_transfer,
+        ):
+            result = stack.get(tmp_path)
+
+        assert result == source
+        assert source.read_bytes() == b"integrals"
+        assert not (tmp_path / "df_integrals.h5").exists()
+    finally:
+        if source.exists():
+            source.unlink()
+        if source.parent.exists():
+            source.parent.rmdir()
+
+
 def test_get_no_suitable_instance(file_stack, setup_test_env):
     """Test error when no suitable file instance available"""
     # Setup
