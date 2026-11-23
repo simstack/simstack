@@ -41,6 +41,9 @@ class ResourceControlAPI:
         result = await self.requests.read("/work/containers")
         return [decode_task_response(item) for item in result.get("tasks", [])]
 
+    async def recovery_walltime(self, call_path: str) -> dict[str, str | None] | None:
+        return await self.requests.read("/resource-assignment/recovery-walltime", call_path=call_path)
+
     async def cache_locations(self, *, cutoff=None, cursor=None, limit=200):
         if cutoff is None:
             return await self.requests.read("/cache/locations")

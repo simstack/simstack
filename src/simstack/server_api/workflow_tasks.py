@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from simstack.models.document.codec import decode_document_value, encode_document_value
+from simstack.models.log_entry_model import LogEntry
 
 
 def decode_task_response(value):
@@ -53,6 +54,11 @@ class WorkflowTasksAPI:
         if entry is not None:
             await self.scientific_values.materialize_references([entry])
         return entry
+
+    async def logs(self, task_id) -> list[LogEntry]:
+        """Read a task's log entries in reverse chronological order."""
+        result = await self.requests.read(f"/tasks/{task_id}/logs")
+        return [LogEntry.model_validate(entry) for entry in result]
 
     async def query_tasks(self, *, status=None, parent_id=None, name=None, call_path=None,
                           skip=0, limit=None, repository_revision=None):
