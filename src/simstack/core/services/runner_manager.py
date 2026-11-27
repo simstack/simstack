@@ -167,12 +167,17 @@ class RunnerManager:
         # Start all services
         service_tasks = [service.start() for service in self._services]
 
+        shutdown_task = asyncio.create_task(self._shutdown_event.wait())
         try:
             # Wait for either a service task to finish or the shutdown event to be set
-            shutdown_task = asyncio.create_task(self._shutdown_event.wait())
             tasks_to_wait = [*service_tasks, shutdown_task]
             done, pending = await asyncio.wait(
                 tasks_to_wait, return_when=asyncio.FIRST_COMPLETED
             )
         finally:
-            await self.stop_all_services()
+            try:
+                await self.stop_all_services()
+            finally:
+                self._shutdown_event.set()
+                shutdown_task.cancel()
+                await asyncio.gather(shutdown_task, return_exceptions=True)
